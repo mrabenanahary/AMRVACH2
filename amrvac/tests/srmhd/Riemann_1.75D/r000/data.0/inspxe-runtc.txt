@@ -1,0 +1,9 @@
+
+=== Start: [2018/07/16 11:34:21] === 
+Analysis started...
+Result file: /panfs/panasas/cnt0022/lut6216/meliani/Code/amrvac/tests/srmhd/Riemann_1.75D/r000/r000.inspxe 
+Error: An internal error has occurred. Our apologies for this inconvenience. Please gather a description of the steps leading up to the problem and contact the Intel customer support team.
+Application exit code: 132 
+Result file: /panfs/panasas/cnt0022/lut6216/meliani/Code/amrvac/tests/srmhd/Riemann_1.75D/r000/r000.inspxe 
+Analysis terminated
+=== End: [2018/07/16 11:34:25] === 

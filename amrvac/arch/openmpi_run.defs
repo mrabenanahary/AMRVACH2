@@ -1,0 +1,5 @@
+F90=mpif90.openmpi
+FFLAGS = -c
+F90FLAGS = -ffree-form -O3 -fimplicit-none -Wall -Wno-unused-dummy-argument	\
+-Wno-unused-function -Wno-unused -Wno-uninitialized
+LINK= $(F90)  $(F90FLAGS)

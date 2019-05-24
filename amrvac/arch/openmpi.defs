@@ -1,0 +1,10 @@
+F90=mpif90.openmpi
+FFLAGS = -c
+F90FLAGS =  -ffree-form -O1 -finit-real=snan -finit-integer=-2147483648 \
+-fimplicit-none -g -fbacktrace -fcheck=all -ffpe-trap=invalid,zero,overflow \
+-ffpe-summary=invalid,zero,overflow -Wall -Wno-unused-dummy-argument -Wno-unused-function -Wno-unused
+
+##-ffree-form -O0 -g -fimplicit-none -Wall -Wno-unused-dummy-argument	\
+##-Wno-unused-function -Wno-unused -Wno-uninitialized -ffpe-trap=invalid,zero,overflow
+
+LINK= $(F90)  $(F90FLAGS)
