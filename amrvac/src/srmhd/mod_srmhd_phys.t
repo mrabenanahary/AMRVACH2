@@ -164,6 +164,7 @@ contains
     srmhd_config%isrel          = .true.
     srmhd_config%He_abundance   = He_abundance
     srmhd_config%n_tracer       = srmhd_n_tracer
+    srmhd_config%gamma          = srmhd_gamma
     ! set default gamma for polytropic/isothermal process
     if(.not.srmhd_energy) srmhd_gamma=1.d0
     use_particles=srmhd_particles

@@ -277,6 +277,7 @@ contains
     mhd_config%isrel          = .false.
     mhd_config%He_abundance   = He_abundance
     mhd_config%n_tracer       = mhd_n_tracer
+    mhd_config%gamma          = mhd_gamma
     ! set default gamma for polytropic/isothermal process
     if(.not.mhd_energy) mhd_gamma=1.d0
     use_particles=mhd_particles

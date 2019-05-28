@@ -411,6 +411,7 @@ contains
     srhd_config%dust_on        = .false.
     srhd_config%dust_n_species = 0
     srhd_config%energy         = srhd_energy
+    srhd_config%gamma          = srhd_gamma
     phys_iw_average =>srhd_iw_average
     phys_config     => srhd_config
   end subroutine srhd_phys_init

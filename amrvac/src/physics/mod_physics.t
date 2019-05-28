@@ -56,6 +56,7 @@ module mod_physics
     logical           :: dust_on
     integer           :: dust_n_species
     logical           :: energy
+    real(dp)          :: gamma
     real(dp)          :: He_abundance
     integer           :: n_tracer
   end type physconfig

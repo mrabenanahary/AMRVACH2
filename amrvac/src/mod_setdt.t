@@ -184,7 +184,7 @@ contains
   !-----------------------------------------------------------------------------
   log_nocrrect=.true.
   Loop_cor : do iter_correct=1,2*ndim
-    if(saveigrid==63.and.it==890)Print*,' i will try ',iter_correct
+    
    dtnew=bigdouble
 
    courantmax=zero
@@ -196,7 +196,6 @@ contains
    cmaxtot(ixO^S)=zero
 
    Loop_idims : do idims=1,ndim
-     if(saveigrid==63.and.it==890)print*,' is test ss',idims
       call phys_get_cmax(w,x,ixI^L,ixO^L,idims,cmax)
       if(need_global_cmax) cmax_mype = max(cmax_mype,maxval(cmax(ixO^S)))
       if (.not.slab) then
@@ -223,11 +222,6 @@ contains
       courantmaxtot=courantmaxtot+courantmax
       log_nocrrect=.true.
     end do Loop_idims
-
-    if(saveigrid==63.and.it==890)then
-      PRINT*,'test time step correction ',(courantpar/courantmax),iter_correct,small_getdt_average
-    end if
-
     if(log_nocrrect)exit Loop_cor
   end do Loop_cor
   select case (typecourant)

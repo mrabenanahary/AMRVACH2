@@ -183,7 +183,7 @@ contains
     hd_config%ismhd           = .false.
     hd_config%isrel           = .false.
     hd_config%n_tracer        = hd_n_tracer
-
+    hd_config%gamma           = hd_gamma
 
     call hd_fill_phys_indices
 

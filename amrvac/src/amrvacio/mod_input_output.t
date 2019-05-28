@@ -423,7 +423,6 @@ contains
        read(unitpar, methodlist, end=104)
 
 104    rewind(unitpar)
-print*,' is test ',nw
        read(unitpar, boundlist, end=105)
 
 105    rewind(unitpar)
