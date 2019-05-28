@@ -1,8 +1,7 @@
 module mod_obj_ism
   use mod_constants
   use mod_global_parameters
-  use mod_hd, only: hd_dust
-  use mod_srmhd_parameters!, only: mag,lfac_,psi_,xi_
+  use mod_physics
   use mod_obj_dust, only : dust
   use mod_obj_global_parameters
   use mod_obj_mat
@@ -102,7 +101,7 @@ contains
           write(*,*)'Reach the end of the file it will stop'
           call mpistop('It stops at reading the parfile')
          else
-           write(*,*) 'En of Reading usr_supernovae_remnant_list'
+           write(*,*) 'En of Reading usr_ism_list'
          end if
          close(unitpar)
       end do
@@ -181,9 +180,9 @@ contains
      self%myconfig%dust_frac             = 0.0_dp
 
      self%myconfig%normalize_done        = .false.
-     if(self%myconfig%dust_on)then
-      call self%mydust%set_default
-     end if
+     !if(phys_config%dust_on)then
+     call self%mydust%set_default
+     !end if
    end subroutine usr_ism_set_default
   !--------------------------------------------------------------------
   !> subroutine check the parfile setting for ism
@@ -210,10 +209,10 @@ contains
     end if
 
     if(dabs( self%myconfig%pressure)<smalldouble) then
-       self%myconfig%pressure =(2.d0+3.d0*He_abundance)* self%myconfig%number_density*kB* self%myconfig%temperature
+       self%myconfig%pressure =(2.d0+3.d0*phys_config%He_abundance)* self%myconfig%number_density*kB* self%myconfig%temperature
     end if
 
-    self%myconfig%c_sound = sqrt(srmhd_gamma*self%myconfig%pressure/self%myconfig%density)
+    self%myconfig%c_sound = sqrt(phys_config%gamma*self%myconfig%pressure/self%myconfig%density)
 
 
     select case(self%myconfig%profile_pressure)
@@ -408,7 +407,7 @@ contains
     end select
 
     w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_) * p_profile(ixO^S)
-    w(ixO^S,phys_ind%rho_) = w(ixO^S,phys_ind%rho_) * p_profile(ixO^S)**(1.0_dp/srmhd_gamma)
+    w(ixO^S,phys_ind%rho_) = w(ixO^S,phys_ind%rho_) * p_profile(ixO^S)**(1.0_dp/phys_config%gamma)
    end subroutine usr_ism_get_p_profile
 
 
@@ -477,7 +476,7 @@ contains
      end where
      !if(energy .and. .not.block%e_is_internal) then
       where(self%patch(ixO^S))
-        w(ixO^S,e_)=w(ixO^S,e_) &
+        w(ixO^S,phys_ind%e_)=w(ixO^S,phys_ind%e_) &
               + qdt * f_profile(ixO^S,z_) * wCT(ixO^S,phys_ind%mom(z_))/wCT(ixO^S,phys_ind%rho_)
       end where
      !end if

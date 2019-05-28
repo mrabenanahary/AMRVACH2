@@ -1,5 +1,6 @@
 module mod_usr
-  use mod_hd!, only: mhd_n_tracer,mhd_dust
+  use mod_hd, only : hd_activate
+  use mod_dust
   use mod_physics
   use mod_global_parameters
   use mod_obj_global_parameters
@@ -143,7 +144,10 @@ contains
     if(usrconfig%ism_on)then
       allocate(ism_surround(0:usrconfig%ism_number-1))
       Loop_allism : do i_ism =0,usrconfig%ism_number-1
-       ism_surround(i_ism)%myconfig = ism_default%myconfig
+
+       ism_surround(i_ism)%myconfig        = ism_default%myconfig
+       ism_surround(i_ism)%mydust%myconfig = ism_default%mydust%myconfig
+
        ism_surround(i_ism)%myconfig%myindice=i_ism
        call ism_surround(i_ism)%read_parameters(ism_surround(i_ism)%myconfig,files)
       end do Loop_allism
@@ -153,6 +157,7 @@ contains
       allocate(cloud_medium(0:usrconfig%cloud_number-1))
       Loop_allcloud : do i_cloud =0,usrconfig%ism_number
        cloud_medium(i_cloud)%myconfig          = cloud_default%myconfig
+       cloud_medium(i_cloud)%mydust%myconfig   = cloud_default%mydust%myconfig
        cloud_medium(i_cloud)%myconfig%myindice = i_cloud
 
        call cloud_medium(i_cloud)%read_parameters(files,cloud_medium(i_cloud)%myconfig)
@@ -232,7 +237,7 @@ contains
 
 
     w_convert_factor(phys_ind%rho_)              = unit_density
-    if(srmhd_energy)w_convert_factor(phys_ind%e_)= unit_density*unit_velocity**2.0
+    if(phys_config%energy)w_convert_factor(phys_ind%e_)= unit_density*unit_velocity**2.0
     if(saveprim)then
      w_convert_factor(phys_ind%mom(:))           = unit_velocity
     else
@@ -318,7 +323,7 @@ contains
     !.. local ..
     real(dp)      :: res
     integer       :: ix^D,na,flag(ixI^S)
-    integer       :: i_cloud,i_ism
+    integer       :: i_cloud,i_ism,i_dust,i_start,i_end
     logical, save :: first=.true.
     logical       :: patch_all(ixI^S)
     type(dust)    :: dust_dummy
@@ -344,6 +349,8 @@ contains
        i_object = i_object +1
       end do Loop_isms
     end if
+
+
     ! set one cloud
     if(usrconfig%cloud_on)then
       Loop_clouds : do i_cloud=0,usrconfig%cloud_number-1
@@ -354,6 +361,7 @@ contains
            where(cloud_medium(i_cloud)%patch(ixO^S))
              w(ixO^S,phys_ind%tracer(ism_surround(0)%myconfig%itr))=0.0_dp
            end where
+
          end if
        end if
 
@@ -367,17 +375,34 @@ contains
     if(usrconfig%sn_on)then
       sn_wdust%subname='initonegrid_usr'
       call sn_wdust%set_w(ixI^L,ixO^L,global_time,x,w)
+
       if(usrconfig%ism_on)then
+
         if(ism_surround(0)%myconfig%tracer_on)then
           where(sn_wdust%patch(ixO^S))
             w(ixO^S,phys_ind%tracer(ism_surround(0)%myconfig%itr))=0.0_dp
           endwhere
         end if
+        Loop_isms_sn : do i_ism=0,usrconfig%ism_number-1
+          if(ism_surround(i_ism)%myconfig%dust_on) then
+            ism_surround(i_ism)%mydust%patch(ixO^S)=.not.sn_wdust%patch(ixO^S)
+            i_start= ism_surround(i_ism)%mydust%myconfig%idust_first
+            i_end  = ism_surround(i_ism)%mydust%myconfig%idust_last
+            Loop_idust_1:  do i_dust=i_start,i_end
+              ism_surround(i_ism)%mydust%the_ispecies(i_dust)%patch(ixO^S)=.not.sn_wdust%patch(ixO^S)
+            end do Loop_idust_1
+            call ism_surround(i_ism)%mydust%set_w_zero(ixI^L,ixO^L,x,w)
+          end if
+        end do   Loop_isms_sn
       end if
+
       patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.sn_wdust%patch(ixO^S)
       the_dust_inuse(i_object)=sn_wdust%mydust
       i_object = i_object +1
     end if
+
+
+
     if(any(patch_all(ixO^S)))then
       call usr_fill_empty_region(ixI^L,ixO^L,0.0_dp,patch_all,x,w)
     end if
@@ -385,6 +410,8 @@ contains
 
   ! put dust to zero in all other zones
     cond_dust_on : if(phys_config%dust_on) then
+      dust_dummy%myconfig%idust_first = 1
+      dust_dummy%myconfig%idust_last  = dust_n_species
       call dust_dummy%set_allpatch(ixI^L,ixO^L,the_dust_inuse)
       call dust_dummy%set_w_zero(ixI^L,ixO^L,x,w)
       call dust_dummy%clean_memory

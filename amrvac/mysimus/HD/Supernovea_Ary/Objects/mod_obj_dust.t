@@ -156,7 +156,9 @@ contains
     self%myconfig%idust_first        = 1
     self%myconfig%idust_last         = 1
     self%myconfig%tracer_on          = .false.
-    self%myconfig%normalize_done              = .false.
+    self%myconfig%normalize_done     = .false.
+
+
    end subroutine usr_dust_set_default
   !--------------------------------------------------------------------
   !> subroutine setting for dust
@@ -171,7 +173,7 @@ contains
    integer                      :: idust,idir
    !----------------------------------------------------
 
-    Loop_idust01 : do idust = 1,dust_n_species
+    Loop_idust01 : do idust = self%myconfig%idust_first,self%myconfig%idust_last
       if(all(self%the_ispecies(idust)%patch(ixO^S)))cycle Loop_idust01
       where(.not.self%patch(ixO^S))
         w(ixO^S,dust_rho(idust)) = 1.1d-2*self%myconfig%min_limit_abs
@@ -340,6 +342,7 @@ contains
        self%myconfig%velocity = med_velocity
      end if
      allocate(self%the_ispecies(self%myconfig%idust_first:self%myconfig%idust_last))
+
    end subroutine usr_dust_set_complet
    !--------------------------------------------------------------------
    !> subroutine normalize setting for ISM
@@ -368,10 +371,14 @@ contains
     type(usrphysical_unit),target, intent(in)     :: physunit_inuse
     !----------------------------------
     self%myphysunit =>physunit_inuse
+
     if(trim(self%myconfig%unit)=='code'.or.self%myconfig%normalize_done)then
      if(self%myconfig%normalize_done)then
-      write(*,*) 'WARNING: Second call for dust normalisation', &
-                   'no new normalisation will be done'
+      write(*,*) 'WARNING: Second call for dust normalisation:: ', &
+                   '  no new normalisation will be done'
+      write(*,*)'the reason : ' , 'code unit: ', self%myconfig%unit,&
+                'normalisation is done ',   self%myconfig%normalize_done
+      write(*,*)' called from :: ',self%myconfig%associated_medium
      end if
      return
     end if
@@ -383,6 +390,8 @@ contains
     self%myconfig%velocity         = self%myconfig%velocity      / physunit_inuse%myconfig%velocity
     self%myconfig%min_limit_abs    = self%myconfig%min_limit_abs / physunit_inuse%myconfig%density
     self%myconfig%extend           = self%myconfig%extend        / physunit_inuse%myconfig%length
+
+    self%myconfig%normalize_done =.true.
    end subroutine usr_dust_normalize
   !--------------------------------------------------------------------
   !> Subroutine set the patch array memory of associated with cloud object

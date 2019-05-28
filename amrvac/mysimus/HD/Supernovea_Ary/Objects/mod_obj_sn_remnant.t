@@ -82,7 +82,7 @@ contains
         write(*,*)'Reach the end of the file it will stop'
         call mpistop('It stops at reading the parfile')
        else
-         write(*,*) 'En of Reading usr_supernovae_remnant_list'
+         write(*,*) 'End of Reading usr_supernovae_remnant_list'
        end if
     end do
 
@@ -151,6 +151,8 @@ end    subroutine usr_supernovae_remnant_write_setting
   self%myconfig%tracer_on              = .false.
   self%myconfig%dust_on                = .false.
   self%myconfig%normalize_done         = .false.
+  
+  call self%mydust%set_default
  end subroutine usr_supernovae_remnant_set_default
  !--------------------------------------------------------------------
  !> subroutine check the parfile setting for cloud

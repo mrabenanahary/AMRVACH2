@@ -18,9 +18,9 @@
         autoconvert=.true.
         convert_type='vtuBCCmpi'
 
-/
-        restart_from_file='Output/Sn_dust_1D_A/sn_pulsar_wind_sphe1D_0751.dat'
-        snapshotnext =0752
+
+        restart_from_file='Output/Sn_dust_1D_A/sn_pulsar_wind_sphe1D_0321.dat'
+        snapshotnext =0322
 /
 
 
@@ -131,10 +131,11 @@
         itfixgrid =0
 
  &paramlist
-        typecourant        = 'maxsum'
-        courantpar         = 0.4d0
-        slowsteps          = 1000
-        small_getdt_average= .true.
+        typecourant         = 'maxsum'
+        courantpar          = 0.4d0
+        slowsteps           = 1000
+        small_getdt_average = .true.
+        small_dt_coef       = 1.0d-2
  /
 
   &hd_list
@@ -227,8 +228,8 @@
   dust_config%idust_last       = 4          ! dust indice of the last dust grain used in code
   dust_config%sizes            = 0.0        ! dust sizes  (cm) if 0.0 , it will use distrub_func
   dust_config%distrub_func     = 'powerlaw' ! dust distribution function
-  dust_config%min_radius       = 1.0d0! 5.0d-7 !5.0d-4!    ! dust smaller radius (cm) (ref : Decin et al 2006)
-  dust_config%max_radius       = 1.0d-1!2.5d-5! 2.5d-5     !   ! dust smaller radius (cm) (ref : Decin et al 2006)
+  dust_config%min_radius       = 5.0d-6! 5.0d-7 !5.0d-4!    ! dust smaller radius (cm) (ref : Decin et al 2006)
+  dust_config%max_radius       = 2.5d-2!2.5d-5! 2.5d-5     !   ! dust smaller radius (cm) (ref : Decin et al 2006)
   dust_config%power_a          = -3.5       ! dust power law for distribtion function accroding to dust size
   dust_config%extend           = 0.0        ! dust region of space where is set. 0 means will be set in user file
  /
@@ -261,8 +262,8 @@
   dust_config%idust_last       = 2          ! dust indice of the last dust grain used in code
   dust_config%sizes            = 0.0        ! dust sizes  (cm) if 0.0 , it will use distrub_func
   dust_config%distrub_func     = 'powerlaw' ! dust distribution function
-  dust_config%min_radius       = 1.0d-2!5.0d-7 !5.0d-4!    ! dust smaller radius (cm) (ref : Decin et al 2006)
-  dust_config%max_radius       = 1.0d-3!2.5d-5! 2.5d-5     !   ! dust smaller radius (cm) (ref : Decin et al 2006)
+  dust_config%min_radius       = 1.0d-4!5.0d-7 !5.0d-4!    ! dust smaller radius (cm) (ref : Decin et al 2006)
+  dust_config%max_radius       = 1.0d-1!2.5d-5! 2.5d-5     !   ! dust smaller radius (cm) (ref : Decin et al 2006)
   dust_config%power_a          = -3.5       ! dust power law for distribtion function accroding to dust size
   dust_config%extend           = 0.0        ! dust region of space where is set. 0 means will be set in user file
  /
