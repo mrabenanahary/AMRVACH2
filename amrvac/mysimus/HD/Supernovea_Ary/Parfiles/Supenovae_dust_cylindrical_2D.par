@@ -13,13 +13,13 @@
 !==============================================================
 
  &filelist
-        base_filename='Output/Sn_Wind_Cylindrical25D_A/sn_pulsar_wind_cyl25DA_'
+        base_filename='Output/Sn_dust_2D_A/sn_dust_cyl25DA_'
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
 
   /
-        restart_from_file='Output/Sn_Wind_Cylindrical25D_A/sn_pulsar_wind_cyl25DA_0016.dat'
+        restart_from_file='Output/Sn_dust_2D_A/sn_dust_cyl25DA_0016.dat'
         snapshotnext =0017
 /
 
@@ -87,12 +87,12 @@
         internalboundary  = .true.
         nghostcells       = 2
 
-        typeboundary_min1 = 'symm','asymm','symm','asymm',
-                            'symm','asymm','symm','asymm'
+        typeboundary_min1 = 'symm','asymm','symm','asymm','symm'
+                            4*'symm',4*'asymm',4*'symm',4*'asymm'
 
-        typeboundary_max1 = 8*'cont'
-        typeboundary_min2 = 8*'special'
-        typeboundary_max2 = 8*'special'
+        typeboundary_max1 = 21*'cont'
+        typeboundary_min2 = 21*'special'
+        typeboundary_max2 = 21*'special'
 
 /
 
@@ -153,6 +153,7 @@
          He_abundance         = 0.0d0                     !
          hd_dust              = .true.   ! dust on
          hd_radiative_cooling = .true.   ! cooling on
+         hd_n_tracer             = 2
    /
 
 
@@ -235,7 +236,7 @@
   dust_config%idust_last       = 4          ! dust indice of the last dust grain used in code
   dust_config%sizes            = 0.0        ! dust sizes  (cm) if 0.0 , it will use distrub_func
   dust_config%distrub_func     = 'powerlaw' ! dust distribution function
-  dust_config%min_radius       = 1.0d-5! 5.0d-7 !5.0d-4!    ! dust smaller radius (cm) (ref : Decin et al 2006)
+  dust_config%min_radius       = 1.0d-4! 5.0d-7 !5.0d-4!    ! dust smaller radius (cm) (ref : Decin et al 2006)
   dust_config%max_radius       = 1.0d-3!2.5d-5! 2.5d-5     !   ! dust smaller radius (cm) (ref : Decin et al 2006)
   dust_config%power_a          = -3.5       ! dust power law for distribtion function accroding to dust size
   dust_config%extend           = 0.0        ! dust region of space where is set. 0 means will be set in user file
@@ -265,8 +266,8 @@
   dust_config%max_limit_rel    = 1d2        ! dust maximum relative limite compare to gas density
   dust_config%tracer_on        = .false.    ! dust with or without  tracer
   dust_config%n_species        = 2          ! dust number of species
-  dust_config%idust_first      = 3          ! dust indice of the first dust grain used in code
-  dust_config%idust_last       = 4          ! dust indice of the last dust grain used in code
+  dust_config%idust_first      = 1          ! dust indice of the first dust grain used in code
+  dust_config%idust_last       = 2          ! dust indice of the last dust grain used in code
   dust_config%sizes            = 0.0        ! dust sizes  (cm) if 0.0 , it will use distrub_func
   dust_config%distrub_func     = 'powerlaw' ! dust distribution function
   dust_config%min_radius       = 1.0d-5! 5.0d-7 !5.0d-4!    ! dust smaller radius (cm) (ref : Decin et al 2006)
