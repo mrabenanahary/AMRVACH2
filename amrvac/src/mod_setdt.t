@@ -36,16 +36,12 @@ if (dtpar<=zero) then
 
       call getdt_courant(pw(igrid)%w,ixG^LL,ixM^LL,qdtnew,pw(igrid)%x)
       dtnew=min(dtnew,qdtnew)
-      if(dtnew<1e-8)then
-        print*,' is at setdt, get_courant ',mype,it,igrid,dtnew
-      end if
+
 
       call phys_get_dt(pw(igrid)%w,ixG^LL,ixM^LL,qdtnew,dx^D,pw(igrid)%x)
       dtnew=min(dtnew,qdtnew)
 
-      if(dtnew<1e-8)then
-        print*,' is at setdt, phys_get_dt ',mype,it,igrid,dtnew
-      end if
+
       if (associated(usr_get_dt)) then
          call usr_get_dt(pw(igrid)%w,ixG^LL,ixM^LL,global_time,qdtnew,dx^D,pw(igrid)%x)
       end if

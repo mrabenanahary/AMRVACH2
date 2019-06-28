@@ -53,6 +53,10 @@ module mod_hd_phys
 
   !> The small_est allowed energy
   real(dp), protected             :: small_e
+  !> The small_est allowed density
+  real(dp), public, protected     :: hd_small_density = 0.0_dp
+  !> The small_est allowed pressure
+  real(dp), public, protected     :: hd_small_pressure= 0.0_dp
 
   !> Helium abundance over Hydrogen
   real(dp), public, protected  :: He_abundance=0.1d0
@@ -70,7 +74,7 @@ module mod_hd_phys
   public :: hd_get_pthermal
   public :: hd_to_conserved
   public :: hd_to_primitive
-
+  public :: hd_small_values_floor
 contains
 
   !> Read this module's parameters from a file
@@ -81,7 +85,7 @@ contains
 
     namelist /hd_list/ hd_energy, hd_n_tracer, hd_gamma, hd_adiab, &
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
-    hd_gravity, He_abundance, SI_unit, hd_particles
+    hd_gravity, He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -184,7 +188,9 @@ contains
     hd_config%isrel           = .false.
     hd_config%n_tracer        = hd_n_tracer
     hd_config%gamma           = hd_gamma
-
+    hd_config%small_density   = small_density
+    hd_config%small_pressure  = small_pressure
+    hd_config%small_energy    = hd_config%small_pressure/(hd_config%gamma - 1.0_dp)
     call hd_fill_phys_indices
 
     !allocate(hd_iw_average(1:nw))
@@ -211,11 +217,11 @@ contains
     phys_req_diagonal = .true. !.false.
 
     ! derive units from basic units
-    call hd_physical_units()
+    call hd_physical_units
 
     if (hd_dust) call dust_init(hd_ind,hd_config,rho_, mom(:), e_)
 
-
+    call hd_fill_convert_factor
 
 
     ! initialize thermal conduction module
@@ -291,14 +297,14 @@ contains
     end if
 
 
+    if(hd_n_tracer>0) then
+     allocate(tracer(hd_n_tracer))
 
-    allocate(tracer(hd_n_tracer))
-
-    ! Set starting index of tracers
-    do itr = 1, hd_n_tracer
+     ! Set starting index of tracers
+     do itr = 1, hd_n_tracer
       tracer(itr) = var_set_fluxvar("trc", "trp", itr, need_bc=.false.)
-    end do
-
+     end do
+    end if
 
     allocate(hd_ind%mom(ndir))
     hd_ind%rho_  =rho_
@@ -334,8 +340,11 @@ contains
 
   subroutine hd_physical_units
     use mod_global_parameters
+    use mod_dust, only : dust_physical_units
     real(dp) :: mp,kB
     ! Derive scaling units
+
+
     if(SI_unit) then
       mp=mp_SI
       kB=kB_SI
@@ -360,7 +369,23 @@ contains
 
   end subroutine hd_physical_units
 
-
+  subroutine hd_fill_convert_factor
+    use mod_global_parameters
+    use mod_dust, only : dust_physical_units
+  if(.not.allocated(w_convert_factor))then
+     allocate(w_convert_factor(nw))
+     w_convert_factor(rho_)     = unit_density
+     w_convert_factor(e_)       = unit_density*unit_velocity**2.0
+     if(saveprim)then
+      w_convert_factor(mom(:))  = unit_velocity
+     else
+      w_convert_factor(mom(:))  = unit_density*unit_velocity
+     end if
+     if (hd_dust) call dust_physical_units
+     time_convert_factor   = unit_time
+     length_convert_factor = unit_length
+    end if
+  end   subroutine hd_fill_convert_factor
   !> Returns 0 in argument flag where values are ok
   subroutine hd_check_w(primitive, ixI^L, ixO^L, w, flag)
     use mod_global_parameters

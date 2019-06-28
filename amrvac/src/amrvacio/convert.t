@@ -451,10 +451,10 @@ if(first.and.mype==0)then
   print*,'-------------------------------------------------------------------------------'
   write(unitterm,*)'Saving visual data. Coordinate directions and variable names are:'
   do iw=1,ndim
-    print *,iw,xandwnamei(iw)
+    print *,iw-ndim,xandwnamei(iw)
   enddo
   do iw=ndim+1,ndim+nw+nwauxio
-    print *,iw,wnamei(iw-ndim),xandwnamei(iw)
+    print *,iw-ndim,wnamei(iw-ndim),xandwnamei(iw)
   enddo
   write(unitterm,*)'time =', global_time
   print*,'-------------------------------------------------------------------------------'
@@ -2355,6 +2355,13 @@ write(qunit,'(a)')'<?xml version="1.0"?>'
 write(qunit,'(a)',advance='no') '<VTKFile type="PUnstructuredGrid"'
 write(qunit,'(a)')' version="0.1" byte_order="LittleEndian">'
 write(qunit,'(a)')'  <PUnstructuredGrid GhostLevel="0">'
+write(qunit,'(a)')'<FieldData>'
+write(qunit,'(2a)')'<DataArray type="Float32" Name="TIME" ',&
+                   'NumberOfTuples="1" format="ascii">'
+write(qunit,*) real(global_time*time_convert_factor)
+write(qunit,'(a)')'</DataArray>'
+write(qunit,'(a)')'</FieldData>'
+
 ! Either celldata or pointdata:
 write(qunit,'(a,a,a,a,a)')&
      '    <',TRIM(outtype),' Scalars="',TRIM(wnamei(iscalars))//'">'

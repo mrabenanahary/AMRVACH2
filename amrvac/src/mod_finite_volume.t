@@ -261,7 +261,7 @@ contains
       do iw=1,nwflux
 
          ! To save memory we use fLC to store (F_L+F_R)/2=half*(fLC+fRC)
-         fLC(ixC^S, iw)=0.5d0*(fLC(ixC^S, iw)+fRC(ixC^S, iw))
+         fLC(ixC^S, iw)=0.5_dp*(fLC(ixC^S, iw)+fRC(ixC^S, iw))
 
          ! Add TVDLF dissipation to the flux
          if (flux_type(idim, iw) /= flux_no_dissipation) then
@@ -347,7 +347,7 @@ contains
 
       do iw=1,nwflux
          if (flux_type(idim, iw) == flux_tvdlf) then
-            fLC(ixC^S,iw) = 0.5d0 * (fLC(ixC^S,iw) + fRC(ixC^S,iw) &
+            fLC(ixC^S,iw) = 0.5_dp * (fLC(ixC^S,iw) + fRC(ixC^S,iw) &
                           - tvdlfeps *  max(cmaxC(ixC^S), abs(cminC(ixC^S))) &
                      * (wRC(ixC^S,iw) - wLC(ixC^S,iw)))
          else
@@ -550,8 +550,9 @@ contains
 
     integer            :: jxR^L, ixC^L, jxC^L, iw
     double precision   :: ldw(ixI^S), rdw(ixI^S), dwC(ixI^S)
+    logical            :: limiter_need_log
     ! integer            :: flagL(ixI^S), flagR(ixI^S)
-
+     limiter_need_log=.false.
     ! Transform w,wL,wR to primitive variables
     if (needprim) then
        call phys_to_primitive(ixI^L,ixI^L,w,x)
@@ -567,10 +568,15 @@ contains
        jxC^L=ixC^L+kr(idim,^D);
 
        do iw=1,nwflux
+
           if (loglimit(iw)) then
-             w(ixCmin^D:jxCmax^D,iw)=dlog10(w(ixCmin^D:jxCmax^D,iw))
-             wLp(ixL^S,iw)=dlog10(wLp(ixL^S,iw))
-             wRp(ixR^S,iw)=dlog10(wRp(ixR^S,iw))
+             limiter_need_log=maxval(dabs(wRp(ixR^S,iw)-wLp(ixL^S,iw))&
+                                    /min(wRp(ixR^S,iw),wLp(ixL^S,iw)))>limiter_log_threshold
+             if(limiter_need_log)then
+              w(ixCmin^D:jxCmax^D,iw)=dlog10(w(ixCmin^D:jxCmax^D,iw))
+              wLp(ixL^S,iw)=dlog10(wLp(ixL^S,iw))
+              wRp(ixR^S,iw)=dlog10(wRp(ixR^S,iw))
+             end if
           end if
 
           dwC(ixC^S)=w(jxC^S,iw)-w(ixC^S,iw)
@@ -580,7 +586,7 @@ contains
           wLp(ixL^S,iw)=wLp(ixL^S,iw)+half*ldw(ixL^S)
           wRp(ixR^S,iw)=wRp(ixR^S,iw)-half*rdw(jxR^S)
 
-          if (loglimit(iw)) then
+          if (loglimit(iw).and.limiter_need_log) then
              w(ixCmin^D:jxCmax^D,iw)=10.0d0**w(ixCmin^D:jxCmax^D,iw)
              wLp(ixL^S,iw)=10.0d0**wLp(ixL^S,iw)
              wRp(ixR^S,iw)=10.0d0**wRp(ixR^S,iw)

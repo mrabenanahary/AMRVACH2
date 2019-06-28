@@ -23,6 +23,7 @@ module mod_radiative_cooling
   use mod_constants
   use mod_global_parameters, only: std_len
   use mod_physics
+  !use mod_chemical
   implicit none
   ! parameters used for implicit cooling source calculations
 
@@ -887,7 +888,8 @@ module mod_radiative_cooling
       real(kind=dp)   , intent(in)    :: w(ixI^S,1:nw)
       real(kind=dp)   , intent(inout) :: dtnew
 
-      real(kind=dp)                   :: etherm(ixI^S)
+
+      real(kind=dp)                   :: etherm(ixI^S),rho_electron(ixO^S)
       real(kind=dp)                   :: L1,Tlocal1, ptherm(ixI^S), lum(ixI^S)
       real(kind=dp)                   :: plocal, rholocal
       real(kind=dp)                   :: Lmax
@@ -895,7 +897,11 @@ module mod_radiative_cooling
       !
       ! Limit timestep to avoid cooling problems when using explicit cooling
       !
-
+      if(phys_config%chemical_on) then
+        call chemical_get_electron_density(ixI^L, ixO^L,w,rho_electron)
+      else
+        rho_electron(ixO^S) =   w(ixO^S,rho_)
+      end if
       if(coolmethod == 'explicit1') then
        call phys_get_pthermal(w,x,ixI^L,ixO^L,ptherm)
        {do ix^DB = ixO^LIM^DB\}
@@ -912,10 +918,10 @@ module mod_radiative_cooling
             L1 = zero
          else if( Tlocal1>=tcoolmax )then
             L1         = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-            L1         = L1*(rholocal**2)
+            L1         = L1*(rholocal*rho_electron(ix^D))
          else
             call findL(Tlocal1,L1)
-            L1         = L1*(rholocal**2)
+            L1         = L1*(rholocal*rho_electron(ix^D))
          endif
          lum(ix^D) = L1
         {enddo^D&\}
@@ -938,7 +944,7 @@ module mod_radiative_cooling
       real(kind=dp)                :: w(ixI^S,1:nw)
       real(kind=dp)   , intent(out):: coolrate(ixI^S)
 
-      real(kind=dp)    :: etherm(ixI^S)
+      real(kind=dp)    :: etherm(ixI^S),rho_electron(ixO^S)
       real(kind=dp)    :: L1,Tlocal1, ptherm(ixI^S)
       real(kind=dp)    :: plocal, rholocal
       real(kind=dp)    :: emin
@@ -946,6 +952,12 @@ module mod_radiative_cooling
       integer :: ix^D
 
       call phys_get_pthermal(w,x,ixI^L,ixO^L,ptherm)
+
+      if(phys_config%chemical_on) then
+        call chemical_get_electron_density(ixI^L, ixO^L,w,rho_electron)
+      else
+        rho_electron(ixO^S) =   w(ixO^S,rho_)
+      end if
 
       {do ix^DB = ixO^LIM^DB\}
          plocal   = ptherm(ix^D)
@@ -959,10 +971,10 @@ module mod_radiative_cooling
             L1 = zero
          else if( Tlocal1>=tcoolmax )then
             L1         = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-            L1         = L1*(rholocal**2)
+            L1         = L1*(rholocal*rho_electron(ix^D))
          else
             call findL(Tlocal1,L1)
-            L1         = L1*(rholocal**2)
+            L1         = L1*(rholocal*rho_electron(ix^D))
          endif
          coolrate(ix^D) = L1
       {enddo^D&\}
@@ -1041,7 +1053,7 @@ module mod_radiative_cooling
       real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
       real(kind=dp)                   :: wCT(ixI^S,1:nw)
 
-      real(kind=dp)    :: L1,Tlocal1, ptherm(ixI^S),pnew(ixI^S)
+      real(kind=dp)    :: L1,Tlocal1, ptherm(ixI^S),pnew(ixI^S),rho_electron(ixO^S)
       real(kind=dp)    :: plocal, rholocal
       real(kind=dp)    :: emin, Lmax
 
@@ -1050,7 +1062,11 @@ module mod_radiative_cooling
 
       call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew)
-
+      if(phys_config%chemical_on) then
+        call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
+      else
+        rho_electron(ixO^S) =   wCT(ixO^S,rho_)
+      end if
       {do ix^DB = ixO^LIM^DB\}
          plocal   = ptherm(ix^D)
          rholocal = wCT(ix^D,rho_)
@@ -1069,12 +1085,12 @@ module mod_radiative_cooling
             L1 = zero
          else if( Tlocal1>=tcoolmax )then
             L1         = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-            L1         = L1*(rholocal**2)
+            L1         = L1*(rholocal*rho_electron(ix^D))
             L1         = min(L1,Lmax)
             w(ix^D,e_) = w(ix^D,e_)-L1*qdt
          else
             call findL(Tlocal1,L1)
-            L1         = L1*(rholocal**2)
+            L1         = L1*(rholocal*rho_electron(ix^D))
             L1         = min(L1,Lmax)
             w(ix^D,e_) = w(ix^D,e_)-L1*qdt
 
@@ -1103,7 +1119,7 @@ module mod_radiative_cooling
 
       integer :: idt,ndtstep
 
-      real(kind=dp)    :: L1,Tlocal1,ptherm(ixI^S),pnew(ixI^S)
+      real(kind=dp)    :: L1,Tlocal1,ptherm(ixI^S),pnew(ixI^S),rho_electron(ixO^S)
       real(kind=dp)    :: plocal, rholocal
       real(kind=dp)    :: emin, Lmax
 
@@ -1112,7 +1128,11 @@ module mod_radiative_cooling
 
       call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew )
-
+      if(phys_config%chemical_on) then
+        call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
+      else
+        rho_electron(ixO^S) =   wCT(ixO^S,rho_)
+      end if
 
       {do ix^DB = ixO^LIM^DB\}
          !  Calculate explicit cooling value
@@ -1136,12 +1156,12 @@ module mod_radiative_cooling
             Ltest = zero
          else if( Tlocal1>=tcoolmax )then
             Ltest = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-            Ltest = L1*(rholocal**2)
+            Ltest = L1*(rholocal*rho_electron(ix^D))
             Ltest = min(L1,Lmax)
             if( dtmax>cfrac*etherm/Ltest) dtmax = cfrac*etherm/Ltest
          else
             call findL(Tlocal1,Ltest)
-            Ltest = Ltest*(rholocal**2)
+            Ltest = Ltest*(rholocal*rho_electron(ix^D))
             Ltest = min(Ltest,Lmax)
             if( dtmax>cfrac*etherm/Ltest) dtmax = cfrac*etherm/Ltest
          endif
@@ -1157,7 +1177,7 @@ module mod_radiative_cooling
          etherm = etherm - de
 
          do idt=2,ndtstep
-            plocal = etherm*(rc_gamma-1.d0)
+            plocal = etherm*(rc_gamma-1.0_dp)
             Lmax   = max(zero,etherm-emin)/dtstep
             !  Tlocal = P/rho
             Tlocal1 = plocal/(rholocal)
@@ -1166,11 +1186,11 @@ module mod_radiative_cooling
                exit
             else if( Tlocal1>=tcoolmax )then
                L1 = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-               L1 = L1*(rholocal**2)
+               L1 = L1*(rholocal*rho_electron(ix^D))
                L1 = min(L1,Lmax)
             else
                call findL(Tlocal1,L1)
-               L1 = L1*(rholocal**2)
+               L1 = L1*(rholocal*rho_electron(ix^D))
                L1 = min(L1,Lmax)
             endif
 
@@ -1200,12 +1220,16 @@ module mod_radiative_cooling
       real(kind=dp)    :: plocal, rholocal
       real(kind=dp)    :: emin, Lmax
 
-      real(kind=dp)    :: ptherm(ixI^S),pnew(ixI^S)
+      real(kind=dp)    :: ptherm(ixI^S),pnew(ixI^S),rho_electron(ixO^S)
       integer :: ix^D
 
       call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew )
-
+      if(phys_config%chemical_on) then
+        call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
+      else
+        rho_electron(ixO^S) =   wCT(ixO^S,rho_)
+      end if
       {do ix^DB = ixO^LIM^DB\}
          plocal   = ptherm(ix^D)
          rholocal = wCT(ix^D,rho_)
@@ -1229,7 +1253,7 @@ module mod_radiative_cooling
            else
               call findL(Tlocal1,L1)
            end if
-           L1      = L1*(rholocal**2)
+           L1      = L1*(rholocal*rho_electron(ix^D))
            etemp   = plocal/(rc_gamma-1.d0) - L1*qdt
            Tlocal2 = etemp*(rc_gamma-1.d0)/(rholocal)
            !
@@ -1242,7 +1266,7 @@ module mod_radiative_cooling
            else
               call findL(Tlocal2,L2)
            end if
-           L2  = L2*(rholocal**2)
+           L2  = L2*(rholocal*rho_electron(ix^D))
            w(ix^D,e_) = w(ix^D,e_) - min(half*(L1+L2),Lmax)*qdt
          endif
       {enddo^D&\}
@@ -1260,7 +1284,8 @@ module mod_radiative_cooling
       real(kind=dp)   , intent(in)    :: qdt, x(ixI^S,1:ndim)
       real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
       real(kind=dp)                   :: wCT(ixI^S,1:nw)
-      real(kind=dp)    :: Ltemp,Tlocal1,Tnew,f1,f2,ptherm(ixI^S), pnew(ixI^S)
+      real(kind=dp)    :: Ltemp,Tlocal1,Tnew,f1,f2
+      real(kind=dp)    :: ptherm(ixI^S), pnew(ixI^S),rho_electron(ixO^S)
 
       real(kind=dp)    :: plocal, rholocal, elocal
       real(kind=dp)    :: emin, Lmax, eold, enew, estep
@@ -1271,7 +1296,11 @@ module mod_radiative_cooling
 
       call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew )
-
+      if(phys_config%chemical_on) then
+        call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
+      else
+        rho_electron(ixO^S) =   wCT(ixO^S,rho_)
+      end if
 
       {do ix^DB = ixO^LIM^DB\}
          plocal   = ptherm(ix^D)
@@ -1306,7 +1335,7 @@ module mod_radiative_cooling
              else
                call findL(Tnew,Ltemp)
              end if
-             Ltemp = Ltemp*(rholocal**2)
+             Ltemp = Ltemp*(rholocal*rho_electron(ix^D))
              eold  = enew + Ltemp*qdt
 
              f1 = elocal -eold
@@ -1333,10 +1362,12 @@ module mod_radiative_cooling
       real(kind=dp)   , intent(in)    :: qdt, x(ixI^S,1:ndim)
       real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
       real(kind=dp)                   :: wCT(ixI^S,1:nw)
+
       real(kind=dp)    :: Y1, tc, Y2
       real(kind=dp)    :: L1,Tlocal1, ptherm(ixI^S), Tlocal2, pnew(ixI^S)
       real(kind=dp)    :: plocal, rholocal, invgam
       real(kind=dp)    :: emin, Lmax, fact
+      real(kind=dp)    :: rho_electron(ixO^S)
 
       integer :: ix^D
       integer :: icool
@@ -1347,6 +1378,11 @@ module mod_radiative_cooling
       fact = Lref*qdt/Tref
 
       invgam=1.d0/(rc_gamma-1.d0)
+      if(phys_config%chemical_on) then
+        call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
+      else
+        rho_electron(ixO^S) =   wCT(ixO^S,rho_)
+      end if
       {do ix^DB = ixO^LIM^DB\}
          plocal   = ptherm(ix^D)
          rholocal = wCT(ix^D,rho_)
@@ -1367,7 +1403,7 @@ module mod_radiative_cooling
             L1 = zero
          else if( Tlocal1>=tcoolmax )then
             L1         = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-            L1         = L1*(rholocal**2)
+            L1         = L1*(rholocal*rho_electron(ix^D))
             L1         = min(L1,Lmax)
             w(ix^D,e_) = w(ix^D,e_)-L1*qdt
          else
@@ -1383,7 +1419,7 @@ module mod_radiative_cooling
               L1 = (Tlocal1-Tlocal2)*invgam/(rholocal*qdt)
             endif
 
-            L1          = L1*(rholocal**2)
+            L1          = L1*(rholocal*rho_electron(ix^D))
             L1          = min(L1,Lmax)
             w(ix^D,e_)  = w(ix^D,e_)-L1*qdt
          endif
@@ -1553,4 +1589,14 @@ module mod_radiative_cooling
 !      end if
     end subroutine finddLdt
 
+
+  subroutine chemical_get_electron_density(ixI^L, ixO^L,w,rho_electron)
+    use mod_global_parameters
+    implicit none
+    integer, intent(in)            :: ixI^L, ixO^L
+    real(kind=dp), intent(in)      :: w(ixI^S,1:nw)
+    real(dp), intent(out)          :: rho_electron(ixO^S)
+    !-------------------------------------
+    rho_electron = w(ixO^S,rho_)
+  end subroutine chemical_get_electron_density
 end module mod_radiative_cooling

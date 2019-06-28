@@ -54,11 +54,18 @@ module mod_physics
     logical           :: ismhd
     logical           :: isrel
     logical           :: dust_on
+    logical           :: tracer_on
     integer           :: dust_n_species
     logical           :: energy
     real(dp)          :: gamma
     real(dp)          :: He_abundance
     integer           :: n_tracer
+    real(dp)          :: small_density
+    real(dp)          :: small_pressure
+    real(dp)          :: small_energy
+    real(dp)          :: dust_small_density
+    logical           :: chemical_on
+    integer           :: chemical_n_species
   end type physconfig
 
   type(physconfig), pointer   :: phys_config

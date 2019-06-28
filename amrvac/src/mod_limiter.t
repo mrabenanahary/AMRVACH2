@@ -2,7 +2,7 @@
 module mod_limiter
   use mod_ppm
   use mod_mp5
-
+  use mod_constants
   implicit none
   public
 
@@ -21,7 +21,8 @@ module mod_limiter
   ! Special cases
   integer, parameter :: limiter_ppm = 10
   integer, parameter :: limiter_mp5 = 11
-
+  !> Limiter threshold to set log use if loglimit = .true.
+  real(kind=dp)           :: limiter_log_threshold
 contains
 
   integer function limiter_type(namelim)

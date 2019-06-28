@@ -1,0 +1,274 @@
+!==============================================================
+! Project : Pulsar wind nebula
+! Aim     :
+! Results :
+! Method  : Use cynlindrical coordinate
+!           !!!todo add stretched grid in R and Z
+! Update  : 25/04/2019
+! configuration :
+! Openmpi/gfortran or intel or ....
+! $AMRVAC_DIR/setup.pl -d=2 -phys=srmhd -arch=default
+! with intel
+! $AMRVAC_DIR/setup.pl -d=2 -phys=srmhd -arch=intel
+!==============================================================
+
+ &filelist
+        base_filename='Output/Sn_dust_2D_A/sn_dust_cyl25DA_'
+        saveprim=.true.
+        autoconvert=.true.
+        convert_type='vtuBCCmpi'
+
+/
+        restart_from_file='Output/Sn_dust_2D_A/sn_dust_cyl25DA_0321.dat'
+        snapshotnext =0322
+/
+
+
+
+
+/
+        nwauxio=10
+
+
+
+
+/
+
+
+ &savelist
+        itsave(1,1)=0
+        itsave(1,2)=0
+        dtsave_log=0.1d0
+        dtsave_dat= 0.25   ! 0.25 year
+ /
+
+        ditsave_log = 1
+        ditsave_dat =1
+        dtsave_dat =21.08
+
+ &stoplist
+
+        dtmin=1.D-09
+        time_max= 100 ! years
+
+/
+  reset_it=.true.
+
+          it_init=0
+
+
+
+
+
+
+ &methodlist
+        time_integrator          =  'fourstep'
+        typepred1                =  20*'tvdlf'
+        flux_scheme              =  20*'tvdlf'
+        limiter                  =  20*'minmod'
+        small_pressure           = 1.0d-11
+        small_density            = 1.0d-10
+        small_values_method      =  'average'
+        small_values_daverage    = 8
+
+        check_small_values       = .true.
+        small_values_force_floor = .false.
+        loglimit(1) = .true.
+        loglimit(5) = .true.
+
+ /
+         loglimit(1)            = .true.
+         loglimit(5)            = .true.
+         loglimit(6)            = .true.
+         loglimit(7)            = .true.
+        tvdlfeps=0.5d0
+
+ &boundlist
+        internalboundary  = .true.
+        nghostcells       = 2
+
+        typeboundary_min1 = 'symm','asymm','symm','asymm','symm'
+                            4*'asymm',4*'symm',4*'symm',4*'symm'
+
+
+        typeboundary_max1 = 21*'cont'
+        typeboundary_min2 = 21*'cont'
+        typeboundary_max2 = 21*'cont'
+/
+
+ /
+
+ &meshlist
+        ! grid at level 1
+        xprobmin1 =  0.0d0       ! cm
+        xprobmax1 =  1.0d16      ! cm
+        xprobmin2 = -1.0d16      ! axis
+        xprobmax2 =  1.0d16      ! cm      
+        ! total cell at level 1
+        domain_nx1= 96
+        domain_nx2= 192
+        ! number of cell by block
+        block_nx1 = 8
+        block_nx2 = 8
+
+
+
+        ! AMR configuration
+        refine_criterion=3
+        refine_max_level=8
+        refine_threshold=20*0.05d0
+        derefine_ratio=20*0.05d0
+        w_refine_weight(1)=0.3d0
+        w_refine_weight(3)=0.1d0
+        w_refine_weight(5)=0.2d0
+        w_refine_weight(6)=0.2d0
+        w_refine_weight(7)=0.2d0
+
+/
+        ! can be added when is needed
+        prolongprimitive= .true.
+        coarsenprimitive= .true.
+
+
+        stretched_grid    = .true.
+        stretched_dim(1)  = .true.
+        stretched_dim(2)  = .true.
+        itfixgrid =0
+
+ &paramlist
+        typecourant         = 'maxsum'
+        courantpar          = 0.4d0
+        slowsteps           = 1000
+        small_getdt_average = .true.
+        small_dt_coef       = 1.0d-2
+ /
+
+  &hd_list
+         hd_gamma             = 1.666666667
+         SI_unit              = .false.  ! use cgs
+         He_abundance         = 0.0d0                     !
+         hd_dust              = .true.   ! dust on
+         hd_radiative_cooling = .false. !  ! cooling off !! .true. ! cooling on
+         hd_n_tracer          = 2
+   /
+
+
+   &rc_list
+         ncool            = 4000
+         coolcurve        = 'SPEX_DM'
+         coolmethod       = 'exact'
+         cfrac            = 1.d0
+         Tfix             = .true.
+   /
+
+
+ &dust_list
+     dust_n_species           = 4
+     dust_min_rho             = 1.0d-10
+     gas_mu                   = 1.0d0
+     dust_method              = 'Kwok'
+     dust_small_to_zero       = .true.
+     dust_temperature         = 1.0d0
+     dust_temperature_type    = 'silicate'
+     dust_source_split        = .false.
+     dust_it_diff             = 50000
+   /
+
+
+
+
+
+ &usr_list
+        usrconfig%ism_on              = .true.                      !> set ism
+        usrconfig%cloud_on            = .false.                     !> set cloud
+        usrconfig%sn_on               = .true.                      !> set a pulsar
+        usrconfig%physunit_on         = .true.                      !> set the normalisation in use
+        usrconfig%coordinate_system   = 'cylindrical_2.5D'          !> geometry in use
+ /
+
+
+
+
+&usr_physical_unit_list
+ phys_unit%unit                = 'cgs'
+ phys_unit%length              = 1.0e+13                   ! cm (1/3 parsec)
+ phys_unit%time                = 3d5                       ! s (0.01 year)
+ phys_unit%number_density      = 1e10                      ! cm^-3
+/
+
+
+
+
+
+&usr_supernovae_remnant_list
+ supernovae_remnant_config%unit            = 'cgs'
+ supernovae_remnant_config%center          = 0,0,0          ! Supernovae remnant position (cm)
+ supernovae_remnant_config%r_in            = 0.0            ! Supernovae remnant inner boundary  (cm)
+ supernovae_remnant_config%r_out           = 1.0d14         ! Supernovae remnant  outer boundary (cm)
+ supernovae_remnant_config%velocity_init(1)= 8.993773740d6  ! Supernovae remnant radial speed 0.003c (cm/s)
+ supernovae_remnant_config%velocity_init(2)= 0.0d0          ! Supernovae remnant theta speed (cm/s)
+ supernovae_remnant_config%velocity_init(3)= 0.0d0          ! Supernovae remnant phi speed (cm/s)
+
+ supernovae_remnant_config%velocity_proper = 0.0d0          ! Supernovae remnant proper cylindrical r speed (cm/s)
+ supernovae_remnant_config%velocity_proper = 0.0d0       ! Supernovae remnant proper cylindrical Z speed (cm/s)
+ supernovae_remnant_config%velocity_proper = 0.0d0          ! Supernovae remnant proper cylindrical y speed (cm/s)
+ supernovae_remnant_config%energy          = 3d51           ! Supernovae remnant  power (erg)
+ supernovae_remnant_config%mass            = 10.0d33     ! Supernovae remnant mass (g)
+ supernovae_remnant_config%xisigma0_init   = 0.0            ! Supernovae remnant magnetisation
+ supernovae_remnant_config%tracer_on       =.true.         ! Supernovae remnant  tracer
+ supernovae_remnant_config%dust_on         = .true.    ! dust are set in ism
+ supernovae_remnant_config%dust_frac       = 1d-4      ! dust fraction
+/
+
+ &usr_dust_sn_list
+  dust_config%unit             = 'cgs'      ! dust used physical unit in this name list
+  dust_config%associate_med    = .true.     ! dust is associate to a medium where is set
+  dust_config%grain_density    = 3.3,3.3    ! dust grain density  (g/cm^-3) (ref: (Draine & Lee 1984).)
+  dust_config%min_limit_rel    = 1d-8       ! dust minimum relative limite compare to gas density
+  dust_config%min_limit_abs    = 1.0E-30    ! dust abs limite compare to gas density (g/cm^3)
+  dust_config%max_limit_rel    = 1d2        ! dust maximum relative limite compare to gas density
+  dust_config%tracer_on        = .false.    ! dust with or without  tracer
+  dust_config%n_species        = 2          ! dust number of species
+  dust_config%idust_first      = 3          ! dust indice of the first dust grain used in code
+  dust_config%idust_last       = 4          ! dust indice of the last dust grain used in code
+  dust_config%sizes            = 0.0        ! dust sizes  (cm) if 0.0 , it will use distrub_func
+  dust_config%distrub_func     = 'powerlaw' ! dust distribution function
+  dust_config%min_radius       = 5.0d-6! 5.0d-7 !5.0d-4!    ! dust smaller radius (cm) (ref : Decin et al 2006)
+  dust_config%max_radius       = 2.5d-2!2.5d-5! 2.5d-5     !   ! dust smaller radius (cm) (ref : Decin et al 2006)
+  dust_config%power_a          = -3.5       ! dust power law for distribtion function accroding to dust size
+  dust_config%extend           = 0.0        ! dust region of space where is set. 0 means will be set in user file
+ /
+
+
+ &usr_ism_list
+  ism_config%unit             ='cgs'
+  ism_config%density          = 0          ! ism density if it set to 0 it will use number_density
+  ism_config%number_density   = 1.0d7     ! ism number density (1/cm^3)
+  ism_config%velocity(1)      = 0.0        ! ism  speed components (cm/s) R/X
+  ism_config%velocity(2)      = 0.0d0   ! ism  speed components (cm/s) Z
+  ism_config%velocity(3)      = 0.0        ! ism  speed components (cm/s)  Y
+  ism_config%temperature      = 1.0d2      ! ism temperature (K)
+  ism_config%pressure         = 0.0d0      ! ism pressure if is set to 0 it will use temperature
+  ism_config%tracer_on        = .true.     ! ism tracer
+  ism_config%dust_on          = .true.    ! dust are set in ism
+  ism_config%dust_frac        = 1d-3      ! dust fraction
+/
+
+ &usr_dust_ism_list
+  dust_config%unit             = 'cgs'      ! dust used physical unit in this name list
+  dust_config%associate_med    = .true.     ! dust is associate to a medium where is set
+  dust_config%grain_density    = 3.3,3.3    ! dust grain density  (g/cm^-3) (ref: (Draine & Lee 1984).)
+  dust_config%min_limit_rel    = 1d-8       ! dust minimum relative limite compare to gas density
+  dust_config%min_limit_abs    = 1.0E-30    ! dust abs limite compare to gas density (g/cm^3)
+  dust_config%max_limit_rel    = 1d2        ! dust maximum relative limite compare to gas density
+  dust_config%tracer_on        = .false.    ! dust with or without  tracer
+  dust_config%n_species        = 2          ! dust number of species
+  dust_config%idust_first      = 1          ! dust indice of the first dust grain used in code
+  dust_config%idust_last       = 2          ! dust indice of the last dust grain used in code
+  dust_config%sizes            = 0.0        ! dust sizes  (cm) if 0.0 , it will use distrub_func
+  dust_config%distrub_func     = 'powerlaw' ! dust distribution function
+  dust_config%min_radius       = 1.0d-4!5.0d-7 !5.0d-4!    ! dust smaller radius (cm) (ref : Decin et al 2006)
+  dust_config%max_radius       = 1.0d-1!2.5d-5! 2.5d-5     !   ! dust smaller radius (cm) (ref : Decin et al 2006)
+  dust_config%power_a          = -3.5       ! dust power law for distribtion function accroding to dust size
+  dust_config%extend           = 0.0        ! dust region of space where is set. 0 means will be set in user file
+ /

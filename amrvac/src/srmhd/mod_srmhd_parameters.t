@@ -116,7 +116,10 @@ module mod_srmhd_parameters
 
   !> The small_est allowed inertia
   real(kind=dp),public             :: small_xi
-
+  !> The small_est allowed density
+  real(dp), public, protected     :: srmhd_small_density = 0.0_dp
+  !> The small_est allowed pressure
+  real(dp), public, protected     :: srmhd_small_pressure= 0.0_dp
   ! smaller values for speed
   real(kind=dp)   , public         :: small_vec2  = 0.0
   !> The number of waves

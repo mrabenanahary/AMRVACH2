@@ -148,7 +148,7 @@ contains
          small_temperature,small_pressure,small_density, &
          small_values_method, small_values_daverage, check_small_values, &
          small_values_force_floor, &
-         solve_internal_e, angmomfix
+         solve_internal_e, angmomfix,limiter_log_threshold
 
     namelist /boundlist/ nghostcells,typeboundary,typeghostfill,prolongation_method,&
          internalboundary, typeboundary_^L, save_physical_boundary
@@ -199,15 +199,7 @@ contains
 
     internalboundary   = .false.
 
-    ! defaults for specific options
-    typegrad   = 'central'
-    typediv    = 'central'
-    typecurl   = 'central'
 
-    ! defaults for smallest physical values allowed
-    small_temperature = 0.d0
-    small_pressure    = 0.d0
-    small_density     = 0.d0
 
     ! defaults for convert behavior
 
@@ -319,57 +311,14 @@ contains
     snapshotnext = -1
 
     ! Defaults for discretization methods
-    typeaverage     = 'default'
-    tvdlfeps        = one
-    nxdiffusehllc   = 0
-    flathllc        = .false.
+
     slowsteps       = -1
     courantpar      = 0.8d0
     typecourant     = 'maxsum'
-    dimsplit        = .false.
-    typedimsplit    = 'default'
-    typelimited     = 'predictor'
-    if(physics_type=='mhd') then
-      cada3_radius  = 0.5d0
-    else
-      cada3_radius  = 0.1d0
-    end if
-    typetvd         = 'roe'
-    typeboundspeed  = 'cmaxmean'
-    source_split_usr= .false.
-    time_integrator = 'twostep'
-    solve_internal_e= .false.
-    angmomfix       = .false.
 
-    allocate(flux_scheme(nlevelshi),typepred1(nlevelshi))
-    allocate(limiter(nlevelshi),gradient_limiter(nlevelshi))
-    do level=1,nlevelshi
-       flux_scheme(level) = 'tvdlf'
-       typepred1(level)   = 'default'
-       limiter(level)     = 'minmod'
-       gradient_limiter(level) = 'minmod'
-    end do
-
-    flatcd          = .false.
-    flatsh          = .false.
-    typesourcesplit = 'sfs'
-    allocate(loglimit(nw))
-    loglimit(1:nw)  = .false.
-
-    allocate(typeentropy(nw))
-
-    do iw=1,nw
-       typeentropy(iw)='nul'      ! Entropy fix type
-    end do
-
-    dtdiffpar     = 0.5d0
-    dtpar         = -1.d0
-
-    ! problem setup defaults
-    iprob    = 1
 
     ! end defaults
-
+    call default_setting_method
     ! Initialize Kronecker delta, and Levi-Civita tensor
     do i=1,3
        do j=1,3
@@ -481,17 +430,17 @@ contains
 
     if(convert) autoconvert=.false.
 
-    where (tsave_log < bigdouble) tsave(:, 1) = tsave_log
-    where (tsave_dat < bigdouble) tsave(:, 2) = tsave_dat
-    where (tsave_slice < bigdouble) tsave(:, 3) = tsave_slice
-    where (tsave_collapsed < bigdouble) tsave(:, 4) = tsave_collapsed
-    where (tsave_custom < bigdouble) tsave(:, 5) = tsave_custom
+    where (tsave_log < bigdouble) tsave(:, 1) = tsave_log/unit_time
+    where (tsave_dat < bigdouble) tsave(:, 2) = tsave_dat/unit_time
+    where (tsave_slice < bigdouble) tsave(:, 3) = tsave_slice/unit_time
+    where (tsave_collapsed < bigdouble) tsave(:, 4) = tsave_collapsed/unit_time
+    where (tsave_custom < bigdouble) tsave(:, 5) = tsave_custom/unit_time
 
-    if (dtsave_log < bigdouble) dtsave(1) = dtsave_log
-    if (dtsave_dat < bigdouble) dtsave(2) = dtsave_dat
-    if (dtsave_slice < bigdouble) dtsave(3) = dtsave_slice
-    if (dtsave_collapsed < bigdouble) dtsave(4) = dtsave_collapsed
-    if (dtsave_custom < bigdouble) dtsave(5) = dtsave_custom
+    if (dtsave_log < bigdouble) dtsave(1) = dtsave_log/unit_time
+    if (dtsave_dat < bigdouble) dtsave(2) = dtsave_dat/unit_time
+    if (dtsave_slice < bigdouble) dtsave(3) = dtsave_slice/unit_time
+    if (dtsave_collapsed < bigdouble) dtsave(4) = dtsave_collapsed/unit_time
+    if (dtsave_custom < bigdouble) dtsave(5) = dtsave_custom/unit_time
 
     if (ditsave_log < bigdouble) ditsave(1) = ditsave_log
     if (ditsave_dat < bigdouble) ditsave(2) = ditsave_dat
@@ -959,6 +908,73 @@ contains
        write(unitterm, '(A30,L1)') 'converting: ', convert
        write(unitterm, '(A)') ''
     endif
+
+
+  contains
+
+  subroutine default_setting_method
+  ! use mod_global_parameters
+  ! use mod_physics, only: physics_type
+  ! use mod_limiter
+    typeaverage     = 'default'
+    tvdlfeps        = one
+    nxdiffusehllc   = 0
+    flathllc        = .false.
+    dimsplit        = .false.
+    typedimsplit    = 'default'
+    typelimited     = 'predictor'
+    if(physics_type=='mhd') then
+      cada3_radius  = 0.5d0
+    else
+      cada3_radius  = 0.1d0
+    end if
+    typetvd         = 'roe'
+    typeboundspeed  = 'cmaxmean'
+    source_split_usr= .false.
+    time_integrator = 'twostep'
+    solve_internal_e= .false.
+    angmomfix       = .false.
+
+    allocate(flux_scheme(nlevelshi),typepred1(nlevelshi))
+    allocate(limiter(nlevelshi),gradient_limiter(nlevelshi))
+
+    flux_scheme(:) = 'tvdlf'
+    typepred1(:)   = 'default'
+    limiter(:)     = 'minmod'
+    gradient_limiter(:) = 'minmod'
+
+
+    flatcd          = .false.
+    flatsh          = .false.
+    typesourcesplit = 'sfs'
+    allocate(loglimit(nw))
+    loglimit(1:nw)  = .false.
+
+    allocate(typeentropy(nw))
+
+
+    typeentropy(:)='nul'      ! Entropy fix type
+
+
+    dtdiffpar     = 0.5d0
+    dtpar         = -1.d0
+
+    ! problem setup defaults
+    iprob    = 1
+
+
+    ! defaults for specific options
+    typegrad   = 'central'
+    typediv    = 'central'
+    typecurl   = 'central'
+
+    ! defaults for smallest physical values allowed
+    small_temperature = 0.d0
+    small_pressure    = 0.d0
+    small_density     = 0.d0
+    ! threshold to set the use of logarithmic
+    limiter_log_threshold=-1.0_dp
+  end  subroutine default_setting_method
   end subroutine read_par_files
 
   !> Routine to find entries in a string
@@ -1853,7 +1869,7 @@ contains
        ! Construct the line to be added to the log
 
        fmt_string = '(' // fmt_i // ',2' // fmt_r // ')'
-       write(line, fmt_string) it, global_time, dt
+       write(line, fmt_string) it, global_time*unit_time, dt*unit_time
        i = len_trim(line) + 2
 
        write(fmt_string, '(a,i0,a)') '(', nw, fmt_r // ')'

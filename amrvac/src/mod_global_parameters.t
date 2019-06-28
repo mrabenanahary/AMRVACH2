@@ -527,7 +527,7 @@ module mod_global_parameters
   integer :: typegradlimiter
 
   !> Limiter used for prolongation to refined grids and ghost cells
-  character(len=std_len) :: typeprolonglimit
+  character(len=std_len)  :: typeprolonglimit
 
   !> Which type of entropy fix to use with Riemann-type solvers
   character(len=std_len), allocatable :: typeentropy(:)
