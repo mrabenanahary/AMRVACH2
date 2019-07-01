@@ -18,6 +18,9 @@ module mod_hd_phys
   !> Whether dust is added
   logical, public, protected              :: hd_dust = .false.
 
+  !> Whether dust is added
+  logical, public, protected              :: hd_chemical = .false.
+
   !> Whether viscosity is added
   logical, public, protected              :: hd_viscosity = .false.
 
@@ -72,6 +75,7 @@ module mod_hd_phys
   public :: hd_phys_init
   public :: hd_kin_en
   public :: hd_get_pthermal
+  public :: hd_get_temperature
   public :: hd_to_conserved
   public :: hd_to_primitive
   public :: hd_small_values_floor
@@ -85,7 +89,8 @@ contains
 
     namelist /hd_list/ hd_energy, hd_n_tracer, hd_gamma, hd_adiab, &
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
-    hd_gravity, He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure
+    hd_gravity, He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure,&
+    hd_chemical
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -168,6 +173,7 @@ contains
     use mod_global_parameters
     use mod_thermal_conduction
     use mod_radiative_cooling
+    use mod_chemical, only: chemical_init
     use mod_dust, only: dust_init,dust_n_species
     use mod_viscosity, only: viscosity_init
     use mod_gravity, only: gravity_init
@@ -182,6 +188,7 @@ contains
     phys_energy               = hd_energy
     use_particles             = hd_particles
     hd_config%dust_on         = hd_dust
+    hd_config%chemical_on     = hd_chemical
     hd_config%He_abundance    = He_abundance
     hd_config%dust_n_species  = 0
     hd_config%ismhd           = .false.
@@ -267,6 +274,7 @@ contains
     phys_iw_average => hd_iw_average
 
     hd_config%energy = hd_energy
+
     phys_iw_average => hd_iw_average
     phys_config     => hd_config
     phys_ind        => hd_ind
@@ -672,6 +680,20 @@ contains
     !if (check_small_values)call hd_handle_small_values_pressure(ixI^L,ixO^L,x,&
     !                                                            'ptherm',pth,w)
   end subroutine hd_get_pthermal
+  !> Calculate temperature within ixO^L
+  subroutine hd_get_temperature( ixI^L, ixO^L,w, x, temperature)
+    use mod_global_parameters
+
+    integer, intent(in)          :: ixI^L, ixO^L
+    real(dp), intent(in)         :: w(ixI^S, nw)
+    real(dp), intent(in)         :: x(ixI^S, 1:ndim)
+    real(dp), intent(out)        :: temperature(ixI^S)
+    real(dp)                     :: pth(ixI^S)
+    !----------------------------------------------------
+    call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
+    temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
+  end subroutine hd_get_temperature
+
 
   ! Calculate flux f_idim[iw]
   subroutine hd_get_flux_cons(w, x, ixI^L, ixO^L, idim, f)
@@ -847,6 +869,7 @@ contains
   subroutine hd_add_source(qdt,ixI^L,ixO^L,wCT,w,x,qsourcesplit,active)
     use mod_global_parameters
     use mod_radiative_cooling, only: radiative_cooling_add_source
+    use mod_chemical, only: chemical_add_source
     use mod_dust, only: dust_add_source
     use mod_viscosity, only: viscosity_add_source
     use mod_gravity, only: gravity_add_source
@@ -878,9 +901,9 @@ contains
     end if
     if (check_small_values) call hd_handle_small_values(.false., w, x, &
                                  ixI^L, ixO^L, 'hd_add_source')
-    if(hd_chemistry) then
+    if(hd_chemical) then
       call chemical_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
-           hd_energy,qsourcesplit,active)
+           qsourcesplit,active)
     end if
   end subroutine hd_add_source
 
@@ -888,6 +911,7 @@ contains
     use mod_global_parameters
     use mod_dust, only: dust_get_dt
     use mod_radiative_cooling, only: cooling_get_dt
+    use mod_chemical, only: chemical_get_dt
     use mod_viscosity, only: viscosity_get_dt
     use mod_gravity, only: gravity_get_dt
 
@@ -913,14 +937,14 @@ contains
     if(hd_gravity) then
       call gravity_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
     end if
-    if(hd_chemistry) then
+    if(hd_chemical) then
       call chemical_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
     end if
   end subroutine hd_get_dt
 
   function hd_kin_en(w, ixI^L, ixO^L, inv_rho) result(ke)
     use mod_global_parameters, only: nw, ndim
-    integer, intent(in)                    :: ixI^L, ixO^L
+    integer, intent(in)            :: ixI^L, ixO^L
     real(dp), intent(in)           :: w(ixI^S, nw)
     real(dp)                       :: ke(ixO^S)
     real(dp), intent(in), optional :: inv_rho(ixO^S)

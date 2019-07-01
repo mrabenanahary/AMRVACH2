@@ -109,7 +109,7 @@ contains
 
 
     allocate(thechemical%element(thechemical%myconfig%n_species))
-    call chemical_element_init(thechemical)
+    call chemical_elements_init(thechemical)
     allocate(phys_indices_inuse%chemical_element(thechemical%nvar))
       ! Set index of chemical densities
     call chemical_set_physvariable(thechemical,phys_indices_inuse)
@@ -160,7 +160,7 @@ contains
         thechemical_inuse%element(i_element)%elem_name='He'
       else
         write(*,*)' This element : ',i_element,' is not implimented'
-        call mpistop('Stop at chemical_element_init in mod_chemical.t')
+        call mpistop('Stop at chemical_elements_init in mod_chemical.t')
       end if
       thechemical_inuse%nvar = thechemical_inuse%nvar+&
                                (thechemical_inuse%element(i_element)%ionmax-&
@@ -186,7 +186,7 @@ contains
         thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_T0      = 0.0_dp
        else
         write(*,*)' This element : ',i_element,' is not implimented'
-        call mpistop('Stop at chemical_element_init in mod_chemical.t')
+        call mpistop('Stop at chemical_elements_init in mod_chemical.t')
       end if
       end do Loop_ionisation0
     end do Loop_i_chemical0
@@ -357,7 +357,7 @@ contains
     case( 'none' )
       !do nothing here
     case default !all regular chemical methods here
-        call chemical_atomic(ixI^L,ixO^L,qdt,wCT,w)
+        call chemical_atomic(ixI^L,ixO^L,qdt,x,wCT,w)
         cond_floor: if (thechemical%myconfig%small_to_zero) then
           call set_chemicaltozero(qdt, ixI^L, ixO^L,  wCT,  w, x)
         end if cond_floor
@@ -499,10 +499,11 @@ contains
   end subroutine chemical_coronal_ionisationequilibrium_H
 
 
-  subroutine chemical_atomic(ixI^L,ixO^L,qdt,wCT,w)
+  subroutine chemical_atomic(ixI^L,ixO^L,qdt,x,wCT,w)
     use mod_global_parameters
     implicit none
     integer, intent(in)            :: ixI^L, ixO^L
+    real(kind=dp), intent(in)      :: x(ixI^S,1:ndim)
     real(kind=dp), intent(in)      :: wCT(ixI^S,1:nw)
     real(kind=dp), intent(inout)   :: w(ixI^S,1:nw)
     real(dp), intent(in)           :: qdt
@@ -511,7 +512,7 @@ contains
     real(dp),dimension(ixO^S)      :: fractionHI_CT,fractionHI_new
     !----------------------------------------------------
 
-    call phys_get_temperature(ixI^L,ixO^L,wCT,temperature)
+    call phys_get_temperature(ixI^L,ixO^L,wCT,x,temperature)
     call chemical_get_density_H(ixI^L,ixO^L,wCT,density_H)
     call chemical_get_fractionHI(ixI^L,ixO^L,wCT,density_H,fractionHI_CT)
 

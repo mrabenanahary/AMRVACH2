@@ -91,7 +91,7 @@ module mod_physics
   procedure(sub_write_info), pointer      :: phys_write_info           => null()
   procedure(sub_angmomfix), pointer       :: phys_angmomfix            => null()
   procedure(sub_small_values), pointer    :: phys_handle_small_values  => null()
-
+  procedure(sub_get_temperature), pointer:: phys_get_temperature       => null()
   abstract interface
 
 
@@ -205,6 +205,19 @@ module mod_physics
        real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
        real(kind=dp)      , intent(out)   :: pth(ixI^S)
      end subroutine sub_get_pthermal
+
+     !> Calculate temperature within ixO^L
+     subroutine sub_get_temperature( ixI^L, ixO^L,w, x, temperature)
+       use mod_global_parameters
+
+       integer, intent(in)          :: ixI^L, ixO^L
+       real(dp), intent(in)         :: w(ixI^S, nw)
+       real(dp), intent(in)         :: x(ixI^S, 1:ndim)
+       real(dp), intent(out)        :: temperature(ixI^S)
+       real(dp)                     :: pth(ixI^S)
+       !----------------------------------------------------
+
+     end subroutine sub_get_temperature
 
      subroutine sub_write_info(file_handle)
        integer, intent(in) :: file_handle
