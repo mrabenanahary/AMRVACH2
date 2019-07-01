@@ -414,9 +414,10 @@ contains
 
    !--------------------------------------------------------------------
 
-   subroutine usr_ism_get_pforce_profile(ixI^L,ixO^L,x,w,f_profile,self)
+   subroutine usr_ism_get_pforce_profile(ixI^L,ixO^L,qt,x,w,f_profile,self)
     implicit none
     integer, intent(in)           :: ixI^L,ixO^L
+    real(kind=dp), intent(in)     :: qt
     real(kind=dp), intent(in)     :: x(ixI^S,1:ndim)
     real(kind=dp), intent(in)     :: w(ixI^S,1:nw)
     class(ism)                    :: self
@@ -442,15 +443,7 @@ contains
      end where
     end select
 
-    cond_dust_on : if( self%myconfig%dust_on)then
-       !allocate(  self%mydust%patch(ixG^T))
-       !self%mydust%patch=  self%patch
-       call self%mydust%set_patch(ixI^L,ixO^L,self%patch)
-       self%mydust%myconfig%velocity= self%myconfig%velocity
-     fprofile = 1.0_dp
-     call   self%mydust%set_w(ixI^L,ixO^L,qt,.false., self%myconfig%dust_frac,fprofile,x,w)
-     !deallocate(self%mydust%patch)
-    end if cond_dust_on
+
 
    end subroutine usr_ism_get_pforce_profile
 
@@ -480,7 +473,7 @@ contains
 
 
 
-     call self%get_pforce_profile(ixI^L,ixO^L,x,wCT,f_profile)
+     call self%get_pforce_profile(ixI^L,ixO^L,qt,x,wCT,f_profile)
      where(self%patch(ixO^S))
       w(ixO^S,phys_ind%mom(z_)) = qdt* f_profile(ixO^S,z_)
      end where
@@ -507,7 +500,17 @@ contains
                           w_init(ixO^S,phys_ind%mom(idir))*self%myconfig%coef_relax
         end where
        end do loop_idir
-
+       cond_dust_on : if( self%myconfig%dust_on)then
+          !allocate(  self%mydust%patch(ixG^T))
+          !self%mydust%patch=  self%patch
+          call self%mydust%set_patch(ixI^L,ixO^L,self%patch)
+          self%mydust%myconfig%velocity= self%myconfig%velocity
+           f_profile = 1.0_dp
+          call   self%mydust%set_w(ixI^L,ixO^L,qt,.false., &
+                                   self%myconfig%dust_frac,f_profile,x,w)
+        !deallocate(self%mydust%patch)
+       end if cond_dust_on
+         
        call phys_to_conserved(ixI^L,ixO^L,w,x)
      end if
     !if(any(self%patch(ixO^S)))print*,' test ism force',maxval(dabs(w(ixO^S,phys_ind%mom(z_))),mask=self%patch(ixO^S))
@@ -521,11 +524,11 @@ contains
      real(kind=dp), intent(in)  :: qt
      real(kind=dp)              :: x(ixI^S,1:ndir)
      real(kind=dp)              :: w(ixI^S,1:nw)
-     class(cloud)               :: self
+     class(ism)                 :: self
      ! .. local..
      !----------------------------------------------------------
      cond_dust_on : if(self%myconfig%dust_on)then
-       self%mydust%handel_small_val(ixI^L,ixO^L,qt,x,w)
+       call self%mydust%handel_small_val(ixI^L,ixO^L,qt,x,w)
      end if cond_dust_on
    end subroutine usr_ism_process_grid
    !--------------------------------------------------------------------

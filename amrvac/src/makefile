@@ -79,6 +79,7 @@ mod_hd.o: mod_hd_ppm.mod
 mod_hd.o: mod_hd_roe.mod
 mod_hd_phys.o: mod_dust.mod
 mod_hd_phys.o: mod_gravity.mod
+mod_hd_phys.o: mod_chemical.mod
 mod_hd_phys.o: mod_particles.mod
 mod_hd_phys.o: mod_physics.mod
 mod_hd_phys.o: mod_radiative_cooling.mod
@@ -172,6 +173,7 @@ mod_physics.o: mod_physics_ppm.mod
 mod_physics.o: mod_physics_roe.mod
 mod_physics.o: mod_small_values.mod
 mod_ppm.o: mod_physics.mod
+mod_chemical.o: mod_physics.mod
 mod_radiative_cooling.o: mod_physics.mod
 mod_rho.o: mod_amrvac.mod
 mod_rho.o: mod_rho_phys.mod

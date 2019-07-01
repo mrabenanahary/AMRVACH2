@@ -207,7 +207,8 @@ contains
   subroutine dust_read_params(files)
     use mod_global_parameters, only: unitpar
     character(len=*), intent(in) :: files(:)
-    integer                      :: i_file
+    integer                      :: i_file,i_reason
+
 
     namelist /dust_list/ dust_n_species, dust_min_rho, gas_mu, dust_method, &
          dust_small_to_zero, dust_source_split, dust_temperature, &
@@ -215,8 +216,21 @@ contains
 
     do i_file = 1, size(files)
       open(unitpar, file=trim(files(i_file)), status="old")
-      read(unitpar, dust_list, end=111)
-111   close(unitpar)
+      read(unitpar, dust_list, iostat=i_reason)
+      cond_ierror : if(i_reason>0)then
+        write(*,*)' Error in reading the parameters file : ',trim(files(i_file))
+        write(*,*)' Error at namelist: dust_list'
+        write(*,*)' The code stops now '
+        call mpistop('At mod_dust.t in the procedure : dust_read_params')
+      elseif(i_reason<0)then cond_ierror
+        write(*,*)' Reache the end of the file  : ',trim(files(i_file))
+        write(*,*)' Error at namelist: dust_list'
+        write(*,*)' The code stops now '
+        call mpistop('At mod_dust.t in the procedure : dust_read_params')
+      else cond_ierror
+        write(*,*)' End of reading of the  dust_list'
+      end if  cond_ierror
+    close(unitpar)
     end do
         dust_inuse%myconfig%n_species          = dust_n_species
         dust_inuse%myconfig%min_rho            = dust_min_rho
@@ -340,18 +354,18 @@ contains
     real(kind=dp), intent(inout)    :: f(ixI^S, nwflux)
     integer                         :: idust, idir
 
-    do idust = 1, dust_inuse%myconfig%n_species
+    Loop_idust : do idust = 1, dust_inuse%myconfig%n_species
       where (w(ixO^S, dust_rho(idust)) > dust_inuse%myconfig%min_rho)
         f(ixO^S, dust_rho(idust)) = w(ixO^S, dust_mom(idim, idust))*w(ixO^S, dust_rho(idust))
       elsewhere             ! TODO: remove?
         f(ixO^S, dust_rho(idust)) = 0.0d0
       end where
 
-      do idir = 1, ndir
+      Loop_idir : do idir = 1, ndir
         f(ixO^S, dust_mom(idir, idust)) = w(ixO^S, dust_mom(idir, idust)) * &
         w(ixO^S, dust_rho(idust)) * get_vdust_prim(w, ixI^L, ixO^L, idim, idust)
-      end do
-    end do
+      end do Loop_idir
+    end do  Loop_idust
   end subroutine dust_get_flux_prim
 
   function get_vdust(w, ixI^L, ixO^L, idim, idust) result(vdust)

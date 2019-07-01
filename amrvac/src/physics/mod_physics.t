@@ -46,6 +46,7 @@ module mod_physics
     integer, allocatable :: tracer(:)
     integer, allocatable :: dust_rho(:)
     integer, allocatable :: dust_mom(:,:)
+    integer, allocatable :: chemical_element(:)
   end type phys_variables_indices
 
   type(phys_variables_indices),pointer  :: phys_ind
@@ -66,6 +67,7 @@ module mod_physics
     real(dp)          :: dust_small_density
     logical           :: chemical_on
     integer           :: chemical_n_species
+    real(dp)          :: chemical_small_density
   end type physconfig
 
   type(physconfig), pointer   :: phys_config

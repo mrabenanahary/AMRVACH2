@@ -625,7 +625,7 @@ contains
 
       if(phys_config%n_tracer>0)then
        fraction_sn = w(ixO^S,phys_ind%tracer(sn_wdust%myconfig%itr))&
-          /SUM(w(ixO^S,phys_ind%tracer(1):phys_ind%tracer(phys_ind%n_tracer)))
+          /SUM(w(ixO^S,phys_ind%tracer(1):phys_ind%tracer(phys_config%n_tracer)))
         rho_sn =   fraction_sn*w(ixO^S,rho_)
         rho_ism=(1.0_dp-fraction_sn)*w(ixO^S,rho_)
         win(ixO^S,nw+iz_) = (z_ism*rho_ism+z_sn*rho_sn)/(rho_sn+rho_ism)
@@ -673,7 +673,7 @@ contains
     Loop_iw : do  iw = 1,nwauxio
     select case(iw)
     case(iz_)
-      varnames(ilevel_) = 'level'
+      varnames(iz_) = 'level'
     end select
     end do Loop_iw
 

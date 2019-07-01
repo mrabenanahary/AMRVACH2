@@ -878,7 +878,10 @@ contains
     end if
     if (check_small_values) call hd_handle_small_values(.false., w, x, &
                                  ixI^L, ixO^L, 'hd_add_source')
-
+    if(hd_chemistry) then
+      call chemical_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
+           hd_energy,qsourcesplit,active)
+    end if
   end subroutine hd_add_source
 
   subroutine hd_get_dt(w, ixI^L, ixO^L, dtnew, dx^D, x)
@@ -910,7 +913,9 @@ contains
     if(hd_gravity) then
       call gravity_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
     end if
-
+    if(hd_chemistry) then
+      call chemical_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
+    end if
   end subroutine hd_get_dt
 
   function hd_kin_en(w, ixI^L, ixO^L, inv_rho) result(ke)

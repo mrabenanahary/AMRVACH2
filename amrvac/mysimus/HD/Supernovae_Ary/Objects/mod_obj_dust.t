@@ -55,7 +55,7 @@ module mod_obj_dust
    PROCEDURE, PASS(self) :: normalize       => usr_dust_normalize
    PROCEDURE, PASS(self) :: set_w           => usr_dust_set_w
    PROCEDURE, PASS(self) :: set_w_zero      => usr_dust_set_w_zero
-   PROCEDURE, PASS(self) :: handle_small_val=> usr_dust_handel_small_val
+   PROCEDURE, PASS(self) :: handel_small_val=> usr_dust_handel_small_val
    PROCEDURE, PASS(self) :: read_parameters => usr_dust_read_p
    PROCEDURE, PASS(self) :: write_setting   => usr_dust_write_setting
    PROCEDURE, PASS(self) :: set_patch       => usr_dust_set_patch
@@ -288,7 +288,7 @@ contains
      real(kind=dp), intent(inout) :: w(ixI^S,1:nw)
      class(dust)                  :: self
      ! .. local ..
-     integer                      :: idust
+     integer                      :: idust,idir
      real(kind=dp)                :: small_dust_rho
      logical, dimension(ixI^S)    :: patch_correct,patch_slow
      !-----------------------------------------------------

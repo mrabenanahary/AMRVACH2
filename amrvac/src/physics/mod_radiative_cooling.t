@@ -23,7 +23,7 @@ module mod_radiative_cooling
   use mod_constants
   use mod_global_parameters, only: std_len
   use mod_physics
-  !use mod_chemical
+  use mod_chemical
   implicit none
   ! parameters used for implicit cooling source calculations
 

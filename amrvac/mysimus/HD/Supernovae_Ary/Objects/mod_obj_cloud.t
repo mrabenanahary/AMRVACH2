@@ -355,7 +355,7 @@ contains
   ! .. local..
   !----------------------------------------------------------
   cond_dust_on : if(self%myconfig%dust_on)then
-    self%mydust%handel_small_val(ixI^L,ixO^L,qt,x,w)
+    call self%mydust%handel_small_val(ixI^L,ixO^L,qt,x,w)
   end if cond_dust_on
 end subroutine usr_cloud_process_grid
 !--------------------------------------------------------------------
