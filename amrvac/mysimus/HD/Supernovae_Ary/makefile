@@ -3,7 +3,7 @@ $(error AMRVAC_DIR is not set)
 endif
 
 #openmpi
-ARCH =openmpi
+ARCH =default
 NDIM := 2
 
 # By exporting these can be used when building libamrvac

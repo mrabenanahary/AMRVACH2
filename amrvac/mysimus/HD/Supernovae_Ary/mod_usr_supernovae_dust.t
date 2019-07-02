@@ -525,28 +525,32 @@ contains
        integer, intent(in)          :: igrid, level, ixI^L, ixO^L
        real(dp), intent(in)         :: qt, w(ixI^S,1:nw), x(ixI^S,1:ndim)
        integer, intent(inout)       :: refine, coarsen
+       ! .. local ..
        integer                      :: level_min,level_max
        logical                      :: patch_cond
+       real(dp)                     :: dx_loc(1:ndim)
       !----------------------------------------
 
       ! supernovae_remnant
-
-      cond_init_t: if(dabs(qt-wn_pulsar%myconfig%t_sn)<smalldouble) then
-        call wn_pulsar%mysupernovae_remnant%get_patch(ixI^L,ixO^L,qt,x,force_refine=1)
+      cond_init_t: if(dabs(qt-0.0_dp)<smalldouble) then
+        ^D&dx_loc(^D)=rnode(rpdx^D_,igrid);
+        call sn_wdust%get_patch(ixI^L,ixO^L,qt,x,force_refine=1,dx_loc=dx_loc)
         if(any(sn_wdust%patch(ixO^S)))then
-        refine  =  1
-        coarsen = - 1
-
-        level_min = refine_max_level/2
+          Print*,'hello ',rnode(rpxmin1_,igrid),rnode(rpxmin2_,igrid),rnode(rpxmax1_,igrid),rnode(rpxmax2_,igrid)
+        level_min = refine_max_level-level+1
         level_max = refine_max_level
         patch_cond=.true.
         call user_fixrefineregion(level,level_min,level_max,patch_cond,refine,coarsen)
+        else
+        refine  = -1
+        coarsen = 1
         end if
         call sn_wdust%clean_memory
+
       else
-        if(any(w(ixO^S,phys_ind%rho_)>sn_wdust%myconfig%density_init/2.0_dp))then
-         refine  =  1
-         coarsen = - 1
+        if(all(sum(w(ixO^S,phys_ind%mom(:))**2.0_dp,dim=ndim+1)<smalldouble)) then
+         refine  = -1
+         coarsen = 1
         end if
       end if cond_init_t
 
@@ -608,7 +612,8 @@ contains
     ! .. local ..
     real(dp)                   :: w(ixI^S,nw)
     integer                    :: iw
-    integer, parameter         :: iz_ = 1
+    integer, parameter         :: iz_     = 1
+    integer, parameter         :: ilevel_ = 2
     real(dp)                   :: z_ism,z_sn
     real(dp), dimension(ixO^S) :: fraction_sn,rho_sn,rho_ism
     real(dp)                   :: epsilon_ism,epsilon_sn
@@ -630,8 +635,8 @@ contains
         rho_ism=(1.0_dp-fraction_sn)*w(ixO^S,rho_)
         win(ixO^S,nw+iz_) = (z_ism*rho_ism+z_sn*rho_sn)/(rho_sn+rho_ism)
       end if
-
-
+    case(ilevel_)
+      win(ixO^S,nw+ilevel_) = 
      case default
        write(*,*)'is not implimented at specialvar_output in mod_user'
      end select
@@ -667,13 +672,15 @@ contains
   ! newly added variables need to be concatenated with the w_names/primnames string
     character(len=*), intent(inout) :: varnames(:)
       integer                         :: iw
-    integer, parameter              :: iz_ = 1
-
+    integer, parameter                :: iz_ = 1
+    integer, parameter                :: ilevel_ = 2
     !----------------------------------------------------
     Loop_iw : do  iw = 1,nwauxio
     select case(iw)
     case(iz_)
-      varnames(iz_) = 'level'
+      varnames(iz_) = 'zmetalicity'
+    case(ilevel_)
+      varnames(ilevel_) = 'level'
     end select
     end do Loop_iw
 

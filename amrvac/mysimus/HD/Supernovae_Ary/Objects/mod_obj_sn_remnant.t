@@ -271,8 +271,8 @@ end    subroutine usr_supernovae_remnant_write_setting
   if(.not.self%myconfig%tracer_on)self%myconfig%itr=0
 
   if(self%myconfig%tracer_on)then
-       prim_wnames(self%myconfig%itr+(tracer(1)-1)) = 'tracer_sn'
-       cons_wnames(self%myconfig%itr+(tracer(1)-1)) = 'tracer_sn'
+       prim_wnames(self%myconfig%itr+(phys_ind%tracer(1)-1)) = 'tracer_sn'
+       cons_wnames(self%myconfig%itr+(phys_ind%tracer(1)-1)) = 'tracer_sn'
   end if
   if(self%myconfig%refine_min_level==0)then
     self%myconfig%refine_min_level=1
@@ -339,35 +339,48 @@ end    subroutine usr_supernovae_remnant_write_setting
 !--------------------------------------------------------------------
 !--------------------------------------------------------------------
  !> subroutine patch for the cloud
- subroutine usr_supernovae_remnant_patch(ixI^L,ixO^L,qt,x,self,force_refine)
+ subroutine usr_supernovae_remnant_patch(ixI^L,ixO^L,qt,x,self,force_refine,dx_loc)
   implicit none
   integer, intent(in)        :: ixI^L,ixO^L
   real(kind=dp), intent(in)  :: qt
-  real(kind=dp), intent(in)  :: x(ixI^S,1:ndir)
+  real(kind=dp), intent(in)  :: x(ixI^S,1:ndim)
   class(supernovae_remnant)  :: self
   integer, optional          :: force_refine
-  ! .. real ..
+  real(kind=dp),optional     :: dx_loc(1:ndim)
+  ! .. local ..
+  integer                    :: idims
+  real(dp)                   :: x_edge(ixI^S,1:ndim)
   real(dp)                   :: min_dist,r_in,r_out
-  real(dp), dimension(ixI^S) :: dist
+  real(dp), dimension(ixI^S) :: dist,dist_edge
   !----------------------------------
 
   allocate(self%patch(ixG^T))
   ! E = 0.5 rho*v2 int (R^4/r_out^2 4 pi *dR)=0.5/5 *4 pi *rho*v^2*r_out^3 = 0.5  rho*v2*Volume *3/5=Ek*3/5
   call usr_distance(ixI^L,ixO^L,typeaxial,self%myconfig%center,x,dist)
+
   ! check distance
   r_in =self%myconfig%r_in
   r_out=self%myconfig%r_out
+
   cond_from_refine : if(present(force_refine)) then
-   min_dist=minval(Dist(ixO^S),Dist(ixO^S)>smalldouble)
-   
-   need_refine: if(min_dist>r_out-r_in) then
+   Loop_idim : do idims=1,ndim
+    x_edge(ixO^S,idims) = x(ixO^S,idims) - dx_loc(idims)/2.0_dp
+   end do Loop_idim
+   call usr_distance(ixI^L,ixO^L,typeaxial,self%myconfig%center,x_edge,dist_edge)
+
+
+   need_refine: if(minval(Dist_edge(ixO^S)-r_out)*maxval(Dist_edge(ixO^S)-r_out)<=smalldouble.or. &
+                 minval(Dist_edge(ixO^S)-r_in)*maxval(Dist_edge(ixO^S)-r_in)<=smalldouble) then
+     min_dist=minval(Dist_edge(ixO^S),Dist_edge(ixO^S)>smalldouble)
      r_out=r_out+min_dist
      r_in=r_in-min_dist
    end if  need_refine
   end if  cond_from_refine
 
+
   self%patch(ixO^S) = Dist(ixO^S) >r_in &
                       .and. Dist(ixO^S) <r_out!+min_dist
+
   if(allocated(self%patch_escape))then
     self%patch(ixO^S) = self%patch(ixO^S).and.(.not.self%patch_escape(ixO^S))
   end if

@@ -38,8 +38,8 @@
  &savelist
         itsave(1,1)=0
         itsave(1,2)=0
-        dtsave_log=0.1d0
-        dtsave_dat= 0.25   ! 0.25 year
+        dtsave_log=0.33d7   ! 0.1 year
+        dtsave_dat= 3.3d7   ! 1 year
  /
 
         ditsave_log = 1
