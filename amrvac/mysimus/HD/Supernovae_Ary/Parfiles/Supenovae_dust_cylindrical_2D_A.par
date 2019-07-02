@@ -103,7 +103,7 @@
         xprobmin1 =  0.0d0       ! cm
         xprobmax1 =  1.0d16      ! cm
         xprobmin2 = -1.0d16      ! axis
-        xprobmax2 =  1.0d16      ! cm      
+        xprobmax2 =  1.0d16      ! cm
         ! total cell at level 1
         domain_nx1= 96
         domain_nx2= 192
@@ -218,6 +218,10 @@
  supernovae_remnant_config%tracer_on       =.true.         ! Supernovae remnant  tracer
  supernovae_remnant_config%dust_on         = .true.    ! dust are set in ism
  supernovae_remnant_config%dust_frac       = 1d-4      ! dust fraction
+ supernovae_remnant_config%refine_min_level     = 2            !> Supernovae remnant minimum refinement level
+ supernovae_remnant_config%refine_max_level     = 9            !> Supernovae remnant maximum refinement level
+ supernovae_remnant_config%coarsen_distance     = 5d19         !> Supernovae remnant distance to start to coarsen
+ supernovae_remnant_config%coarsen_var_distance = 9d18         !> Supernovae remnant scaling distance to coarsen
 /
 
  &usr_dust_sn_list
