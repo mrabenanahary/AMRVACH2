@@ -531,8 +531,8 @@ contains
 
       ! supernovae_remnant
 
-      cond_init_t: if(qt==0.0_dp) then
-        call sn_wdust%get_patch(ixI^L,ixO^L,qt,x)
+      cond_init_t: if(dabs(qt-wn_pulsar%myconfig%t_sn)<smalldouble) then
+        call wn_pulsar%mysupernovae_remnant%get_patch(ixI^L,ixO^L,qt,x,force_refine=1)
         if(any(sn_wdust%patch(ixO^S)))then
         refine  =  1
         coarsen = - 1

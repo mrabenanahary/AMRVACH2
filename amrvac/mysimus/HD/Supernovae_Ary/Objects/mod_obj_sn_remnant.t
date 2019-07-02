@@ -33,7 +33,12 @@ implicit none
     real(dp)             :: dust_frac           !> dust fraction
     character(len=20)    :: dust_profile        !> could dust inside profile
     logical              :: tracer_on           !> supernovae remnant tracer
-    integer              :: itr                 !> supernovae indice
+    integer              :: itr                 !> supernovae remnant indice
+    integer              :: refine_max_level    !> supernovae remnant  refine maximum level
+    integer              :: refine_min_level    !> supernovae remnant  refine minimum level
+    real(dp)             :: coarsen_distance    !> supernovae remnant  distance to start coarsen
+    real(dp)             :: coarsen_var_distance!> supernovae remnant scaling distance for coarsen
+
   end type supernovae_remnant_parameters
 
   type supernovae_remnant
@@ -151,8 +156,9 @@ end    subroutine usr_supernovae_remnant_write_setting
   self%myconfig%tracer_on              = .false.
   self%myconfig%dust_on                = .false.
   self%myconfig%normalize_done         = .false.
-  
-  call self%mydust%set_default
+  self%myconfig%refine_min_level       = 0
+  self%myconfig%refine_max_level       = 0
+ call self%mydust%set_default
  end subroutine usr_supernovae_remnant_set_default
  !--------------------------------------------------------------------
  !> subroutine check the parfile setting for cloud
@@ -194,7 +200,7 @@ end    subroutine usr_supernovae_remnant_write_setting
        end if
       case default
        self%myconfig%lfac_init=1.0_dp/dsqrt(1.0_dp-&
-          SUM((self%myconfig%velocity_init/const_c)**2.0_dp))
+          SUM((self%myconfig%velocity_init/unit_velocity)**2.0_dp))
      end select
   end if cond_lfac_set
 
@@ -264,6 +270,24 @@ end    subroutine usr_supernovae_remnant_write_setting
 
   if(.not.self%myconfig%tracer_on)self%myconfig%itr=0
 
+  if(self%myconfig%tracer_on)then
+       prim_wnames(self%myconfig%itr+(tracer(1)-1)) = 'tracer_sn'
+       cons_wnames(self%myconfig%itr+(tracer(1)-1)) = 'tracer_sn'
+  end if
+  if(self%myconfig%refine_min_level==0)then
+    self%myconfig%refine_min_level=1
+  end if
+  if(self%myconfig%refine_max_level==0)then
+    self%myconfig%refine_max_level=refine_max_level
+  end if
+
+  if(dabs(self%myconfig%coarsen_var_distance )<= 0.0_dp)then
+   self%myconfig%coarsen_var_distance=HUGE(0.0_dp)
+  end if
+  if(dabs(self%myconfig%coarsen_distance )<= 0.0_dp)then
+   self%myconfig%coarsen_distance=HUGE(0.0_dp)
+  end if
+
    cond_duston : if(self%myconfig%dust_on)then
 
      dust_is_frac=.true.
@@ -271,10 +295,6 @@ end    subroutine usr_supernovae_remnant_write_setting
                                self%myconfig%density_init,self%myconfig%velocity_init)
    end if cond_duston
 
-  if(self%myconfig%tracer_on)then
-       prim_wnames(self%myconfig%itr+(phys_ind%tracer(1)-1)) = 'tracer_sn'
-       cons_wnames(self%myconfig%itr+(phys_ind%tracer(1)-1)) = 'tracer_sn'
-  end if
  end subroutine usr_supernovae_remnant_set_complet
 !--------------------------------------------------------------------
  subroutine usr_supernovae_remnant_normalize(self,physunit_inuse)
@@ -307,6 +327,9 @@ end    subroutine usr_supernovae_remnant_write_setting
   self%myconfig%energy_thermal   = self%myconfig%energy_thermal    /physunit_inuse%myconfig%energy
   self%myconfig%volume_init      = self%myconfig%volume_init       /physunit_inuse%myconfig%volume
 
+  self%myconfig%coarsen_distance     = self%myconfig%coarsen_distance /physunit_inuse%myconfig%length
+  self%myconfig%coarsen_var_distance = self%myconfig%coarsen_var_distance /physunit_inuse%myconfig%length
+
   self%myconfig%time_set         = self%myconfig%time_set          /physunit_inuse%myconfig%time
   cond_duston : if(self%myconfig%dust_on)then
     call self%mydust%normalize(physunit_inuse)
@@ -316,20 +339,35 @@ end    subroutine usr_supernovae_remnant_write_setting
 !--------------------------------------------------------------------
 !--------------------------------------------------------------------
  !> subroutine patch for the cloud
- subroutine usr_supernovae_remnant_patch(ixI^L,ixO^L,qt,x,self)
+ subroutine usr_supernovae_remnant_patch(ixI^L,ixO^L,qt,x,self,force_refine)
   implicit none
   integer, intent(in)        :: ixI^L,ixO^L
   real(kind=dp), intent(in)  :: qt
   real(kind=dp), intent(in)  :: x(ixI^S,1:ndir)
   class(supernovae_remnant)  :: self
+  integer, optional          :: force_refine
+  ! .. real ..
+  real(dp)                   :: min_dist,r_in,r_out
   real(dp), dimension(ixI^S) :: dist
   !----------------------------------
 
   allocate(self%patch(ixG^T))
   ! E = 0.5 rho*v2 int (R^4/r_out^2 4 pi *dR)=0.5/5 *4 pi *rho*v^2*r_out^3 = 0.5  rho*v2*Volume *3/5=Ek*3/5
   call usr_distance(ixI^L,ixO^L,typeaxial,self%myconfig%center,x,dist)
-  self%patch(ixO^S) = Dist(ixO^S) >self%myconfig%r_in &
-                      .and. Dist(ixO^S) <self%myconfig%r_out
+  ! check distance
+  r_in =self%myconfig%r_in
+  r_out=self%myconfig%r_out
+  cond_from_refine : if(present(force_refine)) then
+   min_dist=minval(Dist(ixO^S),Dist(ixO^S)>smalldouble)
+   
+   need_refine: if(min_dist>r_out-r_in) then
+     r_out=r_out+min_dist
+     r_in=r_in-min_dist
+   end if  need_refine
+  end if  cond_from_refine
+
+  self%patch(ixO^S) = Dist(ixO^S) >r_in &
+                      .and. Dist(ixO^S) <r_out!+min_dist
   if(allocated(self%patch_escape))then
     self%patch(ixO^S) = self%patch(ixO^S).and.(.not.self%patch_escape(ixO^S))
   end if
@@ -347,7 +385,7 @@ end    subroutine usr_supernovae_remnant_write_setting
   integer                      :: idir
   real(kind=dp)                :: Dist(ixI^S)
   logical                      :: dust_is_frac
-  real(kind=dp)              :: fprofile(ixI^S)
+  real(kind=dp)               :: fprofile(ixI^S)
   !----------------------------------
 
   call usr_supernovae_remnant_patch(ixI^L,ixO^L,qt,x,self)
