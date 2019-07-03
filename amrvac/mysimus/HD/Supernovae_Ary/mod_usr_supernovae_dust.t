@@ -527,7 +527,7 @@ contains
        real(dp), intent(in)         :: qt, w(ixI^S,1:nw), x(ixI^S,1:ndim)
        integer, intent(inout)       :: refine, coarsen
        ! .. local ..
-       integer                      :: level_min,level_max
+       integer                      :: level_min,level_max,level_need
        logical                      :: patch_cond
        real(dp)                     :: dx_loc(1:ndim)
       !----------------------------------------
@@ -537,21 +537,16 @@ contains
         ^D&dx_loc(^D)=rnode(rpdx^D_,igrid);
         call sn_wdust%get_patch(ixI^L,ixO^L,qt,x,force_refine=1,dx_loc=dx_loc)
         if(any(sn_wdust%patch(ixO^S)))then
-        level_min = refine_max_level-level+1
-        level_max = refine_max_level
-        patch_cond=.true.
-        call user_fixrefineregion(level,level_min,level_max,patch_cond,refine,coarsen)
+         level_need = nint(dlog((xprobmax1/sn_wdust%myconfig%r_out)/domain_nx1)/dlog(2.0_dp))
+         level_min = level_need+1
+         level_max = refine_max_level
+         patch_cond=.true.
+         call user_fixrefineregion(level,level_min,level_max,patch_cond,refine,coarsen)
         else
-        refine  = -1
-        coarsen = 1
+         refine  = -1
+         coarsen = 1
         end if
         call sn_wdust%clean_memory
-
-      else
-        if(any(w(ixO^S,phys_ind%rho_)>sn_wdust%myconfig%density_init/2.0_dp))then
-         refine  =  1
-         coarsen = - 1
-        end if
       end if cond_init_t
 
       ! if(qt<wn_pulsar%myconfig%t_end_pulsar_wind.and.&

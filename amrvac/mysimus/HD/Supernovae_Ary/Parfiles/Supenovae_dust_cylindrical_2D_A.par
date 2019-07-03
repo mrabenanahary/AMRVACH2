@@ -106,9 +106,9 @@
  &meshlist
         ! grid at level 1
         xprobmin1 =  0.0d0       ! cm
-        xprobmax1 =  5.0d18      ! cm
-        xprobmin2 = -5.0d18      ! axis
-        xprobmax2 =  5.0d18      ! cm
+        xprobmax1 =  5.0d17      ! cm
+        xprobmin2 = -5.0d17      ! axis
+        xprobmax2 =  5.0d17      ! cm
         ! total cell at level 1
         domain_nx1= 96
         domain_nx2= 192
@@ -120,7 +120,7 @@
 
         ! AMR configuration
         refine_criterion=3
-        refine_max_level=8
+        refine_max_level=13
         refine_threshold=20*0.05d0
         derefine_ratio=20*0.05d0
         w_refine_weight(1)=0.3d0
