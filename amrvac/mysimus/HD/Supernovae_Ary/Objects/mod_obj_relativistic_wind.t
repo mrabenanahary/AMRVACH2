@@ -22,7 +22,7 @@ implicit none
         real(dp)             :: magnetic(1:3)      !> wind magnetic field
         real(dp)             :: power              !> wind power flux
         real(dp)             :: power_at_t         !> wind power flux at time t
-        real(dp)             :: tau_spin_down      !> wind pulsar's spin down timescale
+        real(dp)             :: tau_spin_down      !> wind pulsars spin down timescale
         real(dp)             :: mass_flux          !> wind mass flux
         real(dp)             :: braking_index      !> branking index power pulsar spin-down
         real(dp)             :: temperature_init   !> wind initial temperature
@@ -34,8 +34,14 @@ implicit none
         real(dp)             :: sigma0             !> wind assymetry
         real(dp)             :: xisigma0           !> wind magnetisation sigma
         real(dp)             :: beta               !> wind plasma Beta
-        logical              :: tracer_on          !> tracer for the wind
-        integer              :: itr                !> tracer indice
+        real(dp)             :: Mach               !> wind Mach number
+        logical              :: tracer_on          !> wind tracer is on
+        integer              :: itr                !> wind tracer indice
+        integer              :: refine_min_level   !> wind minimum refinent level
+        integer              :: refine_max_level   !> wind maximum refinent level
+        real(dp)             :: coarsen_distance    !> wind  distance to start coarsen
+        real(dp)             :: coarsen_var_distance!> wind scaling distance for coarsen
+
         character(len=40)    :: variation_type     !> wind type of the power variation
   end type
 
@@ -144,10 +150,15 @@ end    subroutine usr_wind_write_setting
   self%myconfig%tau_spin_down          = 0.0_dp
   self%myconfig%sigma0                 = 0.0_dp
   self%myconfig%time_start             = 0.0_dp
+  self%myconfig%Mach                   = 0.0_dp
   self%myconfig%time_end               = 1.0d20
 
   self%myconfig%tracer_on              = .false.
   self%myconfig%itr                    = 0
+  self%myconfig%refine_min_level       = 0
+  self%myconfig%refine_max_level       = 0
+  self%myconfig%coarsen_var_distance   = 0.0_dp
+  self%myconfig%coarsen_distance       = 0.0_dp
   self%myconfig%normalize_done         = .false.
   self%myconfig%variation_type         ='none'
  end subroutine usr_wind_set_default
@@ -208,13 +219,17 @@ end    subroutine usr_wind_write_setting
 
    end if
 
+
    self%myconfig%power_at_t = self%myconfig%power
 
    if(dabs(self%myconfig%pressure_init)<smalldouble) then
     self%myconfig%pressure_init =self%myconfig%number_density_init*&
                                  kB*self%myconfig%temperature_init
    end if
-
+   if(dabs(self%myconfig%Mach)<smalldouble) then
+    self%myconfig%Mach=dsqrt(self%myconfig%lfac**2.0_dp-1.0_dp)&
+                  /dsqrt(self%myconfig%pressure_init/self%myconfig%density_init)
+   end if
    if(.not.self%myconfig%tracer_on)self%myconfig%itr=0
 
 
@@ -222,6 +237,20 @@ end    subroutine usr_wind_write_setting
        prim_wnames(self%myconfig%itr+(phys_ind%tracer(1)-1)) = 'tracer_relwind'
        cons_wnames(self%myconfig%itr+(phys_ind%tracer(1)-1)) = 'tracer_relwind'
    end if
+  if(self%myconfig%refine_min_level==0)then
+    self%myconfig%refine_min_level=1
+  end if
+  if(self%myconfig%refine_max_level==0)then
+    self%myconfig%refine_max_level=refine_max_level
+  end if
+  if(dabs(self%myconfig%coarsen_var_distance )<= 0.0_dp)then
+   self%myconfig%coarsen_var_distance=HUGE(0.0_dp)
+  end if
+  if(dabs(self%myconfig%coarsen_distance )<= 0.0_dp)then
+   self%myconfig%coarsen_distance=HUGE(0.0_dp)
+  end if
+
+
    select case(self%myconfig%variation_type)
    case('pulsar_spin_down')
       if(self%myconfig%tau_spin_down<=0.0_dp) then
@@ -250,22 +279,23 @@ end    subroutine usr_wind_write_setting
    return
   end if
 
-  self%myconfig%density_init     = self%myconfig%density_init     /physunit_inuse%myconfig%density
-  self%myconfig%temperature_init = self%myconfig%temperature_init /physunit_inuse%myconfig%temperature
-  self%myconfig%pressure_init    = self%myconfig%pressure_init    /physunit_inuse%myconfig%pressure
-  self%myconfig%velocity         = self%myconfig%velocity         /physunit_inuse%myconfig%velocity
-  self%myconfig%magnetic         = self%myconfig%magnetic         /physunit_inuse%myconfig%magnetic
-  self%myconfig%center           = self%myconfig%center           /physunit_inuse%myconfig%length
-  self%myconfig%r_in             = self%myconfig%r_in             /physunit_inuse%myconfig%length
-  self%myconfig%r_out_impos      = self%myconfig%r_out_impos      /physunit_inuse%myconfig%length
-  self%myconfig%r_out_init       = self%myconfig%r_out_init       /physunit_inuse%myconfig%length
-  self%myconfig%power            = self%myconfig%power            /physunit_inuse%myconfig%luminosity
-  self%myconfig%power_at_t       = self%myconfig%power_at_t       /physunit_inuse%myconfig%luminosity
-  self%myconfig%tau_spin_down    = self%myconfig%tau_spin_down    /physunit_inuse%myconfig%time
-  self%myconfig%mass_flux        = self%myconfig%mass_flux        /physunit_inuse%myconfig%mass_flux
-  self%myconfig%time_start       = self%myconfig%time_start       /physunit_inuse%myconfig%time
-  self%myconfig%time_end         = self%myconfig%time_end         /physunit_inuse%myconfig%time
-
+  self%myconfig%density_init         = self%myconfig%density_init     /physunit_inuse%myconfig%density
+  self%myconfig%temperature_init     = self%myconfig%temperature_init /physunit_inuse%myconfig%temperature
+  self%myconfig%pressure_init        = self%myconfig%pressure_init    /physunit_inuse%myconfig%pressure
+  self%myconfig%velocity             = self%myconfig%velocity         /physunit_inuse%myconfig%velocity
+  self%myconfig%magnetic             = self%myconfig%magnetic         /physunit_inuse%myconfig%magnetic
+  self%myconfig%center               = self%myconfig%center           /physunit_inuse%myconfig%length
+  self%myconfig%r_in                 = self%myconfig%r_in             /physunit_inuse%myconfig%length
+  self%myconfig%r_out_impos          = self%myconfig%r_out_impos      /physunit_inuse%myconfig%length
+  self%myconfig%r_out_init           = self%myconfig%r_out_init       /physunit_inuse%myconfig%length
+  self%myconfig%power                = self%myconfig%power            /physunit_inuse%myconfig%luminosity
+  self%myconfig%power_at_t           = self%myconfig%power_at_t       /physunit_inuse%myconfig%luminosity
+  self%myconfig%tau_spin_down        = self%myconfig%tau_spin_down    /physunit_inuse%myconfig%time
+  self%myconfig%mass_flux            = self%myconfig%mass_flux        /physunit_inuse%myconfig%mass_flux
+  self%myconfig%time_start           = self%myconfig%time_start       /physunit_inuse%myconfig%time
+  self%myconfig%time_end             = self%myconfig%time_end         /physunit_inuse%myconfig%time
+  self%myconfig%coarsen_distance     = self%myconfig%coarsen_distance /physunit_inuse%myconfig%length
+  self%myconfig%coarsen_var_distance = self%myconfig%coarsen_var_distance /physunit_inuse%myconfig%length
  end subroutine usr_wind_normalize
 !--------------------------------------------------------------------
 !--------------------------------------------------------------------
@@ -276,12 +306,17 @@ end    subroutine usr_wind_write_setting
   real(kind=dp), intent(in)  :: qt
   real(kind=dp), intent(in)  :: x(ixI^S,1:ndir)
   class(rel_wind)            :: self
+  ! .. local ..
+  real(dp)                   :: min_dist
   real(dp), dimension(ixI^S) :: dist
   !----------------------------------
 
   allocate(self%patch(ixG^T))
 
   call usr_distance(ixI^L,ixO^L,typeaxial,self%myconfig%center,x,dist)
+  min_dist=minval(dist(ixO^S),dist(ixO^S)>smalldouble)
+  if(min_dist<self%myconfig%r_out_impos-self%myconfig%r_in)min_dist=0.0
+  min_dist=0.0
   if(qt<=self%myconfig%time_start)then
    self%patch(ixO^S) = Dist(ixO^S) <self%myconfig%r_out_init &
                       .and. Dist(ixO^S) >self%myconfig%r_in
@@ -307,6 +342,7 @@ end    subroutine usr_wind_write_setting
   real(kind=dp), dimension(ixI^S)        :: energy_flux,sqrB,kinetic_flux
   real(kind=dp), dimension(ixI^S)        :: theta,sintheta
   real(kind=dp), dimension(ixI^S,1:ndim) :: x_sphere
+  real(kind=dp), dimension(ixI^S)        :: csound
   !----------------------------------
 
   call usr_get_spherical(ixI^L,ixO^L,typeaxial,self%myconfig%center,x,x_sphere)
@@ -324,8 +360,10 @@ end    subroutine usr_wind_write_setting
    end where
   end if
   where(self%patch(ixO^S))
-   energy_flux(ixO^S)      = self%myconfig%power_at_t/x_sphere(ixO^S,r_)**2.0_dp *&
-                          (sintheta(ixO^S)**2.0d0+one/self%myconfig%sigma0)
+   energy_flux(ixO^S)      =((3.0_dp*self%myconfig%sigma0/                            &
+                           (3.0_dp+2.0_dp*self%myconfig%sigma0))/(4.0_dp*dpi))*                    &
+                         self%myconfig%power_at_t/x_sphere(ixO^S,r_)**2.0_dp *&
+                         (sintheta(ixO^S)**2.0d0+one/self%myconfig%sigma0)
 
    w(ixO^S,mom(r_))        = self%myconfig%velocity(r_)
    w(ixO^S,mom(theta_))    = self%myconfig%velocity(theta_)
@@ -344,19 +382,19 @@ end    subroutine usr_wind_write_setting
    kinetic_flux(ixO^S)     = energy_flux(ixO^S)-  sqrB(ixO^S)/(4.0_dp*dpi)
 
    w(ixO^S,rho_)           = kinetic_flux(ixO^S)/(w(ixO^S,lfac_)*w(ixO^S,mom(r_)))
-
+   csound(ixO^S)           = dsqrt(self%myconfig%lfac**2.0_dp-1.0_dp)/self%myconfig%Mach
    w(ixO^S,p_)             = max(self%myconfig%beta*half*sqrB(ixO^S),&
-                             1.0d-2*w(ixO^S,rho_),1.0d4*small_pressure)
+                             csound(ixO^S)**2.0_dp*w(ixO^S,rho_),10.0_dp*small_pressure)
 
  end where
 
   if(trim(typeaxial)/='spherical')call self%spd_rad_to_cart(ixI^L,ixO^L,x,w)
 
 
-  cond_tracer_on :if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
-                    .and.self%myconfig%itr<=phys_config%n_tracer)then
+  cond_tracer_on :if(self%myconfig%tracer_on.and.phys_n_tracer>0&
+                    .and.self%myconfig%itr<=phys_n_tracer)then
    where(self%patch(ixO^S))
-    w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = 1.0d2!w(ixO^S,rho_)
+    w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = 1.0d2
    elsewhere
     w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = 0.0_dp
    end where
@@ -379,6 +417,7 @@ end    subroutine usr_wind_write_setting
     !--------------------------------------------
      select case(self%myconfig%variation_type)
      case('pulsar_spin_down')
+       ! reference https://arxiv.org/pdf/1703.09311.pdf, equation 13, page  9
        n_power=(self%myconfig%braking_index+1.0_dp)/(self%myconfig%braking_index-1.0_dp)
        self%myconfig%power_at_t=self%myconfig%power &
                                  *(1.0_dp+(qt-self%myconfig%time_start)/self%myconfig%tau_spin_down)**(-n_power)

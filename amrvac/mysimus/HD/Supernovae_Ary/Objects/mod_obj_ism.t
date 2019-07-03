@@ -159,7 +159,7 @@ contains
      self%myconfig%number_density     = 0.0_dp
      self%myconfig%temperature        = 0.0_dp
      self%myconfig%pressure           = 0.0_dp
-     self%myconfig%extend(1:2,1:ndim) = 0.0_dp!box_limit(1:2,1:ndim)
+     self%myconfig%extend(1:2,1:3)    = 0.0_dp!box_limit(1:2,1:ndim)
      self%myconfig%velocity           = 0.0_dp
      self%myconfig%magnetic           = 0.0_dp
      self%myconfig%xisigma            = 0.0_dp
@@ -314,6 +314,7 @@ contains
       \}
       myboundary_cond = self%myconfig%boundary_cond(isboundary_iB(1),isboundary_iB(2))
     else
+      isboundary=.false.
       myboundary_cond = 'fix'
     end if
 

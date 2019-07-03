@@ -328,8 +328,14 @@ subroutine usr_pulsar_set_w(ixI^L,ixO^L,qt,x,w,self)
   end if
   call self%mywind%set_w(ixI^L,ixO^L,qt,x,w)
   self%patch(ixO^S) = self%patch(ixO^S).or.self%mywind%patch(ixO^S)
-  
-elseif(self%myconfig%wind_on.and.self%mywind%myconfig%tracer_on)then
+  ! treat the SN tracer within the PW region
+  if(self%myconfig%supernovae_remnant_on.and.self%mysupernovae_remnant%myconfig%tracer_on)then
+    where(self%mywind%patch(ixO^S))
+      w(ixO^S,phys_ind%tracer(self%mysupernovae_remnant%myconfig%itr))=0.0
+    end where
+  end if
+
+ elseif(self%myconfig%wind_on.and.self%mywind%myconfig%tracer_on)then
   w(ixO^S,phys_ind%tracer(self%mywind%myconfig%itr))  = 0.0_dp
  end if cond_wind_on
 

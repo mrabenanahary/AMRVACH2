@@ -128,7 +128,7 @@ contains
     !-----------------------------------
 
     write(unit_config,*)'************************************'
-    write(unit_config,*)'************rel_jet setting ************'
+    write(unit_config,*)'**********rel_jet setting **********'
     write(unit_config,*)'************************************'
     write(unit_config,*) 'power       = ', self%myconfig%power
     write(unit_config,*) 'mass flux   = ', self%myconfig%mass_flux
@@ -483,7 +483,7 @@ end subroutine usr_rel_jet_the_patch
                      .and.self%myconfig%itr<=phys_config%n_tracer)then
 
     where(self%patch(ixO^S))
-     w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = w(ixO^S,rho_)
+     w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = w(ixO^S,phys_ind%rho_)
     elsewhere
      w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = 0.0_dp
     end where

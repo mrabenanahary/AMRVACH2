@@ -87,7 +87,8 @@ contains
 
     ! complet all physical unit in use
     if(usrconfig%physunit_on) then
-     call usr_physunit%set_complet
+      physics_type='hd'
+      call usr_physunit%set_complet(physics_type)
     end if
     call usr_physical_unit
     call set_coordinate_system(trim(usrconfig%coordinate_system))
@@ -536,7 +537,6 @@ contains
         ^D&dx_loc(^D)=rnode(rpdx^D_,igrid);
         call sn_wdust%get_patch(ixI^L,ixO^L,qt,x,force_refine=1,dx_loc=dx_loc)
         if(any(sn_wdust%patch(ixO^S)))then
-          Print*,'hello ',rnode(rpxmin1_,igrid),rnode(rpxmin2_,igrid),rnode(rpxmax1_,igrid),rnode(rpxmax2_,igrid)
         level_min = refine_max_level-level+1
         level_max = refine_max_level
         patch_cond=.true.
@@ -548,9 +548,9 @@ contains
         call sn_wdust%clean_memory
 
       else
-        if(all(sum(w(ixO^S,phys_ind%mom(:))**2.0_dp,dim=ndim+1)<smalldouble)) then
-         refine  = -1
-         coarsen = 1
+        if(any(w(ixO^S,phys_ind%rho_)>sn_wdust%myconfig%density_init/2.0_dp))then
+         refine  =  1
+         coarsen = - 1
         end if
       end if cond_init_t
 
@@ -611,15 +611,18 @@ contains
     real(dp)                   :: normconv(0:nw+nwauxio)
     ! .. local ..
     real(dp)                   :: w(ixI^S,nw)
-    integer                    :: iw
-    integer, parameter         :: iz_     = 1
-    integer, parameter         :: ilevel_ = 2
+    real(dp)                   :: error_var(ixM^T)
+    integer                    :: iw, level
+    integer, parameter         :: iz_                = 1
+    integer, parameter         :: ilevel_            = 2
+    integer, parameter         :: ierror_lohner_rho_ = 3
+    integer, parameter         :: ierror_lohner_p_   = 4
     real(dp)                   :: z_ism,z_sn
     real(dp), dimension(ixO^S) :: fraction_sn,rho_sn,rho_ism
     real(dp)                   :: epsilon_ism,epsilon_sn
     !----------------------------------------------------
     w(ixI^S,1:nw) = win(ixI^S,1:nw)
-
+    level = node(plevel_,saveigrid)
     Loop_iw :  do iw = 1,nwauxio
     select case(iw)
     case(iz_)
@@ -636,7 +639,15 @@ contains
         win(ixO^S,nw+iz_) = (z_ism*rho_ism+z_sn*rho_sn)/(rho_sn+rho_ism)
       end if
     case(ilevel_)
-      win(ixO^S,nw+ilevel_) = 
+      win(ixO^S,nw+ilevel_) = node(plevel_,saveigrid)
+     case(ierror_lohner_rho_)
+       win(ixG^T,nw+ierror_lohner_rho_) = 0.0
+       call usr_mat_get_Lohner_error(ixI^L, ixM^LL,level,rho_,w,error_var)
+       win(ixM^T,nw+ierror_lohner_rho_) = error_var(ixM^T)
+     case(ierror_lohner_p_)
+       win(ixG^T,nw+ierror_lohner_p_) = 0.0_dp
+       call usr_mat_get_Lohner_error(ixI^L, ixM^LL,level,p_,w,error_var)
+       win(ixM^T,nw+ierror_lohner_p_) = error_var(ixM^T)
      case default
        write(*,*)'is not implimented at specialvar_output in mod_user'
      end select
@@ -671,9 +682,12 @@ contains
   subroutine specialvarnames_output(varnames)
   ! newly added variables need to be concatenated with the w_names/primnames string
     character(len=*), intent(inout) :: varnames(:)
-      integer                         :: iw
-    integer, parameter                :: iz_ = 1
-    integer, parameter                :: ilevel_ = 2
+    ! .. local ..
+    integer                         :: iw
+    integer, parameter              :: iz_                = 1
+    integer, parameter              :: ilevel_            = 2
+    integer, parameter              :: ierror_lohner_rho_ = 3
+    integer, parameter              :: ierror_lohner_p_   = 4
     !----------------------------------------------------
     Loop_iw : do  iw = 1,nwauxio
     select case(iw)
@@ -681,6 +695,10 @@ contains
       varnames(iz_) = 'zmetalicity'
     case(ilevel_)
       varnames(ilevel_) = 'level'
+    case(ierror_lohner_rho_)
+      varnames(ierror_lohner_rho_) ='erroramrrho'
+    case(ierror_lohner_p_)
+      varnames(ierror_lohner_p_) ='erroamrp'
     end select
     end do Loop_iw
 

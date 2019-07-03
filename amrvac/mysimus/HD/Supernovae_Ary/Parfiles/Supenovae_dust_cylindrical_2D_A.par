@@ -1,5 +1,5 @@
 !==============================================================
-! Project : Pulsar wind nebula
+! Project : Supenovae remnant with dust
 ! Aim     :
 ! Results :
 ! Method  : Use cynlindrical coordinate
@@ -17,10 +17,11 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
+        nwauxio = 4
 
-/
-        restart_from_file='Output/Sn_dust_2D_A/sn_dust_cyl25DA_0321.dat'
-        snapshotnext =0322
+
+      !  restart_from_file='Output/Sn_dust_2D_A/sn_dust_cyl25DA_0321.dat'
+      !  snapshotnext =0322
 /
 
 

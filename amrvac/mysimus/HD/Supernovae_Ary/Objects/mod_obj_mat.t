@@ -561,4 +561,107 @@ end subroutine usr_medianvalue_of_array
                     +lfac_proper/(lfac_proper+1)*uv(ixO^S)*velocity_proper(idir) )
     end do Loop_idir_newv
   end subroutine usr_lorentz_transrmation_add_proper_speed
+
+  subroutine usr_mat_get_Lohner_error(ixI^L,ixO^L,level,ivar,w,error_lohner)
+    use mod_global_parameters
+    implicit none
+    integer, intent(in)             :: ixI^L,ixO^L,level,ivar
+    real(kind=dp), intent(in)       :: w(ixI^S,1:nw)
+    real(kind=dp), intent(inout)    :: error_lohner(ixM^T)
+    ! .. local ..
+    integer                         :: ix^L,hx^L, jx^L, h2x^L, j2x^L, ix^D
+    integer                         :: idims,idims2
+    real(kind=dp)                   :: epsilon
+    real(kind=dp), dimension(ixG^T) :: tmp,tmp1,tmp2
+    real(kind=dp), dimension(ixM^T) :: numerator,denominator
+    !-------------------------------------------------------
+     epsilon = 1.0d-6
+     ix^L=ixO^L^LADD1;
+
+     error_lohner=zero
+     numerator=zero
+     denominator=zero
+
+     Loop_idims_num : do idims=1,ndim
+        hx^L=ix^L-kr(^D,idims);
+        jx^L=ix^L+kr(^D,idims);
+        if (ivar<=nw) then
+          if (logflag(ivar)) then
+            tmp(ix^S)=dlog10(w(jx^S,ivar))-dlog10(w(hx^S,ivar))
+          else
+            tmp(ix^S)=w(jx^S,ivar)-w(hx^S,ivar)
+          end if
+        else
+          if (logflag(ivar)) then
+            tmp(ix^S)=dlog10(tmp1(jx^S))-dlog10(tmp1(hx^S))
+          else
+            tmp(ix^S)=tmp1(jx^S)-tmp1(hx^S)
+          end if
+        end if
+        Loop_idims1: do idims2=1,ndim
+           h2x^L=ixM^LL-kr(^D,idims2);
+           j2x^L=ixM^LL+kr(^D,idims2);
+           numerator=numerator+(tmp(j2x^S)-tmp(h2x^S))**2.0d0
+        end do Loop_idims1
+     end do Loop_idims_num
+
+     Loop_idims_dem : do idims=1,ndim
+        if (ivar<=nw) then
+           if (logflag(ivar)) then
+            tmp=dabs(dlog10(w(ixG^T,ivar)))
+           else
+            tmp=dabs(w(ixG^T,ivar))
+           end if
+        else
+           if (logflag(ivar)) then
+            tmp=dabs(dlog10(tmp1(ixG^T)))
+           else
+            tmp=dabs(tmp1(ixG^T))
+           end if
+        end if
+        hx^L=ix^L-kr(^D,idims);
+        jx^L=ix^L+kr(^D,idims);
+        tmp2(ix^S)=tmp(jx^S)+tmp(hx^S)
+        hx^L=ixM^LL-2*kr(^D,idims);
+        jx^L=ixM^LL+2*kr(^D,idims);
+        if (ivar<=nw) then
+          if (logflag(ivar)) then
+            tmp(ixM^T)=dabs(dlog10(w(jx^S,ivar))&
+                       -dlog10(w(ixM^T,ivar))) &
+                       +dabs(dlog10(w(ixM^T,ivar))&
+                       -dlog10(w(hx^S,ivar)))
+          else
+             tmp(ixM^T)=dabs(w(jx^S,ivar)-w(ixM^T,ivar)) &
+                        +dabs(w(ixM^T,ivar)-w(hx^S,ivar))
+          end if
+        else
+          if (logflag(ivar)) then
+            tmp(ixM^T)=dabs(dlog10(tmp1(jx^S))-dlog10(tmp1(ixM^T))) &
+                      +dabs(dlog10(tmp1(ixM^T))-dlog10(tmp1(hx^S)))
+          else
+             tmp(ixM^T)=dabs(tmp1(jx^S)-tmp1(ixM^T)) &
+                        +dabs(tmp1(ixM^T)-tmp1(hx^S))
+          end if
+        end if
+        Loop_idims2: do idims2=1,ndim
+           h2x^L=ixM^LL-kr(^D,idims2);
+           j2x^L=ixM^LL+kr(^D,idims2);
+           denominator=denominator &
+                      +(tmp(ixM^T)+amr_wavefilter(level)*(tmp2(j2x^S)+tmp2(h2x^S)))**2
+        end do Loop_idims2
+     end do Loop_idims_dem
+     error_lohner=error_lohner+dsqrt(numerator/max(denominator,epsilon))
+
+  end subroutine usr_mat_get_Lohner_error
+
+  subroutine usr_mat_profile_tanh_scalar_maxdist(dist_impos,&
+                                  dist_experance,dist_ecart,coef)
+    implicit none
+
+    real(kind=dp), intent(in)          :: dist_impos
+    real(kind=dp), intent(in)          :: dist_experance,dist_ecart
+    real(kind=dp), intent(out)         :: coef
+    coef = (1.0_dp-tanh((dist_impos-dist_experance)/ dist_ecart))/2.0_dp
+
+  end subroutine usr_mat_profile_tanh_scalar_maxdist
 end module mod_obj_mat

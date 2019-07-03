@@ -219,9 +219,10 @@ end select
 end subroutine usr_physical_unit_set_unit
  !--------------------------------------------------------------------
  !> subroutine check the parfile setting for cloud
- subroutine usr_physical_unit_complet(self)
+ subroutine usr_physical_unit_complet(the_physics_type,self)
    implicit none
-   class(usrphysical_unit)          :: self
+   character(len=*)                  :: the_physics_type 
+   class(usrphysical_unit)           :: self
    ! .. local ..
    real(dp)                          :: mp,kb,miu0,mean_mass
    integer                           :: i_phys,n_phys
@@ -242,7 +243,7 @@ end subroutine usr_physical_unit_set_unit
    phys_array = [character(len=20):: 'srmhd','srhd','grmhd','grhd']
    n_phys=size(phys_array)
    Loop_phys : do i_phys = 1,n_phys
-    if(index(physics_type,phys_array(i_phys))>0)then
+    if(index(trim(the_physics_type),trim(phys_array(i_phys)))>0)then
       self%myconfig%velocity = const_c
     end if
    end do Loop_phys
