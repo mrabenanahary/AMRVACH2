@@ -3,7 +3,7 @@
 ! Aim     :
 ! Results :
 ! Method  : Use cynlindrical coordinate
-!           !!!todo add stretched grid in R and Z
+!
 ! Update  : 25/04/2019
 ! configuration :
 ! Openmpi/gfortran or intel or ....
@@ -63,12 +63,12 @@
 
 
  &methodlist
-        time_integrator          =  'fourstep'
-        typepred1                =  20*'tvdlf'
-        flux_scheme              =  20*'tvdlf'
-        limiter                  =  20*'minmod'
-        small_pressure           = 1.0d-11
-        small_density            = 1.0d-10
+        time_integrator          =  'twostep'
+        typepred1                =  20*'hllc'
+        flux_scheme              =  20*'hllc'
+        limiter                  =  20*'cada3'
+        small_pressure           = 1.0d-8
+        small_density            = 1.0d-6
         small_values_method      =  'average'
         small_values_daverage    = 8
 
@@ -89,7 +89,7 @@
         nghostcells       = 2
 
         typeboundary_min1 = 'symm','asymm','symm','asymm','symm'
-                            4*'asymm',4*'symm',4*'symm',4*'symm'
+                            4*'symm',4*'asymm',4*'symm',4*'asymm'
 
 
         typeboundary_max1 = 21*'cont'
@@ -97,14 +97,18 @@
         typeboundary_max2 = 21*'cont'
 /
 
+
+
+        typeboundary_min3 = 8*'cont'
+        typeboundary_max3 = 8*'cont'
  /
 
  &meshlist
         ! grid at level 1
         xprobmin1 =  0.0d0       ! cm
-        xprobmax1 =  1.0d16      ! cm
-        xprobmin2 = -1.0d16      ! axis
-        xprobmax2 =  1.0d16      ! cm
+        xprobmax1 =  5.0d18      ! cm
+        xprobmin2 = -5.0d18      ! axis
+        xprobmax2 =  5.0d18      ! cm
         ! total cell at level 1
         domain_nx1= 96
         domain_nx2= 192
@@ -131,6 +135,8 @@
         coarsenprimitive= .true.
 
 
+
+ /
         stretched_grid    = .true.
         stretched_dim(1)  = .true.
         stretched_dim(2)  = .true.
@@ -277,3 +283,30 @@
   dust_config%power_a          = -3.5       ! dust power law for distribtion function accroding to dust size
   dust_config%extend           = 0.0        ! dust region of space where is set. 0 means will be set in user file
  /
+
+
+&usr_cloud_list
+ cloud_config%unit             = 'cgs'
+ cloud_config%time_cloud_on    = 100d7         ! cloud apparition time in the simulation box
+ cloud_config%center(1)        = 0.0d0         ! cloud center position  (x in cartesian) (r in cylindrical) (cm)
+ cloud_config%center(2)        = 15d14         ! cloud center position  (y in cartesian) (z in cylindrical) (cm)
+ cloud_config%extend(1)        = 7.48d14       ! cloud size  (x in cartesian) (r in cylindrical) (cm) (ref: Ary the Boss)
+ cloud_config%extend(2)        = 0.0d0         ! cloud size  (y in cartesian) (z in cylindrical) (cm)
+
+ cloud_config%density          = 0.0d0         ! cloud density if it set to 0 it will use number_density or mass
+ cloud_config%number_density   = 0.0d0         ! cloud number density (1/cm^3) if it set to 0 it will use mass
+ cloud_config%mass             = 0.0596541d33  ! cloud mass (g)  (ref: Ary the Boss)
+ cloud_config%shape            = 'sphere'      ! cloud shape
+ cloud_config%profile          = 'gaussian'     ! cloud profile
+ cloud_config%velocity(1)      = 0             ! cloud speed in (x in cartesian) (r in cylindrical) (cm/s) (ref: Ary the Boss)
+ cloud_config%velocity(2)      = 500d5         ! cloud speed in (y in cartesian) (z in cylindrical) (cm/s) (ref: Ary the Boss)
+ cloud_config%velocity(3)      = 0             ! cloud speed in (z in cartesian) (phi in cylindrical) (cm/s)
+ cloud_config%temperature      = 30            ! cloud temperature (K) (ref: Ary the Boss)
+
+ cloud_config%pressure         = 0.0d0         ! cloud pressure if is set to 0 it will use temperature
+
+ cloud_config%tracer_on        = .false.       ! cloud tracer
+
+ cloud_config%dust_on          = .false.        ! dust are set in cloud
+ cloud_config%dust_frac        = 0.0          ! dust fraction in cloud
+/

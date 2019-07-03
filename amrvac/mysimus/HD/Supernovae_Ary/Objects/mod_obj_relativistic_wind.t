@@ -391,8 +391,8 @@ end    subroutine usr_wind_write_setting
   if(trim(typeaxial)/='spherical')call self%spd_rad_to_cart(ixI^L,ixO^L,x,w)
 
 
-  cond_tracer_on :if(self%myconfig%tracer_on.and.phys_n_tracer>0&
-                    .and.self%myconfig%itr<=phys_n_tracer)then
+  cond_tracer_on :if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
+                    .and.self%myconfig%itr<=phys_config%n_tracer)then
    where(self%patch(ixO^S))
     w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = 1.0d2
    elsewhere
