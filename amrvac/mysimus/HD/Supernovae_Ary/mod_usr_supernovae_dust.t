@@ -640,11 +640,11 @@ contains
       win(ixO^S,nw+ilevel_) = node(plevel_,saveigrid)
      case(ierror_lohner_rho_)
        win(ixG^T,nw+ierror_lohner_rho_) = 0.0
-       call usr_mat_get_Lohner_error(ixI^L, ixM^LL,level,rho_,w,error_var)
+       call usr_mat_get_Lohner_error(ixI^L, ixM^LL,level,phys_ind%rho_,w,error_var)
        win(ixM^T,nw+ierror_lohner_rho_) = error_var(ixM^T)
      case(ierror_lohner_p_)
        win(ixG^T,nw+ierror_lohner_p_) = 0.0_dp
-       call usr_mat_get_Lohner_error(ixI^L, ixM^LL,level,p_,w,error_var)
+       call usr_mat_get_Lohner_error(ixI^L, ixM^LL,level,phys_ind%p_,w,error_var)
        win(ixM^T,nw+ierror_lohner_p_) = error_var(ixM^T)
      case default
        write(*,*)'is not implimented at specialvar_output in mod_user'
