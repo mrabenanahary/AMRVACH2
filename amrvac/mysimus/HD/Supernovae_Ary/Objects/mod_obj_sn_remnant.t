@@ -210,7 +210,9 @@ end    subroutine usr_supernovae_remnant_write_setting
                                                       -self%myconfig%r_in**3.0_dp)
 
 
-
+  if(.not.self%myconfig%dust_on)then
+    self%myconfig%dust_frac = 0.0_dp
+  end if
   cond_mass_set : if(self%myconfig%mass>0.0_dp) then
    self%myconfig%density_init = self%myconfig%mass*               &
                                 (1.0_dp-self%myconfig%dust_frac)  &

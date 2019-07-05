@@ -381,7 +381,9 @@ contains
     use mod_global_parameters
     use mod_dust, only : dust_physical_units
   if(.not.allocated(w_convert_factor))then
+
      allocate(w_convert_factor(nw))
+     w_convert_factor =1.0_dp
      w_convert_factor(rho_)     = unit_density
      w_convert_factor(e_)       = unit_density*unit_velocity**2.0
      if(saveprim)then

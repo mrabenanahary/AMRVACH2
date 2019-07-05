@@ -212,7 +212,7 @@ contains
 
     namelist /dust_list/ dust_n_species, dust_min_rho, gas_mu, dust_method, &
          dust_small_to_zero, dust_source_split, dust_temperature, &
-         dust_temperature_type,dust_it_diff,dust_dt_small
+         dust_temperature_type,dust_it_diff,dust_dt_small,dust_species,dust_stellar_luminosity
 
     do i_file = 1, size(files)
       open(unitpar, file=trim(files(i_file)), status="old")

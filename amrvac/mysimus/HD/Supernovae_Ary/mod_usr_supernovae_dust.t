@@ -215,6 +215,9 @@ contains
         cloud_medium(i_cloud)%myconfig%dust_on =.false.
        end do Loop_clouds
       end if
+      if(usrconfig%sn_on)then
+        sn_wdust%myconfig%dust_on =.false.
+      end if
     end if  cond_dust_on
   end   subroutine usr_check_conflict
   !-----------------------------------------------------------
@@ -307,7 +310,7 @@ contains
      n_objects = n_objects + 1
    end if
 
-   allocate(the_dust_inuse(n_objects))
+   if(phys_config%dust_on)allocate(the_dust_inuse(n_objects))
    call usr_normalise_parameters
    if(mype==0)call usr_write_setting
 
@@ -346,7 +349,7 @@ contains
       Loop_isms : do i_ism=0,usrconfig%ism_number-1
        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,global_time,x,w)
        patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.ism_surround(i_ism)%patch(ixO^S)
-       the_dust_inuse(i_object)=ism_surround(i_ism)%mydust
+       if(ism_surround(i_ism)%myconfig%dust_on)the_dust_inuse(i_object)=ism_surround(i_ism)%mydust
        i_object = i_object +1
       end do Loop_isms
     end if
@@ -367,7 +370,7 @@ contains
        end if
 
        patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.cloud_medium(i_cloud)%patch(ixO^S)
-       the_dust_inuse(i_object)=cloud_medium(i_cloud)%mydust
+       if(cloud_medium(i_cloud)%myconfig%dust_on)the_dust_inuse(i_object)=cloud_medium(i_cloud)%mydust
        i_object = i_object +1
       end do Loop_clouds
     end if
@@ -398,7 +401,7 @@ contains
       end if
 
       patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.sn_wdust%patch(ixO^S)
-      the_dust_inuse(i_object)=sn_wdust%mydust
+      if(sn_wdust%myconfig%dust_on)the_dust_inuse(i_object)=sn_wdust%mydust
       i_object = i_object +1
     end if
 

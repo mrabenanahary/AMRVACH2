@@ -143,6 +143,11 @@ contains
      mp=mp_cgs
      kB=kB_cgs
    end if
+
+  if(.not.self%myconfig%dust_on)then
+    self%myconfig%dust_frac = 0.0_dp
+  end if
+
    call usr_get_volume(self%myconfig%extend,self%myconfig%shape, cloud_volume)
    PRINT*,' is test volume',cloud_volume,self%myconfig%dust_frac,self%myconfig%mass/cloud_volume,&
     self%myconfig%mass/(cloud_volume*unit_density),cloud_volume/unit_length**3.0_dp

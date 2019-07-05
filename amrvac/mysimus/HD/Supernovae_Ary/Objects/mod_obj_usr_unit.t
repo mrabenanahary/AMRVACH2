@@ -221,7 +221,7 @@ end subroutine usr_physical_unit_set_unit
  !> subroutine check the parfile setting for cloud
  subroutine usr_physical_unit_complet(the_physics_type,self)
    implicit none
-   character(len=*)                  :: the_physics_type 
+   character(len=*)                  :: the_physics_type
    class(usrphysical_unit)           :: self
    ! .. local ..
    real(dp)                          :: mp,kb,miu0,mean_mass
@@ -305,7 +305,8 @@ end subroutine usr_physical_unit_set_unit
    integer :: idust
    !---------------------------------
 
-
+   w_convert_factor =1.0_dp
+   
 
    w_convert_factor(phys_ind%rho_)                  = self%myconfig%density
    if(phys_config%energy)then
