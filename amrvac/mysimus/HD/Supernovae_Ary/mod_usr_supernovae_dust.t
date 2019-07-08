@@ -610,17 +610,55 @@ contains
     ! .. local ..
     real(dp)                   :: w(ixI^S,nw)
     real(dp)                   :: error_var(ixM^T)
-    integer                    :: iw, level
+    integer                    :: iw, level,idir,idust
     integer, parameter         :: iz_                = 1
     integer, parameter         :: ilevel_            = 2
     integer, parameter         :: ierror_lohner_rho_ = 3
     integer, parameter         :: ierror_lohner_p_   = 4
+    integer, parameter         :: idragfroce11_      = 5
+    integer, parameter         :: idragfroce12_      = 6
+    integer, parameter         :: idragfroce13_      = 7
+    integer, parameter         :: idragfroce14_      = 8
+    integer, parameter         :: idv11_             = 9
+    integer, parameter         :: idv12_             = 10
+    integer, parameter         :: idv13_             = 11
+    integer, parameter         :: idv14_             = 12
+    integer, parameter         :: idtgas1_           = 13
+    integer, parameter         :: idtdust11_         = 14
+    integer, parameter         :: idtdust12_         = 15
+    integer, parameter         :: idtdust13_         = 16
+    integer, parameter         :: idtdust14_         = 17
+    integer, parameter         :: istincking1_       = 18
+    integer, parameter         :: istincking2_       = 19
+    integer, parameter         :: istincking3_       = 20
+    integer, parameter         :: istincking4_       = 21
+    integer, parameter         :: idtgas2_           = 22
+    integer, parameter         :: idtdust2_          = 23
     real(dp)                   :: z_ism,z_sn
     real(dp), dimension(ixO^S) :: fraction_sn,rho_sn,rho_ism
-    real(dp)                   :: epsilon_ism,epsilon_sn
+    real(dp)                   :: epsilon_ism,epsilon_sn,dx^D
+    logical,dimension(ixI^S)          :: fd_flag
+    real(dp),dimension(ixI^S)         :: ptherm,cmax
+    real(dp),dimension(ixI^S,1:ndir)  :: vgas
+    real(dp),dimension(ixI^S,1:phys_config%dust_n_species) ::alpha_T
+    real(dp),dimension(ixI^S,1:ndir,1:phys_config%dust_n_species) :: vdust,fdrag
     !----------------------------------------------------
     w(ixI^S,1:nw) = win(ixI^S,1:nw)
     level = node(plevel_,saveigrid)
+    call phys_get_pthermal(w, x, ixI^L, ixI^L, ptherm)
+    call dust_get_sticking(w, x, ixI^L, ixO^L, alpha_T, ptherm)
+    Loop_idir1 : do idir=1,ndir
+      vgas(ixI^S,idir)=w(ixI^S,phys_ind%mom(idir))/w(ixI^S,phys_ind%rho_)
+      Loop_idust1 :  do idust = 1,phys_config%dust_n_species
+        where(w(ixI^S,phys_ind%dust_rho(idust))>phys_config%dust_small_density)
+         vdust(ixI^S,idir,idust)=w(ixI^S,phys_ind%dust_mom(idir, idust))&
+                              /w(ixI^S,phys_ind%dust_rho(idust))
+        elsewhere
+          vdust(ixI^S,idir,idust)=0.0_dp
+        endwhere
+      end do Loop_idust1
+    end do Loop_idir1
+    dx^D=rnode(rpdx^D_,saveigrid);
     Loop_iw :  do iw = 1,nwauxio
     select case(iw)
     case(iz_)
@@ -637,19 +675,106 @@ contains
         win(ixO^S,nw+iz_) = (z_ism*rho_ism+z_sn*rho_sn)/(rho_sn+rho_ism)
       end if
     case(ilevel_)
+      normconv(nw+ilevel_)     = 1.0_dp
       win(ixO^S,nw+ilevel_) = node(plevel_,saveigrid)
      case(ierror_lohner_rho_)
+       normconv(nw+iw)     = 1.0_dp
        win(ixG^T,nw+ierror_lohner_rho_) = 0.0
        call usr_mat_get_Lohner_error(ixI^L, ixM^LL,level,phys_ind%rho_,w,error_var)
        win(ixM^T,nw+ierror_lohner_rho_) = error_var(ixM^T)
      case(ierror_lohner_p_)
+       normconv(nw+iw)     = 1.0_dp
        win(ixG^T,nw+ierror_lohner_p_) = 0.0_dp
-       call usr_mat_get_Lohner_error(ixI^L, ixM^LL,level,phys_ind%p_,w,error_var)
+       call usr_mat_get_Lohner_error(ixI^L, ixM^LL,level,phys_ind%pressure_,w,error_var)
        win(ixM^T,nw+ierror_lohner_p_) = error_var(ixM^T)
-     case default
+    case(idragfroce11_)
+       normconv(nw+idragfroce11_)     = 1.0_dp
+       call get_3d_dragforce(ixI^L, ixO^L, w, x, fdrag, ptherm, vgas,fd_flag)
+       win(ixO^S,nw+idragfroce11_) = fdrag(ixO^S,1,1)
+    case(idragfroce12_)
+       normconv(nw+idragfroce12_)     = 1.0_dp
+       call get_3d_dragforce(ixI^L, ixO^L, w, x, fdrag, ptherm, vgas,fd_flag)
+       win(ixO^S,nw+idragfroce12_) = fdrag(ixO^S,1,2)
+    case(idragfroce13_)
+       normconv(nw+idragfroce13_)     = 1.0_dp
+       call get_3d_dragforce(ixI^L, ixO^L, w, x, fdrag, ptherm, vgas,fd_flag)
+       win(ixO^S,nw+idragfroce13_) = fdrag(ixO^S,1,3)
+    case(idragfroce14_)
+       normconv(nw+idragfroce14_)     = 1.0_dp
+       call get_3d_dragforce(ixI^L, ixO^L, w, x, fdrag, ptherm, vgas,fd_flag)
+       win(ixO^S,nw+idragfroce14_) = fdrag(ixO^S,1,4)
+    case(idv11_)
+      normconv(nw+idv11_)            = 1.0_dp
+      where(w(ixO^S,phys_ind%dust_rho(1))>phys_config%dust_small_density)
+       win(ixO^S,nw+idv11_)          =  vgas(ixO^S,1)-vdust(ixO^S,1,1)
+      elsewhere
+       win(ixO^S,nw+idv11_)          = 0.0_dp
+      end where
+    case(idv12_)
+      normconv(nw+idv12_)            = 1.0_dp
+      where(w(ixO^S,phys_ind%dust_rho(1))>phys_config%dust_small_density)
+       win(ixO^S,nw+idv12_)          =  vgas(ixO^S,1)-vdust(ixO^S,1,2)
+      elsewhere
+       win(ixO^S,nw+idv12_)          = 0.0_dp
+      end where
+    case(idv13_)
+      normconv(nw+idv13_)            = 1.0_dp
+      where(w(ixO^S,phys_ind%dust_rho(1))>phys_config%dust_small_density)
+       win(ixO^S,nw+idv13_)          =  vgas(ixO^S,1)-vdust(ixO^S,1,3)
+      elsewhere
+       win(ixO^S,nw+idv13_)          = 0.0_dp
+      end where
+    case(idv14_)
+      normconv(nw+idv14_)            = 1.0_dp
+      where(w(ixO^S,phys_ind%dust_rho(1))>phys_config%dust_small_density)
+       win(ixO^S,nw+idv14_)          =  vgas(ixO^S,1)-vdust(ixO^S,1,4)
+      elsewhere
+       win(ixO^S,nw+idv14_)          = 0.0_dp
+      end where
+    case(idtgas1_)
+      normconv(nw+idtgas1_)            = unit_time
+      call phys_get_cmax(w,x,ixI^L,ixO^L,1,cmax)
+      win(ixO^S,nw+idtgas1_) = dx1/cmax(ixO^S)
+    case(idtdust11_)
+      normconv(nw+idtdust11_)            = unit_time
+      call dust_get_tstop(ixI^L, ixO^L, 1,1,dx^D, x,w,cmax)
+      win(ixO^S,nw+idtdust11_) = cmax(ixO^S)
+    case(idtdust12_)
+      normconv(nw+idtdust12_)            = unit_time
+      call dust_get_tstop(ixI^L, ixO^L, 2,1,dx^D, x,w,cmax)
+      win(ixO^S,nw+idtdust12_) = cmax(ixO^S)
+    case(idtdust13_)
+      normconv(nw+idtdust13_)            = unit_time
+      call dust_get_tstop(ixI^L, ixO^L, 3,1,dx^D, x,w,cmax)
+      win(ixO^S,nw+idtdust13_) = cmax(ixO^S)
+    case(idtdust14_)
+      normconv(nw+idtdust14_)            = unit_time
+      call dust_get_tstop(ixI^L, ixO^L, 4,1,dx^D, x,w,cmax)
+      win(ixO^S,nw+idtdust14_) = cmax(ixO^S)
+    case(istincking1_)
+      normconv(nw+istincking1_)            = 1.0_dp
+      win(ixO^S,nw+istincking1_) = alpha_T(ixO^S,1)
+    case(istincking2_)
+      normconv(nw+istincking2_)            = 1.0_dp
+      win(ixO^S,nw+istincking2_) = alpha_T(ixO^S,2)
+    case(istincking3_)
+      normconv(nw+istincking3_)            = 1.0_dp
+      win(ixO^S,nw+istincking3_) = alpha_T(ixO^S,3)
+    case(istincking4_)
+      normconv(nw+istincking4_)            = 1.0_dp
+      win(ixO^S,nw+istincking4_) = alpha_T(ixO^S,4)
+    case(idtgas2_)
+      normconv(nw+idtgas2_)            = unit_time
+      call phys_get_cmax(w,x,ixI^L,ixO^L,2,cmax)
+      win(ixO^S,nw+idtgas2_) = cmax(ixO^S)
+    case(idtdust2_)
+      normconv(nw+idtdust2_)            = unit_time
+      call phys_get_cmax(w,x,ixI^L,ixO^L,2,cmax)
+      win(ixO^S,nw+idtdust2_) = cmax(ixO^S)
+    case default
        write(*,*)'is not implimented at specialvar_output in mod_user'
-     end select
-    end do Loop_iw
+    end select
+  end do Loop_iw
     !----------------------------------------------------
 
    !w(ixI^S,1:nw)=win(ixI^S,1:nw)
@@ -669,11 +794,57 @@ contains
     real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
 
     ! .. local ..
-
+    integer                         :: idust,idir
+    real(dp)                        :: small_dust_rho,coef
+    logical, dimension(ixI^S)       :: patch_correct,patch_slow
     !---------------------------------------------------
 
 
+    if(phys_config%dust_on) then
+     small_dust_rho = sn_wdust%mydust%myconfig%min_limit_rel
 
+     call phys_to_primitive(ixI^L,ixI^L,w,x)
+     ! handel small density dust
+     Loop_idust : do idust =1, dust_n_species
+      where(w(ixI^S, phys_ind%dust_rho(idust))<max(small_dust_rho*w(ixI^S,phys_ind%rho_),&
+         ism_surround(0)%mydust%myconfig%min_limit_abs))
+        w(ixI^S, phys_ind%dust_rho(idust))= 0.8* min(small_dust_rho*w(ixI^S,phys_ind%rho_),&
+             ism_surround(0)%mydust%myconfig%min_limit_abs)
+        patch_correct(ixI^S) = .true.
+      elsewhere
+        patch_correct(ixI^S) = .false.
+      end where
+      ! handel large density dust
+      where(w(ixI^S,phys_ind%rho_)<0.9*ism_surround(0)%myconfig%density)
+       where(w(ixI^S, phys_ind%dust_rho(idust))>ism_surround(0)%mydust%myconfig%max_limit_rel*w(ixI^S,phys_ind%rho_))
+        w(ixI^S, phys_ind%dust_rho(idust))=0.8*ism_surround(0)%mydust%myconfig%max_limit_rel*w(ixI^S,phys_ind%rho_)
+        patch_slow(ixI^S) = .true.
+       elsewhere
+        patch_slow(ixI^S) =.false.
+       end where
+      end where
+      ! handel large cmax in rarefied region
+      ! do idir = 1, ndim
+      !   call phys_get_cmax(w,x,ixI^L,ixO^L,idir,cmax)
+      !
+      ! end do
+
+
+    !  new_dvflag(ixI^S)=.true.
+    !  new_dfflag(ixI^S)=.true.
+
+    !  vt2(ixI^S) = 3.0d0*w(ixI^S,e_)/w(ixI^S, rho_)
+      Loop_idir1 : do idir = 1,ndim
+       where(patch_correct(ixI^S))
+        w(ixI^S, phys_ind%dust_mom(idir,idust))=0.0_dp
+       end where
+       where(patch_slow(ixI^S))
+               w(ixI^S, phys_ind%dust_mom(idir,idust))=w(ixI^S,phys_ind%mom(idir))
+       end where
+      end do   Loop_idir1
+     end do Loop_idust
+     call phys_to_conserved(ixI^L,ixI^L,w,x)
+    end if
 
   end subroutine process_grid_usr
   !---------------------------------------------------------------------
@@ -686,17 +857,74 @@ contains
     integer, parameter              :: ilevel_            = 2
     integer, parameter              :: ierror_lohner_rho_ = 3
     integer, parameter              :: ierror_lohner_p_   = 4
+    integer, parameter              :: idragfroce11_      = 5
+    integer, parameter              :: idragfroce12_      = 6
+    integer, parameter              :: idragfroce13_      = 7
+    integer, parameter              :: idragfroce14_      = 8
+    integer, parameter              :: idv11_             = 9
+    integer, parameter              :: idv12_             = 10
+    integer, parameter              :: idv13_             = 11
+    integer, parameter              :: idv14_             = 12
+    integer, parameter              :: idtgas1_           = 13
+    integer, parameter              :: idtdust11_         = 14
+    integer, parameter              :: idtdust12_         = 15
+    integer, parameter              :: idtdust13_         = 16
+    integer, parameter              :: idtdust14_         = 17
+    integer, parameter              :: istincking1_       = 18
+    integer, parameter              :: istincking2_       = 19
+    integer, parameter              :: istincking3_       = 20
+    integer, parameter              :: istincking4_       = 21
+    integer, parameter              :: idtgas2_           = 22
+    integer, parameter              :: idtdust2_          = 23
     !----------------------------------------------------
     Loop_iw : do  iw = 1,nwauxio
     select case(iw)
     case(iz_)
-      varnames(iz_) = 'zmetalicity'
+      varnames(iz_)               = 'zmetalicity'
     case(ilevel_)
-      varnames(ilevel_) = 'level'
+      varnames(ilevel_)           = 'level'
     case(ierror_lohner_rho_)
-      varnames(ierror_lohner_rho_) ='erroramrrho'
+      varnames(ierror_lohner_rho_)='erroramrrho'
     case(ierror_lohner_p_)
-      varnames(ierror_lohner_p_) ='erroamrp'
+      varnames(ierror_lohner_p_)  ='erroamrp'
+    case(idragfroce11_)
+      varnames(idragfroce11_)     ='dragfroce11'
+    case(idragfroce12_)
+      varnames(idragfroce12_)     ='dragfroce12'
+    case(idragfroce13_)
+      varnames(idragfroce13_)     ='dragfroce13'
+    case(idragfroce14_)
+      varnames(idragfroce14_)     ='dragfroce14'
+    case(idv11_)
+      varnames(idv11_)            ='dvdust11'
+    case(idv12_)
+      varnames(idv12_)            ='dvdust12'
+    case(idv13_)
+      varnames(idv13_)            ='dvdust13'
+    case(idv14_)
+      varnames(idv14_)            ='dvdust14'
+    case(idtgas1_)
+      varnames(idtgas1_)          ='dtgas1'
+    case(idtgas2_)
+      varnames(idtgas2_)          ='dtgas2'
+    case(idtdust11_)
+      varnames(idtdust11_)        ='dtdust11'
+    case(idtdust12_)
+      varnames(idtdust12_)        ='dtdust12'
+    case(idtdust13_)
+      varnames(idtdust13_)        ='dtdust13'
+    case(idtdust14_)
+      varnames(idtdust14_)        ='dtdust14'
+    case(idtdust2_)
+      varnames(idtdust2_)         ='dtgas2'
+    case(istincking1_)
+      varnames(istincking1_)      ='stincking1'
+    case(istincking2_)
+      varnames(istincking2_)      ='stincking2'
+    case(istincking3_)
+      varnames(istincking3_)      ='stincking3'
+    case(istincking4_)
+      varnames(istincking4_)      ='stincking4'
     end select
     end do Loop_iw
 

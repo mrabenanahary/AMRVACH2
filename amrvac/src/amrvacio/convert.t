@@ -353,7 +353,7 @@ subroutine getheadernames(wnamei,xandwnamei,outfilehead)
 character(len=name_len)   :: wnamei(1:nw+nwauxio),xandwnamei(1:ndim+nw+nwauxio)
 character(len=1024) :: outfilehead
 
-integer                           ::  space_position,iw
+integer                           ::  space_position,iw,ivar
 character(len=name_len)           ::  wname
 character(len=std_len),allocatable:: aux_variable_names(:)
 !character(len=std_len)::  scanstring
@@ -367,7 +367,13 @@ if (nwauxio>0) then
       call mpistop("usr_add_aux_names not defined")
    else
       if(nwauxio>0)allocate(aux_variable_names(1:nwauxio))
+      aux_variable_names=''
       call usr_add_aux_names(aux_variable_names)
+      Loop_ivar :  do ivar=1,nwauxio
+       if(LEN_TRIM(aux_variable_names(ivar))==0)then
+        write(aux_variable_names(ivar),FMT="(a,i2.2)") 'auxvar_',ivar
+       end if
+      end do Loop_ivar
    end if
 end if
 

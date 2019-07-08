@@ -54,17 +54,38 @@ module mod_physics
   type physconfig
     logical           :: ismhd
     logical           :: isrel
+    logical           :: SI_unit
+
     logical           :: dust_on
-    logical           :: tracer_on
     integer           :: dust_n_species
+    real(dp)          :: dust_small_density
+
     logical           :: energy
     real(dp)          :: gamma
+    real(dp)          :: adiab
+    logical           :: eos
+    logical           :: thermal_conduction
+    logical           :: radiative_cooling
+    logical           :: viscosity
+    logical           :: particles
     real(dp)          :: He_abundance
+
+    logical           :: tracer_on
     integer           :: n_tracer
+
     real(dp)          :: small_density
     real(dp)          :: small_pressure
     real(dp)          :: small_energy
-    real(dp)          :: dust_small_density
+    real(dp)          :: small_v2
+
+    logical           :: is4th_order
+    logical           :: compactres
+
+    integer           :: maxiterationNR
+    real(dp)          :: absaccNR
+    real(dp)          :: tolerNr
+    logical           :: checkNR
+    real(dp)          :: maxdspeed
     logical           :: chemical_on
     integer           :: chemical_n_species
     real(dp)          :: chemical_small_density
@@ -120,7 +141,7 @@ module mod_physics
 
      subroutine sub_get_cmax(w, x, ixI^L, ixO^L, idim, cmax)
        use mod_global_parameters
-       integer, intent(in)             :: ixI^L, ixO^L, idim
+       integer, intent(in)                :: ixI^L, ixO^L, idim
        real(kind=dp)      , intent(in)    :: w(ixI^S, nw), x(ixI^S, 1:^ND)
        real(kind=dp)      , intent(inout) :: cmax(ixI^S)
      end subroutine sub_get_cmax
@@ -128,7 +149,7 @@ module mod_physics
      subroutine sub_get_v_idim(w,x,ixI^L,ixO^L,idim,v)
        use mod_global_parameters
 
-       integer, intent(in)           :: ixI^L, ixO^L, idim
+       integer, intent(in)              :: ixI^L, ixO^L, idim
        real(kind=dp)      , intent(in)  :: w(ixI^S,nw), x(ixI^S,1:^ND)
        real(kind=dp)      , intent(out) :: v(ixI^S)
 
@@ -136,7 +157,7 @@ module mod_physics
 
      subroutine sub_get_cbounds(wLC, wRC, wLp, wRp, x, ixI^L, ixO^L, idim, cmax, cmin)
        use mod_global_parameters
-       integer, intent(in)             :: ixI^L, ixO^L, idim
+       integer, intent(in)                :: ixI^L, ixO^L, idim
        real(kind=dp)      , intent(in)    :: wLC(ixI^S, nw), wRC(ixI^S, nw)
        real(kind=dp)      , intent(in)    :: wLp(ixI^S, nw), wRp(ixI^S, nw)
        real(kind=dp)      , intent(in)    :: x(ixI^S, 1:^ND)
@@ -245,6 +266,47 @@ module mod_physics
   end interface
 
 contains
+
+  subroutine phys_default_config
+
+        phys_config%ismhd                 = .false.
+        phys_config%isrel                 = .false.
+        phys_config%SI_unit               = .false.
+
+        phys_config%dust_on               = .false.
+        phys_config%dust_n_species        = 0
+        phys_config%dust_small_density    = -1.0_dp
+
+        phys_config%energy               = .true.
+        phys_config%gamma                = 5.d0/3.0d0
+        phys_config%adiab                = 1.0_dp
+        phys_config%eos                  = .false.
+        phys_config%thermal_conduction   = .false.
+        phys_config%radiative_cooling    = .false.
+        phys_config%viscosity            = .false.
+        phys_config%particles            = .false.
+        phys_config%He_abundance         = 0.1_dp
+
+        phys_config%tracer_on            = .false.
+        phys_config%n_tracer             = 0
+
+        phys_config%small_density        = 0.0_dp
+        phys_config%small_pressure       = 0.0_dp
+        phys_config%small_energy         = 0.0_dp
+        phys_config%small_v2             = 0.0_dp
+        phys_config%is4th_order          = .false.
+        phys_config%compactres           = .false.
+        phys_config%maxiterationNR       = 1000
+        phys_config%absaccNR             = 1.0d-12
+        phys_config%tolerNr              = 1.0d-9
+        phys_config%checkNR              =.true.
+        phys_config%maxdspeed            = 1.0d-9
+        phys_config%chemical_on          = .false.
+        phys_config%chemical_n_species   = 0
+        phys_config%chemical_small_density = 0.0_dp
+  end subroutine phys_default_config
+
+
 
   subroutine phys_check()
     use mod_global_parameters, only: nw, ndir

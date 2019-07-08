@@ -112,6 +112,7 @@ module mod_dust
   public :: dust_init
   public :: dust_physical_units
   public :: dust_get_dt
+  public :: dust_get_tstop
   public :: dust_get_flux
   public :: dust_get_cmax
   public :: dust_get_flux_prim
@@ -126,6 +127,7 @@ module mod_dust
   public :: dust_average_dspeed
   public :: dust_average_dustdensity
   public :: get_3d_dragforce
+  public :: dust_get_sticking
 contains
 
   subroutine dust_init(phys_indices_inuse,phys_config_inuse,g_rho, g_mom, g_energy)
@@ -294,13 +296,13 @@ contains
     real(kind=dp), intent(in)       :: x(ixI^S, 1:ndim)
     integer                         :: idust, idir
 
-    do idust = 1, dust_inuse%myconfig%n_species
+    Loop_idust : do idust = 1, dust_inuse%myconfig%n_species
       ! Convert velocity to momentum
-      do idir = 1, ndir
+      Loop_idir : do idir = 1, ndir
         w(ixO^S, dust_mom(idir, idust)) = w(ixO^S, dust_rho(idust)) * &
              w(ixO^S, dust_mom(idir, idust))
-      end do
-    end do
+      end do Loop_idir
+    end do Loop_idust
   end subroutine dust_to_conserved
 
   subroutine dust_to_primitive(ixI^L, ixO^L, w, x)
@@ -377,7 +379,7 @@ contains
     where (w(ixO^S, dust_rho(idust)) > dust_inuse%myconfig%min_rho)
       vdust = w(ixO^S, dust_mom(idim, idust)) / w(ixO^S, dust_rho(idust))
     elsewhere
-      vdust                       = 0.0d0
+      vdust                       = 0.0_dp
     end where
   end function get_vdust
 
@@ -422,12 +424,14 @@ contains
          fdrag(ixI^S, 1:ndir, 1:dust_inuse%myconfig%n_species)
     real(kind=dp), intent(in)        :: ptherm(ixI^S), vgas(ixI^S, ndir)
     logical, intent(out)            :: fd_flag(ixI^S)
+    !.. local ..
     real(kind=dp), dimension(ixI^S) :: vt2, deltav, fd, vdust
     real(kind=dp)                   :: alpha_T(ixI^S, 1:dust_inuse%myconfig%n_species)
     integer                         :: idust, idir, it_diff
     real(kind=dp)                   :: K,coef
     logical, save                   :: it_dustreset
     integer, save                   :: it_dustsave =-100000
+    logical, dimension(ixI^S)       :: patch_dust_on
     !---------------------------------
     vt2(ixO^S) = 3.0d0*ptherm(ixO^S)/w(ixO^S, gas_rho_)
 
@@ -447,25 +451,30 @@ contains
       if(dust_inuse%myconfig%it_diff>0)coef=(real(it,kind=dp)/real(it_diff,kind=dp))**4.0_dp
 
 
-      Loop_idir1 : do idir = 1, ndir
+      Loop_idir_kwok : do idir = 1, ndir
 
-        Loop_idust1: do idust = 1, dust_inuse%myconfig%n_species
-          where(w(ixO^S, dust_rho(idust)) > dust_inuse%myconfig%min_rho)
+        Loop_idust_kwok: do idust = 1, dust_inuse%myconfig%n_species
+          patch_dust_on(ixO^S) = w(ixO^S, dust_rho(idust)) > dust_inuse%myconfig%min_rho
+          where(patch_dust_on(ixO^S))
             vdust(ixO^S)  = w(ixO^S, dust_mom(idir, idust)) / w(ixO^S, dust_rho(idust))
             deltav(ixO^S) = (vgas(ixO^S, idir)-vdust(ixO^S))
-
+          end where
+          where(patch_dust_on(ixO^S))
+            where(dabs(deltav(ixO^S))>smalldouble)
              ! 0.75 from sticking coefficient
              fd(ixO^S)     = 0.75d0*w(ixO^S, dust_rho(idust))*w(ixO^S, gas_rho_)*deltav(ixO^S) &
                   / (dust_density(idust) * dust_size(idust))
 
              ! 0.75 from spherical grainvolume
              fd(ixO^S)     = -fd(ixO^S)*0.75d0*dsqrt(vt2(ixO^S) + deltav(ixO^S)**2.0_dp)
-
+            elsewhere
+             fd(ixO^S) = 0.0d0
+            end where
           elsewhere
             fd(ixO^S) = 0.0d0
           end where
-          call  dust_handle_largevariation_dragforce(.false.,ixI^L,ixO^L,&
-                                                         fd,fd_flag,w)
+!          call  dust_handle_largevariation_dragforce(.false.,ixI^L,ixO^L,&
+!                                                         fd,fd_flag,w)
 
          !  test_todelete : if(it<=it_diff)then
         !    fd(ixO^S) = coef*fd(ixO^S)
@@ -483,9 +492,9 @@ contains
           fdrag(ixO^S, idir, idust) = fd(ixO^S)
 
 
-        end do Loop_idust1
+        end do Loop_idust_kwok
 
-      end do Loop_idir1
+      end do Loop_idir_kwok
 
     case ('sticking') ! Calculate sticking coefficient based on the gas and dust temperatures
       !  Equation from Decin et al. 2006
@@ -494,18 +503,25 @@ contains
       call dust_get_sticking(w, x, ixI^L, ixO^L, alpha_T, ptherm)
 
       Loop_idir2 : do idir = 1, ndir
-        do idust = 1, dust_inuse%myconfig%n_species
-          where(w(ixO^S, dust_rho(idust))>dust_inuse%myconfig%min_rho)
-            vdust(ixO^S)  = w(ixO^S,dust_mom(idir, idust)) / w(ixO^S, dust_rho(idust))
+        Loop_idust_sticking : do idust = 1, dust_inuse%myconfig%n_species
+          patch_dust_on(ixO^S) = w(ixO^S, dust_rho(idust)) > dust_inuse%myconfig%min_rho
+          where(patch_dust_on(ixO^S))
+            vdust(ixO^S)  = w(ixO^S, dust_mom(idir, idust)) / w(ixO^S, dust_rho(idust))
             deltav(ixO^S) = (vgas(ixO^S, idir)-vdust(ixO^S))
-            fd(ixO^S)     = (one-alpha_T(ixO^S,idust)) * w(ixO^S, dust_rho(idust))*w(ixO^S, gas_rho_) * &
+          end where
+          where(patch_dust_on(ixO^S))
+            where(dabs(deltav(ixO^S))>smalldouble)
+             fd(ixO^S)     = (one-alpha_T(ixO^S,idust)) * w(ixO^S, dust_rho(idust))*w(ixO^S, gas_rho_) * &
                  deltav(ixO^S) / (dust_density(idust)*dust_size(idust))
-            fd(ixO^S)     = -fd(ixO^S) * 0.75d0 * dsqrt(vt2(ixO^S) + deltav(ixO^S)**2)
+             fd(ixO^S)     = -fd(ixO^S) * 0.75d0 * dsqrt(vt2(ixO^S) + deltav(ixO^S)**2)
+            else where
+             fd(ixO^S) = 0.0d0
+            end where
           else where
             fd(ixO^S) = 0.0d0
           end where
           fdrag(ixO^S, idir,idust) = fd(ixO^S)
-        end do
+        end do Loop_idust_sticking
       end do Loop_idir2
     case('linear') !linear with Deltav, for testing (see Laibe & Price 2011)
       K = 3.4d5 / dust_inuse%myconfig%n_species
@@ -552,10 +568,11 @@ contains
     Tgas(ixO^S) = (ptherm(ixO^S) / w(ixO^S, gas_rho_))*&
         dust_temperature_norma_coef
 
-    do idust = 1, dust_inuse%myconfig%n_species
-      alpha_T(ixO^S,idust) =  max(0.35d0 * exp(-sqrt((Tgas(ixO^S) + &
-           alpha_T(ixO^S,idust))/5.0d2))+0.1d0, smalldouble)
-    end do
+    Loop_idust_sticking1 : do idust = 1, dust_inuse%myconfig%n_species
+      alpha_T(ixO^S,idust) =  max(0.35_dp * exp(-sqrt((Tgas(ixO^S) + &
+           alpha_T(ixO^S,idust))/5.0d2))+0.1_dp, smalldouble)
+    end do Loop_idust_sticking1
+
   end subroutine dust_get_sticking
 
   !> Returns dust temperature (in K), either as constant or based on equ. 5.41,
@@ -584,13 +601,13 @@ contains
 
       select case( trim(dust_species) )
       case( 'graphite' )
-        do idust = 1, dust_inuse%myconfig%n_species
+        Loop_idust_ism_graphite : do idust = 1, dust_inuse%myconfig%n_species
           Td(ixO^S, idust) = 15.8d0*((0.0001d0/(dust_size(idust)*length_convert_factor))**0.06d0)
-        end do
+        end do Loop_idust_ism_graphite
       case( 'silicate' )
-        do idust = 1, dust_inuse%myconfig%n_species
+        Loop_idust_ism_silicate : do idust = 1, dust_inuse%myconfig%n_species
           Td(ixO^S, idust) = 13.6d0*((0.0001d0/(dust_size(idust)*length_convert_factor))**0.06d0)
-        end do
+        end do Loop_idust_ism_silicate
       case default
         call mpistop( "=== Dust species undetermined===" )
       end select
@@ -653,9 +670,9 @@ contains
         active = .true.
 
         call phys_get_pthermal(wCT, x, ixI^L, ixO^L, ptherm)
-        do idir=1,ndir
+        Loop_idir0 : do idir=1,ndir
           vgas(ixO^S,idir)=wCT(ixO^S,gas_mom(idir))/wCT(ixO^S,gas_rho_)
-        end do
+        end do Loop_idir0
 
         call get_3d_dragforce(ixI^L, ixO^L, wCT, x, fdrag, ptherm, vgas,fd_flag)
 
@@ -711,11 +728,12 @@ contains
     real(kind=dp), dimension(ixI^S,1:dust_inuse%myconfig%n_species) :: alpha_T
     real(kind=dp)                              :: K
     integer                                    :: idust, idir
+    logical, dimension(ixI^S)                  :: patch_dust_on
     !----------------------------------------------
     call phys_get_pthermal(w, x, ixI^L, ixO^L, ptherm)
-    do idir = 1, ndir
+    Loop_idir : do idir = 1, ndir
       vgas(ixO^S,idir)=w(ixO^S,gas_mom(idir))/w(ixO^S,gas_rho_)
-    end do
+    end do Loop_idir
     select case( TRIM(dust_inuse%myconfig%method) )
 
     case( 'Kwok' ) ! assume sticking coefficient equals 0.25
@@ -724,56 +742,71 @@ contains
       vt2(ixO^S) = 3.0d0*ptherm(ixO^S)/w(ixO^S, gas_rho_)
 
       ! Tgas, mu = mean molecular weight
-      ptherm(ixO^S) = ( ptherm(ixO^S) * w_convert_factor(gas_e_) * &
-           mH_cgs*dust_inuse%myconfig%gas_mu) / (w(ixO^S, gas_rho_) * &
-           w_convert_factor(gas_rho_)*kB_cgs)
+      ! ptherm(ixO^S) = ( ptherm(ixO^S) * w_convert_factor(gas_e_) * &
+      !      mH_cgs*dust_inuse%myconfig%gas_mu) / (w(ixO^S, gas_rho_) * &
+      !      w_convert_factor(gas_rho_)*kB_cgs)
 
-      do idir = 1, ndir
-        do idust = 1, dust_inuse%myconfig%n_species
-          where(w(ixO^S, dust_rho(idust))>dust_inuse%myconfig%min_rho)
+      Loop_idir_kwok : do idir = 1, ndir
+        Loop_idust_kwok : do idust = 1, dust_inuse%myconfig%n_species
+          patch_dust_on(ixO^S) = w(ixO^S, dust_rho(idust)) > dust_inuse%myconfig%min_rho
+          where(patch_dust_on(ixO^S))
             vdust(ixO^S)  = w(ixO^S,dust_mom(idir, idust))/w(ixO^S, dust_rho(idust))
             deltav(ixO^S) = (vgas(ixO^S, idir)-vdust(ixO^S))
-            tstop(ixO^S)  = 4.0d0*(dust_density(idust)*dust_size(idust))/ &
-                 (3.0d0*(0.75d0)*dsqrt(vt2(ixO^S) + &
-                 deltav(ixO^S)**2)*(w(ixO^S, dust_rho(idust)) + &
+          end where
+          where(patch_dust_on(ixO^S))
+            where(dabs(deltav(ixO^S))>smalldouble)
+              tstop(ixO^S)  = 4.0_dp*(dust_density(idust)*dust_size(idust))/ &
+                 (3.0_dp*(0.75_dp)*dsqrt(vt2(ixO^S) + &
+                 deltav(ixO^S)**2.0_dp)*(w(ixO^S, dust_rho(idust)) + &
                  w(ixO^S, gas_rho_)))
+            else where
+              tstop(ixO^S) = bigdouble
+            end where
           else where
             tstop(ixO^S) = bigdouble
           end where
-        end do
-      end do
+          dtdust(idust) = min(minval(tstop(ixO^S)), dtdust(idust))
+        end do Loop_idust_kwok
+      end do Loop_idir_kwok
 
       dtnew = min(minval(dtdiffpar*dtdust(:)), dtnew)
 
     case( 'sticking' ) ! Calculate sticking coefficient based on the gas temperature
       dtdust(:) = bigdouble
 
-      vt2(ixO^S) = 3.0d0*ptherm(ixO^S)/w(ixO^S, gas_rho_)
+      vt2(ixO^S) = 3.0_dp*ptherm(ixO^S)/w(ixO^S, gas_rho_)
 
       ! Sticking coefficient
       call dust_get_sticking(w, x, ixI^L, ixO^L, alpha_T, ptherm)
 
       ! Tgas, mu = mean molecular weight
-      ptherm(ixO^S) = ( ptherm(ixO^S)*w_convert_factor(gas_e_) * &
-           mH_cgs*dust_inuse%myconfig%gas_mu) / (w(ixO^S, gas_rho_) * &
-           w_convert_factor(gas_rho_)*kB_cgs)
+      ! ptherm(ixO^S) = ( ptherm(ixO^S)*w_convert_factor(gas_e_) * &
+      !      mH_cgs*dust_inuse%myconfig%gas_mu) / (w(ixO^S, gas_rho_) * &
+      !      w_convert_factor(gas_rho_)*kB_cgs)
 
-      do idir = 1, ndir
-        do idust = 1, dust_inuse%myconfig%n_species
-          where(w(ixO^S, dust_rho(idust))>dust_inuse%myconfig%min_rho)
+      Loop_idir_sticking: do idir = 1, ndir
+        Loop_idust_sticking: do idust = 1, dust_inuse%myconfig%n_species
+          patch_dust_on(ixO^S) = w(ixO^S, dust_rho(idust)) > dust_inuse%myconfig%min_rho
+          where(patch_dust_on(ixO^S))
             vdust(ixO^S)  = w(ixO^S,dust_mom(idir, idust))/w(ixO^S, dust_rho(idust))
             deltav(ixO^S) = (vgas(ixO^S, idir)-vdust(ixO^S))
-            tstop(ixO^S)  = 4.0d0*(dust_density(idust)*dust_size(idust))/ &
-                 (3.0d0*(one-alpha_T(ixO^S,idust))*dsqrt(vt2(ixO^S) + &
-                 deltav(ixO^S)**2)*(w(ixO^S, dust_rho(idust)) + &
+          end where
+          where(patch_dust_on(ixO^S))
+            where(dabs(deltav(ixO^S))>smalldouble)
+              tstop(ixO^S)  = 4.0_dp*(dust_density(idust)*dust_size(idust))/ &
+                 (3.0_dp*(one-alpha_T(ixO^S,idust))*dsqrt(vt2(ixO^S) + &
+                 deltav(ixO^S)**2.0_dp)*(w(ixO^S, dust_rho(idust)) + &
                  w(ixO^S, gas_rho_)))
+            else where
+              tstop(ixO^S) = bigdouble
+            end where
           else where
             tstop(ixO^S) = bigdouble
           end where
 
           dtdust(idust) = min(minval(tstop(ixO^S)), dtdust(idust))
-        end do
-      end do
+        end do Loop_idust_sticking
+      end do Loop_idir_sticking
 
       dtnew = min(minval(dtdiffpar*dtdust(:)), dtnew)
 
@@ -823,7 +856,7 @@ contains
     real(kind=dp)                           :: vdust(ixI^S)
     integer                                 :: idust
 
-    do idust = 1, dust_inuse%myconfig%n_species
+    Loop_idust_cmax : do idust = 1, dust_inuse%myconfig%n_species
       vdust(ixO^S) = get_vdust(w, ixI^L, ixO^L, idim, idust)
 
       if (present(cmin)) then
@@ -832,7 +865,7 @@ contains
       else
         cmax(ixO^S) = max(cmax(ixO^S), abs(vdust(ixO^S)))
       end if
-    end do
+    end do Loop_idust_cmax
   end subroutine dust_get_cmax
 
   ! Note that cmax and cmin are assumed to be initialized
@@ -1137,4 +1170,107 @@ contains
       end if
       {enddo^D&\}
     end  subroutine dust_average_dustdensity
+
+
+    !> Get dt related to dust and gas stopping time (Laibe 2011)
+    subroutine dust_get_tstop(ixI^L, ixO^L, idust,idir,dx^D, x,w,tstop)
+      use mod_global_parameters
+
+      integer, intent(in)              :: ixI^L, ixO^L,idust,idir
+      real(kind=dp), intent(in)        :: dx^D, x(ixI^S, 1:^ND)
+      real(kind=dp), intent(in)        :: w(ixI^S, 1:nw)
+      real(kind=dp), intent(out)       :: tstop(ixI^S)
+      ! .. local ..
+      real(kind=dp)                              :: vgas(ixI^S, ndir)
+      real(kind=dp), dimension(1:dust_inuse%myconfig%n_species):: dtdust
+      real(kind=dp), dimension(ixI^S)            :: vt2, deltav, vdust,ptherm
+      real(kind=dp), dimension(ixI^S,1:dust_inuse%myconfig%n_species) :: alpha_T
+      real(kind=dp)                              :: K
+      logical, dimension(ixI^S)                  :: patch_dust_on
+      !----------------------------------------------
+      call phys_get_pthermal(w, x, ixI^L, ixO^L, ptherm)
+      vgas(ixO^S,idir)=w(ixO^S,gas_mom(idir))/w(ixO^S,gas_rho_)
+      select case( TRIM(dust_inuse%myconfig%method) )
+
+      case( 'Kwok' ) ! assume sticking coefficient equals 0.25
+        dtdust(:) = bigdouble
+
+        vt2(ixO^S) = 3.0d0*ptherm(ixO^S)/w(ixO^S, gas_rho_)
+
+        ! Tgas, mu = mean molecular weight
+        ! ptherm(ixO^S) = ( ptherm(ixO^S) * w_convert_factor(gas_e_) * &
+        !      mH_cgs*dust_inuse%myconfig%gas_mu) / (w(ixO^S, gas_rho_) * &
+        !      w_convert_factor(gas_rho_)*kB_cgs)
+
+          patch_dust_on(ixO^S) = w(ixO^S, dust_rho(idust)) > dust_inuse%myconfig%min_rho
+          where(patch_dust_on(ixO^S))
+            vdust(ixO^S)  = w(ixO^S,dust_mom(idir, idust))/w(ixO^S, dust_rho(idust))
+            deltav(ixO^S) = (vgas(ixO^S, idir)-vdust(ixO^S))
+          end where
+
+          where(patch_dust_on(ixO^S))
+            where(dabs(deltav(ixO^S))>smalldouble)
+              tstop(ixO^S)  = 4.0_dp*(dust_density(idust)*dust_size(idust))/ &
+                   (3.0_dp*(0.75_dp)*dsqrt(vt2(ixO^S) + &
+                   deltav(ixO^S)**2.0_dp)*(w(ixO^S, dust_rho(idust)) + &
+                   w(ixO^S, gas_rho_)))
+            else where
+              tstop(ixO^S) = bigdouble
+            end where
+            else where
+              tstop(ixO^S) = bigdouble
+            end where
+
+      case( 'sticking' ) ! Calculate sticking coefficient based on the gas temperature
+
+        vt2(ixO^S) = 3.0d0*ptherm(ixO^S)/w(ixO^S, gas_rho_)
+
+        ! Sticking coefficient
+        call dust_get_sticking(w, x, ixI^L, ixO^L, alpha_T, ptherm)
+
+        ! Tgas, mu = mean molecular weight
+        ! ptherm(ixO^S) = ( ptherm(ixO^S)*w_convert_factor(gas_e_) * &
+        !      mH_cgs*dust_inuse%myconfig%gas_mu) / (w(ixO^S, gas_rho_) * &
+        !      w_convert_factor(gas_rho_)*kB_cgs)
+          patch_dust_on(ixO^S) = w(ixO^S, dust_rho(idust)) > dust_inuse%myconfig%min_rho
+          where(patch_dust_on(ixO^S))
+            vdust(ixO^S)  = w(ixO^S,dust_mom(idir, idust))/w(ixO^S, dust_rho(idust))
+            deltav(ixO^S) = (vgas(ixO^S, idir)-vdust(ixO^S))
+          end where
+          where(patch_dust_on(ixO^S))
+            where(dabs(deltav(ixO^S))>smalldouble)
+              tstop(ixO^S)  = 4.0_dp*(dust_density(idust)*dust_size(idust))/ &
+                   (3.0_dp*(one-alpha_T(ixO^S,idust))*dsqrt(vt2(ixO^S) + &
+                   deltav(ixO^S)**2.0_dp)*(w(ixO^S, dust_rho(idust)) + &
+                   w(ixO^S, gas_rho_)))
+            else where
+              tstop(ixO^S) = bigdouble
+            end where
+            else where
+              tstop(ixO^S) = bigdouble
+            end where
+
+
+
+      case('linear') !linear with Deltav, for testing (see Laibe & Price 2011)
+        K = 3.4d5/dust_inuse%myconfig%n_species
+        dtdust(:) = bigdouble
+
+
+          where(w(ixO^S, dust_rho(idust))>dust_inuse%myconfig%min_rho)
+            tstop(ixO^S)  = (w(ixO^S, dust_rho(idust))*w(ixO^S, gas_rho_))/ &
+                 (K*(w(ixO^S, dust_rho(idust)) + w(ixO^S, gas_rho_)))
+          else where
+            tstop(ixO^S) = bigdouble
+          end where
+
+
+      case('none')
+        ! no dust timestep
+      case default
+        call mpistop( "=== This dust method has not been implemented===" )
+      end select
+
+
+    end subroutine dust_get_tstop
 end module mod_dust

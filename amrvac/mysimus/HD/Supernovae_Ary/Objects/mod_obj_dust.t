@@ -177,11 +177,11 @@ contains
     Loop_idust01 : do idust = self%myconfig%idust_first,self%myconfig%idust_last
       if(all(self%the_ispecies(idust)%patch(ixO^S)))cycle Loop_idust01
       where(.not.self%patch(ixO^S))
-        w(ixO^S,dust_rho(idust)) = 1.1d-2*self%myconfig%min_limit_abs
+        w(ixO^S,phys_ind%dust_rho(idust)) = 1.1d-2*self%myconfig%min_limit_abs
       end where
       Loop_idir : do idir=1,ndir
           where(.not.self%patch(ixO^S))
-           w(ixO^S,dust_mom(idir,idust)) = self%myconfig%velocity(idir)
+           w(ixO^S,phys_ind%dust_mom(idir,idust)) = self%myconfig%velocity(idir)
           end where
       end do Loop_idir
     end do Loop_idust01
@@ -221,7 +221,7 @@ contains
        Loop_idust2 : do idust = self%myconfig%idust_first, self%myconfig%idust_last
         i_dust_loc = idust-self%myconfig%idust_first+1
         where(self%patch(ixO^S))
-         w(ixO^S,dust_rho(idust)) = self%myconfig%density(i_dust_loc)&
+         w(ixO^S,phys_ind%dust_rho(idust)) = self%myconfig%density(i_dust_loc)&
                                     / real(self%myconfig%n_species,kind=dp)
         end where
       end do Loop_idust2
@@ -229,7 +229,7 @@ contains
 
        Loop_idust3 : do idust = self%myconfig%idust_first, self%myconfig%idust_last
         where(self%patch(ixO^S))
-         w(ixO^S,dust_rho(idust)) = dust_frac_loc*w(ixO^S,phys_ind%rho_)&
+         w(ixO^S,phys_ind%dust_rho(idust)) = dust_frac_loc*w(ixO^S,phys_ind%rho_)&
                                     / real(self%myconfig%n_species,kind=dp)
         end where
       end do Loop_idust3
@@ -245,10 +245,10 @@ contains
        dr_dust=0.5_dp*(dust_size(max(idust-1,self%myconfig%idust_first))-&
                        dust_size(min(idust+1,self%myconfig%idust_last)))
        where(self%patch(ixO^S))
-        w(ixO^S,dust_rho(idust)) = w(ixO^S,phys_ind%rho_)*dust_frac_loc*&
+        w(ixO^S,phys_ind%dust_rho(idust)) = w(ixO^S,phys_ind%rho_)*dust_frac_loc*&
            half*(dr_dust/dsqrt(dust_size(idust))&
            / (dsqrt(dust_size(self%myconfig%idust_first))-dsqrt(dust_size(self%myconfig%idust_last))))
-        w(ixO^S,dust_rho(idust)) = w(ixO^S,dust_rho(idust)) *fprofile(ixO^S)
+        w(ixO^S,phys_ind%dust_rho(idust)) = w(ixO^S,phys_ind%dust_rho(idust)) *fprofile(ixO^S)
        end where
       end do Loop_idust4
 
@@ -263,7 +263,7 @@ contains
      Loop_idust5 : do idust = self%myconfig%idust_first, self%myconfig%idust_last
       Loop_idir0 : do idir=1,ndir
       where(self%patch(ixO^S))
-       w(ixO^S,dust_mom(idir,idust)) = w(ixO^S,phys_ind%mom(idir))
+       w(ixO^S,phys_ind%dust_mom(idir,idust)) = w(ixO^S,phys_ind%mom(idir))
       end where
      end do Loop_idir0
     end do Loop_idust5
@@ -271,7 +271,7 @@ contains
      Loop_idust6 : do idust = self%myconfig%idust_first, self%myconfig%idust_last
       Loop_idir : do idir=1,ndir
        where(self%patch(ixO^S))
-       w(ixO^S,dust_mom(idir,idust)) = self%myconfig%velocity(idir)
+       w(ixO^S,phys_ind%dust_mom(idir,idust)) = self%myconfig%velocity(idir)
        end where
       end do Loop_idir
      end do Loop_idust6
@@ -298,17 +298,17 @@ contains
 
      ! handel small density dust
      Loop_idust : do idust =self%myconfig%idust_first, self%myconfig%idust_last
-      where(w(ixI^S, dust_rho(idust))<max(small_dust_rho*w(ixI^S,rho_),&
+      where(w(ixI^S, phys_ind%dust_rho(idust))<max(small_dust_rho*w(ixI^S,phys_ind%rho_),&
          self%myconfig%min_limit_abs))
-        w(ixI^S, dust_rho(idust))= 0.8* min(small_dust_rho*w(ixI^S,rho_),&
+        w(ixI^S, phys_ind%dust_rho(idust))= 0.8* min(small_dust_rho*w(ixI^S,phys_ind%rho_),&
              self%myconfig%min_limit_abs)
         patch_correct(ixI^S) = .true.
       elsewhere
         patch_correct(ixI^S) = .false.
       end where
       ! handel large density dust
-      where(w(ixI^S, dust_rho(idust))>self%myconfig%max_limit_rel*w(ixI^S,rho_))
-        w(ixI^S, dust_rho(idust))=0.8*self%myconfig%max_limit_rel*w(ixI^S,rho_)
+      where(w(ixI^S, phys_ind%dust_rho(idust))>self%myconfig%max_limit_rel*w(ixI^S,phys_ind%rho_))
+        w(ixI^S, phys_ind%dust_rho(idust))=0.8*self%myconfig%max_limit_rel*w(ixI^S,phys_ind%rho_)
         patch_slow(ixI^S) = .true.
       elsewhere
         patch_slow(ixI^S) =.false.
@@ -320,7 +320,7 @@ contains
        where(patch_correct(ixI^S))
         w(ixI^S, dust_mom(idir,idust))=0.0_dp
        elsewhere(patch_slow(ixI^S))
-        w(ixI^S, dust_mom(idir,idust))=w(ixI^S,mom(idir))
+        w(ixI^S, phys_ind%dust_mom(idir,idust))=w(ixI^S,phys_ind%mom(idir))
        end where
       end do Loop_idir1
      end do  Loop_idust
@@ -345,11 +345,11 @@ contains
        kB=kB_cgs
      end if
      self%myconfig%idust_last=(self%myconfig%idust_first-1) +self%myconfig%n_species
-    if(is_frac) then
-      dust_frac_loc=dust_frac/(1.0_dp-dust_frac)
-    else
-      dust_frac_loc=dust_frac
-    end if
+     if(is_frac) then
+       dust_frac_loc=dust_frac/(1.0_dp-dust_frac)
+     else
+       dust_frac_loc=dust_frac
+     end if
      cond_size_off : if(any(self%myconfig%sizes(1:self%myconfig%n_species)<=smalldouble))then
 
       select case(self%myconfig%distrub_func)

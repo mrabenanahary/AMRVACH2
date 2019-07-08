@@ -457,8 +457,8 @@ end    subroutine usr_supernovae_remnant_write_setting
       end if
      call self%mydust%set_patch(ixI^L,ixO^L,self%patch)
      self%mydust%myconfig%velocity=self%myconfig%velocity_init
-      dust_is_frac=.true.
-    call self%mydust%set_w(ixI^L,ixO^L,qt,dust_is_frac,self%myconfig%dust_frac,fprofile,x,w)
+     dust_is_frac=.true.
+     call self%mydust%set_w(ixI^L,ixO^L,qt,dust_is_frac,self%myconfig%dust_frac,fprofile,x,w)
   end if cond_dust_on
  end subroutine usr_supernovae_remnant_set_w
 !===========================================================
