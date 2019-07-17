@@ -645,8 +645,10 @@ contains
     !----------------------------------------------------
     w(ixI^S,1:nw) = win(ixI^S,1:nw)
     level = node(plevel_,saveigrid)
-    call phys_get_pthermal(w, x, ixI^L, ixI^L, ptherm)
-    call dust_get_sticking(w, x, ixI^L, ixO^L, alpha_T, ptherm)
+    if(phys_config%dust_on)then
+     call phys_get_pthermal(w, x, ixI^L, ixI^L, ptherm)
+     call dust_get_sticking(w, x, ixI^L, ixO^L, alpha_T, ptherm)
+    end if 
     Loop_idir1 : do idir=1,ndir
       vgas(ixI^S,idir)=w(ixI^S,phys_ind%mom(idir))/w(ixI^S,phys_ind%rho_)
       Loop_idust1 :  do idust = 1,phys_config%dust_n_species
