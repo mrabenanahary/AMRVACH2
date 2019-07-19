@@ -215,6 +215,7 @@ contains
     phys_check_params        => hd_check_params
     phys_check_w             => hd_check_w
     phys_get_pthermal        => hd_get_pthermal
+    phys_get_temperature     => hd_get_temperature
     phys_write_info          => hd_write_info
     phys_handle_small_values => hd_handle_small_values
     phys_angmomfix           => hd_angmomfix
@@ -227,7 +228,7 @@ contains
     call hd_physical_units
 
     if (hd_dust) call dust_init(hd_ind,hd_config,rho_, mom(:), e_)
-
+    if(hd_config%chemical_on)call chemical_init(hd_ind,hd_config,rho_,mom,e_)
     call hd_fill_convert_factor
 
 
@@ -692,8 +693,9 @@ contains
     real(dp), intent(out)        :: temperature(ixI^S)
     real(dp)                     :: pth(ixI^S)
     !----------------------------------------------------
-    call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
-    temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
+     
+   call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
+   temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
   end subroutine hd_get_temperature
 
 

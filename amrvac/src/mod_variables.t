@@ -71,8 +71,8 @@ contains
       prim_wnames(nwflux) = name_cons
       cons_wnames(nwflux) = name_prim
     else
-      write(cons_wnames(nwflux),"(A,I0)") name_cons, ix
-      write(prim_wnames(nwflux),"(A,I0)") name_prim, ix
+      write(cons_wnames(nwflux),"(A,I0)") trim(name_cons), ix
+      write(prim_wnames(nwflux),"(A,I0)") trim(name_prim), ix
     end if
   end function var_set_fluxvar
 

@@ -473,7 +473,7 @@ contains
 
     if(it_max==biginteger .and. time_max==bigdouble.and.mype==0) write(uniterr,*) &
          'Warning in read_par_files: it_max or time_max not given!'
-
+    time_max = time_max/unit_time
     do level=1,nlevelshi
        if(flux_scheme(level)=='tvd'.and.time_integrator/='onestep') &
             call mpistop(" tvd is onestep method, reset time_integrator='onestep'")
