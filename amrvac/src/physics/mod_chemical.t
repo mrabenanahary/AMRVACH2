@@ -44,16 +44,16 @@ module mod_chemical
     real(kind=dp) :: colf_T0
   end type chemical_coef_reaction
 
-  type(chemical_coef_reaction),pointer :: chemical_const
+  type(chemical_coef_reaction) :: chemical_const
   type theion
     integer                              :: myind_
-    type(chemical_coef_reaction),pointer :: myreccoef
+    type(chemical_coef_reaction) :: myreccoef
   end type theion
 
   type associate_element
     logical                              :: react_on
     logical                              :: allowed
-    type(chemical_coef_reaction),pointer :: myreccoef
+    type(chemical_coef_reaction) :: myreccoef
   end type associate_element
 
 
@@ -116,7 +116,6 @@ contains
 
     phys_config_inuse%chemical_n_species     =  thechemical%myconfig%n_species
     phys_config_inuse%chemical_small_density = thechemical%myconfig%small_density
-
 
 
   !  chemical_const%colf_a0 = 5.83d-11/dsqrt(unit_temperature)
@@ -200,11 +199,11 @@ contains
     type(phys_variables_indices), intent(inout)  :: phys_indices_inuse
     ! .. local ..
     integer                                      :: i_elem,i_chemical,i_ion
-    character(len=20)                            :: elem
+    character(len=std_len)                       :: elem
   !--------------------------------------------
       i_elem = 1
       Loop_i_chemical1 : do i_chemical = 1, self_ind%myconfig%n_species
-        write(elem, "(A,A)") self_ind%element(i_chemical)%elem_name, "_"
+        write(elem, "(A,A)") trim(self_ind%element(i_chemical)%elem_name), "_"
         Loop_ionisation0 : do i_ion =self_ind%element(i_chemical)%ionmin,self_ind%element(i_chemical)%ionmax
          self_ind%element(i_chemical)%ion(i_ion)%myind_ = var_set_fluxvar(elem, elem, i_ion)
          phys_indices_inuse%chemical_element(i_elem) =  self_ind%element(i_chemical)%ion(i_ion)%myind_
@@ -352,7 +351,6 @@ contains
     real(kind=dp)    :: ptherm(ixI^S), vgas(ixI^S, ndir),vdust(ixI^S),dv(ixI^S)
     real(kind=dp)    :: fdrag(ixI^S, ndir, thechemical%nvar)
     integer          :: i_chemical,idir, it_diff
-
     select case(TRIM(thechemical%myconfig%method) )
     case( 'none' )
       !do nothing here
@@ -511,7 +509,6 @@ contains
     real(dp),dimension(ixO^S)      :: density_H,temperature
     real(dp),dimension(ixO^S)      :: fractionHI_CT,fractionHI_new
     !----------------------------------------------------
-
     call phys_get_temperature(ixI^L,ixO^L,wCT,x,temperature)
     call chemical_get_density_H(ixI^L,ixO^L,wCT,density_H)
     call chemical_get_fractionHI(ixI^L,ixO^L,wCT,density_H,fractionHI_CT)

@@ -195,12 +195,17 @@ end    subroutine usr_supernovae_remnant_write_setting
        if(phys_config%isrel)then
          self%myconfig%lfac_init=1.0_dp/dsqrt(1.0_dp-SUM(self%myconfig%velocity_init**2.0_dp))
        else
-         self%myconfig%lfac_init=1.0_dp/dsqrt(1.0_dp-SUM(self%myconfig%velocity_init**2.0_dp)&
-                                * unit_velocity/const_c)
+         self%myconfig%lfac_init=1.0_dp/dsqrt(1.0_dp-SUM(self%myconfig%velocity_init**2.0_dp)*&
+                               (unit_velocity/ const_c)**2.0_dp)
        end if
       case default
-       self%myconfig%lfac_init=1.0_dp/dsqrt(1.0_dp-&
-          SUM((self%myconfig%velocity_init/unit_velocity)**2.0_dp))
+       if(SUM((self%myconfig%velocity_init/const_c)**2.0)<1.0_dp)then 
+        self%myconfig%lfac_init=1.0_dp/dsqrt(1.0_dp-&
+          SUM((self%myconfig%velocity_init/const_c)**2.0_dp))
+       else 
+        write(*,*) ' speed larger than speed of lumiere'
+        call mpistop(' good by here')
+       end if
      end select
   end if cond_lfac_set
 
@@ -236,18 +241,19 @@ end    subroutine usr_supernovae_remnant_write_setting
     self%myconfig%energy_kinetic = 0.5_dp* self%myconfig%mass*                    &
                                   (1.0_dp-self%myconfig%dust_frac)*               &
                                   (1.0_dp-1.0_dp/self%myconfig%lfac_init**2.0_dp)*&
-                                  unit_velocity**2.0_dp
+                                  const_c**1.0_dp
+
+
 
 
     self%myconfig%energy_kinetic = 3.0/5.0*  self%myconfig%energy_kinetic
 
     self%myconfig%energy_thermal = self%myconfig%energy - &
                                     self%myconfig%energy_kinetic
-
     check_thermal_energy : if(self%myconfig%energy_thermal<0.0_dp ) then
-      write(*,*) ' The kinetic energy si large ', self%myconfig%energy_thermal
+      write(*,*) ' The kinetic energy is large ', self%myconfig%energy_kinetic
       write(*,*) ' You should decrease the initial SN speed '
-      call mpistop('stop at the mod_usr.t in usr_supernovae_remnant_set_complet')
+      call mpistop('stop at the mod_usr_sn_remnant.t in usr_supernovae_remnant_set_complet')
     end if check_thermal_energy
 
 
