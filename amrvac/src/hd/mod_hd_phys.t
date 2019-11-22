@@ -105,7 +105,7 @@ contains
     use mod_global_parameters
     integer, intent(in)                 :: fh
     integer, parameter                  :: n_par = 1
-    real(dp)                    :: values(n_par)
+    real(dp)                            :: values(n_par)
     character(len=name_len)             :: names(n_par)
     integer, dimension(MPI_STATUS_SIZE) :: st
     integer                             :: er
@@ -216,6 +216,7 @@ contains
     phys_check_w             => hd_check_w
     phys_get_pthermal        => hd_get_pthermal
     phys_get_temperature     => hd_get_temperature
+    phys_get_csound2         => hd_get_csound2
     phys_write_info          => hd_write_info
     phys_handle_small_values => hd_handle_small_values
     phys_angmomfix           => hd_angmomfix
@@ -228,7 +229,9 @@ contains
     call hd_physical_units
 
     if (hd_dust) call dust_init(hd_ind,hd_config,rho_, mom(:), e_)
-    if(hd_config%chemical_on)call chemical_init(hd_ind,hd_config,rho_,mom,e_)
+    if(hd_config%chemical_on)then
+      call chemical_init(hd_ind,hd_config,rho_, mom(:), e_)
+    end if
     call hd_fill_convert_factor
 
 
@@ -311,7 +314,7 @@ contains
 
      ! Set starting index of tracers
      do itr = 1, hd_n_tracer
-      tracer(itr) = var_set_fluxvar("trc", "trp", itr, need_bc=.false.)
+      tracer(itr) = var_set_fluxvar("trc", "trp", itr, need_bc=.true.)
      end do
     end if
 
@@ -328,7 +331,12 @@ contains
       allocate(hd_ind%tracer(hd_n_tracer))
       hd_ind%tracer(:) = tracer(:)
     end if
+    hd_config%nw       = nw
+    hd_config%nwflux   = nwflux
+    hd_config%nwhllc   = nwflux
+    hd_config%nwfluxbc = nwfluxbc
   end subroutine hd_fill_phys_indices
+
   subroutine hd_check_params
     use mod_global_parameters
     use mod_dust, only: dust_check_params
@@ -652,7 +660,7 @@ contains
   !> csound2=gamma*p/rho
   subroutine hd_get_csound2(w,x,ixI^L,ixO^L,csound2)
     use mod_global_parameters
-    integer, intent(in)             :: ixI^L, ixO^L
+    integer, intent(in)     :: ixI^L, ixO^L
     real(dp), intent(in)    :: w(ixI^S,nw)
     real(dp), intent(in)    :: x(ixI^S,1:ndim)
     real(dp), intent(out)   :: csound2(ixI^S)
@@ -675,7 +683,7 @@ contains
     real(dp), intent(out)        :: pth(ixI^S)
     !----------------------------------------------------
     if (hd_energy) then
-       pth(ixO^S) = (hd_gamma - 1.0d0) * (w(ixO^S, e_) - &
+       pth(ixO^S) = (hd_gamma - 1.0_dp) * (w(ixO^S, e_) - &
             hd_kin_en(w, ixI^L, ixO^L))
     else
        pth(ixO^S) = hd_adiab * w(ixO^S, rho_)**hd_gamma
@@ -693,9 +701,8 @@ contains
     real(dp), intent(out)        :: temperature(ixI^S)
     real(dp)                     :: pth(ixI^S)
     !----------------------------------------------------
-     
-   call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
-   temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
+    call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
+    temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
   end subroutine hd_get_temperature
 
 

@@ -480,6 +480,9 @@ contains
       allocate(mhd_ind%tracer(mhd_n_tracer))
       mhd_ind%tracer(:) = tracer(:)
     end if
+    mhd_config%nw       = nw
+    mhd_config%nwflux   = nwflux
+    mhd_config%nwfluxbc = nwfluxbc
   end subroutine mhd_fill_phys_indices
 
   subroutine mhd_check_params

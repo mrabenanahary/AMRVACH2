@@ -1,7 +1,7 @@
 !> Hydrodynamics HLLC module
 module mod_hd_hllc
   use mod_hd_phys
-
+  use mod_dust
   implicit none
   private
 
@@ -19,7 +19,7 @@ contains
 
   subroutine hd_diffuse_hllcd(ixI^L,ixO^L,idim,wLC,wRC,fLC,fRC,patchf)
 
-    ! when method is hllcd or hllcd1 then: 
+    ! when method is hllcd or hllcd1 then:
 
     ! this subroutine is to enforce regions where we AVOID HLLC
     ! and use TVDLF instead: this is achieved by setting patchf to 4 in
@@ -70,7 +70,7 @@ contains
     double precision, dimension(ixI^S), intent(in)           :: cmax,cmin
     integer         , dimension(ixI^S), intent(inout)        :: patchf
     double precision, dimension(ixI^S,1:nwflux), intent(out) :: Fhll,whll
-    double precision, dimension(ixI^S), intent(out)            :: lambdaCD
+    double precision, dimension(ixI^S), intent(out)          :: lambdaCD
 
     logical         , dimension(ixI^S)     :: Cond_patchf
     double precision                       :: Epsilon
@@ -100,6 +100,8 @@ contains
     ! deduce the characteristic speed at the CD
     where(Cond_patchf(ixO^S))
        lambdaCD(ixO^S)=whll(ixO^S,mom(idim))/whll(ixO^S,rho_)
+    elsewhere
+       lambdaCD(ixO^S)=  0.0_dp
     end where
 
     where(Cond_patchf(ixO^S))
@@ -123,7 +125,7 @@ contains
        Cond_patchf(ixO^S)=.false.
     end where
 
-    ! handle the specific case where the time axis is exactly on the CD 
+    ! handle the specific case where the time axis is exactly on the CD
     if(any(lambdaCD(ixO^S)==zero.and.Cond_patchf(ixO^S)))then
        ! determine which sector (forward or backward) of the Riemann fan is smallest
        ! and select left or right flux accordingly
@@ -158,7 +160,7 @@ contains
     ! reference T. Miyoski, Kusano JCP, 2008, 2005.
 
     use mod_global_parameters
-
+    use mod_dust
     integer, intent(in)                                      :: ixI^L,ixO^L,idim
     double precision, dimension(ixI^S,1:nw), intent(in)      :: wRC,wLC
     double precision, dimension(ixI^S,1:ndim), intent(in)    :: x
@@ -220,13 +222,17 @@ contains
                           /(cspeed(ix^D)-lambdaCD(ix^D))
         end if
 
-        do iw=1,nwflux
+        Loop_iw_flux_gas: do iw=1,hd_config%nwhllc
           ! f_i=fsub+lambda (wCD-wSub)
           f(ix^D,iw)=fsub(ix^D,iw)+cspeed(ix^D)*(wCD(ix^D,iw)-wSub(ix^D,iw))
-        end do
+        end do Loop_iw_flux_gas
+
       end if
     {end do\}
-
+    if(hd_config%dust_on)then
+      call dust_get_wCD(x,wLC,wRC,whll,fRC,fLC,Fhll,patchf,lambdaCD,cmin,cmax,&
+       ixI^L,ixO^L,idim,f)
+    end if
   end subroutine hd_get_wCD
 
 end module mod_hd_hllc

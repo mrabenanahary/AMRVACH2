@@ -2,7 +2,7 @@
 !> pointers for the various supported routines. An actual physics module has to
 !> set these pointers to its implementation of these routines.
 module mod_physics
-  use mod_global_parameters, only: name_len,ndir,ndim
+  use mod_global_parameters, only: name_len,ndir,ndim,std_len
   use mod_physics_hllc
   use mod_physics_roe
   use mod_physics_ppm
@@ -40,55 +40,102 @@ module mod_physics
     integer,allocatable  :: mag(:)
     integer              :: e_
     integer              :: pressure_
+
     integer              :: lfac_
     integer              :: xi_
     integer              :: psi_
     integer, allocatable :: tracer(:)
+
     integer, allocatable :: dust_rho(:)
     integer, allocatable :: dust_mom(:,:)
     integer, allocatable :: chemical_element(:)
+
+    integer, allocatable :: epsinf_rho(:)
+    integer, allocatable :: epsinf_rho0(:)
+    integer, allocatable :: epsinf_Gmax(:)
+    integer, allocatable :: epsinf_Gmaxadiab(:)
+    integer              :: epsinf_B2turb_
   end type phys_variables_indices
 
   type(phys_variables_indices),pointer  :: phys_ind
 
+
   type physconfig
-    logical           :: ismhd
-    logical           :: isrel
-    logical           :: SI_unit
+    logical                   :: ismhd
+    logical                   :: isrel
+    logical                   :: SI_unit
 
-    logical           :: dust_on
-    integer           :: dust_n_species
-    real(dp)          :: dust_small_density
+    integer                   :: nw
+    integer                   :: nwfluxbc
+    integer                   :: nwflux
+    integer                   :: nwhllc
 
-    logical           :: energy
-    real(dp)          :: gamma
-    real(dp)          :: adiab
-    logical           :: eos
-    logical           :: thermal_conduction
-    logical           :: radiative_cooling
-    logical           :: viscosity
-    logical           :: particles
-    real(dp)          :: He_abundance
+    logical                   :: dust_on
+    integer                   :: dust_n_species
+    real(dp)                  :: dust_small_density
 
-    logical           :: tracer_on
-    integer           :: n_tracer
+    logical                   :: energy
+    real(dp)                  :: gamma
+    real(dp)                  :: adiab
+    logical                   :: eos
+    logical                   :: thermal_conduction
+    logical                   :: radiative_cooling
+    logical                   :: viscosity
+    logical                   :: particles
+    real(dp)                  :: He_abundance
 
-    real(dp)          :: small_density
-    real(dp)          :: small_pressure
-    real(dp)          :: small_energy
-    real(dp)          :: small_v2
+    logical                   :: tracer_on
+    integer                   :: n_tracer
 
-    logical           :: is4th_order
-    logical           :: compactres
+    real(dp)                  :: small_density
+    real(dp)                  :: small_pressure
+    real(dp)                  :: small_energy
+    real(dp)                  :: small_xi
+    real(dp)                  :: small_v2
 
-    integer           :: maxiterationNR
-    real(dp)          :: absaccNR
-    real(dp)          :: tolerNr
-    logical           :: checkNR
-    real(dp)          :: maxdspeed
-    logical           :: chemical_on
-    integer           :: chemical_n_species
-    real(dp)          :: chemical_small_density
+    integer                   :: nwwave
+
+    logical                   :: is4th_order
+    logical                   :: compactres
+    logical                   :: divbwave
+    !> B0 field is force-free
+    logical                   :: B0field_forcefree
+    character(len=std_len)    :: typedivbfix
+    integer                   :: type_divb
+    character(len=std_len)    :: typedivbdiff
+    logical                   :: source_split_divb
+    !> To control divB=0 fix for boundary
+    logical                   :: boundary_divbfix(2*ndim)
+    !> To skip * layer of ghost cells during divB=0 fix for boundary
+    integer                   :: boundary_divbfix_skip(2*ndim)
+
+    logical                   :: magnetofriction
+    logical                   :: hall
+    real(kind=dp)             :: eta
+    real(kind=dp)             :: eta_hyper
+    real(kind=dp)             :: etah
+    logical                   :: glm
+    real(kind=dp)             :: glm_alpha
+
+
+    integer                   :: maxiterationNR
+    real(dp)                  :: absaccNR
+    real(dp)                  :: tolerNr
+    logical                   :: checkNR
+    real(dp)                  :: maxdspeed
+    real(dp)                  :: maxspeed
+    real(dp)                  :: maxspeed2
+
+    logical                   :: gravity
+    logical                   :: chemical_on
+    integer                   :: chemical_n_species
+    real(dp)                  :: chemical_small_density
+
+    logical                   :: epsinf_on
+    integer                   :: epsinf_n_species
+    real(dp)                  :: epsinf_small_Gammamax
+    real(dp)                  :: epsinf_small_density
+    real(dp)                  :: epsinf_small_Bfield_turb
   end type physconfig
 
   type(physconfig), pointer   :: phys_config
@@ -108,11 +155,13 @@ module mod_physics
   procedure(sub_get_aux), pointer         :: phys_get_aux              => null()
   procedure(sub_check_w), pointer         :: phys_check_w              => null()
   procedure(sub_get_pthermal), pointer    :: phys_get_pthermal         => null()
+  procedure(sub_get_csound2), pointer     :: phys_get_csound2          => null()
+  procedure(sub_get_comove_B2), pointer   :: phys_get_comove_B2        => null()
   procedure(sub_boundary_adjust), pointer :: phys_boundary_adjust      => null()
   procedure(sub_write_info), pointer      :: phys_write_info           => null()
   procedure(sub_angmomfix), pointer       :: phys_angmomfix            => null()
   procedure(sub_small_values), pointer    :: phys_handle_small_values  => null()
-  procedure(sub_get_temperature), pointer:: phys_get_temperature       => null()
+  procedure(sub_get_temperature), pointer :: phys_get_temperature      => null()
   abstract interface
 
 
@@ -227,6 +276,22 @@ module mod_physics
        real(kind=dp)      , intent(out)   :: pth(ixI^S)
      end subroutine sub_get_pthermal
 
+     subroutine sub_get_csound2(w,x,ixI^L,ixO^L,csound2)
+       use mod_global_parameters
+       integer, intent(in)                :: ixI^L, ixO^L
+       real(kind=dp)      , intent(in)    :: w(ixI^S,nw)
+       real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
+       real(kind=dp)      , intent(out)   :: csound2(ixI^S)
+     end subroutine sub_get_csound2
+
+     subroutine sub_get_comove_B2(ixI^L,ixO^L,x,w,sqrB)
+       use mod_global_parameters
+       integer, intent(in)                :: ixI^L, ixO^L
+       real(kind=dp)      , intent(in)    :: w(ixI^S,nw)
+       real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
+       real(kind=dp)      , intent(out)   :: sqrB(ixO^S)
+     end subroutine sub_get_comove_B2
+
      !> Calculate temperature within ixO^L
      subroutine sub_get_temperature( ixI^L, ixO^L,w, x, temperature)
        use mod_global_parameters
@@ -294,16 +359,41 @@ contains
         phys_config%small_pressure       = 0.0_dp
         phys_config%small_energy         = 0.0_dp
         phys_config%small_v2             = 0.0_dp
+        phys_config%small_xi             = 0.0_dp
+
+        phys_config%nwwave               = 5
         phys_config%is4th_order          = .false.
         phys_config%compactres           = .false.
+        phys_config%B0field_forcefree    = .false.
+        phys_config%typedivbfix          = 'linde'
+        phys_config%type_divb            = 1
+        phys_config%typedivbdiff         = 'all'
+        phys_config%source_split_divb    = .false.
+        phys_config%divbwave             = .true.
+        phys_config%glm                  = .false.
+
+        phys_config%Hall                 = .false.
+        phys_config%eta                  = 0.0_dp
+        phys_config%eta_hyper            = 0.0_dp
+        phys_config%etah                 = 0.0_dp
+        phys_config%glm_alpha            = 0.5_dp
+
+        phys_config%magnetofriction      = .false.
+
         phys_config%maxiterationNR       = 1000
         phys_config%absaccNR             = 1.0d-12
         phys_config%tolerNr              = 1.0d-9
-        phys_config%checkNR              =.true.
+        phys_config%checkNR              = .true.
         phys_config%maxdspeed            = 1.0d-9
+        phys_config%maxspeed             = 1.0_dp-phys_config%maxdspeed
+        phys_config%boundary_divbfix     = .true.
+        phys_config%boundary_divbfix_skip= 0
+
         phys_config%chemical_on          = .false.
         phys_config%chemical_n_species   = 0
         phys_config%chemical_small_density = 0.0_dp
+
+        phys_config%gravity              = .false.
   end subroutine phys_default_config
 
 
@@ -361,6 +451,12 @@ contains
     if (.not. associated(phys_get_pthermal)) &
          phys_get_pthermal => dummy_get_pthermal
 
+    if (.not. associated(phys_get_csound2)) &
+         phys_get_csound2=> dummy_get_csound2
+
+    if (.not. associated(phys_get_comove_B2)) &
+         phys_get_comove_B2 => dummy_get_comove_B2
+
     if (.not. associated(phys_boundary_adjust)) &
          phys_boundary_adjust => dummy_boundary_adjust
 
@@ -372,7 +468,8 @@ contains
 
     if (.not. associated(phys_handle_small_values)) &
          phys_handle_small_values => dummy_small_values
-
+    if (.not. associated(phys_get_temperature)) &
+         phys_get_pthermal => dummy_get_temperature
   end subroutine phys_check
 
   subroutine dummy_init_params
@@ -438,6 +535,42 @@ contains
     pth(ixO^S) = 0
     call mpistop("No get_pthermal method specified")
   end subroutine dummy_get_pthermal
+
+
+  subroutine dummy_get_temperature(w, x, ixI^L, ixO^L, temperature)
+    use mod_global_parameters
+
+    integer, intent(in)                :: ixI^L, ixO^L
+    real(kind=dp)      , intent(in)    :: w(ixI^S, nw)
+    real(kind=dp)      , intent(in)    :: x(ixI^S, 1:ndim)
+    real(kind=dp)      , intent(out)   :: temperature(ixI^S)
+
+    temperature(ixO^S) = 0
+    call mpistop("No get_ temperature method specified")
+  end subroutine dummy_get_temperature
+  subroutine dummy_get_csound2(w, x, ixI^L, ixO^L, csound2)
+    use mod_global_parameters
+
+    integer, intent(in)     :: ixI^L, ixO^L
+    real(dp), intent(in)    :: w(ixI^S,nw)
+    real(dp), intent(in)    :: x(ixI^S,1:ndim)
+    real(dp), intent(out)   :: csound2(ixI^S)
+
+    csound2(ixO^S) = 0
+    call mpistop("No get_csound2 method specified")
+  end subroutine dummy_get_csound2
+
+  subroutine dummy_get_comove_B2( ixI^L, ixO^L, x,w,sqrB)
+    use mod_global_parameters
+
+    integer, intent(in)                :: ixI^L, ixO^L
+    real(kind=dp)      , intent(in)    :: w(ixI^S, nw)
+    real(kind=dp)      , intent(in)    :: x(ixI^S, 1:ndim)
+    real(kind=dp)      , intent(out)   :: sqrB(ixO^S)
+
+    sqrB(ixO^S) = 0
+    call mpistop("No get_comove_B2 method specified")
+  end subroutine dummy_get_comove_B2
 
   subroutine dummy_boundary_adjust
   end subroutine dummy_boundary_adjust

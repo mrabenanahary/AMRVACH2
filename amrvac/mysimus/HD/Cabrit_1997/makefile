@@ -2,8 +2,8 @@ ifndef AMRVAC_DIR
 $(error AMRVAC_DIR is not set)
 endif
 
-#openmpi
-ARCH =default
+ARCH =openmpi_run
+#ARCH =default
 NDIM := 2
 
 # By exporting these can be used when building libamrvac
@@ -37,16 +37,19 @@ include $(AMRVAC_DIR)/arch/rules.make
 vpath %.t $(SRC_DIR)
 
 # Keep mod_usr.f for inspection
+
+
+# Keep mod_usr.f for inspection
 .PRECIOUS: mod_usr_yso_jet.f \
-	        $(OBJ_DIR)/mod_obj_global_parameters.f $(OBJ_DIR)/mod_obj_mat.f \
+					$(OBJ_DIR)/mod_obj_cla_jet.f \
+          $(OBJ_DIR)/mod_obj_global_parameters.f $(OBJ_DIR)/mod_obj_mat.f \
 					$(OBJ_DIR)/mod_obj_relativistic_wind.f $(OBJ_DIR)/mod_obj_star_envelope.f\
 					$(OBJ_DIR)/mod_obj_star.f $(OBJ_DIR)/mod_obj_pulsar.f\
 					$(OBJ_DIR)/mod_obj_sn_remnant.f $(OBJ_DIR)/mod_obj_ism.f \
 					$(OBJ_DIR)/mod_obj_dust.f $(OBJ_DIR)/mod_obj_cloud.f  \
-	 $(OBJ_DIR)/mod_obj_usr_unit.f
-
+	        $(OBJ_DIR)/mod_obj_usr_unit.f
 # Intermediate files are removed
-.INTERMEDIATE: amrvac.o mod_usr_yso_jet.o  mod_usr_yso_jet.mod
+.INTERMEDIATE: amrvac.o mod_usr_yso_jet.o mod_usr.mod
 
 # Always try to build/update the amrvac library
 $(LIB_AMRVAC): force
@@ -56,21 +59,10 @@ $(LIB_AMRVAC): force
 clean:
 	@echo $(SRC_DIR)
 	@echo 'Cleaning local objects ("make allclean" cleans libamrvac)'
-	$(RM) amrvac amrvac.o mod_usr_supernovae_dust.o \
-	      $(OBJ_DIR)/mod_obj_global_parameters.o  $(OBJ_DIR)/mod_obj_mat.o\
-              $(OBJ_DIR)/mod_obj_relativistic_wind.o $(OBJ_DIR)/mod_obj_star_envelope.o\
-              $(OBJ_DIR)/mod_obj_sn_remnant.o $(OBJ_DIR)/mod_obj_ism.o \
-	      $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_cloud.o\
-	      $(OBJ_DIR)/mod_obj_star.o $(OBJ_DIR)/mod_obj_pulsar.o\
-	      $(OBJ_DIR)/mod_obj_usr_unit.o\
-	      $(OBJ_DIR)/mod_obj_global_parameters.mod  $(OBJ_DIR)/mod_obj_mat.mod\
-				$(OBJ_DIR)/mod_obj_relativistic_wind.mod\
-				$(OBJ_DIR)/mod_obj_star.mod $(OBJ_DIR)/mod_obj_pulsar.mod\
-				$(OBJ_DIR)/mod_obj_sn_remnant.mod $(OBJ_DIR)/mod_obj_ism.mod \
-				$(OBJ_DIR)/mod_obj_dust.mod $(OBJ_DIR)/mod_obj_cloud.mod\
-				$(OBJ_DIR)/mod_obj_usr_unit.mod                         \
-				mod_usr.mod \
-				$(OBJ_DIR)/*.f mod_usr_yso_jet.f
+	$(RM) amrvac *.o mod_usr_yso_jet.o *.mod\
+	      $(OBJ_DIR)/*.o                          \
+				$(OBJ_DIR)/*.mod  \
+				$(OBJ_DIR)/*.f *.f
 
 # Also clean the library
 allclean: clean
@@ -80,16 +72,21 @@ allclean: clean
 
 # Dependencies
 amrvac: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o\
-	      $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_sn_remnant.o \
+	      $(OBJ_DIR)/mod_obj_readrebuilddata.o                          \
+	      $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_sn_remnant.o      \
 	      $(OBJ_DIR)/mod_obj_relativistic_wind.o $(OBJ_DIR)/mod_obj_star_envelope.o\
-	      $(OBJ_DIR)/mod_obj_star.o $(OBJ_DIR)/mod_obj_pulsar.o \
-	      $(OBJ_DIR)/mod_obj_ism.o $(OBJ_DIR)/mod_obj_cloud.o \
+	      $(OBJ_DIR)/mod_obj_star.o $(OBJ_DIR)/mod_obj_pulsar.o          \
+	      $(OBJ_DIR)/mod_obj_ism.o $(OBJ_DIR)/mod_obj_cloud.o            \
 	      $(OBJ_DIR)/mod_obj_usr_unit.o \
-              mod_usr_supernovae_dust.o amrvac.o
+				$(OBJ_DIR)/mod_obj_cla_jet.o\
+        mod_usr_yso_jet.o amrvac.o
 
 amrvac.o  mod_usr_yso_jet.o: $(LIB_AMRVAC)
 $(OBJ_DIR)/mod_obj_dust.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
 	                   $(OBJ_DIR)/mod_obj_usr_unit.o
+$(OBJ_DIR)/mod_obj_readrebuilddata.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
+	                   $(OBJ_DIR)/mod_obj_usr_unit.o
+
 $(OBJ_DIR)/mod_obj_star_envelope.o:$(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
 	                           $(OBJ_DIR)/mod_obj_usr_unit.o
 $(OBJ_DIR)/mod_obj_relativistic_wind.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
@@ -100,10 +97,15 @@ $(OBJ_DIR)/mod_obj_star.o:$(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_
 	                  $(OBJ_DIR)/mod_obj_usr_unit.o
 $(OBJ_DIR)/mod_obj_pulsar.o:$(OBJ_DIR)/mod_obj_sn_remnant.o  $(OBJ_DIR)/mod_obj_relativistic_wind.o \
 	                          $(OBJ_DIR)/mod_obj_star_envelope.o $(OBJ_DIR)/mod_obj_star.o\
-         			  $(OBJ_DIR)/mod_obj_usr_unit.o
-$(OBJ_DIR)/mod_obj_ism.o : $(OBJ_DIR)/mod_obj_dust.o
-$(OBJ_DIR)/mod_obj_cloud.o:$(OBJ_DIR)/mod_obj_dust.o
+         			              $(OBJ_DIR)/mod_obj_usr_unit.o $(OBJ_DIR)/mod_obj_readrebuilddata.o
+
+$(OBJ_DIR)/mod_obj_ism.o    : $(OBJ_DIR)/mod_obj_dust.o
+$(OBJ_DIR)/mod_obj_cloud.o  : $(OBJ_DIR)/mod_obj_dust.o
+$(OBJ_DIR)/mod_obj_cla_jet.o: $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o \
+	                            $(OBJ_DIR)/mod_obj_usr_unit.o
+
 mod_usr_yso_jet.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
-	$(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_relativistic_wind.o\
-	$(OBJ_DIR)/mod_obj_sn_remnant.o $(OBJ_DIR)/mod_obj_ism.o $(OBJ_DIR)/mod_obj_cloud.o
+	$(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_cla_jet.o\
+	$(OBJ_DIR)/mod_obj_sn_remnant.o $(OBJ_DIR)/mod_obj_ism.o $(OBJ_DIR)/mod_obj_cloud.o\
+	$(OBJ_DIR)/mod_obj_readrebuilddata.o
 amrvac.o: mod_usr_yso_jet.o

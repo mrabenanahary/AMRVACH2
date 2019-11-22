@@ -44,16 +44,16 @@ module mod_chemical
     real(kind=dp) :: colf_T0
   end type chemical_coef_reaction
 
-  type(chemical_coef_reaction) :: chemical_const
+  type(chemical_coef_reaction)           :: chemical_const
   type theion
     integer                              :: myind_
-    type(chemical_coef_reaction) :: myreccoef
+    type(chemical_coef_reaction)         :: myreccoef
   end type theion
 
   type associate_element
     logical                              :: react_on
     logical                              :: allowed
-    type(chemical_coef_reaction) :: myreccoef
+    type(chemical_coef_reaction)         :: myreccoef
   end type associate_element
 
 
@@ -118,6 +118,7 @@ contains
     phys_config_inuse%chemical_small_density = thechemical%myconfig%small_density
 
 
+
   !  chemical_const%colf_a0 = 5.83d-11/dsqrt(unit_temperature)
   !  chemical_const%colf_T0 = 157828.0_dp/unit_temperature
   !  chemical_const%alpha_a0 =(2.55d-13*(1.0d4*unit_temperature)**0.79_dp)
@@ -128,12 +129,13 @@ contains
     type(chemical_parameters) :: self
 
     self%n_species            = 1
-    self%small_to_zero        =.true.
-    self%small_density        =0.0_dp
-    self%source_split         =.true.
-    self%neutral_fraction     =0.0_dp
-    self%relative_fractionmin=1.0d-6
-    self%H_                  = 1
+    self%small_to_zero        = .true.
+    self%small_density        = 0.0_dp
+    self%gas_mu               = 1.0_dp
+    self%source_split         = .true.
+    self%neutral_fraction     = 0.0_dp
+    self%relative_fractionmin = 1.0d-6
+    self%H_                   = 1
     self%H2_                  = 2
     self%He_                  = 3
   end subroutine chemical_set_default
@@ -199,13 +201,13 @@ contains
     type(phys_variables_indices), intent(inout)  :: phys_indices_inuse
     ! .. local ..
     integer                                      :: i_elem,i_chemical,i_ion
-    character(len=std_len)                       :: elem
+    character(len=20)                            :: elem
   !--------------------------------------------
       i_elem = 1
       Loop_i_chemical1 : do i_chemical = 1, self_ind%myconfig%n_species
         write(elem, "(A,A)") trim(self_ind%element(i_chemical)%elem_name), "_"
         Loop_ionisation0 : do i_ion =self_ind%element(i_chemical)%ionmin,self_ind%element(i_chemical)%ionmax
-         self_ind%element(i_chemical)%ion(i_ion)%myind_ = var_set_fluxvar(elem, elem, i_ion)
+         self_ind%element(i_chemical)%ion(i_ion)%myind_ = var_set_fluxvar(trim(elem), trim(elem), i_ion)
          phys_indices_inuse%chemical_element(i_elem) =  self_ind%element(i_chemical)%ion(i_ion)%myind_
          i_elem = i_elem+1
         end do  Loop_ionisation0
@@ -351,7 +353,10 @@ contains
     real(kind=dp)    :: ptherm(ixI^S), vgas(ixI^S, ndir),vdust(ixI^S),dv(ixI^S)
     real(kind=dp)    :: fdrag(ixI^S, ndir, thechemical%nvar)
     integer          :: i_chemical,idir, it_diff
+
     select case(TRIM(thechemical%myconfig%method) )
+    case('molecular')
+      call chemical_atomic(ixI^L,ixO^L,qdt,x,wCT,w)
     case( 'none' )
       !do nothing here
     case default !all regular chemical methods here
@@ -440,7 +445,7 @@ contains
     integer, intent(in)       :: ixI^L, ixO^L
     integer, intent(in)       :: i_element,i_ion
     real(dp), intent(in)      :: Temperature(ixI^S)
-    real(dp), intent(inout)   :: alpha(ixI^S)
+    real(dp), intent(inout)   :: alpha(ixO^S)
     !........................................
 
 
@@ -454,7 +459,7 @@ contains
     integer, intent(in)       :: ixI^L, ixO^L
     integer, intent(in)       :: i_element,i_ion
     real(dp), intent(in)      :: Temperature(ixI^S)
-    real(dp), intent(inout)   :: colf(ixI^S)
+    real(dp), intent(inout)   :: colf(ixO^S)
     !........................................
 
     colf(ixO^S)=thechemical%element(i_element)%ion(i_ion)%myreccoef%colf_a0&
@@ -468,7 +473,7 @@ contains
     implicit none
     integer, intent(in)       :: ixI^L, ixO^L
     real(dp), intent(in)      :: qdt
-    real(dp), intent(in)      :: Temperature(ixO^S)
+    real(dp), intent(in)      :: Temperature(ixI^S)
     real(dp), intent(in)      :: density_H(ixO^S)
     real(dp), intent(in)      :: fractionHI_CT(ixO^S)
     real(dp), intent(inout)   :: fractionHI_new(ixO^S)
@@ -491,7 +496,8 @@ contains
      /(2.*equ2_A**fractionHI_CT+equ2_B-equ2_Detr)
     ode_e=dexp( -equ2_Detr*density_H*qdt )
   !
-    fractionHI_new=(-equ2_B-equ2_Detr*(1._dp+ode_g0*ode_e)/(1.0_dp-ode_g0*ode_e))/(2.0_dp*equ2_A) !# the new neutral fraction
+    fractionHI_new=(-equ2_B-equ2_Detr*(1.0_dp+ode_g0*ode_e) / &
+                   (1.0_dp-ode_g0*ode_e))/(2.0_dp*equ2_A) !# the new neutral fraction
     fractionHI_new=max(min(fractionHI_new,1.0_dp),thechemical%myconfig%relative_fractionmin)
 
   end subroutine chemical_coronal_ionisationequilibrium_H
@@ -506,9 +512,11 @@ contains
     real(kind=dp), intent(inout)   :: w(ixI^S,1:nw)
     real(dp), intent(in)           :: qdt
     ! .. local ..
-    real(dp),dimension(ixO^S)      :: density_H,temperature
+    real(dp),dimension(ixO^S)      :: density_H
+    real(dp),dimension(ixI^S)      :: temperature
     real(dp),dimension(ixO^S)      :: fractionHI_CT,fractionHI_new
     !----------------------------------------------------
+
     call phys_get_temperature(ixI^L,ixO^L,wCT,x,temperature)
     call chemical_get_density_H(ixI^L,ixO^L,wCT,density_H)
     call chemical_get_fractionHI(ixI^L,ixO^L,wCT,density_H,fractionHI_CT)

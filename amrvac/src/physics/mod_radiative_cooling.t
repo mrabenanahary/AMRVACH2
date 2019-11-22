@@ -839,15 +839,19 @@ module mod_radiative_cooling
       enddo    ! end loop to create one table
 
       ! Go from logarithmic to actual values.
-      tcool(1:ncool) = 10.0D0**tcool(1:ncool)
-      Lcool(1:ncool) = 10.0D0**Lcool(1:ncool)
+      tcool(1:ncool) = 10.0_dp**tcool(1:ncool)
+      Lcool(1:ncool) = 10.0_dp**Lcool(1:ncool)
 
       ! Scale both T and Lambda
       tcool(1:ncool) = tcool(1:ncool) / unit_temperature
       Lcool(1:ncool) = Lcool(1:ncool) * unit_numberdensity**2 * unit_time / unit_pressure * (1.d0+2.d0*He_abundance)
       tcoolmin       = tcool(1)+smalldouble  ! avoid pointless interpolation
       ! smaller value for lowest temperatures from cooling table and user's choice
-      if (tlow==bigdouble) tlow=tcoolmin
+      if (tlow==bigdouble)then
+         tlow = tcoolmin
+      else
+         tlow = tlow / unit_temperature
+      end if
       tcoolmax       = tcool(ncool)
 
       lgtcoolmin = dlog10(tcoolmin)

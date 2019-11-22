@@ -37,6 +37,7 @@ subroutine usr_boundaries_set_default(self)
 end subroutine usr_boundaries_set_default
 !> Subtroutine initialise the boundary conditions
 subroutine usr_boundaries_set_complet(self)
+  use mod_physics
   implicit none
   class(usrboundary_type)               :: self
   ! .. local ..
@@ -327,6 +328,35 @@ subroutine usr_mat_profile(ixI^L,ixO^L,typeaxial_loc,profile, &
 end subroutine usr_mat_profile
 !--------------------------------------------------------------------
 
+!> procedure will be used to set scalar profile
+subroutine usr_mat_profile_scalar(pos_t,standart_deviation,variation_type,Vprofile)
+   implicit none
+   real(kind=dp) , intent(in)   :: pos_t,standart_deviation
+   character(len=*), intent(in) :: variation_type
+   real(kind=dp), intent(out)   :: Vprofile
+   ! .. local ..
+   integer                      :: nstep
+   real(kind=dp)                :: local_pos_t
+   !----------------------------------------------------------------
+      select case(trim(variation_type))
+       case('sin')
+        Vprofile = dsin(2.0_dp*dpi*pos_t/standart_deviation)
+       case('door')
+        nstep = floor(pos_t/standart_deviation)
+        local_pos_t = pos_t-nstep*standart_deviation
+        if(local_pos_t/standart_deviation<0.5_dp) then
+          Vprofile = 1.0_dp
+        else
+          Vprofile = -1.0_dp
+        end if
+       case('sawtooth')
+        nstep = floor(pos_t/standart_deviation)
+        local_pos_t = pos_t-nstep*standart_deviation
+        Vprofile = 1.0_dp -2.0_dp*local_pos_t/standart_deviation
+       case default
+        Vprofile = 1.0_dp
+      end select
+end subroutine usr_mat_profile_scalar
 !> subroutien to set profile de distance r
 subroutine usr_mat_profile_dist(ixI^L,ixO^L,profile, dist,&
                                 standart_deviation,fprofile)
@@ -360,14 +390,27 @@ subroutine usr_mat_profile_dist(ixI^L,ixO^L,profile, dist,&
     where(dist(ixO^S)>0.0_dp)
      fprofile(ixO^S) = (1.0_dp-tanh(dabs(Dist(ixO^S)**2.0_dp)/(standart_deviation**2.0_dp)))/2.0_dp
     end where
-  case('linear')
+
+  case('power4')
 
     where(dist(ixO^S)>0.0_dp)
      fprofile(ixO^S) = (Dist(ixO^S)/standart_deviation)**4.0_dp
     elsewhere
       fprofile(ixO^S) = 1.0_dp
     end where
+  case('linear')
 
+    where(dist(ixO^S)>0.0_dp)
+     fprofile(ixO^S) = (Dist(ixO^S)/standart_deviation)
+    elsewhere
+      fprofile(ixO^S) = 1.0_dp
+    end where
+  case('sin')
+    where(dist(ixO^S)>0.0_dp)
+     fprofile(ixO^S) = dsin(Dist(ixO^S)/standart_deviation)
+    elsewhere
+      fprofile(ixO^S) = 1.0_dp
+    end where
   case default
     fprofile(ixO^S) =1.0_dp
  end select
@@ -845,7 +888,7 @@ end subroutine usr_medianvalue_of_array
 
   !----------------------------------------------------------------------
   !> subroutine for lorentz transrmation to add proper motion
-  subroutine usr_lorentz_transrmation_add_proper_speed(ixI^L,ixO^L,patch,&
+  subroutine usr_lorentz_transformation_add_proper_speed(ixI^L,ixO^L,patch,&
     velocity_proper,v)
     ! Eqaution in use https://en.wikipedia.org/wiki/Lorentz_transformation in Transformation of velocities
     implicit none
@@ -878,7 +921,7 @@ end subroutine usr_medianvalue_of_array
                     +lfac_proper/(lfac_proper+1.0_dp)*uv(ixO^S)*velocity_proper(idir) )
      endwhere
     end do Loop_idir_newv
-  end subroutine usr_lorentz_transrmation_add_proper_speed
+  end subroutine usr_lorentz_transformation_add_proper_speed
 
   subroutine usr_mat_get_Lohner_error(ixI^L,ixO^L,level,ivar,w,error_lohner)
     use mod_global_parameters

@@ -50,13 +50,19 @@ module mod_obj_cla_jet
     character(len=20)    :: shape                  !> cla_jet shape
     character(len=20)    :: profile                !> cla_jet profile
 
-    integer              :: refine_min_level   !> jet minimum refinent level
-    integer              :: refine_max_level   !> jet maximum refinent level
-    real(dp)             :: coarsen_distance    !> jet  distance to start coarsen
-    real(dp)             :: coarsen_var_distance!> jetscaling distance for coarsen
+    integer              :: refine_min_level       !> jet minimum refinent level
+    integer              :: refine_max_level       !> jet maximum refinent level
+    real(dp)             :: coarsen_distance       !> jet  distance to start coarsen
+    real(dp)             :: coarsen_var_distance   !> jetscaling distance for coarsen
 
-    character(len=40)    :: variation_type     !> jet type of the power variation
+    logical              :: variation_on           !>  jet variation  condition
+    character(len=40)    :: variation_type         !> jet type of the power variation
+    real(dp)             :: variation_time         !> jet variation characteristic time
+    real(dp)             :: variation_velocity(3)  !> jet variation bottom velocity
 
+    real(dp)             :: variation_start_time  !> jet variation starting time
+    real(dp)             :: variation_end_time    !> jet variation end  time
+    real(dp)             :: variation_position(3) !> jet variation space position
     logical              :: dust_on                !> cla_jet with dust in is true
     real(dp)             :: dust_frac              !> cla_jet dust fraction
     character(len=20)    :: dust_profile           !> cla_jet dust inside profile
@@ -76,6 +82,7 @@ module mod_obj_cla_jet
      PROCEDURE, PASS(self) :: set_complet     => usr_cla_jet_set_complet
      PROCEDURE, PASS(self) :: normalize       => usr_cla_jet_normalize
      PROCEDURE, PASS(self) :: set_w           => usr_cla_jet_set_w
+     PROCEDURE, PASS(self) :: process_grid    => usr_cla_process_grid
      PROCEDURE, PASS(self) :: read_parameters => usr_cla_jet_read_p
      PROCEDURE, PASS(self) :: write_setting   => usr_cla_jet_write_setting
      PROCEDURE, PASS(self) :: alloc_set_patch => usr_cla_jet_alloc_set_patch
@@ -158,6 +165,24 @@ contains
     write(unit_config,*) 'magnetic    = ', self%myconfig%magnetic
     write(unit_config,*) 'sound speed = ', self%myconfig%c_sound
     write(unit_config,*) 'open angle  = ', self%myconfig%open_angle
+    write(unit_config,*) 'jet variation= ', self%myconfig%variation_on
+    if(self%myconfig%variation_on)then
+     write(unit_config,*) 'jet variation type = ', &
+                              self%myconfig%variation_type
+    write(unit_config,*) 'jet variation type = ', &
+                              self%myconfig%variation_time
+    write(unit_config,*) 'jet variation position = ', &
+                              self%myconfig%variation_position
+
+    write(unit_config,*) 'jet variation start time = ', &
+                              self%myconfig%variation_start_time
+
+    write(unit_config,*) 'jet variation end time = ', &
+                              self%myconfig%variation_end_time
+
+    write(unit_config,*) 'jet variation velocity = ', &
+                              self%myconfig%variation_velocity
+    end if
 
     if(self%myconfig%dust_on)  call self%mydust%write_setting(unit_config)
     write(unit_config,*)'************************************'
@@ -211,7 +236,16 @@ contains
   self%myconfig%refine_max_level       = 0
   self%myconfig%coarsen_var_distance   = 0.0_dp
   self%myconfig%coarsen_distance       = 0.0_dp
+
+
+
+  self%myconfig%variation_on           = .false.
   self%myconfig%variation_type         = 'none'
+  self%myconfig%variation_time         = 0.0_dp
+  self%myconfig%variation_position     = 0.0_dp
+  self%myconfig%variation_start_time   = 0.0_dp
+  self%myconfig%variation_end_time     = 0.0_dp
+  self%myconfig%variation_velocity     = 0.0_dp
 
   self%myconfig%normalize_done         = .false.
   zjet_                                = 2
@@ -261,6 +295,7 @@ contains
      end if
    end if
 
+
    select case(typeaxial)
    case('cylindrical','spherical')
     jet_surface_init = dpi *(self%myconfig%r_out_init**2.0_dp&
@@ -275,7 +310,7 @@ contains
       end if
    end select
 
-  
+
 
 
 
@@ -390,6 +425,12 @@ contains
    end if cond_traceron
 
 
+
+  cond_var0 : if(trim(self%myconfig%variation_type)=='none'.or.&
+          dabs(self%myconfig%variation_time)<smalldouble)then
+    self%myconfig%variation_on=.false.
+  end if cond_var0
+
  end subroutine usr_cla_jet_set_complet
 !--------------------------------------------------------------------
  subroutine usr_cla_jet_normalize(self,physunit_inuse)
@@ -454,16 +495,21 @@ contains
   self%myconfig%time_cla_jet_on  = self%myconfig%time_cla_jet_on  / unit_time
 
 
-self%myconfig%coarsen_distance     = self%myconfig%coarsen_distance /physunit_inuse%myconfig%length
+  self%myconfig%coarsen_distance     = self%myconfig%coarsen_distance /physunit_inuse%myconfig%length
   self%myconfig%coarsen_var_distance = self%myconfig%coarsen_var_distance /physunit_inuse%myconfig%length
 
+  self%myconfig%variation_time       = self%myconfig%variation_time/physunit_inuse%myconfig%time
+  self%myconfig%variation_position   = self%myconfig%variation_position/physunit_inuse%myconfig%length
+  self%myconfig%variation_start_time = self%myconfig%variation_start_time/physunit_inuse%myconfig%time
+  self%myconfig%variation_end_time   = self%myconfig%variation_end_time/physunit_inuse%myconfig%time
+  self%myconfig%variation_velocity   = self%myconfig%variation_velocity/physunit_inuse%myconfig%velocity
 
   if(self%myconfig%dust_on)then
     call self%mydust%normalize(physunit_inuse)
     call self%mydust%to_phys()
   end if
   self%myconfig%normalize_done=.true.
-
+PRINT*,' is your testststs ',self%myconfig%pressure,self%myconfig%density,self%myconfig%velocity
  end subroutine usr_cla_jet_normalize
 
 
@@ -664,6 +710,7 @@ end subroutine usr_cla_jet_set_patch
     w(ixO^S,phys_ind%pressure_)   = self%myconfig%pressure
    end where
 
+
    cond_mhd0 : if(phys_config%ismhd)then
     where(self%patch(ixO^S))
      w(ixO^S,phys_ind%mag(r_))    = self%myconfig%magnetic(r_)
@@ -737,6 +784,73 @@ end subroutine usr_cla_jet_set_patch
 
  end subroutine usr_cla_jet_set_w
 
+
+ !--------------------------------------------------------------------
+ subroutine usr_cla_add_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w,self,&
+                               use_tracer,escape_patch,source_filter)
+   implicit none
+   integer, intent(in)                     :: ixI^L,ixO^L,iw^LIM
+   real(kind=dp), intent(in)               :: qdt,qtC,qt
+   real(kind=dp), intent(in)               :: x(ixI^S,1:ndim)
+   real(kind=dp), intent(in)               :: wCT(ixI^S,1:nw)
+   real(kind=dp), intent(inout)            :: w(ixI^S,1:nw)
+   logical, intent(in), optional           :: use_tracer
+   logical, intent(in),optional            :: escape_patch(ixI^S)
+   real(kind=dp), intent(in),optional      :: source_filter(ixI^S)
+
+   class(cla_jet)                          :: self
+   ! .. local ..
+   real(kind=dp)                           :: source_filter_loc(ixI^S)
+   real(kind=dp)                           :: f_profile(ixI^S,1:ndim)
+   real(kind=dp)                           :: w_init(ixI^S,1:nw)
+   integer                                 :: idir
+   !---------------------------------------------------------
+
+
+
+end subroutine usr_cla_add_source
+
+ !--------------------------------------------------------------------
+ !> Subroutine to process variables in cloud object
+  subroutine usr_cla_process_grid(ixI^L,ixO^L,qt,x,w,self)
+   implicit none
+   integer, intent(in)           :: ixI^L,ixO^L
+   real(kind=dp), intent(in)      :: qt
+   real(kind=dp)                  :: x(ixI^S,1:ndim)
+   real(kind=dp)                  :: w(ixI^S,1:nw)
+   class(cla_jet)                 :: self
+   ! .. local ..
+   integer                        :: ix^D
+   real(kind=dp)                  :: Vprofile
+   !----------------------------------------------------------
+   return;
+   cond_var_0 : if(self%myconfig%variation_on) then
+    cond_time_var : if(qt>self%myconfig%variation_start_time.and.qt<self%myconfig%variation_end_time) then
+     cond_inside : if(any(dabs(x(ixO^S,zjet_)-self%myconfig%variation_position(zjet_))<smalldouble))then
+       call usr_mat_profile_scalar(qt,self%myconfig%variation_time,&
+                                   self%myconfig%variation_type,Vprofile)
+
+
+
+      call phys_to_primitive(ixI^L,ixO^L,w,x)
+      {do ix^DB=ixOmin^DB,ixOmax^DB\}
+        if(dabs(x(ix^D,zjet_)-self%myconfig%variation_position(zjet_))<smalldouble)then
+          w(ix^D,phys_ind%mom(zjet_))= self%myconfig%velocity(zjet_)+&
+                                       self%myconfig%variation_velocity(zjet_)*&
+                                        Vprofile
+        end if
+      {end do\}
+      call phys_to_conserved(ixI^L,ixO^L,w,x)
+
+     end if cond_inside
+    end if  cond_time_var
+   end if cond_var_0
+
+   cond_dust_on : if(self%myconfig%dust_on)then
+     call self%mydust%handel_small_val(ixI^L,ixO^L,qt,x,w)
+   end if cond_dust_on
+ end subroutine usr_cla_process_grid
+ !--------------------------------------------------------------------
 !--------------------------------------------------------------------
 !> Subroutine to clean array memory of associated with cla_jet object
 subroutine usr_cla_jet_clean_memory(self)

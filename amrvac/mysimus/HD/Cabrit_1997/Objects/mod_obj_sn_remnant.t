@@ -434,7 +434,7 @@ end    subroutine usr_supernovae_remnant_write_setting
   if(trim(typeaxial)/='spherical')call self%spd_rad_to_cart(ixI^L,ixO^L,x,w)
 
 
-  call usr_lorentz_transrmation_add_proper_speed(ixI^L,ixO^L,&
+  call usr_lorentz_transformation_add_proper_speed(ixI^L,ixO^L,self%patch,&
     self%myconfig%velocity_proper,w(ixI^S,phys_ind%mom(1):phys_ind%mom(ndir)))
 
   cond_tracer_on :if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&

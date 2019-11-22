@@ -24,6 +24,10 @@ module mod_obj_ism
       character(len=30)    :: profile_pressure     !> ism profile pressure
       logical              :: profile_pressure_on  !> ISM pressure profile on
       logical              :: profile_force_on     !> ISM force profile one
+
+      character(len=30)    :: profile_density     !> ism profile pressure
+      logical              :: profile_density_on  !> ISM pressure profile on
+
       real(dp)             :: velocity(3)    !> ISM velocity (cm/s)
       real(dp)             :: magnetic(3)    !> ISM magnetic field (gauss)
       real(dp)             :: c_sound        !> ISM sound speed
@@ -172,6 +176,10 @@ contains
      self%myconfig%profile_pressure      = 'none'
      self%myconfig%profile_pressure_on   = .false.
      self%myconfig%profile_force_on      = .false.
+
+
+     self%myconfig%profile_density      = 'none'
+     self%myconfig%profile_density_on   = .false.
      self%myconfig%reset_coef            = 0.0_dp
      self%myconfig%reset_on              = .false.
      self%myconfig%boundary_cond         = 'fix'
@@ -235,7 +243,12 @@ contains
      end if
     end select
 
-
+    select case(self%myconfig%profile_density)
+    case('none')
+     self%myconfig%profile_density_on = .false.
+    case default
+      ! dummy
+    end select
 
 
     if( self%myconfig%dust_on)then
@@ -486,9 +499,9 @@ contains
      call self%alloc_set_patch(ixI^L,ixO^L,qt,x,&
                                use_tracer=use_tracer,w=w,escape_patch=escape_patch)
 
-
-
-
+  !    if(self%myconfig%profile_force_on) then
+  !     call self%get_pforce_profile(ixI^L,ixO^L,qt,x,w,f_profile)
+  !    end if
      cond_reset : if(self%myconfig%reset_coef>0.0_dp)then
       cond_inside : if(any(self%patch(ixO^S)))then
 

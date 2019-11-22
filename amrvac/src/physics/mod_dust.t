@@ -101,8 +101,8 @@ module mod_dust
      real(kind=dp), allocatable :: dsize(:)
 
      !> Internal density of each dust species
-     real(kind=dp), allocatable:: density(:)
-    type(dust_parameters)  :: myconfig
+     real(kind=dp), allocatable :: density(:)
+     type(dust_parameters)      :: myconfig
   end type dust_phys
   type(dust_phys)          :: dust_inuse
   type(dust_parameters)    :: dust_config
@@ -129,6 +129,7 @@ module mod_dust
   public :: dust_average_dustdensity
   public :: get_3d_dragforce
   public :: dust_get_sticking
+  public :: dust_get_wCD
 contains
 
   subroutine dust_init(phys_indices_inuse,phys_config_inuse,g_rho, g_mom, g_energy)
@@ -435,7 +436,7 @@ contains
     real(kind=dp)                   :: K,damp_coef
     logical, save                   :: it_dustreset
     integer, save                   :: it_dustsave =-100000
-    logical, dimension(ixI^S)       :: patch_dust_on
+    logical, dimension(ixI^S)       :: patch_dust_on,patch_dust_drag
     !---------------------------------
     vt2(ixO^S) = 3.0d0*ptherm(ixO^S)/w(ixO^S, gas_rho_)
 
@@ -462,20 +463,23 @@ contains
           where(patch_dust_on(ixO^S))
             vdust(ixO^S)  = w(ixO^S, dust_mom(idir, idust)) / w(ixO^S, dust_rho(idust))
             deltav(ixO^S) = (vgas(ixO^S, idir)-vdust(ixO^S))
+            patch_dust_drag(ixO^S) = .true.
+          elsewhere
+            patch_dust_drag(ixO^S) = .false.
+            deltav(ixO^S) = 0.0_dp
           end where
-          where(patch_dust_on(ixO^S))
-            where(dabs(deltav(ixO^S))>smalldouble)
+          where(dabs(deltav(ixO^S))<smalldouble)
+            patch_dust_drag(ixO^S) = .false.
+          end where
+          where(patch_dust_drag(ixO^S))
              ! 0.75 from sticking coefficient
-             fd(ixO^S)     = 0.75d0*w(ixO^S, dust_rho(idust))*w(ixO^S, gas_rho_)*deltav(ixO^S) &
+             fd(ixO^S)     = 0.75_dp*w(ixO^S, dust_rho(idust))*w(ixO^S, gas_rho_)*deltav(ixO^S) &
                   / (dust_density(idust) * dust_size(idust))
 
              ! 0.75 from spherical grainvolume
-             fd(ixO^S)     = -fd(ixO^S)*0.75d0*dsqrt(vt2(ixO^S) + deltav(ixO^S)**2.0_dp)
-            elsewhere
-             fd(ixO^S) = 0.0d0
-            end where
+             fd(ixO^S)     = -fd(ixO^S)*0.75_dp*dsqrt(vt2(ixO^S) + deltav(ixO^S)**2.0_dp)
           elsewhere
-            fd(ixO^S) = 0.0d0
+             fd(ixO^S)     = 0.0_dp
           end where
           call  dust_handle_largevariation_dragforce(.false.,ixI^L,ixO^L,&
                                                          fd,fd_flag,w)
@@ -732,7 +736,7 @@ contains
     real(kind=dp), dimension(ixI^S,1:dust_inuse%myconfig%n_species) :: alpha_T
     real(kind=dp)                              :: K,damp_coef
     integer                                    :: idust, idir
-    logical, dimension(ixI^S)                  :: patch_dust_on
+    logical, dimension(ixI^S)                  :: patch_dust_on,patch_dust_drag
     !----------------------------------------------
     call phys_get_pthermal(w, x, ixI^L, ixO^L, ptherm)
     Loop_idir : do idir = 1, ndir
@@ -744,7 +748,7 @@ contains
     case( 'Kwok' ) ! assume sticking coefficient equals 0.25
       dtdust(:) = bigdouble
 
-      vt2(ixO^S) = 3.0d0*ptherm(ixO^S)/w(ixO^S, gas_rho_)
+      vt2(ixO^S) = 3.0_dp*ptherm(ixO^S)/w(ixO^S, gas_rho_)
 
       ! Tgas, mu = mean molecular weight
       ! ptherm(ixO^S) = ( ptherm(ixO^S) * w_convert_factor(gas_e_) * &
@@ -755,29 +759,36 @@ contains
         Loop_idust_kwok : do idust = 1, dust_inuse%myconfig%n_species
           patch_dust_on(ixO^S) = w(ixO^S, dust_rho(idust)) > dust_inuse%myconfig%min_rho
           where(patch_dust_on(ixO^S))
-            vdust(ixO^S)  = w(ixO^S,dust_mom(idir, idust))/w(ixO^S, dust_rho(idust))
-            deltav(ixO^S) = (vgas(ixO^S, idir)-vdust(ixO^S))
+            vdust(ixO^S)           = w(ixO^S,dust_mom(idir, idust))/w(ixO^S, dust_rho(idust))
+            deltav(ixO^S)          = (vgas(ixO^S, idir)-vdust(ixO^S))
+            patch_dust_drag(ixO^S) =  .true.
+          elsewhere
+            deltav(ixO^S) = 0.0_dp
           end where
-          where(patch_dust_on(ixO^S))
-            where(dabs(deltav(ixO^S))>smalldouble)
+          where(dabs(deltav(ixO^S))<smalldouble)
+            patch_dust_drag(ixO^S) =  .false.
+          end where
+          where(patch_dust_drag(ixO^S))
+
               tstop(ixO^S)  = 4.0_dp*(dust_density(idust)*dust_size(idust))/ &
                  (3.0_dp*(0.75_dp)*dsqrt(vt2(ixO^S) + &
                  deltav(ixO^S)**2.0_dp)*(w(ixO^S, dust_rho(idust)) + &
                  w(ixO^S, gas_rho_)))
-            else where
-              tstop(ixO^S) = bigdouble
-            end where
+
           else where
             tstop(ixO^S) = bigdouble
           end where
           dtdust(idust) = min(minval(tstop(ixO^S)), dtdust(idust))
-          ! if(  minval(tstop(ixO^S))<1e-11)print*, ' is dust error : ',idust,idir,minval(tstop(ixO^S)),minloc(tstop(ixO^S)),&
-          ! 'variables:  ',w(ixOmin1+minval(minloc(tstop(ixO^S)))-1,:),'dv',deltav(ixOmin1+minval(minloc(tstop(ixO^S)))-1)&
-          ! ,x(ixOmin1+minval(minloc(tstop(ixO^S)))-1,1)*length_convert_factor/1e15,vdust(ixOmin1+minval(minloc(tstop(ixO^S)))-1),'alalal',&
-          ! w(ixO^S,dust_rho(1)),'the moment ',w(ixO^S,dust_mom(1,1)),'the gas',w(ixO^S,gas_mom(1))
+
           if(dust_inuse%myconfig%it_diff>0)then
-           call dust_dust_damping_coef(ixI^L,ixO^L,it,global_time,dtnew,x,w,damp_coef)
+           call dust_dust_damping_coef(ixI^L,ixO^L,it,global_time,dtdust(idust),x,w,damp_coef)
            dtdust(idust) = dtdust(idust)/max(damp_coef,smalldouble)
+          end if
+          if(it<=10)then
+            if(dtdust(idust)>smalldouble.and.dtdust(idust)<1d-2)then
+              print*,' wellll sseeee at duststssss getdt',dtdust(idust),&
+              maxval(dabs(deltav(ixO^S)),patch_dust_on(ixO^S))
+            end if
           end if
         end do Loop_idust_kwok
       end do Loop_idir_kwok
@@ -1369,7 +1380,98 @@ end subroutine dust_medianvalue_of_array
 
     end subroutine dust_get_tstop
 
+  subroutine dust_get_wCD(x,wLC,wRC,whll,fRC,fLC,Fhll,patchf,lambdaCD,cmin,cmax,&
+       ixI^L,ixO^L,idim,f)
+    ! compute the intermediate state U*
+    ! only needed where patchf=-1/1
 
+    ! reference Li S., JCP, 203, 2005, 344-357
+    ! reference T. Miyoski, Kusano JCP, 2008, 2005.
+
+    use mod_global_parameters
+
+    integer, intent(in)                                      :: ixI^L,ixO^L,idim
+    double precision, dimension(ixI^S,1:nw), intent(in)      :: wRC,wLC
+    double precision, dimension(ixI^S,1:ndim), intent(in)    :: x
+    double precision, dimension(ixI^S,1:nwflux), intent(in)  :: whll, Fhll
+    double precision, dimension(ixI^S), intent(in)           :: lambdaCD
+    double precision, dimension(ixI^S), intent(in)           :: cmax,cmin
+    double precision, dimension(ixI^S,1:nwflux), intent(in)  :: fRC,fLC
+    double precision, dimension(ixI^S,1:nwflux),intent(out)  :: f
+    double precision, dimension(ixI^S,1:nw)                  :: wCD,wSub
+    double precision, dimension(ixI^S,1:nwflux)              :: fSub
+    double precision, dimension(ixI^S)                       :: vSub,cspeed,pCD
+    integer         , dimension(ixI^S), intent(inout)        :: patchf
+
+    integer                                                  :: n, idir, ix^D,idust
+
+    !-------------- auxiliary Speed and array-------------!
+    Loop_dust :  do idust=1,dust_inuse%myconfig%n_species
+      {do ix^DB=ixOmin^DB,ixOmax^DB\}
+         if(patchf(ix^D)==1) then
+            if(wRC(ix^D,dust_rho(idust))>dust_inuse%myconfig%min_rho)then
+             cspeed(ix^D)=cmax(ix^D)
+             vSub(ix^D)=wRC(ix^D,dust_mom(idim, idust))/wRC(ix^D,dust_rho(idust))
+             wSub(ix^D,dust_rho(idust))   = wRC(ix^D,dust_rho(idust))
+             wSub(ix^D,dust_mom(:, idust))= wRC(ix^D,dust_mom(:, idust))
+             fSub(ix^D,dust_rho(idust))   = fRC(ix^D,dust_rho(idust))
+             fSub(ix^D,dust_mom(:, idust))= fRC(ix^D,dust_mom(:, idust))
+            else
+              wSub(ix^D,dust_rho(idust))   = 0.0_dp
+              fSub(ix^D,dust_rho(idust))   = 0.0_dp
+              fSub(ix^D,dust_mom(:, idust))= 0.0_dp
+            end if
+          else if(patchf(ix^D)==-1) then
+            if(wLC(ix^D,dust_rho(idust))>dust_inuse%myconfig%min_rho)then
+              cspeed(ix^D)=cmin(ix^D)
+              vSub(ix^D)=wLC(ix^D,dust_mom(idim, idust))/wLC(ix^D,dust_rho(idust))
+              wSub(ix^D,dust_rho(idust))   = wLC(ix^D,dust_rho(idust))
+              wSub(ix^D,dust_mom(:, idust))= wLC(ix^D,dust_mom(:, idust))
+              fSub(ix^D,dust_rho(idust))   = fLC(ix^D,dust_rho(idust))
+              fSub(ix^D,dust_mom(:, idust))= fLC(ix^D,dust_mom(:, idust))
+            else
+              wSub(ix^D,dust_rho(idust))   = 0.0_dp
+              fSub(ix^D,dust_rho(idust))   = 0.0_dp
+              fSub(ix^D,dust_mom(:, idust))= 0.0_dp
+            end if
+         end if
+      {end do\}
+
+      {do ix^DB=ixOmin^DB,ixOmax^DB\}
+        if(abs(patchf(ix^D))==1) then
+          if(wSub(ix^D,dust_rho(idust))>dust_inuse%myconfig%min_rho)then
+            wCD(ix^D,dust_rho(idust)) = wSub(ix^D,dust_rho(idust))&
+                           *(cspeed(ix^D)-vSub(ix^D))/(cspeed(ix^D)-lambdaCD(ix^D))
+
+
+            !------- Momentum ------!
+            do idir=1, ndir
+              if(idir /= idim)then
+                ! eq. 21 22
+                wCD(ix^D,dust_mom(idir,idust))=(cspeed(ix^D)*wSub(ix^D,dust_mom(idir,idust))&
+                                               -fSub(ix^D,dust_mom(idir,idust)))/&
+                                               (cspeed(ix^D)-lambdaCD(ix^D))
+              else
+                ! eq. 20
+                wCD(ix^D,dust_mom(idir,idust)) =  wCD(ix^D,dust_rho(idust)) * lambdaCD(ix^D)
+              endif
+            enddo
+
+            f(ix^D,dust_rho(idust))=fsub(ix^D,dust_rho(idust))+cspeed(ix^D)&
+                            *(wCD(ix^D,dust_rho(idust))-wSub(ix^D,dust_rho(idust)))
+            Loop_iw_flux_dust_mom: do idir=1,ndir
+              ! f_i=fsub+lambda (wCD-wSub)
+              f(ix^D,dust_mom(idir,idust))=fsub(ix^D,dust_mom(idir,idust))+cspeed(ix^D)&
+                            *(wCD(ix^D,dust_mom(idir,idust))-wSub(ix^D,dust_mom(idir,idust)))
+            end do Loop_iw_flux_dust_mom
+          else
+            f(ix^D,dust_rho(idust))   = 0.0_dp
+            f(ix^D,dust_mom(:,idust)) = 0.0_dp
+          end if
+        end if
+      {end do\}
+    end do Loop_dust
+  end subroutine dust_get_wCD
     subroutine dust_dust_damping_coef(ixI^L,ixO^L,iter,qt,qdt,x,w,damp_coef)
       use mod_global_parameters
       implicit none
