@@ -328,7 +328,7 @@ contains
     class(ism)                    :: self
     ! .. local..
     integer                    :: idir,IB,idims,idims_bound,iw
-    real(kind=dp)              :: fprofile(ixI^S)
+    real(kind=dp)              :: flimitoutflow(ixI^S)
     logical                    :: isboundary
     character(len=30)          :: myboundary_cond
     !----------------------------------
@@ -455,7 +455,7 @@ contains
      select case(trim(self%myconfig%profile_density))
      case('cabrit1997')
         if(self%myconfig%z_c>smalldouble)then
-          p_profile(ixO^S) = 1.0_dp+x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c
+          p_profile(ixO^S) = (1.0_dp+x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c)**(-self%myconfig%kappa)
         else
           p_profile(ixO^S) = 1.0_dp
         end if
@@ -512,8 +512,8 @@ contains
       case('cabrit1997')
        cond_force_rho1: if(self%myconfig%z_c>smalldouble)then
         where(self%patch(ixO^S))
-         f_profile(ixO^S,self%myconfig%profile_idir) = phys_config%gamma/self%myconfig%z_c*&
-           (1.0_dp+x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c)**(phys_config%gamma-1)
+         f_profile(ixO^S,self%myconfig%profile_idir) = -phys_config%gamma/self%myconfig%z_c*self%myconfig%kappa&
+           (1.0_dp+x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c)**(-phys_config%gamma*self%myconfig%kappa-1)
         end  where
        else cond_force_rho1
         where(self%patch(ixO^S))
