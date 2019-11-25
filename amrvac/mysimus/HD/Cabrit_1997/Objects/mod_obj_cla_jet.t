@@ -319,26 +319,26 @@ contains
 
 
    if(dabs(self%myconfig%power)>smalldouble) then
-     self%myconfig%mass_flux           = self%myconfig%power/const_c**2.0_dp
+     self%myconfig%mass_flux           = self%myconfig%power/self%myconfig%velocity(zjet_)**2.0_dp
    end if
 
 
-   if (dabs(self%myconfig%mass_flux)>smalldouble)then
-    self%myconfig%density        = self%myconfig%mass_flux/(jet_surface_init*  &
-                                   dabs(self%myconfig%velocity(zjet_)))
+  cond_massflux : if (dabs(self%myconfig%mass_flux)>smalldouble)then
+    self%myconfig%density              = self%myconfig%mass_flux/(jet_surface_init*  &
+                                         dabs(self%myconfig%velocity(zjet_)))
 
     self%myconfig%number_density = self%myconfig%density/mp
-    self%myconfig%power               = self%myconfig%mass_flux*unit_velocity
-  else
-   if (dabs(self%myconfig%density)<smalldouble*mp)then
-    self%myconfig%density        = self%myconfig%number_density*mp
-   else if (dabs(self%myconfig%number_density)<smalldouble*mp)then
+    self%myconfig%power                   = self%myconfig%mass_flux*unit_velocity
+  else cond_massflux
+    if (dabs(self%myconfig%density)<smalldouble*mp)then
+      self%myconfig%density               = self%myconfig%number_density*mp
+    else if (dabs(self%myconfig%number_density)<smalldouble*mp)then
       self%myconfig%number_density        = self%myconfig%density/mp
-   end if
-   self%myconfig%mass_flux      = self%myconfig%density*jet_surface_init *  &
+    end if
+    self%myconfig%mass_flux      = self%myconfig%density*jet_surface_init *  &
                                     dabs(self%myconfig%velocity(zjet_))
-   self%myconfig%power          = self%myconfig%mass_flux*unit_velocity**2.0_dp
-   end if
+    self%myconfig%power          = self%myconfig%mass_flux*self%myconfig%velocity(zjet_)**2.0_dp
+  end if cond_massflux
 
 
 
@@ -352,16 +352,17 @@ contains
    else if(self%myconfig%c_sound>0.0_dp) then
      self%myconfig%mach_number = dsqrt(sum(self%myconfig%velocity**2.0_dp))/self%myconfig%c_sound
    end if cond_Mach_set
+
    cond_csound_set : if(self%myconfig%c_sound>0.0_dp) then
       self%myconfig%pressure = self%myconfig%c_sound**2.0_dp * self%myconfig%density /&
                                phys_config%gamma
    else  cond_csound_set
 
     if(dabs(self%myconfig%pressure)<=0.0_dp) then
-    self%myconfig%pressure =self%myconfig%number_density*&
+     self%myconfig%pressure =self%myconfig%number_density*&
                                  kB*self%myconfig%temperature
     else
-    self%myconfig%temperature = self%myconfig%pressure/(kB*self%myconfig%number_density)
+     self%myconfig%temperature = self%myconfig%pressure/(kB*self%myconfig%number_density)
     end if
     self%myconfig%c_sound = sqrt(phys_config%gamma*self%myconfig%pressure/self%myconfig%density)
    end if cond_csound_set
@@ -509,7 +510,7 @@ contains
     call self%mydust%to_phys()
   end if
   self%myconfig%normalize_done=.true.
-PRINT*,' is your testststs ',self%myconfig%pressure,self%myconfig%density,self%myconfig%velocity
+
  end subroutine usr_cla_jet_normalize
 
 

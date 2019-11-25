@@ -59,15 +59,15 @@ subroutine usr_boundaries_set_complet(self)
           self%variable_typebound(idims,iside,phys_ind%mom(idir))='symm'
         end if
       end do Loop_iw_wall
-     case('limitinflux')
+     case('limitinflow')
       self%variable_typebound(idims,iside,:)='cont'
-      self%variable_typebound(idims,iside,phys_ind%mom(idims))='limitinflux'
+      self%variable_typebound(idims,iside,phys_ind%mom(idims))='limitinflow'
      case('nooutflux')
       self%variable_typebound(idims,iside,:)='cont'
       self%variable_typebound(idims,iside,phys_ind%mom(idims))='nooutflux'
-     case('limitoutflux')
+     case('limitoutflow')
       self%variable_typebound(idims,iside,:)='cont'
-      self%variable_typebound(idims,iside,phys_ind%mom(idims))='limitoutflux'
+      self%variable_typebound(idims,iside,phys_ind%mom(idims))='limitoutflow'
      case('open')
        self%variable_typebound(idims,iside,:)='cont'
      case('disc')
@@ -185,8 +185,8 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
       end do
    else
       ! minimal boundary
-      ixGmin^DD=ixImin^DD+self%nghostcells(^DD)*merge(1,0,^DD==^D);
-      ixGmax^DD=ixImax^DD+self%nghostcells(^DD)*merge(1,0,^DD==^D);
+      ixGmin^DD=ixOmin^DD+self%nghostcells(^DD)*merge(1,0,^DD==^D);
+      ixGmax^DD=ixOmax^DD+self%nghostcells(^DD)*merge(1,0,^DD==^D);
       if(self%useprimitive)then
        wp(ixG^S,1:nw) = w(ixG^S,1:nw)
        call phys_to_primitive(ixI^L,ixG^L,wp,x)

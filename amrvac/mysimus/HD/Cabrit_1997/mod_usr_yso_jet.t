@@ -582,9 +582,9 @@ contains
 
     if(any(flag(ixO^S)>0)) PRINT*,' is error',maxval(flag(ixO^S)),minval(w(ixO^S,phys_ind%pressure_))
 
-PRINT*,' is the test inside ',maxval(w(ixO^S,phys_ind%mom(2))),minval(w(ixO^S,phys_ind%mom(2))),&
-maxval(w(ixO^S,phys_ind%rho_)),minval(w(ixO^S,phys_ind%rho_)),&
-maxval(w(ixO^S,phys_ind%pressure_)),minval(w(ixO^S,phys_ind%pressure_))
+!PRINT*,' is the test inside ',maxval(w(ixO^S,phys_ind%mom(2))),minval(w(ixO^S,phys_ind%mom(2))),&
+!maxval(w(ixO^S,phys_ind%rho_)),minval(w(ixO^S,phys_ind%rho_)),&
+!maxval(w(ixO^S,phys_ind%pressure_)),minval(w(ixO^S,phys_ind%pressure_))
     ! get conserved variables to be used in the code
     call phys_to_conserved(ixI^L,ixO^L,w,x)
 
