@@ -392,14 +392,15 @@ contains
   subroutine process1_grid(method,igrid,qdt,ixG^L,idim^LIM,qtC,wCT,qt,w,wold)
     use mod_global_parameters
     use mod_fix_conserve
-
+    use mod_usr_methods
     character(len=*), intent(in) :: method
-    integer, intent(in) :: igrid, ixG^L, idim^LIM
+    integer, intent(in)          :: igrid, ixG^L, idim^LIM
     double precision, intent(in) :: qdt, qtC, qt
-    double precision :: wCT(ixG^S,1:nw), w(ixG^S,1:nw), wold(ixG^S,1:nw)
+    double precision             :: wCT(ixG^S,1:nw), w(ixG^S,1:nw), wold(ixG^S,1:nw)
 
     double precision :: dx^D
     double precision :: fC(ixG^S,1:nwflux,1:ndim)
+    character(len=20):: grid_method,grid_limiter
     !---------------------------------------------------------
 
     dx^D=rnode(rpdx^D_,igrid);
@@ -411,7 +412,8 @@ contains
     typegradlimiter=type_gradient_limiter(node(plevel_,igrid))
 
     fC=0.d0
-
+    grid_method = method
+    !call usr_reset_solver(ixG^L,ixG^L,qt,w,pw(igrid)%x,method,type_limiter(node(plevel_,igrid)),grid_method,typelimiter)
     call advect1_grid(method,qdt,ixG^L,idim^LIM,qtC,wCT,qt,w,wold,fC,dx^D, &
          pw(igrid)%x)
 

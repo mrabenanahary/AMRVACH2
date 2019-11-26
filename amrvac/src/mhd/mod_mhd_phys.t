@@ -15,6 +15,7 @@ module mod_mhd_phys
   !> Whether radiative cooling is added
   logical, public, protected              :: mhd_radiative_cooling = .false.
 
+
   !> Whether viscosity is added
   logical, public, protected              :: mhd_viscosity = .false.
 
@@ -140,6 +141,7 @@ module mod_mhd_phys
   public :: mhd_phys_init
   public :: mhd_kin_en
   public :: mhd_get_pthermal
+  public :: mhd_get_temperature
   public :: mhd_get_v
   public :: mhd_to_conserved
   public :: mhd_to_primitive
@@ -164,7 +166,7 @@ contains
       B0field_forcefree, B0field_reset,Bdip, Bquad, Boct, Busr, &
       mu0dip,mu0theta,mu0phi,muphi_period, mutheta_period,mhd_particles,&
       boundary_divbfix, boundary_divbfix_skip,unit_velocity,unit_length,&
-      unit_numberdensity,ndir
+      unit_numberdensity,ndir,mhd_dust
 
     do n = 1, size(files)
        open(unitpar, file=trim(files(n)), status="old")
@@ -271,7 +273,7 @@ contains
 
     physics_type              = "mhd"
     phys_energy               = mhd_energy
-    mhd_config%dust_on        = .false.
+    mhd_config%dust_on        = mhd_dust
     mhd_config%dust_n_species = 0
     mhd_config%ismhd          = .true.
     mhd_config%isrel          = .false.
@@ -348,6 +350,7 @@ contains
     phys_check_params        => mhd_check_params
     phys_check_w             => mhd_check_w
     phys_get_pthermal        => mhd_get_pthermal
+    phys_get_temperature     => mhd_get_temperature
     phys_boundary_adjust     => mhd_boundary_adjust
     phys_write_info          => mhd_write_info
     phys_angmomfix           => mhd_angmomfix
@@ -932,6 +935,20 @@ contains
       pth(ixO^S)=mhd_adiab*w(ixO^S,rho_)**mhd_gamma
     end if
   end subroutine mhd_get_pthermal
+
+  !> Calculate temperature within ixO^L
+  subroutine mhd_get_temperature( ixI^L, ixO^L,w, x, temperature)
+    use mod_global_parameters
+
+    integer, intent(in)          :: ixI^L, ixO^L
+    real(dp), intent(in)         :: w(ixI^S, nw)
+    real(dp), intent(in)         :: x(ixI^S, 1:ndim)
+    real(dp), intent(out)        :: temperature(ixI^S)
+    real(dp)                     :: pth(ixI^S)
+    !----------------------------------------------------
+    call mhd_get_pthermal(w, x, ixI^L, ixO^L, pth)
+    temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
+  end subroutine mhd_get_temperature
 
   !> Calculate the square of the thermal sound speed csound2 within ixO^L.
   !> csound2=gamma*p/rho

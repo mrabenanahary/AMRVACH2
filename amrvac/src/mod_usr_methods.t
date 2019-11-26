@@ -64,6 +64,7 @@ module mod_usr_methods
   procedure(after_refine), pointer      :: usr_after_refine      => null()
   ! compute any global variables before convert
   procedure(special_global), pointer    :: usr_special_global    => null()
+  procedure(reset_solver), pointer      :: usr_reset_solver    => null()
   abstract interface
 
      subroutine p_no_args()
@@ -332,6 +333,19 @@ module mod_usr_methods
      subroutine special_global()
        use mod_global_parameters
      end    subroutine special_global
+
+   !> Initialize the method and limiter
+   subroutine reset_solver(ixI^L,ixO^L,qt,w,x,old_method,old_limiter,usr_method,usr_limiter)
+     use mod_global_parameters
+     integer, intent(in)             :: ixI^L, ixO^L
+     real(kind=dp), intent(in)       :: qt
+     double precision, intent(in)    :: x(ixI^S,1:ndim)
+     double precision, intent(in)    :: w(ixI^S,1:nw)
+     character(len=*),intent(in)     :: old_method
+     integer, intent(in)             :: old_limiter
+     character(len=20),intent(inout) :: usr_method
+     integer, intent(inout)          :: usr_limiter
+   end subroutine reset_solver
   end interface
 
 end module mod_usr_methods

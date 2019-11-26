@@ -122,16 +122,16 @@ if(associated(phys_getdt_heatconduct)) then
      dt=tc_ncycles*dtnew
    endif
   ! get number of sub-steps of supertime stepping (Meyer 2012 MNRAS 422,2102)
-   if(dt/dtnew< 0.5d0) then
+   if(dt/dtnew< 0.5_dp) then
      s=1
-   else if(dt/dtnew< 2.d0) then
+   else if(dt/dtnew< 2.0_dp) then
      s=2
    else
-     s=ceiling((dsqrt(9.d0+8.d0*dt/dtnew)-1.d0)/2.d0)
+     s=ceiling((dsqrt(9.0_dp+8.0_dp*dt/dtnew)-1.0_dp)/2.0_dp)
      ! only use odd s number
      s=s/2*2+1
    endif
-   dt_tc=dt*0.5d0
+   dt_tc=dt*0.5_dp
    if(mype==0 .and. .false.) write(*,*) 'supertime steps:',s,' normal subcycles:',&
                                ceiling(dt/dtnew/2.d0)
 endif
@@ -180,7 +180,7 @@ contains
   !-----------------------------------------------------------------------------
   log_nocrrect=.true.
   Loop_cor : do iter_correct=1,2*ndim
-    
+
    dtnew=bigdouble
 
    courantmax=zero

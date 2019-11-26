@@ -681,7 +681,7 @@ contains
     end if
 
     select case (typeaxial)
-      case("cartesian")
+    case("cartesian","slab")
        {^D&xprob^LIM^D=xprob^LIM^D/unit_length;}
       case ("spherical")
        if(unit_length/=0)then

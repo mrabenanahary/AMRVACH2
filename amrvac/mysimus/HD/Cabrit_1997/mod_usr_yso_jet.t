@@ -1,6 +1,5 @@
 module mod_usr
-  use mod_hd, only : hd_activate
-  ! use mod_mhd, only : mhd_activate
+
   use mod_dust
   use mod_physics
   use mod_global_parameters
@@ -36,6 +35,7 @@ module mod_usr
 
     real(kind=dp)     :: density_dusttogas_maxlimit
     real(kind=dp)     :: density_dusttogas_minlimit
+    character(len=20) :: phys_inuse
   end type usr_config
   type(usr_config)    :: usrconfig
   integer, parameter  :: n_dust_max = 20
@@ -63,6 +63,8 @@ module mod_usr
 
 contains
   subroutine usr_init
+    use mod_hd, only : hd_activate
+    use mod_mhd, only : mhd_activate
     ! .. local ..
     integer :: i_cloud,i_ism
     !-------------------------------------------
@@ -102,13 +104,16 @@ contains
 
     ! complet all physical unit in use
     if(usrconfig%physunit_on) then
-      physics_type='hd'
-      call usr_physunit%set_complet(physics_type)
+      call usr_physunit%set_complet(trim(usrconfig%phys_inuse))
     end if
     call usr_physical_unit
     call set_coordinate_system(trim(usrconfig%coordinate_system))
-    call hd_activate
-
+    select case(trim(usrconfig%phys_inuse))
+    case('hd')
+     call hd_activate
+    case('mhd')
+     call mhd_activate
+    end select
 
     call usr_check_conflict
 
@@ -259,6 +264,7 @@ contains
     ! .. local ..
     integer  :: i_ism,i_cloud,i_jet_yso
     !------------------------------
+
     cond_dust_on : if(.not.phys_config%dust_on)then
       if(usrconfig%ism_on)then
        Loop_isms : do i_ism=0,usrconfig%ism_number-1
@@ -270,6 +276,7 @@ contains
         cloud_medium(i_cloud)%myconfig%dust_on =.false.
        end do Loop_clouds
       end if
+
       if(usrconfig%jet_yso_on)then
        Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
         jet_yso(i_jet_yso)%myconfig%dust_on =.false.

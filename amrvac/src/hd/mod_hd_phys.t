@@ -105,7 +105,7 @@ contains
     use mod_global_parameters
     integer, intent(in)                 :: fh
     integer, parameter                  :: n_par = 1
-    real(dp)                            :: values(n_par)
+    real(dp)                    :: values(n_par)
     character(len=name_len)             :: names(n_par)
     integer, dimension(MPI_STATUS_SIZE) :: st
     integer                             :: er

@@ -101,14 +101,17 @@ contains
     !-------------------------------------
 
     ! Determine flux variables
-    rho_ = var_set_rho()
+    rho_                = var_set_rho()
 
-    rho_ind%rho_  =rho_
-    rho_ind%e_    =-1
+    rho_ind%rho_        =rho_
+    rho_ind%e_          =-1
     rho_ind%pressure_   =-1
-    rho_ind%lfac_ =-1
-    rho_ind%xi_   =-1
-    rho_ind%psi_  =-1
+    rho_ind%lfac_       =-1
+    rho_ind%xi_         =-1
+    rho_ind%psi_        =-1
+    rho_config%nw       = nw
+    rho_config%nwflux   = nwflux
+    rho_config%nwfluxbc = nwfluxbc
   end subroutine hd_fill_phys_indices
   subroutine rho_to_conserved(ixI^L, ixO^L, w, x)
     use mod_global_parameters

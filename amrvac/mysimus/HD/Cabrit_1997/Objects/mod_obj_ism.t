@@ -26,7 +26,8 @@ module mod_obj_ism
       logical              :: profile_force_on     !> ISM force profile one
 
       character(len=30)    :: profile_density     !> ism profile pressure
-      logical              :: profile_density_on  !> ISM pressure profile on
+      logical              :: profile_density_on  !> ISM density profile on
+      logical              :: profile_density_keep_pressur !> ISM density profile but keep pressure
 
       logical              :: profile_on     !> ISM profile set
       integer              :: profile_idir   !> IMS profile direction
@@ -186,7 +187,7 @@ contains
      self%myconfig%profile_density_on    = .false.
 
 
-
+     self%myconfig%profile_density_keep_pressur =.false.
      self%myconfig%reset_coef            = 0.0_dp
      self%myconfig%reset_on              = .false.
      self%myconfig%boundary_cond         = 'fix'
@@ -328,7 +329,7 @@ contains
     class(ism)                    :: self
     ! .. local..
     integer                    :: idir,IB,idims,idims_bound,iw
-    real(kind=dp)              :: flimitoutflow(ixI^S)
+    real(kind=dp)              :: fprofile(ixI^S)
     logical                    :: isboundary
     character(len=30)          :: myboundary_cond
     !----------------------------------
@@ -512,7 +513,7 @@ contains
       case('cabrit1997')
        cond_force_rho1: if(self%myconfig%z_c>smalldouble)then
         where(self%patch(ixO^S))
-         f_profile(ixO^S,self%myconfig%profile_idir) = -phys_config%gamma/self%myconfig%z_c*self%myconfig%kappa&
+         f_profile(ixO^S,self%myconfig%profile_idir) = -phys_config%gamma/self%myconfig%z_c*self%myconfig%kappa*&
            (1.0_dp+x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c)**(-phys_config%gamma*self%myconfig%kappa-1)
         end  where
        else cond_force_rho1
@@ -562,6 +563,12 @@ contains
           where(self%patch(ixO^S))
             w(ixO^S,imom_profile_) = w(ixO^S,imom_profile_)+qdt*f_profile(ixO^S,i_idir_prof_)
           end where
+         !if(energy .and. .not.block%e_is_internal) then
+          where(self%patch(ixO^S))
+          w(ixO^S,phys_ind%e_)=w(ixO^S,phys_ind%e_) &
+              + qdt * f_profile(ixO^S,z_) * wCT(ixO^S,phys_ind%mom(z_))/wCT(ixO^S,phys_ind%rho_)
+          end where
+         !end if
         end if  cond_inside_prof
       end if cond_add_force
 
@@ -573,6 +580,7 @@ contains
        else cond_filter
          source_filter_loc(ixO^S) = 1.0_dp
        end if cond_filter
+
 
        call self%set_w(ixI^L,ixO^L,qt,x,w_init)
        call phys_to_primitive(ixI^L,ixO^L,w,x)

@@ -503,8 +503,9 @@ double precision, dimension({^D&1:1},1:nw+nwauxio)   :: wval
 double precision, dimension({^D&1:1},1:ndim)         :: xval
 double precision:: normconv(0:nw+nwauxio)
 
-integer           :: iw,iiw,writenw,iwrite(1:nw+nwauxio),iigrid,idim
-logical :: patchw(ixG^T)
+integer                  :: iw,iiw,writenw,iwrite(1:nw+nwauxio),iigrid,idim
+logical                  :: save_volume,save_multilevel
+logical,dimension(ixG^T) :: patchw
 !-----------------------------------------------------------------------------
 
 if(level_io<1)then
@@ -515,7 +516,8 @@ if(npe>1)then
  if(mype==0) PRINT *,'ONEBLOCK as yet to be parallelized'
  call mpistop('npe>1, oneblock')
 end if
-
+save_volume      = .false.
+save_multilevel = .false.
 ! only variables selected by w_write will be written out
 normconv(0:nw+nwauxio)=one
 normconv(0) = length_convert_factor
@@ -569,7 +571,7 @@ do ig^D=1,ng^D(level_io)
 end do
 \}
 
-do iigrid=1,igridstail; igrid=igrids(iigrid)
+Loop_igrid_aux_blk : do iigrid=1,igridstail; igrid=igrids(iigrid)
    if(.not.writeblk(igrid)) cycle
    ncells=ncells+ncellg
    pw(igrid)%wio(ixG^T,1:nw)=pw(igrid)%w(ixG^T,1:nw)
@@ -582,7 +584,7 @@ do iigrid=1,igridstail; igrid=igrids(iigrid)
               pw(igrid)%wio,pw(igrid)%x,normconv)
       end if
    end if
-end do
+end do Loop_igrid_aux_blk
 
 if (saveprim) then
   do iigrid=1,igridstail; igrid=igrids(iigrid)
@@ -610,19 +612,30 @@ Master_cpu_open : if (mype == 0) then
  inquire(qunit,opened=fileopen)
  if (.not.fileopen) then
    ! generate filename
-    filenr=snapshotini
-    if (autoconvert) filenr=snapshotnext
-   write(filename,'(a,i4.4,a)') TRIM(base_filename),filenr,".blk"
+   filenr=snapshotini
+   if (autoconvert) filenr=snapshotnext
+   write(filename,FMT='(a,i4.4,a)') TRIM(base_filename),filenr,".blk"
    select case(convert_type)
     case("oneblock")
      open(qunit,file=filename,status='unknown')
-     write(qunit,*) TRIM(outfilehead)
-     write(qunit,*) ncells,ncells^D
-     write(qunit,*) global_time*time_convert_factor
+     write(qunit,FMT='(2(i2.1))')ndim,ndir
+     write(qunit,FMT='(i4.4)')writenw
+     write(qunit,FMT="(A)")typeaxial
+     write(qunit,FMT="(100(A16))") (xandwnamei(iiw),iiw=1,ndim+writenw)
+     write(qunit,FMT="(3(L1))") saveprim,save_volume,save_multilevel
+     write(qunit,FMT='(4(i7.7))') ncells,ncells^D
+     write(qunit,FMT="(100(e14.6))") time_convert_factor,length_convert_factor,&
+                                     (normconv(iwrite(iiw)),iiw=1,writenw)
+     write(qunit,FMT="(e20.10)") global_time*time_convert_factor
     case("oneblockB")
      open(qunit,file=filename,form='unformatted',status='unknown')
+     write(qunit) ndim,ndir
+     write(qunit) writenw
+     write(qunit) typeaxial
      write(qunit) outfilehead
+     write(qunit) saveprim,save_volume,save_multilevel
      write(qunit) ncells,ncells^D
+     write(qunit) time_convert_factor,length_convert_factor,(normconv(iwrite(iiw)),iiw=1,writenw)
      write(qunit) global_time*time_convert_factor
    end select
  end if
@@ -691,10 +704,11 @@ character(len=name_len) :: wnamei(1:nw+nwauxio),xandwnamei(1:ndim+nw+nwauxio)
 character(len=1024)     :: outfilehead
 
 !.. MPI variables ..
-integer           :: igrid_recv,ipe
-double precision  :: w_recv(ixG^T,1:nw),x_recv(ixG^T,1:ndim)
-integer, allocatable :: intstatus(:,:)
-
+integer                  :: igrid_recv,ipe,ncells,ncells^D
+logical                  :: save_volume,save_multilevel
+double precision         :: w_recv(ixG^T,1:nw),x_recv(ixG^T,1:ndim)
+integer, allocatable     :: intstatus(:,:)
+Real(kind=dp)            :: normconv(0:nw+nwauxio)
 !-----------------------------------------------------------------------------
 
 if(nwauxio>0)then
@@ -708,22 +722,37 @@ end if
 
 
 
+normconv(:)           = one
+normconv(0)           = length_convert_factor
+normconv(1:nw)        = w_convert_factor(1:nw)
+
+ncells =  ( {^D&(ixMhi^D-ixMlo^D+1)*} )*(Morton_stop(npe-1)-Morton_start(0)+1)
+{^D&ncells^D=(ixMhi^D-ixMlo^D+1)*(Morton_stop(npe-1)-Morton_start(0)+1);}
 Master_cpu_open : if (mype == 0) then
  call getheadernames(wnamei,xandwnamei,outfilehead)
  write(outfilehead,'(a)') "#"//" "//TRIM(outfilehead)
  inquire(qunit,opened=fileopen)
- if (.not.fileopen) then
+ cond_openf: if (.not.fileopen) then
    ! generate filename
     filenr=snapshotini
     if (autoconvert) filenr=snapshotnext
    write(filename,'(a,i4.4,a)') TRIM(base_filename),filenr,".blk"
    open(qunit,file=filename,status='unknown')
- end if
- write(qunit,"(a)")outfilehead
- write(qunit,"(i7)") ( {^D&(ixMhi^D-ixMlo^D+1)*} )*(Morton_stop(npe-1)-Morton_start(0)+1)
+ end if cond_openf
+  write(qunit,FMT='(2(i2.1))')ndim,ndir
+  write(qunit,FMT='(i4.4)')nw
+  write(qunit,FMT="(A)")typeaxial
+  write(qunit,FMT="(A)") TRIM(outfilehead)
+  write(qunit,FMT="(3(L1))") saveprim,save_volume,save_multilevel
+  write(qunit,FMT='(100(i4.4))') ncells,ncells^D
+  write(qunit,FMT="(100(e14.6))") time_convert_factor,length_convert_factor,&
+                                      (normconv(iw),iw=1,nw)
+      write(qunit,FMT="(e14.6)") global_time*time_convert_factor
+! write(qunit,"(a)")outfilehead
+! write(qunit,"(i7)") ( {^D&(ixMhi^D-ixMlo^D+1)*} )*(Morton_stop(npe-1)-Morton_start(0)+1)
 end if Master_cpu_open
 
-do Morton_no=Morton_start(mype),Morton_stop(mype)
+Loop_grid: do Morton_no=Morton_start(mype),Morton_stop(mype)
   igrid=sfc_to_igrid(Morton_no)
   if(saveprim) call phys_to_primitive(ixG^LL,ixM^LL,pw(igrid)%w,pw(igrid)%x)
   if (mype/=0)then
@@ -734,14 +763,14 @@ do Morton_no=Morton_start(mype),Morton_stop(mype)
       call MPI_SEND(pw(igrid)%w,1,type_block_io, 0,itag,icomm,ierrmpi)
   else
    {do ix^DB=ixMlo^DB,ixMhi^DB\}
-      do iw=1,nw
-        if( dabs(pw(igrid)%w(ix^D,iw)) < 1.0d-32 ) pw(igrid)%w(ix^D,iw) = zero
-      enddo
+      Loop_iw_cblock_mpe : do iw=1,nw
+        if( dabs(pw(igrid)%w(ix^D,iw)) < 1.0d-32 ) pw(igrid)%w(ix^D,iw) = 0.0_dp
+      enddo Loop_iw_cblock_mpe
        write(qunit,fmt="(100(e14.6))") pw(igrid)%x(ix^D,1:ndim)&
                                      ,pw(igrid)%w(ix^D,1:nw)
    {end do\}
   end if
-end do
+end do Loop_grid
 
 if(mype==0.and.npe>1) allocate(intstatus(MPI_STATUS_SIZE,1))
 
