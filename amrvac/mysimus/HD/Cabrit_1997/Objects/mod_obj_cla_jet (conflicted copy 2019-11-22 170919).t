@@ -319,26 +319,26 @@ contains
 
 
    if(dabs(self%myconfig%power)>smalldouble) then
-     self%myconfig%mass_flux           = self%myconfig%power/self%myconfig%velocity(zjet_)**2.0_dp
+     self%myconfig%mass_flux           = self%myconfig%power/const_c**2.0_dp
    end if
 
 
-  cond_massflux : if (dabs(self%myconfig%mass_flux)>smalldouble)then
-    self%myconfig%density              = self%myconfig%mass_flux/(jet_surface_init*  &
-                                         dabs(self%myconfig%velocity(zjet_)))
+   if (dabs(self%myconfig%mass_flux)>smalldouble)then
+    self%myconfig%density        = self%myconfig%mass_flux/(jet_surface_init*  &
+                                   dabs(self%myconfig%velocity(zjet_)))
 
     self%myconfig%number_density = self%myconfig%density/mp
-    self%myconfig%power                   = self%myconfig%mass_flux*unit_velocity
-  else cond_massflux
-    if (dabs(self%myconfig%density)<smalldouble*mp)then
-      self%myconfig%density               = self%myconfig%number_density*mp
-    else if (dabs(self%myconfig%number_density)<smalldouble*mp)then
+    self%myconfig%power               = self%myconfig%mass_flux*unit_velocity
+  else
+   if (dabs(self%myconfig%density)<smalldouble*mp)then
+    self%myconfig%density        = self%myconfig%number_density*mp
+   else if (dabs(self%myconfig%number_density)<smalldouble*mp)then
       self%myconfig%number_density        = self%myconfig%density/mp
-    end if
-    self%myconfig%mass_flux      = self%myconfig%density*jet_surface_init *  &
+   end if
+   self%myconfig%mass_flux      = self%myconfig%density*jet_surface_init *  &
                                     dabs(self%myconfig%velocity(zjet_))
-    self%myconfig%power          = self%myconfig%mass_flux*self%myconfig%velocity(zjet_)**2.0_dp
-  end if cond_massflux
+   self%myconfig%power          = self%myconfig%mass_flux*unit_velocity**2.0_dp
+  end if
 
 
 
@@ -346,16 +346,18 @@ contains
    if(self%myconfig%pressure_toism>0.0_dp.and.self%myconfig%pressure_associate_ism>0.0_dp) then
      self%myconfig%pressure    = self%myconfig%pressure_toism*self%myconfig%pressure_associate_ism
    end if
-   cond_Mach_set : if(self%myconfig%mach_number>0.0_dp) then
+
+   cond_Mach_set : if(dabs(self%myconfig%mach_number)>0.0_dp) then
      self%myconfig%c_sound = dsqrt(sum(self%myconfig%velocity**2.0_dp))/&
-       self%myconfig%mach_number
+       dabs(self%myconfig%mach_number)
    else if(self%myconfig%c_sound>0.0_dp) then
      self%myconfig%mach_number = dsqrt(sum(self%myconfig%velocity**2.0_dp))/self%myconfig%c_sound
    end if cond_Mach_set
-
+PRINT*,'is the testttsts ',self%myconfig%mach_number,self%myconfig%c_sound,self%myconfig%velocity
    cond_csound_set : if(self%myconfig%c_sound>0.0_dp) then
       self%myconfig%pressure = self%myconfig%c_sound**2.0_dp * self%myconfig%density /&
                                phys_config%gamma
+      self%myconfig%temperature = self%myconfig%pressure/(kB*self%myconfig%number_density)                         
    else  cond_csound_set
 
     if(dabs(self%myconfig%pressure)<=0.0_dp) then
@@ -367,7 +369,7 @@ contains
     self%myconfig%c_sound = sqrt(phys_config%gamma*self%myconfig%pressure/self%myconfig%density)
    end if cond_csound_set
 
-
+PRINT*,' is mememem' ,self%myconfig%number_density,self%myconfig%pressure,self%myconfig%temperature,self%myconfig%c_sound
 
 
   if(self%myconfig%xisigma>0.0_dp)then
@@ -510,7 +512,7 @@ contains
     call self%mydust%to_phys()
   end if
   self%myconfig%normalize_done=.true.
-
+PRINT*,' is your testststs ',self%myconfig%pressure,self%myconfig%density,self%myconfig%velocity,self%myconfig%temperature
  end subroutine usr_cla_jet_normalize
 
 
@@ -824,20 +826,18 @@ end subroutine usr_cla_add_source
    integer                        :: ix^D
    real(kind=dp)                  :: Vprofile
    !----------------------------------------------------------
-
+   return;
    cond_var_0 : if(self%myconfig%variation_on) then
     cond_time_var : if(qt>self%myconfig%variation_start_time.and.qt<self%myconfig%variation_end_time) then
-     cond_inside : if(any(dabs(x(ixO^S,zjet_)-self%myconfig%variation_position(zjet_))<dxlevel(zjet_)))then
+     cond_inside : if(any(dabs(x(ixO^S,zjet_)-self%myconfig%variation_position(zjet_))<smalldouble))then
        call usr_mat_profile_scalar(qt,self%myconfig%variation_time,&
                                    self%myconfig%variation_type,Vprofile)
 
 
-      if(.not.allocated(self%patch))then
-        call self%set_patch(ixI^L,ixO^L,qt,x)
-      end if
+
       call phys_to_primitive(ixI^L,ixO^L,w,x)
       {do ix^DB=ixOmin^DB,ixOmax^DB\}
-        if(dabs(x(ix^D,zjet_)-self%myconfig%variation_position(zjet_))<dxlevel(zjet_).and.self%patch(ix^D))then
+        if(dabs(x(ix^D,zjet_)-self%myconfig%variation_position(zjet_))<smalldouble)then
           w(ix^D,phys_ind%mom(zjet_))= self%myconfig%velocity(zjet_)+&
                                        self%myconfig%variation_velocity(zjet_)*&
                                         Vprofile

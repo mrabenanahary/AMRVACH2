@@ -26,11 +26,8 @@ module mod_obj_ism
       logical              :: profile_force_on     !> ISM force profile one
 
       character(len=30)    :: profile_density     !> ism profile pressure
-      logical              :: profile_density_on  !> ISM density profile on
-      logical              :: profile_density_keep_pressur !> ISM density profile but keep pressure
+      logical              :: profile_density_on  !> ISM pressure profile on
 
-      logical              :: profile_on     !> ISM profile set
-      integer              :: profile_idir   !> IMS profile direction
       real(dp)             :: velocity(3)    !> ISM velocity (cm/s)
       real(dp)             :: magnetic(3)    !> ISM magnetic field (gauss)
       real(dp)             :: c_sound        !> ISM sound speed
@@ -41,7 +38,6 @@ module mod_obj_ism
       real(dp)             :: tracer_small_density   !> ISM tracer small density cut
       logical              :: reset_on       !> ISM reset
       real(dp)             :: reset_coef     !> ISM relaxation coefficient
-      logical              :: boundary_on   !> ISM logical to check if it will use implimented boundary
       character(len=30)    :: boundary_cond(3,2)!> ism boundary condition
       logical              :: dust_on        !> logical to set dust
       real(dp)             :: dust_frac      !> dust fraction
@@ -68,7 +64,7 @@ module mod_obj_ism
      PROCEDURE, PASS(self) :: clean_memory       => usr_ism_clean_memory
      PROCEDURE, PASS(self) :: get_patch_escape   => usr_ism_get_patch_escape
 
-     PROCEDURE, PASS(self) :: set_profile        => usr_ism_set_profile
+     PROCEDURE, PASS(self) :: get_p_profile      => usr_ism_get_p_profile
      PROCEDURE, PASS(self) :: get_pforce_profile => usr_ism_get_pforce_profile
      PROCEDURE, PASS(self) :: add_source         => usr_ism_add_source
 
@@ -115,10 +111,6 @@ contains
 
 
 
-      if(ism_config%boundary_on)then
-        self%myboundaries%myconfig%myindice =1
-        call self%myboundaries%read_parameters(self%myboundaries%myconfig,files)
-      end if
       if(ism_config%dust_on)then
         self%mydust%myconfig%associated_medium = 'ism'
         call self%mydust%read_parameters(self%mydust%myconfig,files)
@@ -186,16 +178,10 @@ contains
      self%myconfig%profile_force_on      = .false.
 
 
-     self%myconfig%profile_on            = .false.
-     self%myconfig%profile_idir          = 0
-     self%myconfig%profile_density       = 'none'
-     self%myconfig%profile_density_on    = .false.
-
-
-     self%myconfig%profile_density_keep_pressur =.false.
+     self%myconfig%profile_density      = 'none'
+     self%myconfig%profile_density_on   = .false.
      self%myconfig%reset_coef            = 0.0_dp
      self%myconfig%reset_on              = .false.
-     self%myconfig%boundary_on          = .false.
      self%myconfig%boundary_cond         = 'fix'
      self%myconfig%c_sound               = 0.0_dp
 
@@ -213,7 +199,6 @@ contains
      call self%mydust%set_default
 
      call self%myboundaries%set_default
-
      !end if
    end subroutine usr_ism_set_default
   !--------------------------------------------------------------------
@@ -252,8 +237,7 @@ contains
     case('none')
      self%myconfig%profile_pressure_on = .false.
     case default
-     if(.not.(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)&
-        .or.self%myconfig%profile_idir<1)then
+     if(.not.(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble))then
        self%myconfig%profile_pressure_on = .false.
        self%myconfig%profile_force_on    = .false.
      end if
@@ -263,11 +247,7 @@ contains
     case('none')
      self%myconfig%profile_density_on = .false.
     case default
-      if(self%myconfig%z_c<smalldouble.or.self%myconfig%profile_idir<1)then
-       self%myconfig%profile_density_on = .false.
-       self%myconfig%profile_force_on   = .false.
-      end if
-      if(self%myconfig%profile_force_on)self%myconfig%profile_pressure_on =.true.
+      ! dummy
     end select
 
 
@@ -285,11 +265,8 @@ contains
      self%myconfig%itr=0
    end if cond_traceron
 
-   if(self%myconfig%profile_density_on.or.self%myconfig%profile_pressure_on)then
-     self%myconfig%profile_on   = .true.
-   end if
-    if(.not.self%myconfig%boundary_on)                                       &
-        self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
+
+    self%myboundaries%boundary_type=self%myconfig%boundary_cond
     call self%myboundaries%set_complet
   end subroutine usr_ism_set_complet
   !--------------------------------------------------------------------
@@ -386,11 +363,10 @@ contains
 
 
 
-      ! add profile to ISM density and pressure
-      if(self%myconfig%profile_on) then
-         call self%set_profile(ixI^L,ixO^L,x,w)
-      end if
 
+      if(self%myconfig%profile_pressure_on) then
+         call self%get_p_profile(ixI^L,ixO^L,x,w)
+      end if
 
 
 
@@ -430,7 +406,7 @@ contains
 
    !--------------------------------------------------------------------
 
-   subroutine usr_ism_set_profile(ixI^L, ixO^L,x,w,self)
+   subroutine usr_ism_get_p_profile(ixI^L, ixO^L,x,w,self)
     implicit none
     integer, intent(in)           :: ixI^L,ixO^L
     real(kind=dp), intent(in)     :: x(ixI^S,1:ndim)
@@ -439,50 +415,27 @@ contains
     ! ..local ..
     real(kind=dp)                  :: p_profile(ixI^S)
     !----------------------------------------------------
-    cond_pressure_profile : if(self%myconfig%profile_pressure_on) then
-     select case(trim(self%myconfig%profile_pressure))
-      case('king')
-        if(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)then
-          p_profile(ixO^S) = 1.0_dp/(1.0_dp+(x(ixO^S,self%myconfig%profile_idir)&
-                            /self%myconfig%z_c)**(-self%myconfig%kappa) )
-        else
-          p_profile(ixO^S) = 1.0_dp
-        end if
-      case('komissarov')
-        if(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)then
-          p_profile(ixO^S) = (x(ixO^S,self%myconfig%profile_idir)&
-                              /self%myconfig%z_c)**(-self%myconfig%kappa)
-        else
-          p_profile(ixO^S) = 1.0_dp
-        end if
-      case default
-        p_profile(ixO^S) = 1.0_dp
-      end select
-    end if   cond_pressure_profile
 
-    cond_density_profile : if(self%myconfig%profile_density_on) then
-     select case(trim(self%myconfig%profile_density))
-     case('cabrit1997')
-        if(self%myconfig%z_c>smalldouble)then
-          p_profile(ixO^S) = (1.0_dp+x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c)**(-self%myconfig%kappa)
-        else
-          p_profile(ixO^S) = 1.0_dp
-        end if
+    select case(trim(self%myconfig%profile_pressure))
+    case('king')
+     if(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)then
+      p_profile(ixO^S) = 1.0_dp/(1.0_dp+(x(ixO^S,z_)/self%myconfig%z_c)**(-self%myconfig%kappa) )
+     else
+      p_profile(ixO^S) = 1.0_dp
+     end if
+    case('komissarov')
+     if(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)then
+      p_profile(ixO^S) = (x(ixO^S,z_)/self%myconfig%z_c)**(-self%myconfig%kappa)
+     else
+      p_profile(ixO^S) = 1.0_dp
+     end if
+    case default
+     p_profile(ixO^S) = 1.0_dp
+    end select
 
-      case default
-        p_profile(ixO^S) = 1.0_dp
-      end select
-    end if   cond_density_profile
-
-    if(self%myconfig%profile_pressure_on) then
-
-      w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_) * p_profile(ixO^S)
-      w(ixO^S,phys_ind%rho_)      = w(ixO^S,phys_ind%rho_) * p_profile(ixO^S)**(1.0_dp/phys_config%gamma)
-    elseif(self%myconfig%profile_density_on)then
-      w(ixO^S,phys_ind%rho_)      = w(ixO^S,phys_ind%rho_)* p_profile(ixO^S)
-      w(ixO^S,phys_ind%pressure_) =w(ixO^S,phys_ind%pressure_)*p_profile(ixO^S)**(phys_config%gamma)
-    end if
-   end subroutine usr_ism_set_profile
+    w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_) * p_profile(ixO^S)
+    w(ixO^S,phys_ind%rho_) = w(ixO^S,phys_ind%rho_) * p_profile(ixO^S)**(1.0_dp/phys_config%gamma)
+   end subroutine usr_ism_get_p_profile
 
 
    !--------------------------------------------------------------------
@@ -497,45 +450,27 @@ contains
     real(kind=dp), intent(inout)  :: f_profile(ixI^S,1:ndim)
     ! ..local ..
     !----------------------------------------------------
-    cond_pressure_fprofile : if(self%myconfig%profile_pressure_on) then
-      select case(trim(self%myconfig%profile_pressure))
-      case('komissarov')
-       cond_force1: if(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)then
-        where(self%patch(ixO^S))
-         f_profile(ixO^S,self%myconfig%profile_idir) =- self%myconfig%kappa/self%myconfig%z_c*&
-           (x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c)**(-(self%myconfig%kappa+1))
-        end  where
-       else cond_force1
-        where(self%patch(ixO^S))
-         f_profile(ixO^S,self%myconfig%profile_idir) = 0.0_dp
-        end where
-       end if cond_force1
-      case default
-       where(self%patch(ixO^S))
-        f_profile(ixO^S,self%myconfig%profile_idir) = 0.0_dp
-       end where
-      end select
-    end if cond_pressure_fprofile
 
-    cond_density_fprofile : if(self%myconfig%profile_density_on) then
-      select case(trim(self%myconfig%profile_density))
-      case('cabrit1997')
-       cond_force_rho1: if(self%myconfig%z_c>smalldouble)then
-        where(self%patch(ixO^S))
-         f_profile(ixO^S,self%myconfig%profile_idir) = -phys_config%gamma/self%myconfig%z_c*self%myconfig%kappa*&
-           (1.0_dp+x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c)**(-phys_config%gamma*self%myconfig%kappa-1)
-        end  where
-       else cond_force_rho1
-        where(self%patch(ixO^S))
-         f_profile(ixO^S,self%myconfig%profile_idir) = 0.0_dp
-        end where
-      end if cond_force_rho1
-      case default
-       where(self%patch(ixO^S))
-        f_profile(ixO^S,self%myconfig%profile_idir) = 0.0_dp
-       end where
-      end select
-    end if cond_density_fprofile
+    select case(trim(self%myconfig%profile_pressure))
+    case('komissarov')
+     cond_force1: if(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)then
+      where(self%patch(ixO^S))
+       f_profile(ixO^S,z_) =- self%myconfig%kappa/self%myconfig%z_c*&
+         (x(ixO^S,z_)/self%myconfig%z_c)**(-(self%myconfig%kappa+1))
+      end  where
+     else cond_force1
+      where(self%patch(ixO^S))
+       f_profile(ixO^S,z_) = 0.0_dp
+      end where
+     end if cond_force1
+    case default
+     where(self%patch(ixO^S))
+      f_profile(ixO^S,z_) = 0.0_dp
+     end where
+    end select
+
+
+
    end subroutine usr_ism_get_pforce_profile
 
    !--------------------------------------------------------------------
@@ -556,35 +491,27 @@ contains
      real(kind=dp)                           :: source_filter_loc(ixI^S)
      real(kind=dp)                           :: f_profile(ixI^S,1:ndim)
      real(kind=dp)                           :: w_init(ixI^S,1:nw)
-     integer                                 :: idir,i_idir_prof_,imom_profile_
+     integer                                 :: idir
      !---------------------------------------------------------
 
 
 
-      call self%alloc_set_patch(ixI^L,ixO^L,qt,x,&
-                                use_tracer=use_tracer,w=w,escape_patch=escape_patch)
-
-      cond_add_force : if(self%myconfig%profile_force_on) then
-
-        cond_inside_prof: if(any(self%patch(ixO^S)))then
-          call self%get_pforce_profile(ixI^L,ixO^L,qt,x,wCT,f_profile)
-          i_idir_prof_  = self%myconfig%profile_idir
-          imom_profile_ =phys_ind%mom(i_idir_prof_)
-
-          where(self%patch(ixO^S))
-            w(ixO^S,imom_profile_) = w(ixO^S,imom_profile_)+qdt*wCT(ixO^S,phys_ind%rho_)*f_profile(ixO^S,i_idir_prof_)
-          end where
-if(it==0)PRINT*,' the difference ',imom_profile_,maxval(dabs( w(ixO^S,imom_profile_)-wCT(ixO^S,imom_profile_)))
-         !if(energy .and. .not.block%e_is_internal) then
-          where(self%patch(ixO^S))
-          w(ixO^S,phys_ind%e_)=w(ixO^S,phys_ind%e_) &
-              + qdt * f_profile(ixO^S,i_idir_prof_) * wCT(ixO^S,imom_profile_)!/wCT(ixO^S,phys_ind%rho_)
-          end where
-         !end if
-        end if  cond_inside_prof
-      end if cond_add_force
+     call self%alloc_set_patch(ixI^L,ixO^L,qt,x,&
+                               use_tracer=use_tracer,w=w,escape_patch=escape_patch)
 
 
+
+
+     call self%get_pforce_profile(ixI^L,ixO^L,qt,x,wCT,f_profile)
+     where(self%patch(ixO^S))
+      w(ixO^S,phys_ind%mom(z_)) = qdt* f_profile(ixO^S,z_)
+     end where
+     !if(energy .and. .not.block%e_is_internal) then
+      where(self%patch(ixO^S))
+        w(ixO^S,phys_ind%e_)=w(ixO^S,phys_ind%e_) &
+              + qdt * f_profile(ixO^S,z_) * wCT(ixO^S,phys_ind%mom(z_))/wCT(ixO^S,phys_ind%rho_)
+      end where
+     !end if
 
      cond_reset : if(self%myconfig%reset_coef>0.0_dp)then
       cond_inside : if(any(self%patch(ixO^S)))then

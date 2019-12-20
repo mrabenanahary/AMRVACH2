@@ -195,10 +195,9 @@ contains
     if(usrconfig%ism_on)then
       allocate(ism_surround(0:usrconfig%ism_number-1))
       Loop_allism : do i_ism =0,usrconfig%ism_number-1
-
        ism_surround(i_ism)%myconfig        = ism_default%myconfig
        ism_surround(i_ism)%mydust%myconfig = ism_default%mydust%myconfig
-
+       ism_surround(i_ism)%myboundaries%myconfig = ism_default%myboundaries%myconfig
        ism_surround(i_ism)%myconfig%myindice=i_ism
        call ism_surround(i_ism)%read_parameters(ism_surround(i_ism)%myconfig,files)
       end do Loop_allism
@@ -210,7 +209,7 @@ contains
        cloud_medium(i_cloud)%myconfig          = cloud_default%myconfig
        cloud_medium(i_cloud)%mydust%myconfig   = cloud_default%mydust%myconfig
        cloud_medium(i_cloud)%myconfig%myindice = i_cloud
-
+       !cloud_medium(i_cloud)%myboundaries%myconfig = cloud_default%myboundary%myconfig
        call cloud_medium(i_cloud)%read_parameters(files,cloud_medium(i_cloud)%myconfig)
       end do Loop_allcloud
     end if
@@ -220,6 +219,7 @@ contains
       Loop_alljetagn : do i_jet_yso =0,usrconfig%jet_yso_number-1
        jet_yso(i_jet_yso)%myconfig          = jet_yso_default%myconfig
        jet_yso(i_jet_yso)%mydust%myconfig   = jet_yso_default%mydust%myconfig
+       !jet_yso(i_jet_yso)%myboundaries%myconfig = jet_yso_default%myboundary%myconfig
        jet_yso(i_jet_yso)%myconfig%myindice = i_jet_yso
 
        call jet_yso(i_jet_yso)%read_parameters(files,jet_yso(i_jet_yso)%myconfig)
@@ -285,6 +285,14 @@ contains
 
 
     end if  cond_dust_on
+
+    if(.not.usrconfig%reset_medium )then
+      if(usrconfig%ism_on)then
+        Loop_isms2 : do i_ism=0,usrconfig%ism_number-1
+          ism_surround(i_ism)%myconfig%reset_coef=-1.0_dp
+        end do  Loop_isms2
+      end if
+    end if
 
     usrconfig%cloud_profile_on=usrconfig%cloud_profile_density_on   .or.&
                                usrconfig%cloud_profile_pressure_on  .or.&
@@ -484,7 +492,8 @@ contains
        patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.patch_inuse(ixO^S)
        if(jet_yso(i_jet_yso)%myconfig%dust_on)then
          i_object_w_dust = i_object_w_dust +1
-         if(.not.allocated(the_dust_inuse(i_object_w_dust)%patch))allocate(the_dust_inuse(i_object_w_dust)%patch(ixI^S))
+         if(.not.allocated(the_dust_inuse(i_object_w_dust)%patch))&
+                  allocate(the_dust_inuse(i_object_w_dust)%patch(ixI^S))
          the_dust_inuse(i_object_w_dust)%myconfig    = jet_yso(i_jet_yso)%mydust%myconfig
          if(.not.allocated(the_dust_inuse(i_object_w_dust)%the_ispecies))&
          allocate(the_dust_inuse(i_object_w_dust)%the_ispecies&
@@ -618,7 +627,7 @@ contains
     integer                         :: patch_back_cloud(ixI^S)
 
     !----------------------------------------------------------
-return
+
     cond_reset : if(usrconfig%reset_medium) then
      escape_patch(ixO^S) =.false.
      cond_jet_on : if(usrconfig%jet_yso_on)then
@@ -665,26 +674,34 @@ return
 
      ! add force in ISM
      cond_ism_on : if(usrconfig%ism_on) then
-        Loop_isms0 : do i_ism=0,usrconfig%ism_number-1
-         where(w(ixO^S,phys_ind%rho_)<min(ism_surround(i_ism)%myconfig%density,&
+        if(usrconfig%jet_yso_on)then
+          Loop_isms0 : do i_ism=0,usrconfig%ism_number-1
+            where(w(ixO^S,phys_ind%rho_)<min(ism_surround(i_ism)%myconfig%density,&
                                           minval(jet_yso(:)%myconfig%density))/10.0_dp)
-           escape_patch(ixO^S)=.false.
-         elsewhere(w(ixO^S,phys_ind%rho_)>ism_surround(i_ism)%myconfig%density.and.&
-            w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))>5.0d3.and.&
-            x(ixO^S,2)>2.0*maxval(jet_yso(:)%myconfig%z_impos))
-            escape_patch(ixO^S)=.true.
-         end where
-        end do Loop_isms0
+              escape_patch(ixO^S)=.false.
+            elsewhere(w(ixO^S,phys_ind%rho_)>ism_surround(i_ism)%myconfig%density.and.&
+              w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))>5.0d3.and.&
+              x(ixO^S,2)>2.0*maxval(jet_yso(:)%myconfig%z_impos))
+              escape_patch(ixO^S)=.true.
+            end where
+          end do Loop_isms0
+        else
+          escape_patch(ixO^S)=.false.
+        end if
+      
         if(.not.(all(escape_patch(ixO^S))))then
           Loop_isms : do i_ism=0,usrconfig%ism_number-1
-            source_filter(ixO^S) = 0.5_dp*(1.0_dp-tanh((x(ixO^S,2))&
+            if(usrconfig%jet_yso_on.and.ism_surround(i_ism)%myconfig%reset_on) then
+              source_filter(ixO^S) = 0.5_dp*(1.0_dp-tanh((x(ixO^S,2))&
                                /(2.0_dp*maxval(jet_yso(:)%myconfig%z_impos))))&
                               *(w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))&
                               /max(w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))+&
                                w(ixO^S,phys_ind%tracer(jet_yso(0)%myconfig%itr)),smalldouble ) )
 
-            cond_tracer_ism_on : if(ism_surround(i_ism)%myconfig%reset_on &
-                                   .and.ism_surround(i_ism)%myconfig%tracer_on)then
+            end if
+            cond_tracer_ism_on : if((ism_surround(i_ism)%myconfig%reset_on &
+                          .and.ism_surround(i_ism)%myconfig%tracer_on).or. &
+                               ism_surround(i_ism)%myconfig%profile_force_on)then
               where(.not.escape_patch(ixO^S))w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))=1.0d3
               call ism_surround(i_ism)%add_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,&
                                                   wCT,qt,w,use_tracer=.true.,&
@@ -706,7 +723,8 @@ return
      Loop_idir2 : do idir = 1,ndir
 
      where(density_ratio(ixO^S)>smalldouble.and.&
-          ((density_ratio(ixO^S)<usrconfig%density_dusttogas_minlimit.or.density_ratio(ixO^S)>usrconfig%density_dusttogas_maxlimit).or.&
+          ((density_ratio(ixO^S)<usrconfig%density_dusttogas_minlimit&
+           .or.density_ratio(ixO^S)>usrconfig%density_dusttogas_maxlimit).or.&
         (w(ixO^S, phys_ind%dust_mom(idir,idust))*w(ixO^S,phys_ind%mom(idir))<0.0_dp)))
        w(ixO^S, phys_ind%dust_mom(idir,idust)) = w(ixO^S,phys_ind%mom(idir))*&
                                                  density_ratio(ixO^S)
@@ -746,7 +764,7 @@ return
     logical       :: patch_all(ixI^S)
     integer       :: i_object
     !---------------------------------------------------
-return;
+
 
      jet_is_on_var : if(usrconfig%jet_yso_on)then
        Loop_jet_yso_var : do i_jet_yso=0,usrconfig%jet_yso_number-1
@@ -842,6 +860,8 @@ return;
      end do Loop_idust
      call phys_to_conserved(ixI^L,ixI^L,w,x)
     end if
+
+  call usr_clean_memory
 
   end subroutine process_grid_usr
   !---------------------------------------------------------------------
@@ -1033,32 +1053,33 @@ return;
        real(dp)                     :: dx_loc(1:ndim)
        integer                      :: i_jet_yso
       !----------------------------------------
+      cond_ysojet_on : if(usrconfig%jet_yso_on)then
+        Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
+          cond_init_jet: if(dabs(qt-jet_yso(i_jet_yso)%myconfig%time_cla_jet_on)&
+                           <smalldouble) then
+            jet_yso(i_jet_yso)%subname='specialrefine_usr'
+            ^D&dx_loc(^D)=rnode(rpdx^D_,igrid);
+            call jet_yso(i_jet_yso)%set_patch(ixI^L,ixO^L,qt,x,&
+                                              force_refine=1,dx_loc=dx_loc)
 
-      Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
-       cond_init_jet: if(dabs(qt-jet_yso(i_jet_yso)%myconfig%time_cla_jet_on)&
-                        <smalldouble) then
-        jet_yso(i_jet_yso)%subname='specialrefine_usr'
-        ^D&dx_loc(^D)=rnode(rpdx^D_,igrid);
-        call jet_yso(i_jet_yso)%set_patch(ixI^L,ixO^L,qt,x,&
-                                          force_refine=1,dx_loc=dx_loc)
-
-        if(any(jet_yso(i_jet_yso)%patch(ixO^S)))then
-         level_need= nint(dlog((dabs(jet_yso(i_jet_yso)%myconfig%r_out_init&
-                                  -jet_yso(i_jet_yso)%myconfig%r_in_init))&
-                           /domain_nx1)/dlog(2.0_dp))
-         level_min = max(jet_yso(i_jet_yso)%myconfig%refine_min_level&
-                         ,level_need)
-         level_max = jet_yso(i_jet_yso)%myconfig%refine_max_level
-         patch_cond=.true.
-         call user_fixrefineregion(level,level_min,level_max,&
-                                   patch_cond,refine,coarsen)
-         else
-         refine =-1
-         coarsen= 1
-        end if
-        call jet_yso(i_jet_yso)%clean_memory
-       end if cond_init_jet
-      end do Loop_jet_yso
+            if(any(jet_yso(i_jet_yso)%patch(ixO^S)))then
+             level_need= nint(dlog((dabs(jet_yso(i_jet_yso)%myconfig%r_out_init&
+                                      -jet_yso(i_jet_yso)%myconfig%r_in_init))&
+                               /domain_nx1)/dlog(2.0_dp))
+             level_min = max(jet_yso(i_jet_yso)%myconfig%refine_min_level&
+                             ,level_need)
+             level_max = jet_yso(i_jet_yso)%myconfig%refine_max_level
+             patch_cond=.true.
+             call user_fixrefineregion(level,level_min,level_max,&
+                                       patch_cond,refine,coarsen)
+             else
+             refine =-1
+             coarsen= 1
+            end if
+            call jet_yso(i_jet_yso)%clean_memory
+          end if cond_init_jet
+        end do Loop_jet_yso
+      end if  cond_ysojet_on
 
 
 

@@ -265,9 +265,8 @@ contains
     case default
       if(self%myconfig%z_c<smalldouble.or.self%myconfig%profile_idir<1)then
        self%myconfig%profile_density_on = .false.
-       self%myconfig%profile_force_on   = .false.
+       self%myconfig%profile_force_on    = .false.
       end if
-      if(self%myconfig%profile_force_on)self%myconfig%profile_pressure_on =.true.
     end select
 
 
@@ -475,12 +474,11 @@ contains
     end if   cond_density_profile
 
     if(self%myconfig%profile_pressure_on) then
-
       w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_) * p_profile(ixO^S)
       w(ixO^S,phys_ind%rho_)      = w(ixO^S,phys_ind%rho_) * p_profile(ixO^S)**(1.0_dp/phys_config%gamma)
     elseif(self%myconfig%profile_density_on)then
       w(ixO^S,phys_ind%rho_)      = w(ixO^S,phys_ind%rho_)* p_profile(ixO^S)
-      w(ixO^S,phys_ind%pressure_) =w(ixO^S,phys_ind%pressure_)*p_profile(ixO^S)**(phys_config%gamma)
+      w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_)*p_profile(ixO^S)**(phys_config%gamma)
     end if
    end subroutine usr_ism_set_profile
 
@@ -557,6 +555,7 @@ contains
      real(kind=dp)                           :: f_profile(ixI^S,1:ndim)
      real(kind=dp)                           :: w_init(ixI^S,1:nw)
      integer                                 :: idir,i_idir_prof_,imom_profile_
+     real(kind=dp)                           :: pth(ixI^S)
      !---------------------------------------------------------
 
 
@@ -568,17 +567,19 @@ contains
 
         cond_inside_prof: if(any(self%patch(ixO^S)))then
           call self%get_pforce_profile(ixI^L,ixO^L,qt,x,wCT,f_profile)
+          call phys_get_pthermal(wCT, x, ixI^L, ixO^L, pth)
           i_idir_prof_  = self%myconfig%profile_idir
           imom_profile_ =phys_ind%mom(i_idir_prof_)
 
           where(self%patch(ixO^S))
-            w(ixO^S,imom_profile_) = w(ixO^S,imom_profile_)+qdt*wCT(ixO^S,phys_ind%rho_)*f_profile(ixO^S,i_idir_prof_)
+            w(ixO^S,imom_profile_) = w(ixO^S,imom_profile_)+&
+                                qdt*self%myconfig%pressure*f_profile(ixO^S,i_idir_prof_)
           end where
-if(it==0)PRINT*,' the difference ',imom_profile_,maxval(dabs( w(ixO^S,imom_profile_)-wCT(ixO^S,imom_profile_)))
+          
          !if(energy .and. .not.block%e_is_internal) then
           where(self%patch(ixO^S))
           w(ixO^S,phys_ind%e_)=w(ixO^S,phys_ind%e_) &
-              + qdt * f_profile(ixO^S,i_idir_prof_) * wCT(ixO^S,imom_profile_)!/wCT(ixO^S,phys_ind%rho_)
+              + qdt * self%myconfig%pressure*f_profile(ixO^S,i_idir_prof_) * wCT(ixO^S,imom_profile_)/wCT(ixO^S,phys_ind%rho_)
           end where
          !end if
         end if  cond_inside_prof

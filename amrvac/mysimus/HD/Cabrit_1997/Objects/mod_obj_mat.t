@@ -4,20 +4,23 @@ use mod_obj_global_parameters
 implicit none
 
 type usrboundary_parameters
-    character(len=30)                 :: boundary_type(3,2)
-    logical                           :: useprimitive
-    integer                           :: nghostcells(3)
-    real(kind=dp)                     :: flux_frac
+    character(len=78)             :: obj_name               !> Obj name that call it
+    integer                       :: myindice       !> boundary indices associated with ism in use
+    character(len=30)             :: boundary_type(3,2)
+    logical                       :: useprimitive
+    integer                       :: nghostcells(3)
+    real(kind=dp)                 :: flux_frac
 end type usrboundary_parameters
 type usrboundary_type
   character(len=30), allocatable    :: variable_typebound(:,:,:)
   type(usrboundary_parameters)      :: myconfig
-  character(len=30)                 :: boundary_type(3,2)
-  logical                           :: useprimitive
-  integer                           :: nghostcells(3)
-  real(kind=dp)                     :: flux_frac
+  !character(len=30)                 :: boundary_type(3,2)
+  !logical                           :: useprimitive
+  !integer                           :: nghostcells(3)
+  !real(kind=dp)                     :: flux_frac
    contains
    !PRIVATE
+   PROCEDURE, PASS(self) :: read_parameters    => usr_boundaries_read_p
    PROCEDURE, PASS(self) :: set_default        => usr_boundaries_set_default
    PROCEDURE, PASS(self) :: set_complet        => usr_boundaries_set_complet
    PROCEDURE, PASS(self) :: set_w              => usr_boundaries_set_w
@@ -30,11 +33,57 @@ subroutine usr_boundaries_set_default(self)
   implicit none
   class(usrboundary_type)              :: self
    !------------------------------------
-   self%useprimitive =.false.
-   self%boundary_type='open'
-   self%nghostcells  =2
-   self%flux_frac    =1.0d-2
+   self%myconfig%useprimitive       = .false.
+   self%myconfig%boundary_type      = 'open'
+   self%myconfig%nghostcells        = 2
+   self%myconfig%flux_frac          = 1.0d-2
+   self%myconfig%obj_name           = 'boundary'
+   self%myconfig%myindice           = 1
 end subroutine usr_boundaries_set_default
+
+
+!--------------------------------------------------------------------
+   !> Read the ism parameters  from a parfile
+    subroutine usr_boundaries_read_p(self,usrboundary_config,files)
+
+      implicit none
+      class(usrboundary_type)                    :: self
+      character(len=*),intent(in)                :: files(:)
+      type(usrboundary_parameters), intent(out)  :: usrboundary_config
+      ! .. local ..
+      integer                            :: i_file,i_error_read
+      namelist /usr_usrboundary_list/  usrboundary_config
+      namelist /usr_usrboundary_ism_list/  usrboundary_config
+      namelist /usr_usrboundary_cloud_list/ usrboundary_config
+      namelist /usr_usrboundary_clajet_list/ usrboundary_config
+      namelist /usr_usrboundary_reljet_list/ usrboundary_config
+      namelist /usr_usrboundary_relwind_list/ usrboundary_config
+
+      if(mype==0)write(*,*)'Reading usr_boundary_list',usrboundary_config%myindice,self%myconfig%obj_name
+      do i_file = 1, size(files)
+         open(unitpar, file=trim(files(i_file)), status="old")
+         select case(usrboundary_config%myindice)
+         case(1)
+           read(unitpar, usr_usrboundary_ism_list, iostat=i_error_read)
+         case(2)
+           read(unitpar, usr_usrboundary_cloud_list, iostat=i_error_read)
+         case(3)
+           read(unitpar, usr_usrboundary_clajet_list, iostat=i_error_read)
+         case(4)
+           read(unitpar, usr_usrboundary_reljet_list, iostat=i_error_read)
+         case(5)
+             read(unitpar, usr_usrboundary_relwind_list, iostat=i_error_read)
+         case default
+           read(unitpar, usr_usrboundary_list, iostat=i_error_read)
+         end select
+         call usr_mat_read_error_message(i_error_read,usrboundary_config%myindice,&
+                                         self%myconfig%obj_name)
+         close(unitpar)
+      end do
+
+
+    end subroutine usr_boundaries_read_p
+   !------------------------------------------------------------------------
 !> Subtroutine initialise the boundary conditions
 subroutine usr_boundaries_set_complet(self)
   use mod_physics
@@ -46,10 +95,10 @@ subroutine usr_boundaries_set_complet(self)
   if(allocated(self%variable_typebound))deallocate(self%variable_typebound)
   allocate(self%variable_typebound(ndim,2,phys_config%nw))
 
-  self%nghostcells=nghostcells
+  self%myconfig%nghostcells=nghostcells
   Loop_idims : do idims=1,ndim
     Loop_iside : do iside=1,2
-     select case(self%boundary_type(idims,iside))
+     select case(self%myconfig%boundary_type(idims,iside))
      case('wall')
       self%variable_typebound(idims,iside,:)='cont'
       Loop_iw_wall: do idir = 1,ndir
@@ -108,11 +157,10 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
   {case (^D)
    if (iside==2) then
       ! maximal boundary
-      ixGmin^DD=ixOmin^DD-self%nghostcells(^DD)*merge(1,0,^DD==^D);
-      ixGmax^DD=ixOmax^DD-self%nghostcells(^DD)*merge(1,0,^DD==^D);
+      ixGmin^DD=ixOmin^DD-self%myconfig%nghostcells(^DD)*merge(1,0,^DD==^D);
+      ixGmax^DD=ixOmax^DD-self%myconfig%nghostcells(^DD)*merge(1,0,^DD==^D);
       wp(ixG^S,1:nw) = w(ixG^S,1:nw)
-      if(self%useprimitive)then
-       wp(ixG^S,1:nw) = w(ixG^S,1:nw)
+      if(self%myconfig%useprimitive)then
        call phys_to_primitive(ixI^L,ixG^L,wp,x)
       end if
       ! cont/symm/asymm types
@@ -151,7 +199,7 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
               do ix^D=ixOmin^D,ixOmax^D
                 {^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}
                   w(ix^D^D%ixO^S,iw) = max(wp(ixGmin^D-1^D%ixG^S,iw),&
-                                           self%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
+                                           self%myconfig%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
                 {^NOONED  end where}{^IFONED end if}
               end do
             else
@@ -167,7 +215,7 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
                 {^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}
 
                   w(ix^D^D%ixO^S,iw) = min(wp(ixGmin^D-1^D%ixG^S,iw),&
-                                           self%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
+                                           self%myconfig%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
                 {^NOONED  end where}{^IFONED end if}
               end do
             else
@@ -185,10 +233,10 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
       end do
    else
       ! minimal boundary
-      ixGmin^DD=ixOmin^DD+self%nghostcells(^DD)*merge(1,0,^DD==^D);
-      ixGmax^DD=ixOmax^DD+self%nghostcells(^DD)*merge(1,0,^DD==^D);
-      if(self%useprimitive)then
-       wp(ixG^S,1:nw) = w(ixG^S,1:nw)
+      ixGmin^DD=ixOmin^DD+self%myconfig%nghostcells(^DD)*merge(1,0,^DD==^D);
+      ixGmax^DD=ixOmax^DD+self%myconfig%nghostcells(^DD)*merge(1,0,^DD==^D);
+      wp(ixG^S,1:nw) = w(ixG^S,1:nw)
+      if(self%myconfig%useprimitive)then
        call phys_to_primitive(ixI^L,ixG^L,wp,x)
       end if
       ! cont/symm/asymm types
@@ -227,7 +275,7 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
               do ix^D=ixOmin^D,ixOmax^D
                 {^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}
                   w(ix^D^D%ixO^S,iw) = min(wp(ixGmin^D-1^D%ixG^S,iw),&
-                                           self%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
+                                           self%myconfig%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
                 {^NOONED  end where}{^IFONED end if}
               end do
             else
@@ -242,7 +290,7 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
               do ix^D=ixOmin^D,ixOmax^D
                 {^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}
                   w(ix^D^D%ixO^S,iw) = max(wp(ixGmin^D-1^D%ixG^S,iw),&
-                                           self%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
+                                           self%myconfig%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
                 {^NOONED  end where}{^IFONED end if}
               end do
             else
@@ -261,7 +309,7 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
    end if \}
   end select
 
-!  if(self%useprimitive)then
+!  if(self%myconfig%useprimitive)then
 !   call phys_to_conserved(ixI^L,ixO^L,w,x)
 !  end if
 end  subroutine usr_boundaries_set_w
