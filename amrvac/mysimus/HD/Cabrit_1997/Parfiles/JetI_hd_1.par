@@ -21,7 +21,7 @@
 
 
 /
-        restart_from_file='Output/Jet_HD_Cart_2D_A/JetI_1_0061.dat'
+        restart_from_file='Output/Jet_HD_Cyl_2D_A/JetI_1_0100.dat'
         snapshotnext =0062
 /
 
@@ -40,9 +40,10 @@
  &savelist
         itsave(1,1)=0
         itsave(1,2)=0
-        dtsave_log=3.d9   ! 0.1 year
+        !dtsave_log=3.d9   ! 0.1 year
+        ditsave_log =50
         !dtsave_dat= 99.0d11   ! 100 year
-        ditsave_dat =1
+        ditsave_dat =50
  /
 
         ditsave_log = 1
@@ -51,9 +52,10 @@
 
  &stoplist
 
-        dtmin=1.0d-6
+        dtmin=1.0d-11
         !time_max= 99d15 ! years
-        it_max=10
+        time_max= 6.31152d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        !it_max=2
 
 
 /
@@ -68,9 +70,9 @@
 
  &methodlist
         time_integrator          =  'twostep'
-        typepred1                =  20*'hll'!'hllcd'
-        flux_scheme              =  20*'hll'!'hllcd'
-        limiter                  =  20*'minmod'!'koren'
+        typepred1                =  20*'hllcd'!'hllcd'
+        flux_scheme              =  20*'hllcd'!'hllcd'
+        limiter                  =  20*'koren'!'koren'
         small_pressure           = 1.0d-10
         small_density            = 1.0d-8
         small_values_method      =  'average'
@@ -96,14 +98,51 @@
 
 
 ! hd part
-
-        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!,
-        typeboundary_max1 =  7*'noinflow'
-        typeboundary_min2 =  7*'special'
-        typeboundary_max2 =  7*'cont'
+!
+! 'cont' = C.L. ouverte (la quantité peut s'échapper librement du domaine sans l'influencer en retour)
+!
+! 'noinflow' = The possibility exists to put a boundary condition mimicking zero
+!              across the computational boundary, by selecting typeboundary='noinflow'
+!               for the momentum vector components of your particular application.
+!              This is in principle only relevant for the momentum component
+!               locally perpendicular to the boundary (for others a continuous extrapolation is done).
+!               The noinflow extrapolates values that are outwardly moving continuously,
+!               while clipping all values that are inwardly advecting momentum to zero.
+!
+! 'special' = CL fixée par l'user dans le fichier mod_usr_yso_jet.t
+! par la subroutine specialbound_usr. The special type is to be used for setting fixed
+!values, or any time dependent or other more complicated boundary conditions, and results
+!in a call to the usr_special_bc subroutine which has to be provided by the user in the mod_usr.t module.
+!The variables with special boundary type are updated last within a given boundary region,
+! thus the subroutine may use the updated values of the other variables.
+!The order of the variables is fixed by the equation module chosen, i.e. rho m1 m2 m3 e b1 b2 b3 for 3D MHD.
+!  It is suggested to set all typeboundary entries for a certain boundary region to special to consistently
+!  fill the boundary info for all variables in a user-defined manner.
+!
+! 'asymm' et 'symm': Other predefined types are the symm and asymm types, which
+! are mostly used for reflective boundaries, or at symmetry axes of the domain
+! (the polar or equatorial axis, e.g.). One then typically makes the momentum
+! orthogonal to the given boundary antisymmetric (asymm), the rest of the variables symm.
+! These boundary types can also be used to represent a perfectly conducting wall
+! (the orthogonal component of the magnetic field should be antisymmetric, the
+! transverse component symmetric) or the physical symmetry of the physical problem.
+! More generally, true (a.k.a. polar) vectors (resp. pseudovectors, a.k.a. axial vectors)
+! such as the ones associated to a velocity (resp. magnetic) field, transform such as
+! the normal component (resp. the tangential components) is antisymmetric while the
+! tangential components (resp. the normal component) are symmetric with respect to a
+! plane of symmetry of causes (distribution of mass, of currents, of charges, etc).
+! And vice versa for a plane of antisymmetry.
+!
+! Format du'assignation des type boundary:
+! - en coordonnées cylindriques :
+! typeboundary_min/max1/2/3 = densité, v_radial, v_z, v_phi, traceur ism, traceur jet, traceur jet (les 3 derniers sond donc ici des traceurs)
+        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
+        typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
+        typeboundary_min2 =  7*'special'                                     ! C.L. inférieure <=> zmin
+        typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax
 /
-        typeboundary_min3 = 8*'cont'
-        typeboundary_max3 = 8*'cont'
+        typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max
+        typeboundary_min3 = 8*'cont'                                         ! C.L. avant <=> phi/profondeur min
  /
 
  &meshlist
@@ -114,23 +153,26 @@
         xprobmax2 =  5d16 !2761d18       ! cm
 
         ! total cell at level 1
-        domain_nx1= 960!112
-        domain_nx2= 960!112
+        ! pour faire tourner Vjet à 150 km/s et block_nx1=block_nx2=8, il faut choisir domain_nx1=domain_nx2=448,672 ou 784 et non pas à >=960, sinon quoi le code plante au démarrage avec l'erreur suivante:
+
+
+        domain_nx1= 96 !génère des cellules erronnées sur la frontière inférieure >>> utiliser 448 à la place
+        domain_nx2= 96 !génère des cellules erronnées sur la frontière inférieure >>> utiliser 448 à la place
         ! number of cell by block
-        block_nx1 = 8
-        block_nx2 = 8
+        block_nx1 = 8! ! attention, mpirun.exe a du mal à gérer block_nx1>=8 et y génère des blocks jaunes (invalides) sur la partie inférieure du domaine : mettre block_nx1 = 4 (ou =6 pour domain_nx1=1200) résout le pbm mais allonge le temps de calcul
+        block_nx2 = 8! ! attention, mpirun.exe a du mal à gérer block_nx2>=8 et y génère des blocks jaunes (invalides) sur la partie inférieure du domaine : mettre block_nx2 = 4 (ou =6 pour domain_nx2=1200) résout le pbm mais allonge le temps de calcul
 
 
 
         ! AMR configuration
         refine_criterion=3
-        refine_max_level=2
+        refine_max_level=1!2
         refine_threshold=20*0.05d0
         derefine_ratio=20*0.05d0
         w_refine_weight(1)=0.5d0
         w_refine_weight(4)=0.5d0
 
-        max_blocks = 16000
+        max_blocks = 512000
 /
         ! can be added when is needed
         prolongprimitive= .true.
@@ -147,7 +189,7 @@
  &paramlist
         typecourant         = 'maxsum'
         courantpar          = 0.8d0
-        slowsteps           = 100
+        slowsteps           = 1500
         small_getdt_average = .true.
         small_dt_coef       = 1.0d-2
  /
@@ -192,9 +234,9 @@
         usrconfig%ism_on              = .true.                      !> set ism
         usrconfig%cloud_on            = .false.                      !> set cloud
         usrconfig%cloud_structure     = 2                           !> cloud structure type
-        usrconfig%jet_yso_on          = .true.                      !> set a jet
+        usrconfig%jet_yso_on          = .false.!.true.                      !> set a jet
         usrconfig%physunit_on         = .true.                      !> set the normalisation in use
-        usrconfig%reset_medium        = .false.                      !> set on the reset
+        usrconfig%reset_medium        = .true.                      !> set on the reset
         usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use
         usrconfig%phys_inuse          = 'hd' !'mhd' ! set phyisque want to be used
 !        usrconfig%cloud_profile_density_on      = .true.
@@ -206,38 +248,52 @@
 
 &usr_physical_unit_list
  phys_unit%unit                = 'cgs'
- phys_unit%length              = 1.496d14                 ! cm (1 parsec)
- phys_unit%time                = 3d10                      ! s (2 year)
- phys_unit%number_density      = 1.0d8                      ! cm^-3
+ phys_unit%length              = 1.496d14                 ! cm (1 parsec) : par defaut = 1.496d14
+ phys_unit%time                = 3d10                      ! s (2 year) : par defaut = 3d10
+ phys_unit%number_density      = 1.0d8                      ! cm^-3 : par defaut = 1.0d8
 /
 
-
+!11/12/19 : pour ISM et le projet n°1 de Sylvie Cabrit sur son article de 1997, les paramètres ci-dessous pour l'ISM ont été testés
+!et fixées aux valeurs recommandées et correspondant le mieux à la simulation de l'article
  &usr_ism_list
   ism_config%unit               ='cgs'
   ism_config%density            = 0         ! ism density if it set to 0 it will use number_density
-  ism_config%number_density     = 1.0d2     ! ism number density (1/cm^3)
-  ism_config%velocity(1)        = 0.0       ! ism  speed components (cm/s) R/X
-  ism_config%velocity(2)        = 0.0!5.d8     ! ism  speed components (cm/s) Z
-  ism_config%velocity(3)        = 0.0       ! ism  speed components (cm/s)  Y
-  ism_config%temperature        = 50.0d0     ! ism temperature (K)
-  ism_config%pressure           = 0.0d0     ! ism pressure if is set to 0 it will use temperature
+  ism_config%number_density     = 1.0d2     ! ism number density (1/cm^3) ) = facteur rho_j (e.g. = 100 cm-3) physique dans l'expression du profil de densité rho_c du milieu ambiant
+                                            ! si tu l'augmentes e.g. a number_density=1.0d3,
+                                            !la valeur rho_c=rho_j de densité au niveau de la frontière inférieure ISM augmente d'un facteur 10
+  ism_config%velocity(1)        = 0.0       ! ism  speed components (cm/s) R/X : 0.0 = milieu statique
+  ism_config%velocity(2)        = 0.0!5.d8     ! ism  speed components (cm/s) Z : 0.0 = milieu statique
+  ism_config%velocity(3)        = 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
+  ism_config%temperature        = 50.0d0     ! ism temperature (K) : influence la valeur de pression et de force de gravité contrebalaçant mais pas le gradient de pression
+  ism_config%pressure           = 0.0d0     !1.3806485199999997d-12! ism pressure if is set to 0 it will use temperature : äraview trouve a T=100 K et rho_j=100 cm-3 >>> p_j = 2.71055e-12 Ba
   ism_config%tracer_on          = .true.    ! ism tracer
   ism_config%tracer_init_density= 1.0d3     ! ism tracer density
   ism_config%reset_on           = .false.    ! ism reset
-  ism_config%reset_coef         = 0.999     ! ism reset  coefficient
+  ism_config%reset_coef         = 0.0 !0.999     ! ism reset  coefficient
   ism_config%dust_on            = .false.   ! dust are set in ism
   ism_config%dust_frac          = 1d2       ! dust fraction
-  ism_config%boundary_cond(2,1) = 'limitinflow' ! 'fix'!ism boundary condition at jet bottum
+  ism_config%boundary_cond(2,1) = 'open'!'limitinflow' ! 'fix'!ism boundary condition at jet bottum
   ism_config%boundary_cond(2,2) = 'open'
+  ism_config%boundary_on        = .false.
   ism_config%profile_idir       = 2       !z=2,r=1  !  ism profile direction
-  ism_config%profile_density_on = .false. ! .true. ! ISM set density profile
+  ism_config%profile_density_on = .true. !.false. ! .true. ! ISM set density profile
+  ism_config%profile_pressure_on=.true.
   ism_config%profile_density    = 'cabrit1997' ! ISM density profile
-  ism_config%profile_force_on   = .true. ! .false. ! ISM set force profile
+  ism_config%profile_force_on   = .true.!.false.!.true. ! .false. ! ISM set force profile
+
+  ism_config%z_c    = 1.0d16 ! grandeur de normalisation dans le profil de pression/densite (en cm)
+  ism_config%kappa    = 2.0d0 ! indice kappa pour la loi de densité et de pression : 'cabrit1997' <=> kappa=2
 /
 
+&usr_usrboundary_ism_list
+  usrboundary_config%boundary_type(2,1) = 'open'
+  usrboundary_config%boundary_type(2,2) = 'open'
+  usrboundary_config%useprimitive       = .false.
+  usrboundary_config%flux_frac          = 1.0d-2
+/
 
-
-
+!11/12/19 : pour le jet et le projet n°1 de Sylvie Cabrit sur son article de 1997, les paramètres ci-dessous pour le jet ont été testés
+!et fixées aux valeurs recommandées et correspondant le mieux à la simulation de l'article
 &usr_cla_jet_list
     cla_jet_config%unit                  =  'cgs' !> physical unit at parameter file
     cla_jet_config%time_cla_jet_on       =  0.0d0 !> initial time the cla_jet is set in the simulation box
@@ -245,33 +301,35 @@
     cla_jet_config%myindice              =  0       !> cla_jet associated indice
     cla_jet_config%density               =  0.0 !> cla_jet density  (g/cm^3)
 
-    cla_jet_config%number_density        =  100.0d0!  !> cla_jet number density (1/cm^3)  Reference  Whittle, J. D. Silverman, et al. 2004
+    cla_jet_config%number_density        =  0.0d0  !> cla_jet number density (1/cm^3)  Reference  Whittle, J. D. Silverman, et al. 2004 : on doit désactiver le flux de masse pour pouvoir utiliser cette densité
     cla_jet_config%temperature           =  0.0d0   !> cla_jet temperature  (K)
     cla_jet_config%pressure              =  0.0d0   !> cla_jet pressure
     cla_jet_config%pressure_toism        =  0.0d0   !> cla_jet pressure relative to ism pressure
-    cla_jet_config%magnetic(1)           =  0.0d0   !> cla_jet magnetic field components
-    cla_jet_config%magnetic(2)           =  0.0d0   !> cla_jet magnetic field components
-    cla_jet_config%magnetic(3)           =  0.0d0   !> cla_jet magnetic field components
-    cla_jet_config%xisigma               =  0.0d0   !> cla_jet magnetisation
-    cla_jet_config%magn_anglePHItoPol    =  0.0d0   !> cla_jet magnetisation field incl
+    cla_jet_config%magnetic(1)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%magnetic(2)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%magnetic(3)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%xisigma               =  0.0d0   !> cla_jet magnetisation : 0.0d0 = HD
+    cla_jet_config%magn_anglePHItoPol    =  0.0d0   !> cla_jet magnetisation field incl : 0.0d0 = HD
 
-    cla_jet_config%Mach_number           =  20.0d0   !> cla_jet  Mach number
+    cla_jet_config%Mach_number           =  20.0d0   !> cla_jet  Mach number : Par défaut : Ma = 20
     cla_jet_config%c_sound               =  0.0d0   !> cla_jet  sound speed (cm/s)
     cla_jet_config%velocity(1)           =  0.0d0   !> cla_jet  velocity (radial speed)(cm/s)
-    cla_jet_config%velocity(2)           =  1d7     !> cla_jet  velocity (longitudinal speed)(cm/s) ! Reference  Whittle, J. D. Silverman, et al. 2004
+    cla_jet_config%velocity(2)           =  1.5d7 !1.0d7   !1.0d7!> cla_jet  velocity (longitudinal speed)(cm/s) ! Reference  Whittle, J. D. Silverman, et al. 2004 ! Projet n°1 de Sylvie (Cabrit et Raga 1997) => Vjet = 150 km/s = 1.5d7 cm/s (sans tenir compte de la variabilité temporelle du jet)
     cla_jet_config%velocity(3)           =  0.0d0   !> cla_jet  velocity (rotation speed)(cm/s)
     cla_jet_config%power                 =  0.0d0   !> wind power flux
-    cla_jet_config%mass_flux             =  0.0d0!1.9d25   !> wind mass flux
+    cla_jet_config%mass_flux             =  1.9705112501213315d17!1.3136741667475542d17!!5.2546963d17   !> wind mass flux : cabrit1997 = 1.3136741d17 à Vjet = 100 km/s et 1.9705111e+17 à Vjet = 150 km/s (Vjet = 150 km/s ne marche qu a basse resolution de maillage)
+                                            ! pour avoir :
+                                            ! * Vjet = 100 km/s, R_jet = 0.5e16 cm et n_jet = 100 cm-3 >>> mass_flux = 1.3136741667475542e+17 g / s
+                                            ! * Vjet = 150 km/s, R_jet = 0.5e16 cm et n_jet = 100 cm-3 >>> mass_flux = 1.9705112501213315e+17 g / s
 
-
-    cla_jet_config%open_angle            =  0.0d0 !> cla_jet initial open angle  (degre)
+    cla_jet_config%open_angle            =  0.0d0 !> cla_jet initial open angle  (degre): 0.0d0 = jet droit cylindrique
     cla_jet_config%z_in                  =  -46.275d18 !> cla_jet inner boundary position
-    cla_jet_config%z_impos               =  300d40!> cla_jet  impose r
-    cla_jet_config%z_out_init            =  300d40 !> cla_jetinitial wind region
-    cla_jet_config%r_out_init            =  7.48d14!> cla_jet inner boundary wind position
-    cla_jet_config%r_out_impos           =  7.48d14!> cla_jet  impose radius
+    cla_jet_config%z_impos               =  3.26128d13!1.495978707d13!1.495978707d14!> cla_jet  impose z height : 1.495978707e15 cm = 100 au
+    cla_jet_config%z_out_init            =  3.26128d13!1.495978707d13!1.495978707d14!0.5d15!0.5d14!> cla_jet initial jet-wind region height : 1.495978707e15 cm = 100 au
+    cla_jet_config%r_out_init            =  0.5d16!7.48d14!> cla_jet inner boundary wind position :zakaria = 7.48d14
+    cla_jet_config%r_out_impos           =  0.5d16 !7.48d14!> cla_jet  impose radius : Rjet (Cabrit1997) = 0.5d16 cm; zakaria = 7.48d14 , necessary to impose density or mass flux on the inner boundary
 
-    cla_jet_config%r_in_init             =  0.0!-7.48d14 !> cla_jet inner jet  region
+    cla_jet_config%r_in_init             =  0.0 !-7.48d14 !> cla_jet inner jet  region : position de la limite gauche du jet en coordonnées cylindriques : à tenir compte dans le calcul de la surface d'éjection du jet et donc du calcul du flux de masse ejectée
 
     cla_jet_config%tracer_on             =  .true. !> cla_jet logical to set tracer
     cla_jet_config%tracer_init_density   =  1.0d3  !> cla_jet tracer density
@@ -280,12 +338,16 @@
     cla_jet_config%profile               =  'none'  !> cla_jet profile
 
 
-    cla_jet_config%variation_on          = .true.
-    cla_jet_config%variation_start_time  =  3d7
+    cla_jet_config%variation_on          =  .true. !.false. ! to set on  or off the jet-injection in-real-time velocity variability
+    cla_jet_config%variation_start_time  =  0.0d0 !3d7 ! time (in s in cgs) at which to begin the time variability : 0.0 to begin at the start of the simulation
     cla_jet_config%variation_end_time    =  3d15
-    cla_jet_config%variation_time        =  3d9
-    cla_jet_config%variation_position    =  0,3d15,0
-    cla_jet_config%variation_type        =  'sin'
+    cla_jet_config%variation_velocity(1) =  0.0d0
+    cla_jet_config%variation_velocity(2) =  5.0d6 ! 5d6 cm/s = 50 km/s
+    cla_jet_config%variation_velocity(3) =  0.0d0
+    cla_jet_config%variation_time        =  3.15576d9!=100 yrs !3.15576d7 !=1 yr ! time length scale during which the jet velocity typically varies : 3.155760000d9 (s) = 100 yrs
+    cla_jet_config%variation_position    =  0.0d0, 3.26128d13 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
+    cla_jet_config%variation_type        =  'sin'!'sin' !'door'! type of the velocity variation induced in the velocity profile, see subroutine usr_mat_profile_scalar in mod_obj_mat.t to see which possibilities are avalaible
+
 
     cla_jet_config%dust_on               =  .false. !> cla_jet with dust in is true
     cla_jet_config%dust_frac             =  0.0d0   !> cla_jet dust fraction

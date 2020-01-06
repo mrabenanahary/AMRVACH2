@@ -574,7 +574,7 @@ contains
           where(self%patch(ixO^S))
             w(ixO^S,imom_profile_) = w(ixO^S,imom_profile_)+qdt*wCT(ixO^S,phys_ind%rho_)*f_profile(ixO^S,i_idir_prof_)
           end where
-if(it==0)PRINT*,' the difference ',imom_profile_,maxval(dabs( w(ixO^S,imom_profile_)-wCT(ixO^S,imom_profile_)))
+
          !if(energy .and. .not.block%e_is_internal) then
           where(self%patch(ixO^S))
           w(ixO^S,phys_ind%e_)=w(ixO^S,phys_ind%e_) &
