@@ -11,7 +11,7 @@ module mod_obj_ism
     ! ISM features
     type ism_parameters
       character(len=20)    :: unit           !> physical unit at parameter file
-      character(len=78)    :: obj_name               !> Obj name that call it
+      character(len=78)    :: obj_name       !> Obj name that call it
       logical              :: normalize_done !> ism is the normalisation is already done
       real(dp)             :: density        !> ISM density  (g/cm^3)
       real(dp)             :: number_density !> ISM number density (1/cm^3)
@@ -27,7 +27,7 @@ module mod_obj_ism
 
       character(len=30)    :: profile_density     !> ism profile pressure
       logical              :: profile_density_on  !> ISM density profile on
-      logical              :: profile_density_keep_pressur !> ISM density profile but keep pressure
+      logical              :: profile_density_keep_pressure !> ISM density profile but keep pressure
 
       logical              :: profile_on     !> ISM profile set
       integer              :: profile_idir   !> IMS profile direction
@@ -192,7 +192,7 @@ contains
      self%myconfig%profile_density_on    = .false.
 
 
-     self%myconfig%profile_density_keep_pressur =.false.
+     self%myconfig%profile_density_keep_pressure =.false.
      self%myconfig%reset_coef            = 0.0_dp
      self%myconfig%reset_on              = .false.
      self%myconfig%boundary_on          = .false.
@@ -409,7 +409,6 @@ contains
         end if
         itr=itr+1
       end if cond_tracer_on
-
 
 
 
