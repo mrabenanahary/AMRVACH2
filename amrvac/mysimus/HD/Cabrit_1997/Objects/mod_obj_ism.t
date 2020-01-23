@@ -19,8 +19,10 @@ module mod_obj_ism
       real(dp)             :: pressure       !> ISM pressure
       real(dp)             :: extend(2,3)    !> region in space (cm)
       integer              :: myindice       !> ism indices associated with ism in use
-      real(dp)             :: kappa                !> ISM index power in pressure
-      real(dp)             :: z_c                  !> ISM typical value of height  (cm)
+      real(dp)             :: profile_kappa  !> ISM index power in pressure
+      real(dp)             :: profile_zc     !> ISM typical value of height  (cm)
+      real(dp)             :: profile_shiftstart(3) !> ISM typical value of height  (cm)
+
       character(len=30)    :: profile_pressure     !> ism profile pressure
       logical              :: profile_pressure_on  !> ISM pressure profile on
       logical              :: profile_force_on     !> ISM force profile one
@@ -179,8 +181,9 @@ contains
      self%myconfig%xisigma            = 0.0_dp
 
 
-     self%myconfig%kappa                 = 0.0_dp
-     self%myconfig%z_c                   = 0.0_dp
+     self%myconfig%profile_kappa      = 0.0_dp
+     self%myconfig%profile_zc         = 0.0_dp
+     self%myconfig%profile_shiftstart = 0.0_dp
      self%myconfig%profile_pressure      = 'none'
      self%myconfig%profile_pressure_on   = .false.
      self%myconfig%profile_force_on      = .false.
@@ -252,7 +255,7 @@ contains
     case('none')
      self%myconfig%profile_pressure_on = .false.
     case default
-     if(.not.(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)&
+     if(.not.(dabs(self%myconfig%profile_kappa)>smalldouble.and.self%myconfig%profile_zc>smalldouble)&
         .or.self%myconfig%profile_idir<1)then
        self%myconfig%profile_pressure_on = .false.
        self%myconfig%profile_force_on    = .false.
@@ -263,7 +266,7 @@ contains
     case('none')
      self%myconfig%profile_density_on = .false.
     case default
-      if(self%myconfig%z_c<smalldouble.or.self%myconfig%profile_idir<1)then
+      if(self%myconfig%profile_zc<smalldouble.or.self%myconfig%profile_idir<1)then
        self%myconfig%profile_density_on = .false.
        self%myconfig%profile_force_on   = .false.
       end if
@@ -318,7 +321,8 @@ contains
      self%myconfig%c_sound          =  self%myconfig%c_sound       /physunit_inuse%myconfig%velocity
 
 
-     self%myconfig%z_c              =  self%myconfig%z_c           /physunit_inuse%myconfig%length
+     self%myconfig%profile_zc              =  self%myconfig%profile_zc           /physunit_inuse%myconfig%length
+     self%myconfig%profile_shiftstart     =  self%myconfig%profile_shiftstart   /physunit_inuse%myconfig%length
     if( self%myconfig%dust_on)then
       call self%mydust%normalize(physunit_inuse)
       call self%mydust%to_phys
@@ -441,16 +445,16 @@ contains
     cond_pressure_profile : if(self%myconfig%profile_pressure_on) then
      select case(trim(self%myconfig%profile_pressure))
       case('king')
-        if(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)then
+        if(dabs(self%myconfig%profile_kappa)>smalldouble.and.self%myconfig%profile_zc>smalldouble)then
           p_profile(ixO^S) = 1.0_dp/(1.0_dp+(x(ixO^S,self%myconfig%profile_idir)&
-                            /self%myconfig%z_c)**(-self%myconfig%kappa) )
+                            /self%myconfig%profile_zc)**(-self%myconfig%profile_kappa) )
         else
           p_profile(ixO^S) = 1.0_dp
         end if
       case('komissarov')
-        if(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)then
+        if(dabs(self%myconfig%profile_kappa)>smalldouble.and.self%myconfig%profile_zc>smalldouble)then
           p_profile(ixO^S) = (x(ixO^S,self%myconfig%profile_idir)&
-                              /self%myconfig%z_c)**(-self%myconfig%kappa)
+                              /self%myconfig%profile_zc)**(-self%myconfig%profile_kappa)
         else
           p_profile(ixO^S) = 1.0_dp
         end if
@@ -462,8 +466,15 @@ contains
     cond_density_profile : if(self%myconfig%profile_density_on) then
      select case(trim(self%myconfig%profile_density))
      case('cabrit1997')
-        if(self%myconfig%z_c>smalldouble)then
-          p_profile(ixO^S) = (1.0_dp+x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c)**(-self%myconfig%kappa)
+        if(self%myconfig%profile_zc>smalldouble)then
+          where(x(ixO^S,self%myconfig%profile_idir)>&
+                 self%myconfig%profile_shiftstart(self%myconfig%profile_idir))
+           p_profile(ixO^S) = (1.0_dp+&
+              (x(ixO^S,self%myconfig%profile_idir)-self%myconfig%profile_shiftstart(self%myconfig%profile_idir))&
+              /self%myconfig%profile_zc)**(-self%myconfig%profile_kappa)
+          else where
+            p_profile(ixO^S) = 1.0_dp
+          end where
         else
           p_profile(ixO^S) = 1.0_dp
         end if
@@ -499,10 +510,10 @@ contains
     cond_pressure_fprofile : if(self%myconfig%profile_pressure_on) then
       select case(trim(self%myconfig%profile_pressure))
       case('komissarov')
-       cond_force1: if(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)then
+       cond_force1: if(dabs(self%myconfig%profile_kappa)>smalldouble.and.self%myconfig%profile_zc>smalldouble)then
         where(self%patch(ixO^S))
-         f_profile(ixO^S,self%myconfig%profile_idir) =- self%myconfig%kappa/self%myconfig%z_c*&
-           (x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c)**(-(self%myconfig%kappa+1))
+         f_profile(ixO^S,self%myconfig%profile_idir) =- self%myconfig%profile_kappa/self%myconfig%profile_zc*&
+           (x(ixO^S,self%myconfig%profile_idir)/self%myconfig%profile_zc)**(-(self%myconfig%profile_kappa+1))
         end  where
        else cond_force1
         where(self%patch(ixO^S))
@@ -519,10 +530,17 @@ contains
     cond_density_fprofile : if(self%myconfig%profile_density_on) then
       select case(trim(self%myconfig%profile_density))
       case('cabrit1997')
-       cond_force_rho1: if(self%myconfig%z_c>smalldouble)then
+       cond_force_rho1: if(self%myconfig%profile_zc>smalldouble)then
         where(self%patch(ixO^S))
-         f_profile(ixO^S,self%myconfig%profile_idir) = -phys_config%gamma/self%myconfig%z_c*self%myconfig%kappa*&
-           (1.0_dp+x(ixO^S,self%myconfig%profile_idir)/self%myconfig%z_c)**(-phys_config%gamma*self%myconfig%kappa-1)
+          where(x(ixO^S,self%myconfig%profile_idir)&
+                >self%myconfig%profile_shiftstart(self%myconfig%profile_idir))
+            f_profile(ixO^S,self%myconfig%profile_idir) = -phys_config%gamma/&
+                   self%myconfig%profile_zc*self%myconfig%profile_kappa*&
+              (1.0_dp+(x(ixO^S,self%myconfig%profile_idir)-self%myconfig%profile_shiftstart(self%myconfig%profile_idir))&
+               /self%myconfig%profile_zc)**(-phys_config%gamma*self%myconfig%profile_kappa-1)
+          else where
+            f_profile(ixO^S,self%myconfig%profile_idir) = 0.0_dp
+          end where
         end  where
        else cond_force_rho1
         where(self%patch(ixO^S))

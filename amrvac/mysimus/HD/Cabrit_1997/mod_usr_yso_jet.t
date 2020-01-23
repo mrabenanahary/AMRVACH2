@@ -688,7 +688,7 @@ contains
         else
           escape_patch(ixO^S)=.false.
         end if
-      
+
         if(.not.(all(escape_patch(ixO^S))))then
           Loop_isms : do i_ism=0,usrconfig%ism_number-1
             if(usrconfig%jet_yso_on.and.ism_surround(i_ism)%myconfig%reset_on) then
@@ -815,7 +815,7 @@ contains
     end do Loop_clouds
     end if cond_usr_cloud
 
-    if(phys_config%dust_on) then
+    cond_dust_on : if(phys_config%dust_on) then
      small_dust_rho = 1.0d-4!ism_surround%mydust%myconfig%min_limit_rel
 
      call phys_to_primitive(ixI^L,ixI^L,w,x)
@@ -859,7 +859,7 @@ contains
       end do   Loop_idir1
      end do Loop_idust
      call phys_to_conserved(ixI^L,ixI^L,w,x)
-    end if
+   end if cond_dust_on
 
   call usr_clean_memory
 

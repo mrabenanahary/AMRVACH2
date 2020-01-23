@@ -559,28 +559,34 @@ contains
       end select
     end if   cond_density_profile
 
-    if(self%myconfig%profile_pressure_on)then
+    cond_p_on1 : if(self%myconfig%profile_pressure_on)then
       w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_) * p_profile(ixO^S)
       if(.not.self%myconfig%profile_pressure_keep_density) then
         w(ixO^S,phys_ind%rho_)      = w(ixO^S,phys_ind%rho_) * p_profile(ixO^S)**(1.0_dp/phys_config%gamma)
       end if
-    elseif(self%myconfig%profile_density_on)then
+    elseif(self%myconfig%profile_density_on)then cond_p_on1
       w(ixO^S,phys_ind%rho_)      =  w(ixO^S,phys_ind%rho_)* p_profile(ixO^S)
-      if(.not.self%myconfig%profile_density_keep_pressure)then
-        if(self%myconfig%gravity_on) then
-          gravity_field(ixO^S) = constusr%G*self%myconfig%star_mass/distance(ixO^S)
-           w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_)+&
-                gravity_field(ixO^S)*distance(ixO^S) /&
+
+      cond_addgradp : if(.not.self%myconfig%profile_density_keep_pressure)then
+
+        cond_grav_on : if(self%myconfig%gravity_on) then
+          gravity_field(ixO^S) = constusr%G*self%myconfig%star_mass&
+                                /distance(ixO^S)
+        select case(trim(self%myconfig%profile_density))
+          case('radial_powerlaw')
+            w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_)+&
+                gravity_field(ixO^S) /&
                 (1.0_dp+self%myconfig%kappa)* &
                 w(ixO^S,phys_ind%rho_)*(1.0_dp - &
-                (self%myconfig%r_out(1)/self%myconfig%r_in(1))**(-1-self%myconfig%kappa))
-        else
+                (distance(ixO^S)/self%myconfig%r_out(1))**((1+self%myconfig%kappa)))
+          end select
+        else cond_grav_on
 
         w(ixO^S,phys_ind%pressure_) =  w(ixO^S,phys_ind%pressure_)&
                                        *p_profile(ixO^S)**(phys_config%gamma)
-        end if
-      end if
-    end if
+        end if cond_grav_on 
+      end if cond_addgradp
+    end if cond_p_on1
 
 
 
@@ -609,7 +615,8 @@ contains
       end if
       select case(trim(self%myconfig%profile_pressure))
       case('komissarov')
-       cond_force1: if(dabs(self%myconfig%kappa)>smalldouble.and.self%myconfig%z_c>smalldouble)then
+       cond_force1: if(dabs(self%myconfig%kappa)>smalldouble &
+                       .and. self%myconfig%z_c>smalldouble)then
         where(self%patch(ixO^S))
          f_profile(ixO^S,self%myconfig%profile_idir) =- self%myconfig%kappa/self%myconfig%z_c*&
            (distance(ixO^S)/self%myconfig%z_c)**(-(self%myconfig%kappa+1))

@@ -575,7 +575,16 @@ module mod_radiative_cooling
    -18.919   , -18.869   , -18.819   , -18.769   , &
    -18.719   , -18.669   , -18.619   , -18.569   , &
    -18.519   , -18.469   , -18.419   /
+   type rad_cooling_type
+     real(kind=dp)     :: gamma
+     real(kind=dp)     :: tfloor
+     real(kind=dp)     :: cfrac
+     logical           :: Tfix
+     character(len=30) :: coolcurve
+     character(len=30) :: coolmethod
+   end type rad_cooling_type
 
+   real(kind=dp),private   :: rc_gammamin1
   contains
 
     !> Read this module"s parameters from a file
@@ -609,6 +618,7 @@ module mod_radiative_cooling
       logical :: jump
 
       rc_gamma=phys_gamma
+
       He_abundance=He_abund
       ncool=4000
       coolcurve='JCcorona'
@@ -617,6 +627,7 @@ module mod_radiative_cooling
       tlow=bigdouble
       Tfix=.false.
 
+      rc_gammamin1 = rc_gamma -1.0_dp
       call rc_params_read(par_files)
 
       ! Determine flux variables
@@ -852,6 +863,8 @@ module mod_radiative_cooling
       else
          tlow = tlow / unit_temperature
       end if
+
+
       tcoolmax       = tcool(ncool)
 
       lgtcoolmin = dlog10(tcoolmin)
@@ -929,7 +942,7 @@ module mod_radiative_cooling
          endif
          lum(ix^D) = L1
         {enddo^D&\}
-        etherm(ixO^S)=ptherm(ixO^S)/(rc_gamma-1.d0)
+        etherm(ixO^S)=ptherm(ixO^S)/(rc_gammamin1)
         dtnew = cfrac*minval(etherm(ixO^S)/max(lum(ixO^S),smalldouble))
       endif
 
@@ -1019,30 +1032,33 @@ module mod_radiative_cooling
         case default
           call mpistop("This cooling method is unknown")
         end select
-        if( Tfix ) call floortemperature(qdt,ixI^L,ixO^L,wCT,w,x)
+        if( Tfix ) call floortemperature(qdt,ixI^L,ixO^L,tlow,wCT,w,x)
       end if
 
     end subroutine radiative_cooling_add_source
 
-    subroutine floortemperature(qdt,ixI^L,ixO^L,wCT,w,x)
+    subroutine floortemperature(qdt,ixI^L,ixO^L,tfloor,wCT,w,x)
     !  Force minimum temperature to a fixed temperature
       use mod_global_parameters
 
       integer, intent(in)             :: ixI^L, ixO^L
+      real(kind=dp)   , intent(in)    :: tfloor
       real(kind=dp)   , intent(in)    :: qdt, x(ixI^S,1:ndim), wCT(ixI^S,1:nw)
       real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
 
-      real(kind=dp)    :: etherm(ixI^S), emin, tfloor
+      real(kind=dp)    :: etherm(ixI^S), emin
       integer :: ix^D
 
-      tfloor = tlow
+      !tfloor = tlow
 
       call phys_get_pthermal(w,x,ixI^L,ixO^L,etherm)
 
       {do ix^DB = ixO^LIM^DB\}
-         emin         = w(ix^D,rho_)*tfloor/(rc_gamma-1.d0)
-         etherm(ix^D) = etherm(ix^D)/(rc_gamma-1.d0)
-         if( etherm(ix^D) < emin ) w(ix^D,e_)=w(ix^D,e_)-etherm(ix^D)+emin
+         emin         = w(ix^D,rho_)*tfloor/(rc_gammamin1)
+         etherm(ix^D) = etherm(ix^D)/(rc_gammamin1)
+         if( etherm(ix^D) < emin )then
+            w(ix^D,e_)=w(ix^D,e_)-etherm(ix^D)+emin
+         end if
       {enddo^D&\}
 
     end subroutine floortemperature
@@ -1074,10 +1090,10 @@ module mod_radiative_cooling
       {do ix^DB = ixO^LIM^DB\}
          plocal   = ptherm(ix^D)
          rholocal = wCT(ix^D,rho_)
-         emin     = rholocal*tlow/(rc_gamma-1.d0)
-         Lmax            = max(zero,pnew(ix^D)/(rc_gamma-1.d0)-emin)/qdt
+         emin     = rholocal*tlow/rc_gammamin1
+         Lmax     = max(zero,pnew(ix^D)/rc_gammamin1-emin)/qdt
          !  Tlocal = P/rho
-         Tlocal1       = max(plocal/(rholocal),smalldouble)
+         Tlocal1  = max(plocal/rholocal,smalldouble)
          !
          !  Determine explicit cooling
          !
@@ -1142,11 +1158,11 @@ module mod_radiative_cooling
          !  Calculate explicit cooling value
          dtmax    = qdt
          plocal   = ptherm(ix^D)
-         etherm   = plocal/(rc_gamma-1.d0)
+         etherm   = plocal/(rc_gammamin1)
 
          rholocal = wCT(ix^D,rho_)
-         emin     = rholocal*tlow/(rc_gamma-1.d0)
-         Lmax            = max(zero,(pnew(ix^D)/(rc_gamma-1.d0))-emin)/qdt
+         emin     = rholocal*tlow/(rc_gammamin1)
+         Lmax            = max(zero,(pnew(ix^D)/(rc_gammamin1))-emin)/qdt
          !  Tlocal = P/rho
          Tlocal1       = plocal/(rholocal)
          !
@@ -1181,7 +1197,7 @@ module mod_radiative_cooling
          etherm = etherm - de
 
          do idt=2,ndtstep
-            plocal = etherm*(rc_gamma-1.0_dp)
+            plocal = etherm*(rc_gammamin1)
             Lmax   = max(zero,etherm-emin)/dtstep
             !  Tlocal = P/rho
             Tlocal1 = plocal/(rholocal)
@@ -1237,8 +1253,8 @@ module mod_radiative_cooling
       {do ix^DB = ixO^LIM^DB\}
          plocal   = ptherm(ix^D)
          rholocal = wCT(ix^D,rho_)
-         emin     = rholocal*tlow/(rc_gamma-1.d0)
-         Lmax            = max(zero,pnew(ix^D)/(rc_gamma-1.d0)-emin)/qdt
+         emin     = rholocal*tlow/(rc_gammamin1)
+         Lmax            = max(zero,pnew(ix^D)/(rc_gammamin1)-emin)/qdt
          !  Tlocal = P/rho
          Tlocal1       = max(plocal/(rholocal),smalldouble)
          !
@@ -1258,8 +1274,8 @@ module mod_radiative_cooling
               call findL(Tlocal1,L1)
            end if
            L1      = L1*(rholocal*rho_electron(ix^D))
-           etemp   = plocal/(rc_gamma-1.d0) - L1*qdt
-           Tlocal2 = etemp*(rc_gamma-1.d0)/(rholocal)
+           etemp   = plocal/(rc_gammamin1) - L1*qdt
+           Tlocal2 = etemp*(rc_gammamin1)/(rholocal)
            !
            !  Determine explicit cooling at new temperature
            !
@@ -1308,10 +1324,10 @@ module mod_radiative_cooling
 
       {do ix^DB = ixO^LIM^DB\}
          plocal   = ptherm(ix^D)
-         elocal   = plocal/(rc_gamma-1.d0)
+         elocal   = plocal/(rc_gammamin1)
          rholocal = wCT(ix^D,rho_)
-         emin     = rholocal*tlow/(rc_gamma-1.d0)
-         Lmax            = max(zero,pnew(ix^D)/(rc_gamma-1.d0)-emin)/qdt
+         emin     = rholocal*tlow/(rc_gammamin1)
+         Lmax            = max(zero,pnew(ix^D)/(rc_gammamin1)-emin)/qdt
          !  Tlocal = P/rho
          Tlocal1       = max(plocal/(rholocal),smalldouble)
          !
@@ -1330,7 +1346,7 @@ module mod_radiative_cooling
            f2    = 1.d0
            do j=1,maxiter+1
              if( j>maxiter ) call mpistop("Implicit cooling exceeds maximum iterations")
-             Tnew  = enew*(rc_gamma-1.d0)/(rholocal)
+             Tnew  = enew*(rc_gammamin1)/(rholocal)
              if( Tnew<=tcoolmin ) then
                Ltemp = Lmax
                exit
@@ -1381,7 +1397,7 @@ module mod_radiative_cooling
 
       fact = Lref*qdt/Tref
 
-      invgam=1.0_dp/(rc_gamma-1.0_dp)
+      invgam=1.0_dp/(rc_gammamin1)
       if(phys_config%chemical_on) then
         call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
       else

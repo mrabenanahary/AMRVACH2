@@ -346,6 +346,7 @@ contains
    if(self%myconfig%pressure_toism>0.0_dp.and.self%myconfig%pressure_associate_ism>0.0_dp) then
      self%myconfig%pressure    = self%myconfig%pressure_toism*self%myconfig%pressure_associate_ism
    end if
+
    cond_Mach_set : if(self%myconfig%mach_number>0.0_dp) then
      self%myconfig%c_sound = dsqrt(sum(self%myconfig%velocity**2.0_dp))/&
        self%myconfig%mach_number
@@ -567,15 +568,16 @@ contains
 !--------------------------------------------------------------------
  !> subroutine patch for the cla_jet
  subroutine usr_cla_jet_set_patch(ixI^L,ixO^L,qt,x,self,force_refine,dx_loc,&
-                                  r_limit)
+                                  r_limit,z_out_force)
   implicit none
   integer, intent(in)       :: ixI^L,ixO^L
   real(kind=dp), intent(in) :: x(ixI^S,1:ndim)
   real(kind=dp), intent(in) :: qt
   class(cla_jet)            :: self
-  integer, optional          :: force_refine
-  real(kind=dp),optional     :: dx_loc(1:ndim)
-  real(kind=dp),optional     :: r_limit(2)
+  integer, optional         :: force_refine
+  real(kind=dp),optional    :: dx_loc(1:ndim)
+  real(kind=dp),optional    :: r_limit(2)
+  real(kind=dp),optional    :: z_out_force
   ! .. local ..
   integer                    :: idims
   real(dp)                   :: x_edge(ixI^S,1:ndim)
@@ -592,7 +594,9 @@ contains
     r_out=self%myconfig%r_out_impos
     z_out=self%myconfig%z_impos
   end if
-
+  if(present(z_out_force)) then
+    z_out = z_out_force
+  end if
   if(present(r_limit))then
    r_limit(1) = r_in
    r_limit(2) = r_out
@@ -823,29 +827,42 @@ end subroutine usr_cla_add_source
    ! .. local ..
    integer                        :: ix^D
    real(kind=dp)                  :: Vprofile
+   logical                        :: patch_ejecta_surface(ixI^S)
    !----------------------------------------------------------
 
    cond_var_0 : if(self%myconfig%variation_on) then
-    cond_time_var : if(qt>self%myconfig%variation_start_time.and.qt<self%myconfig%variation_end_time) then
-     cond_inside : if(any(dabs(x(ixO^S,zjet_)-self%myconfig%variation_position(zjet_))<dxlevel(zjet_)))then
-       call usr_mat_profile_scalar(qt,self%myconfig%variation_time,&
-                                   self%myconfig%variation_type,Vprofile)
+    cond_time_var : if(qt>self%myconfig%variation_start_time&
+                       .and.qt<self%myconfig%variation_end_time) then
+
+      patch_ejecta_surface(ixO^S) = dabs(x(ixO^S,zjet_)&
+                                         -self%myconfig%variation_position(zjet_))&
+                                    <dxlevel(zjet_)/2.0_dp
+
+     cond_inside : if(any(patch_ejecta_surface(ixO^S)))then
 
 
-      if(.not.allocated(self%patch))then
-        call self%set_patch(ixI^L,ixO^L,qt,x)
-      end if
-      call phys_to_primitive(ixI^L,ixO^L,w,x)
-      {do ix^DB=ixOmin^DB,ixOmax^DB\}
-        if(dabs(x(ix^D,zjet_)-self%myconfig%variation_position(zjet_))<dxlevel(zjet_).and.self%patch(ix^D))then
-          w(ix^D,phys_ind%mom(zjet_))= self%myconfig%velocity(zjet_)+&
-                                       self%myconfig%variation_velocity(zjet_)*&
-                                        Vprofile
+        if(.not.allocated(self%patch))then
+          call self%set_patch(ixI^L,ixO^L,qt,x,&
+                      z_out_force=2.0*self%myconfig%variation_position(zjet_))
         end if
-      {end do\}
-      call phys_to_conserved(ixI^L,ixO^L,w,x)
 
-     end if cond_inside
+        patch_ejecta_surface(ixO^S) = patch_ejecta_surface(ixO^S).and.self%patch(ixO^S)
+
+        cond_inside0 : if(any(patch_ejecta_surface(ixO^S)))then
+        call usr_mat_profile_scalar(qt,self%myconfig%variation_time,&
+                                         self%myconfig%variation_type,Vprofile)
+        call phys_to_primitive(ixI^L,ixO^L,w,x)
+        {do ix^DB=ixOmin^DB,ixOmax^DB\}
+          if(patch_ejecta_surface(ix^D))then
+            w(ix^D,phys_ind%mom(zjet_))= self%myconfig%velocity(zjet_)+&
+                                       self%myconfig%variation_velocity(zjet_)*&
+                                       Vprofile
+          end if
+        {end do\}
+      
+        call phys_to_conserved(ixI^L,ixO^L,w,x)
+      end if cond_inside0
+      end if cond_inside
     end if  cond_time_var
    end if cond_var_0
 
