@@ -250,6 +250,7 @@ contains
 
     self%myconfig%c_sound = sqrt(phys_config%gamma*self%myconfig%pressure/self%myconfig%density)
 
+    self%myconfig%profile_idir=min(self%myconfig%profile_idir,ndim)
 
     select case(self%myconfig%profile_pressure)
     case('none')
@@ -294,6 +295,7 @@ contains
     if(.not.self%myconfig%boundary_on)                                       &
         self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
     call self%myboundaries%set_complet
+
   end subroutine usr_ism_set_complet
   !--------------------------------------------------------------------
   !> subroutine normalize setting for ISM

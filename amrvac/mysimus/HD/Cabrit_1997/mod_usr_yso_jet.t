@@ -33,8 +33,11 @@ module mod_usr
     logical           :: cloud_profile_pressure_on
     logical           :: cloud_profile_velocity_on
 
+
+
     real(kind=dp)     :: density_dusttogas_maxlimit
     real(kind=dp)     :: density_dusttogas_minlimit
+    real(kind=dp)     :: temperature_max
     character(len=20) :: phys_inuse
   end type usr_config
   type(usr_config)    :: usrconfig
@@ -140,6 +143,9 @@ contains
 
     usrconfig%density_dusttogas_maxlimit  = 1.0d6
     usrconfig%density_dusttogas_minlimit  = 1.0d-6
+
+
+    usrconfig%temperature_max             = bigdouble
 
     usrconfig%cloud_profile_density_on  = .false.
     usrconfig%cloud_profile_pressure_on = .false.
@@ -344,7 +350,7 @@ contains
            end do
           end if
     end if
-
+   usrconfig%temperature_max = usrconfig%temperature_max/usr_physunit%myconfig%temperature
   end subroutine usr_normalise_parameters
 
 
@@ -512,7 +518,7 @@ contains
        cloud_medium(i_cloud)%subname='initonegrid_usr'
        if(allocated(cloud_medium(i_cloud)%patch))deallocate(cloud_medium(i_cloud)%patch)
        allocate(cloud_medium(i_cloud)%patch(ixI^S))
-       cloud_medium(i_cloud)%patch(ixO^S) = x(ixO^S,2)>cloud_medium(i_cloud)%myconfig%extend(2) +&
+       cloud_medium(i_cloud)%patch(ixO^S) = x(ixO^S,zjet_)>cloud_medium(i_cloud)%myconfig%extend(zjet_) +&
                                 dtan(cloud_medium(i_cloud)%myconfig%extend(3)*&
                                      usr_physunit%myconfig%length*dpi/180.0_dp)*(x(ixO^S,1)-xprobmin1)
 
@@ -636,7 +642,7 @@ contains
           jet_yso(i_jet_yso)%subname='specialsource_usr'
           call jet_yso(i_jet_yso)%alloc_set_patch(ixI^L,ixO^L,qt,x,use_tracer=.false.,w=w)
           escape_patch(ixO^S) =  escape_patch(ixO^S).or.jet_yso(i_jet_yso)%patch(ixO^S)
-          if(any(x(ixO^S,2)>jet_yso(i_jet_yso)%myconfig%z_impos))then
+          if(any(x(ixO^S,zjet_)>jet_yso(i_jet_yso)%myconfig%z_impos))then
             usr_loc_tracer_small_density = jet_yso(i_jet_yso)%myconfig%tracer_small_density/10.0_dp
           else
             usr_loc_tracer_small_density = jet_yso(i_jet_yso)%myconfig%tracer_small_density
@@ -681,7 +687,7 @@ contains
               escape_patch(ixO^S)=.false.
             elsewhere(w(ixO^S,phys_ind%rho_)>ism_surround(i_ism)%myconfig%density.and.&
               w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))>5.0d3.and.&
-              x(ixO^S,2)>2.0*maxval(jet_yso(:)%myconfig%z_impos))
+              x(ixO^S,zjet_)>2.0*maxval(jet_yso(:)%myconfig%z_impos))
               escape_patch(ixO^S)=.true.
             end where
           end do Loop_isms0
@@ -692,7 +698,7 @@ contains
         if(.not.(all(escape_patch(ixO^S))))then
           Loop_isms : do i_ism=0,usrconfig%ism_number-1
             if(usrconfig%jet_yso_on.and.ism_surround(i_ism)%myconfig%reset_on) then
-              source_filter(ixO^S) = 0.5_dp*(1.0_dp-tanh((x(ixO^S,2))&
+              source_filter(ixO^S) = 0.5_dp*(1.0_dp-tanh((x(ixO^S,zjet_))&
                                /(2.0_dp*maxval(jet_yso(:)%myconfig%z_impos))))&
                               *(w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))&
                               /max(w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))+&
@@ -758,6 +764,7 @@ contains
     ! .. local ..
     integer                         :: idust,idir
     real(dp)                        :: small_dust_rho,coef
+    real(dp), dimension(ixI^S)      :: temperature
     logical, dimension(ixI^S)       :: patch_correct,patch_slow
     integer       :: i_cloud,i_ism,i_jet_yso,i_dust,i_start,i_end
     logical, save :: first=.true.
@@ -785,7 +792,7 @@ contains
        cloud_medium(i_cloud)%subname='process_grid_usr'
        if(allocated(cloud_medium(i_cloud)%patch))deallocate(cloud_medium(i_cloud)%patch)
        allocate(cloud_medium(i_cloud)%patch(ixI^S))
-       cloud_medium(i_cloud)%patch(ixO^S) = x(ixO^S,2)>cloud_medium(i_cloud)%myconfig%extend(2) +&
+       cloud_medium(i_cloud)%patch(ixO^S) = x(ixO^S,zjet_)>cloud_medium(i_cloud)%myconfig%extend(zjet_) +&
                                 dtan(cloud_medium(i_cloud)%myconfig%extend(3)*&
                                      usr_physunit%myconfig%length*dpi/180.0_dp)*(x(ixO^S,1)-xprobmin1)
        call cloud_medium(i_cloud)%set_w(ixI^L,ixO^L,global_time,x,w)
@@ -862,7 +869,18 @@ contains
    end if cond_dust_on
 
   call usr_clean_memory
-
+  ! control the high temperature issues
+  cond_check_T_high : if(usrconfig%temperature_max<bigdouble)then
+    call phys_get_temperature(ixI^L, ixI^L,w,x,Temperature)
+    cond_Thigh : if(any(Temperature(ixI^S)>usrconfig%temperature_max))then
+      call phys_to_primitive(ixI^L,ixI^L,w,x)
+      where(Temperature(ixI^S)>usrconfig%temperature_max)
+        w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_)&
+                                   *usrconfig%temperature_max/Temperature(ixI^S)
+      end where
+      call phys_to_conserved(ixI^L,ixI^L,w,x)
+    end if cond_Thigh
+  end if cond_check_T_high
   end subroutine process_grid_usr
   !---------------------------------------------------------------------
   !-------------------------------------------------------------------------
@@ -902,7 +920,7 @@ contains
       cloud_medium(i_cloud)%subname='specialbound_usr'
       if(allocated(cloud_medium(i_cloud)%patch))deallocate(cloud_medium(i_cloud)%patch)
       allocate(cloud_medium(i_cloud)%patch(ixI^S))
-      cloud_medium(i_cloud)%patch(ixO^S) = x(ixO^S,2)>cloud_medium(i_cloud)%myconfig%extend(2) +&
+      cloud_medium(i_cloud)%patch(ixO^S) = x(ixO^S,zjet_)>cloud_medium(i_cloud)%myconfig%extend(zjet_) +&
                                 dtan(cloud_medium(i_cloud)%myconfig%extend(3)*&
                                      usr_physunit%myconfig%length*dpi/180.0_dp)*(x(ixO^S,1)-xprobmin1)
 
@@ -1148,7 +1166,7 @@ contains
 
       Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
         cond_jet_start : if(qt>jet_yso(i_jet_yso)%myconfig%time_cla_jet_on)then
-         cond_jet_impose : if(jet_yso(i_jet_yso)%myconfig%z_impos>xprobmin2)then
+         cond_jet_impose : if(jet_yso(i_jet_yso)%myconfig%z_impos>box_limit(1,zjet_))then
           call jet_yso(i_jet_yso)%set_patch(ixI^L,ixO^L,qt,x)
           cond_insid_jet : if(any(jet_yso(i_jet_yso)%patch(ixO^S)))then
             call phys_to_primitive(ixI^L,ixO^L,w,x)
@@ -1199,7 +1217,7 @@ contains
     w(ixI^S,1:nw) = win(ixI^S,1:nw)
     level = node(plevel_,saveigrid)
 
-
+    call phys_handle_small_values(.false., w, x, ixI^L, ixO^L,'specialvar_output')
     Loop_iw :  do iw = 1,nwauxio
     select case(iw)
     case(imach_)
@@ -1382,8 +1400,8 @@ contains
      usr_limiter = limiter_minmod
     end if cond_pw
    {^NOONED
-    where(x(ixO^S,z_)>smalldouble)
-      theta(ixO^S) = atan(x(ixO^S,r_)/x(ixO^S,z_))
+    where(x(ixO^S,zjet_)>smalldouble)
+      theta(ixO^S) = atan(x(ixO^S,r_)/x(ixO^S,zjet_))
     elsewhere
       theta(ixO^S) = 0.0_dp
     end where
@@ -1473,8 +1491,9 @@ subroutine usr_set_profile_cloud(ixI^L,ixO^L,x,cloud_isuse,cloud_profile)
 
   angle_theta = cloud_isuse%myconfig%extend(3)*&
                           usr_physunit%myconfig%length*dpi/180.0_dp
-  distance(ixO^S) =   (x(ixO^S,2)-&
-                      ( dtan(angle_theta)*(x(ixO^S,1)-xprobmin1))+&
+
+  distance(ixO^S) =   (x(ixO^S,zjet_)-&
+                      ( dtan(angle_theta)*(x(ixO^S,r_)-xprobmin1))+&
                         cloud_isuse%myconfig%extend(2))*dsin(angle_theta)
 
   select case(usrconfig%cloud_structure)

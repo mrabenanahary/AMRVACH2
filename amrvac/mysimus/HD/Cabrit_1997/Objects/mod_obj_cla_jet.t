@@ -58,6 +58,8 @@ module mod_obj_cla_jet
     logical              :: variation_on           !>  jet variation  condition
     character(len=40)    :: variation_type         !> jet type of the power variation
     real(dp)             :: variation_time         !> jet variation characteristic time
+    integer              :: variation_phys_nvariable!> jet variation number of variable will change in time
+    integer              :: variation_phys_variable(5)!> jet variation  variable will change in time
     real(dp)             :: variation_velocity(3)  !> jet variation bottom velocity
 
     real(dp)             :: variation_start_time  !> jet variation starting time
@@ -83,6 +85,7 @@ module mod_obj_cla_jet
      PROCEDURE, PASS(self) :: normalize       => usr_cla_jet_normalize
      PROCEDURE, PASS(self) :: set_w           => usr_cla_jet_set_w
      PROCEDURE, PASS(self) :: process_grid    => usr_cla_process_grid
+     PROCEDURE, PASS(self) :: add_ejecta      => usr_cla_add_ejecta
      PROCEDURE, PASS(self) :: read_parameters => usr_cla_jet_read_p
      PROCEDURE, PASS(self) :: write_setting   => usr_cla_jet_write_setting
      PROCEDURE, PASS(self) :: alloc_set_patch => usr_cla_jet_alloc_set_patch
@@ -246,7 +249,8 @@ contains
   self%myconfig%variation_start_time   = 0.0_dp
   self%myconfig%variation_end_time     = 0.0_dp
   self%myconfig%variation_velocity     = 0.0_dp
-
+  self%myconfig%variation_phys_nvariable= 0
+  self%myconfig%variation_phys_variable = 1
   self%myconfig%normalize_done         = .false.
   zjet_                                = 2
   thetajet_                            = 2
@@ -262,7 +266,7 @@ contains
    real(dp)                   :: mp,kb, jet_surface_init,&
                                  Magnetic_poloidal
    !-----------------------------------
-   zjet_     = merge(min(zjet_,ndir),ndir+1,ndir>1)
+   zjet_     = min(zjet_,ndim)
    thetajet_ = zjet_
    if(SI_unit) then
      mp=mp_SI
@@ -291,7 +295,7 @@ contains
      if(self%myconfig%open_angle>0.0_dp)then
       self%myconfig%z_in  = self%myconfig%r_out_init/dtan(self%myconfig%open_angle)
      else
-      self%myconfig%z_in=min(xprobmin2/2.0_dp,self%myconfig%z_in)
+      self%myconfig%z_in=min(box_limit(1,zjet_)/2.0_dp,self%myconfig%z_in)
      end if
    end if
 
@@ -302,7 +306,7 @@ contains
                              -max(self%myconfig%r_in_init,0.0_dp)**2.0_dp)
    case('slab')
       if(self%myconfig%r_out_init*self%myconfig%r_in_init>0.0_dp&
-       .or.self%myconfig%r_in_init>xprobmin1) then
+       {^NOONED.or.self%myconfig%r_in_init>xprobmin1}) then
         jet_surface_init = dpi *(self%myconfig%r_out_init**2.0_dp&
                              -self%myconfig%r_in_init**2.0_dp)
       else
@@ -432,7 +436,9 @@ contains
           dabs(self%myconfig%variation_time)<smalldouble)then
     self%myconfig%variation_on=.false.
   end if cond_var0
-
+  cond_var1 : if(self%myconfig%variation_on)then
+    self%myconfig%variation_phys_nvariable = max(self%myconfig%variation_phys_nvariable,1)
+  end if cond_var1
  end subroutine usr_cla_jet_set_complet
 !--------------------------------------------------------------------
  subroutine usr_cla_jet_normalize(self,physunit_inuse)
@@ -619,15 +625,15 @@ contains
    end if  need_refine
   end if  cond_from_refine
 
-  if(.not.allocated(self%patch))allocate(self%patch(ixG^T))
+  if(.not.allocated(self%patch))allocate(self%patch(ixI^S))
 
   self%patch              = .false.
   select case(trim(self%myconfig%shape))
   case('conical')
     self%patch(ixO^S)  = dabs(x(ixO^S,r_))<=r_out&
-                   +dabs(x(ixO^S,zjet_)-xprobmin2)*dtan(self%myconfig%open_angle) .and. &
+                   +dabs(x(ixO^S,zjet_)-box_limit(1,zjet_))*dtan(self%myconfig%open_angle) .and. &
                    dabs(x(ixO^S,r_))>=r_in&
-                   +dabs(x(ixO^S,zjet_)-xprobmin2)*dtan(self%myconfig%open_angle)
+                   +dabs(x(ixO^S,zjet_)-box_limit(1,zjet_))*dtan(self%myconfig%open_angle)
 
     if(zjet_<=ndim) then
        self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
@@ -643,8 +649,13 @@ contains
     end if
 
   case('cartesian')
-    self%patch(ixO^S)  = x(ixO^S,x_)<=r_out .and. &
-                         x(ixO^S,x_)>=r_in
+    if(ndim>1) then
+     self%patch(ixO^S)  = x(ixO^S,r_)<=r_out .and. &
+                         x(ixO^S,r_)>=r_in
+    else
+       self%patch(ixO^S)  = .true.
+    end if
+
     if(zjet_<=ndim) then
        self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
                          x(ixO^S,zjet_)>=z_in
@@ -659,17 +670,18 @@ end subroutine usr_cla_jet_set_patch
  !> subroutine setting for cla_jet
  subroutine usr_cla_jet_set_w(ixI^L,ixO^L,qt,x,w,self)
   implicit none
-  integer, intent(in)        :: ixI^L,ixO^L
-  real(kind=dp), intent(in)  :: qt
-  real(kind=dp)              :: x(ixI^S,1:ndim)
-  real(kind=dp)              :: w(ixI^S,1:nw)
+  integer, intent(in)          :: ixI^L,ixO^L
+  real(kind=dp), intent(in)    :: qt
+  real(kind=dp)                :: x(ixI^S,1:ndim)
+  real(kind=dp)                :: w(ixI^S,1:nw)
   class(cla_jet)               :: self
   ! .. local..
-  integer                        :: idir
-  logical                        :: dust_is_frac
-  real(kind=dp), dimension(ixI^S):: fprofile,angle_theta,&
+  integer                         :: idir
+  logical                         :: dust_is_frac
+  real(kind=dp), dimension(ixI^S) :: fprofile,angle_theta,&
                                     jet_surface,&
                                     jet_radius_in,jet_radius_out
+
   !----------------------------------
 
   if(.not.allocated(self%patch))then
@@ -694,7 +706,7 @@ end subroutine usr_cla_jet_set_patch
     end select
     if(dabs(self%myconfig%open_angle)>0.0_dp) then
        where(self%patch(ixO^S))
-        angle_theta(ixO^S)  =  datan(x(ixO^S,r_)/(dabs(self%myconfig%z_in+(x(ixO^S,zjet_)-xprobmin2))))
+        angle_theta(ixO^S)  =  datan(x(ixO^S,r_)/(dabs(self%myconfig%z_in+(x(ixO^S,zjet_)-box_limit(1,zjet_)))))
        end where
     else
        where(self%patch(ixO^S))
@@ -749,6 +761,15 @@ end subroutine usr_cla_jet_set_patch
     end where
    end if cond_mhd
 
+
+   cond_var_0 : if(self%myconfig%variation_on.and.&
+                   self%myconfig%variation_position(zjet_)<=self%myconfig%z_impos)then
+      self%myconfig%variation_position(zjet_)=&
+         floor(self%myconfig%z_impos/dxlevel(zjet_))*dxlevel(zjet_)
+
+     call self%add_ejecta(ixI^L,ixO^L,qt,.false.,x,w)
+
+   end if cond_var_0
 
    cond_tracer_on :if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
                       .and.self%myconfig%itr<=phys_config%n_tracer)then
@@ -819,24 +840,46 @@ end subroutine usr_cla_add_source
  !> Subroutine to process variables in cloud object
   subroutine usr_cla_process_grid(ixI^L,ixO^L,qt,x,w,self)
    implicit none
-   integer, intent(in)           :: ixI^L,ixO^L
+   integer, intent(in)            :: ixI^L,ixO^L
    real(kind=dp), intent(in)      :: qt
    real(kind=dp)                  :: x(ixI^S,1:ndim)
    real(kind=dp)                  :: w(ixI^S,1:nw)
    class(cla_jet)                 :: self
    ! .. local ..
-   integer                        :: ix^D
-   real(kind=dp)                  :: Vprofile
-   logical                        :: patch_ejecta_surface(ixI^S)
+
    !----------------------------------------------------------
 
-   cond_var_0 : if(self%myconfig%variation_on) then
-    cond_time_var : if(qt>self%myconfig%variation_start_time&
-                       .and.qt<self%myconfig%variation_end_time) then
+   cond_var_0 : if(self%myconfig%variation_on.and.&
+                   self%myconfig%variation_position(zjet_)>self%myconfig%z_impos)then
+     call self%add_ejecta(ixI^L,ixO^L,qt,.true.,x,w)
+   end if cond_var_0
 
-      patch_ejecta_surface(ixO^S) = dabs(x(ixO^S,zjet_)&
+
+   cond_dust_on : if(self%myconfig%dust_on)then
+     call self%mydust%handel_small_val(ixI^L,ixO^L,qt,x,w)
+   end if cond_dust_on
+ end subroutine usr_cla_process_grid
+ !--------------------------------------------------------------------
+
+ subroutine usr_cla_add_ejecta(ixI^L,ixO^L,qt,is_conserved,x,w,self)
+   integer, intent(in)            :: ixI^L,ixO^L
+   real(kind=dp), intent(in)      :: qt
+   logical, intent(in)            :: is_conserved
+   real(kind=dp)                  :: x(ixI^S,1:ndim)
+   real(kind=dp)                  :: w(ixI^S,1:nw)
+   class(cla_jet)                 :: self
+   ! .. local ..
+   integer                        :: iw
+   real(kind=dp)                  :: Vprofile
+   logical                        :: patch_ejecta_surface(ixI^S)
+   !------------------------------------------------------
+
+    cond_time_var : if(qt>=self%myconfig%variation_start_time&
+                       .and.qt<=self%myconfig%variation_end_time) then
+
+      patch_ejecta_surface(ixO^S) = (x(ixO^S,zjet_)&
                                          -self%myconfig%variation_position(zjet_))&
-                                    <dxlevel(zjet_)/2.0_dp
+                                    <dxlevel(zjet_)*4.0_dp
 
      cond_inside : if(any(patch_ejecta_surface(ixO^S)))then
 
@@ -848,29 +891,31 @@ end subroutine usr_cla_add_source
 
         patch_ejecta_surface(ixO^S) = patch_ejecta_surface(ixO^S).and.self%patch(ixO^S)
 
-        cond_inside0 : if(any(patch_ejecta_surface(ixO^S)))then
+        cond_inside_jet : if(any(patch_ejecta_surface(ixO^S)))then
         call usr_mat_profile_scalar(qt,self%myconfig%variation_time,&
                                          self%myconfig%variation_type,Vprofile)
-        call phys_to_primitive(ixI^L,ixO^L,w,x)
-        {do ix^DB=ixOmin^DB,ixOmax^DB\}
-          if(patch_ejecta_surface(ix^D))then
-            w(ix^D,phys_ind%mom(zjet_))= self%myconfig%velocity(zjet_)+&
+
+        if(is_conserved)call phys_to_primitive(ixI^L,ixO^L,w,x)
+
+        Loop_var: do iw=1,self%myconfig%variation_phys_nvariable
+        if(self%myconfig%variation_phys_variable(iw)==phys_ind%mom(zjet_))then
+
+          where(patch_ejecta_surface(ixO^S))
+            w(ixO^S,phys_ind%mom(zjet_))= w(ixO^S,phys_ind%mom(zjet_))+&
                                        self%myconfig%variation_velocity(zjet_)*&
                                        Vprofile
-          end if
-        {end do\}
-      
-        call phys_to_conserved(ixI^L,ixO^L,w,x)
-      end if cond_inside0
+          end where
+         end if
+        end do  Loop_var
+
+        if(is_conserved)call phys_to_conserved(ixI^L,ixO^L,w,x)
+
+       end if cond_inside_jet
       end if cond_inside
     end if  cond_time_var
-   end if cond_var_0
 
-   cond_dust_on : if(self%myconfig%dust_on)then
-     call self%mydust%handel_small_val(ixI^L,ixO^L,qt,x,w)
-   end if cond_dust_on
- end subroutine usr_cla_process_grid
- !--------------------------------------------------------------------
+
+ end subroutine usr_cla_add_ejecta
 !--------------------------------------------------------------------
 !> Subroutine to clean array memory of associated with cla_jet object
 subroutine usr_cla_jet_clean_memory(self)

@@ -598,12 +598,12 @@ contains
   subroutine dummy_small_values(primitive, w, x, ixI^L, ixO^L, subname,flag_error)
     use mod_global_parameters
     use mod_small_values
-    logical, intent(in)             :: primitive
-    integer, intent(in)             :: ixI^L,ixO^L
+    logical, intent(in)                :: primitive
+    integer, intent(in)                :: ixI^L,ixO^L
     real(kind=dp)      , intent(inout) :: w(ixI^S,1:nw)
     real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
-    character(len=*), intent(in)    :: subname
-    integer, optional, intent(in)   :: flag_error(ixI^S)
+    character(len=*), intent(in)       :: subname
+    integer, optional, intent(in)      :: flag_error(ixI^S)
   end subroutine dummy_small_values
 
 end module mod_physics

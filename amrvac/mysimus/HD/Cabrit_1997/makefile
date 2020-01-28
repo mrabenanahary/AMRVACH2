@@ -3,9 +3,13 @@ $(error AMRVAC_DIR is not set)
 endif
 
 ARCH =openmpi_run
+#ARCH =openmpi
 #ARCH =default
-NDIM := 2
-
+ifdef ndim_use
+	NDIM := $(ndim_use)
+else
+	NDIM := 2
+endif
 # By exporting these can be used when building libamrvac
 export ARCH NDIM
 OBJ_DIR := Objects
@@ -88,7 +92,8 @@ $(OBJ_DIR)/mod_obj_readrebuilddata.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(O
 	                   $(OBJ_DIR)/mod_obj_usr_unit.o
 
 $(OBJ_DIR)/mod_obj_star_envelope.o:$(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
-	                           $(OBJ_DIR)/mod_obj_usr_unit.o
+	                           $(OBJ_DIR)/mod_obj_usr_unit.o $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o\
+														 $(OBJ_DIR)/mod_obj_usr_unit.o
 $(OBJ_DIR)/mod_obj_relativistic_wind.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
 	                                $(OBJ_DIR)/mod_obj_usr_unit.o
 $(OBJ_DIR)/mod_obj_sn_remnant.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
@@ -99,8 +104,10 @@ $(OBJ_DIR)/mod_obj_pulsar.o:$(OBJ_DIR)/mod_obj_sn_remnant.o  $(OBJ_DIR)/mod_obj_
 	                          $(OBJ_DIR)/mod_obj_star_envelope.o $(OBJ_DIR)/mod_obj_star.o\
          			              $(OBJ_DIR)/mod_obj_usr_unit.o $(OBJ_DIR)/mod_obj_readrebuilddata.o
 
-$(OBJ_DIR)/mod_obj_ism.o    : $(OBJ_DIR)/mod_obj_dust.o
-$(OBJ_DIR)/mod_obj_cloud.o  : $(OBJ_DIR)/mod_obj_dust.o
+$(OBJ_DIR)/mod_obj_ism.o    : $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o \
+	                            $(OBJ_DIR)/mod_obj_usr_unit.o
+$(OBJ_DIR)/mod_obj_cloud.o  : $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o \
+	                            $(OBJ_DIR)/mod_obj_usr_unit.o
 $(OBJ_DIR)/mod_obj_cla_jet.o: $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o \
 	                            $(OBJ_DIR)/mod_obj_usr_unit.o
 
