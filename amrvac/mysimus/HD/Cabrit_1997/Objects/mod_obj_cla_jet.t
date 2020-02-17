@@ -61,6 +61,8 @@ module mod_obj_cla_jet
     integer              :: variation_phys_nvariable!> jet variation number of variable will change in time
     integer              :: variation_phys_variable(5)!> jet variation  variable will change in time
     real(dp)             :: variation_velocity(3)  !> jet variation bottom velocity
+    real(dp)             :: variation_velocity_toroidal      !> cla_jet variation toroidal velocity (cm/s)
+    real(dp)             :: variation_velocity_poloidal      !> cla_jet variation poloidal velocity (cm/s)
 
     real(dp)             :: variation_start_time  !> jet variation starting time
     real(dp)             :: variation_end_time    !> jet variation end  time
@@ -92,7 +94,7 @@ module mod_obj_cla_jet
      PROCEDURE, PASS(self) :: set_patch       => usr_cla_jet_set_patch
      PROCEDURE, PASS(self) :: clean_memory    => usr_cla_jet_clean_memory
   end type
-  integer, save            ::  zjet_,thetajet_
+  integer, save            ::  zjet_,thetajet_,rjet_
 contains
 
   !-------------------------------------------------------------------------
@@ -249,11 +251,15 @@ contains
   self%myconfig%variation_start_time   = 0.0_dp
   self%myconfig%variation_end_time     = 0.0_dp
   self%myconfig%variation_velocity     = 0.0_dp
+  self%myconfig%variation_velocity_toroidal= 0.0_dp
+  self%myconfig%variation_velocity_poloidal= 0.0_dp
   self%myconfig%variation_phys_nvariable= 0
   self%myconfig%variation_phys_variable = 1
   self%myconfig%normalize_done         = .false.
+  rjet_                                = 1
   zjet_                                = 2
   thetajet_                            = 2
+
   call self%mydust%set_default()
  end subroutine usr_cla_jet_set_default
  !--------------------------------------------------------------------
@@ -268,6 +274,8 @@ contains
    !-----------------------------------
    zjet_     = min(zjet_,ndim)
    thetajet_ = zjet_
+   rjet_     = zjet_-1
+
    if(SI_unit) then
      mp=mp_SI
      kB=kB_SI
@@ -290,6 +298,8 @@ contains
       self%myconfig%velocity_poloidal=dsqrt(self%myconfig%velocity(r_)**2.0_dp&
                                            +self%myconfig%velocity(theta_)**2.0_dp)
    end if cond_vpol_set
+
+
 
    if(self%myconfig%r_out_init>0.0_dp) then
      if(self%myconfig%open_angle>0.0_dp)then
@@ -439,6 +449,17 @@ contains
   cond_var1 : if(self%myconfig%variation_on)then
     self%myconfig%variation_phys_nvariable = max(self%myconfig%variation_phys_nvariable,1)
   end if cond_var1
+
+
+  cond_vpol_var_set : if (self%myconfig%velocity_poloidal>0.0_dp) then
+      self%myconfig%variation_velocity(r_)     = self%myconfig%variation_velocity_poloidal*dsin(self%myconfig%open_angle)
+      self%myconfig%variation_velocity(theta_) = self%myconfig%variation_velocity_poloidal*dcos(self%myconfig%open_angle)
+      self%myconfig%variation_velocity(phi_)   = 0.0_dp
+
+   else cond_vpol_var_set
+      self%myconfig%variation_velocity_poloidal=dsqrt(self%myconfig%variation_velocity(r_)**2.0_dp&
+                                           +self%myconfig%variation_velocity(theta_)**2.0_dp)
+   end if cond_vpol_var_set
  end subroutine usr_cla_jet_set_complet
 !--------------------------------------------------------------------
  subroutine usr_cla_jet_normalize(self,physunit_inuse)
@@ -720,7 +741,7 @@ end subroutine usr_cla_jet_set_patch
   !  w(ixO^S,phys_ind%mom(zjet_)) = self%myconfig%velocity(zjet_)!_poloidal * dcos(angle_theta(ixO^S))
      w(ixO^S,phys_ind%mom(r_))    = self%myconfig%velocity_poloidal * dsin(angle_theta(ixO^S))
      w(ixO^S,phys_ind%mom(zjet_)) = self%myconfig%velocity_poloidal * dcos(angle_theta(ixO^S))
-    w(ixO^S,phys_ind%mom(phi_))  = self%myconfig%velocity(phi_)
+     w(ixO^S,phys_ind%mom(phi_))  = self%myconfig%velocity(phi_)
    end where
 
    where(self%patch(ixO^S))
@@ -874,6 +895,7 @@ end subroutine usr_cla_add_source
    ! .. local ..
    integer                        :: iw
    real(kind=dp)                  :: Vprofile
+   real(kind=dp)                  :: angle_theta(ixI^S)
    logical                        :: patch_ejecta_surface(ixI^S)
    !------------------------------------------------------
 
@@ -898,15 +920,34 @@ end subroutine usr_cla_add_source
         call usr_mat_profile_scalar(qt,self%myconfig%variation_time,&
                                          self%myconfig%variation_type,Vprofile)
 
+        if(dabs(self%myconfig%open_angle)>0.0_dp) then
+           where(patch_ejecta_surface(ixO^S))
+            angle_theta(ixO^S)  =  &
+                                   datan(x(ixO^S,r_)&
+                                   /(dabs(self%myconfig%variation_position(zjet_)&
+                                          +(x(ixO^S,zjet_)-box_limit(1,zjet_)))))
+           end where
+        else
+           where(patch_ejecta_surface(ixO^S))
+            angle_theta(ixO^S)  = 0.0_dp
+           end where
+        end if
+
         if(is_conserved)call phys_to_primitive(ixI^L,ixO^L,w,x)
 
         Loop_var: do iw=1,self%myconfig%variation_phys_nvariable
         if(self%myconfig%variation_phys_variable(iw)==phys_ind%mom(zjet_))then
-
+          if(rjet_>=1) then
+           where(patch_ejecta_surface(ixO^S))
+             w(ixO^S,phys_ind%mom(rjet_))= w(ixO^S,phys_ind%mom(rjet_))+&
+                               self%myconfig%variation_velocity_poloidal*&
+                                Vprofile *dsin(angle_theta(ixO^S))
+           end where
+          end if
           where(patch_ejecta_surface(ixO^S))
             w(ixO^S,phys_ind%mom(zjet_))= w(ixO^S,phys_ind%mom(zjet_))+&
-                                       self%myconfig%variation_velocity(zjet_)*&
-                                       Vprofile
+                               self%myconfig%variation_velocity_poloidal*&
+                                Vprofile*dcos(angle_theta(ixO^S))
           end where
          end if
         end do  Loop_var
