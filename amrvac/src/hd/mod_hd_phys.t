@@ -52,7 +52,7 @@ module mod_hd_phys
   real(dp), public                :: hd_gamma = 5.d0/3.0d0
 
   !> The adiabatic constant
-  real(dp), public                :: hd_adiab = 1.0d0
+  real(dp), public                :: hd_adiab = 1.0_dp
 
   !> The small_est allowed energy
   real(dp), protected             :: small_e
@@ -85,18 +85,34 @@ contains
   subroutine hd_read_params(files)
     use mod_global_parameters
     character(len=*), intent(in) :: files(:)
-    integer                      :: n
+    integer                      :: i_file,i_reason
+    character(len=70)            :: error_message
 
     namelist /hd_list/ hd_energy, hd_n_tracer, hd_gamma, hd_adiab, &
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
     hd_gravity, He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure,&
     hd_chemical
+    !---------------------------------------------------------
+    error_message = 'At '//' mod_hd_phys.t'//'  in the procedure : hd_read_params'
+    Loop_iparfile : do i_file = 1, size(files)
+      open(unitpar, file=trim(files(i_file)), status="old")
+      read(unitpar, hd_list, iostat=i_reason)
+      cond_ierror : if(i_reason>0)then
+       write(*,*)' Error in reading the parameters file : ',trim(files(i_file))
+       write(*,*)' Error at namelist: ', 'hd_list'
+       write(*,*)' The code stops now '
+       call mpistop(trim(error_message))
+      elseif(i_reason<0)then cond_ierror
+       write(*,*)' Reache the end of the file  : ',trim(files(i_file))
+       write(*,*)' Error at namelist: hd_list'
+       write(*,*)' The code stops now '
+       call mpistop(trim(error_message))
+      else cond_ierror
+       write(*,*)' End of reading of the hd_list'
+      end if cond_ierror
+      close(unitpar)
 
-    do n = 1, size(files)
-       open(unitpar, file=trim(files(n)), status="old")
-       read(unitpar, hd_list, end=111)
-111    close(unitpar)
-    end do
+    end do Loop_iparfile
 
   end subroutine hd_read_params
 
@@ -181,7 +197,7 @@ contains
     use mod_physics
 
     integer :: itr, idir
-
+    !------------------------------------------------------
     call hd_read_params(par_files)
 
     physics_type              = "hd"
@@ -319,14 +335,14 @@ contains
     end if
 
     allocate(hd_ind%mom(ndir))
-    hd_ind%rho_  =rho_
-    hd_ind%mom(:)=mom(:)
+    hd_ind%rho_        =rho_
+    hd_ind%mom(:)      =mom(:)
     !hd_ind%mag(:)=-1
-    hd_ind%e_    =e_
+    hd_ind%e_          =e_
     hd_ind%pressure_   =p_
-    hd_ind%lfac_ =-1
-    hd_ind%xi_   =-1
-    hd_ind%psi_  =-1
+    hd_ind%lfac_       =-1
+    hd_ind%xi_         =-1
+    hd_ind%psi_        =-1
     if(hd_n_tracer>0)then
       allocate(hd_ind%tracer(hd_n_tracer))
       hd_ind%tracer(:) = tracer(:)
@@ -342,13 +358,13 @@ contains
     use mod_dust, only: dust_check_params
 
     if (.not. hd_energy) then
-       if (hd_gamma <= 0.0d0) call mpistop ("Error: hd_gamma <= 0")
-       if (hd_adiab <= 0.0d0) call mpistop ("Error: hd_adiab <= 0")
+       if (hd_gamma <= 0.0_dp) call mpistop ("Error: hd_gamma <= 0")
+       if (hd_adiab <= 0.0_dp) call mpistop ("Error: hd_adiab <= 0")
        small_pressure= hd_adiab*small_density**hd_gamma
     else
-       if (hd_gamma <= 0.0d0 .or. hd_gamma == 1.0d0) &
+       if (hd_gamma <= 0.0_dp .or. hd_gamma == 1.0_dp) &
             call mpistop ("Error: hd_gamma <= 0 or hd_gamma == 1.0")
-       small_e = small_pressure/(hd_gamma - 1.0d0)
+       small_e = small_pressure/(hd_gamma - 1.0_dp)
     end if
 
     if (hd_dust) call dust_check_params()
@@ -405,11 +421,12 @@ contains
      length_convert_factor = unit_length
     end if
   end   subroutine hd_fill_convert_factor
+
   !> Returns 0 in argument flag where values are ok
   subroutine hd_check_w(primitive, ixI^L, ixO^L, w, flag)
     use mod_global_parameters
-    use mod_dust, only : dust_check_w
-
+    use mod_dust, only     : dust_check_w
+    use mod_chemical, only : chemical_check_w
     logical, intent(in)          :: primitive
     integer, intent(in)          :: ixI^L, ixO^L
     real(dp), intent(in)         :: w(ixI^S, nw)
@@ -419,6 +436,7 @@ contains
     flag(ixO^S) = 0
 
     if(hd_dust)call dust_check_w(primitive, ixI^L, ixO^L, flag, w)
+    if(hd_chemical)call chemical_check_w(primitive, ixI^L, ixO^L, flag, w)
 
     where(w(ixO^S, rho_) < small_density) flag(ixO^S) = rho_
 
@@ -427,8 +445,8 @@ contains
           where(w(ixO^S, e_) < small_pressure) flag(ixO^S) = e_
        else
          where(w(ixO^S, rho_) > small_density)
-          tmp(ixO^S) = (hd_gamma - 1.0d0)*(w(ixO^S, e_) - &
-               0.5d0 * sum(w(ixO^S, mom(:))**2, dim=ndim+1) / w(ixO^S, rho_))
+          tmp(ixO^S) = (hd_gamma - 1.0_dp)*(w(ixO^S, e_) - &
+               0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) / w(ixO^S, rho_))
           elsewhere
             tmp(ixO^S) =   w(ixO^S, e_)
          end where
@@ -467,7 +485,7 @@ contains
     integer                         :: idir, itr
 
     if (hd_energy) then
-       invgam = 1.d0/(hd_gamma - 1.0d0)
+       invgam = 1.0_dp/(hd_gamma - 1.0_dp)
        ! Calculate total energy from pressure and kinetic energy
        w(ixO^S, e_) = w(ixO^S, e_) * invgam + &
             0.5d0 * sum(w(ixO^S, mom(:))**2, dim=ndim+1) * w(ixO^S, rho_)
@@ -499,11 +517,11 @@ contains
 
     if (check_small_values) call hd_handle_small_values(.true., w, x, ixI^L, ixO^L, 'hd_to_primitive')
 
-    inv_rho = 1.0d0 / w(ixO^S, rho_)
+    inv_rho = 1.0_dp / w(ixO^S, rho_)
 
     if (hd_energy) then
        ! Compute pressure
-       w(ixO^S, e_) = (hd_gamma - 1.0d0) * (w(ixO^S, e_) - &
+       w(ixO^S, e_) = (hd_gamma - 1.0_dp) * (w(ixO^S, e_) - &
             hd_kin_en(w, ixI^L, ixO^L, inv_rho))
     end if
 
@@ -529,7 +547,7 @@ contains
     real(dp), intent(in) :: x(ixI^S, 1:ndim)
 
     if (hd_energy) then
-       w(ixO^S, e_) = (hd_gamma - 1.0d0) * w(ixO^S, rho_)**(1.0d0 - hd_gamma) * &
+       w(ixO^S, e_) = (hd_gamma - 1.0_dp) * w(ixO^S, rho_)**(1.0_dp - hd_gamma) * &
             (w(ixO^S, e_) - hd_kin_en(w, ixI^L, ixO^L))
     else
        call mpistop("energy from entropy can not be used with -eos = iso !")
@@ -544,8 +562,8 @@ contains
     real(dp), intent(in) :: x(ixI^S, 1:ndim)
 
     if (hd_energy) then
-       w(ixO^S, e_) = w(ixO^S, rho_)**(hd_gamma - 1.0d0) * w(ixO^S, e_) &
-            / (hd_gamma - 1.0d0) + hd_kin_en(w, ixI^L, ixO^L)
+       w(ixO^S, e_) = w(ixO^S, rho_)**(hd_gamma - 1.0_dp) * w(ixO^S, e_) &
+            / (hd_gamma - 1.0_dp) + hd_kin_en(w, ixI^L, ixO^L)
     else
        call mpistop("entropy from energy can not be used with -eos = iso !")
     end if
@@ -710,7 +728,7 @@ contains
   subroutine hd_get_flux_cons(w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters
     use mod_dust, only: dust_get_flux
-
+    use mod_chemical, only: chemical_get_flux
     integer, intent(in)             :: ixI^L, ixO^L, idim
     real(dp), intent(in)            :: w(ixI^S, 1:nw), x(ixI^S, 1:ndim)
     real(dp), intent(out)           :: f(ixI^S, nwflux)
@@ -743,12 +761,18 @@ contains
       call dust_get_flux(w, x, ixI^L, ixO^L, idim, f)
     end if
 
+    ! chemical fluxes
+
+    if (hd_chemical) then
+      call chemical_get_flux(w, x, ixI^L, ixO^L, idim, f)
+    end if
   end subroutine hd_get_flux_cons
 
   ! Calculate flux f_idim[iw]
   subroutine hd_get_flux(wC, w, x, ixI^L, ixO^L, idim, f)
     use mod_global_parameters
     use mod_dust, only: dust_get_flux_prim
+    use mod_chemical, only: chemical_get_flux_prim
     use mod_viscosity, only: visc_get_flux_prim ! viscInDiv
 
     integer, intent(in)             :: ixI^L, ixO^L, idim
@@ -795,6 +819,10 @@ contains
       call visc_get_flux_prim(w, x, ixI^L, ixO^L, idim, f, hd_energy)
     endif
 
+    ! chemical fluxes
+    if (hd_chemical) then
+      call chemical_get_flux_prim(w, x, ixI^L, ixO^L, idim, f)
+    end if
   end subroutine hd_get_flux
 
   !> Add geometrical source terms to w
@@ -885,12 +913,12 @@ contains
     use mod_viscosity, only: viscosity_add_source
     use mod_gravity, only: gravity_add_source
 
-    integer, intent(in)             :: ixI^L, ixO^L
+    integer, intent(in)     :: ixI^L, ixO^L
     real(dp), intent(in)    :: qdt
     real(dp), intent(in)    :: wCT(ixI^S, 1:nw), x(ixI^S, 1:ndim)
     real(dp), intent(inout) :: w(ixI^S, 1:nw)
-    logical, intent(in)             :: qsourcesplit
-    logical, intent(inout)          :: active
+    logical, intent(in)     :: qsourcesplit
+    logical, intent(inout)  :: active
 
     if(hd_dust) then
       call dust_add_source(qdt,ixI^L,ixO^L,wCT,w,x,qsourcesplit,active)
@@ -910,12 +938,13 @@ contains
       call gravity_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
            hd_energy,qsourcesplit,active)
     end if
-    if (check_small_values) call hd_handle_small_values(.false., w, x, &
-                                 ixI^L, ixO^L, 'hd_add_source')
     if(hd_chemical) then
       call chemical_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
-           qsourcesplit,active)
+               qsourcesplit,active)
     end if
+    if (check_small_values) call hd_handle_small_values(.false., w, x, &
+                                 ixI^L, ixO^L, 'hd_add_source')
+
   end subroutine hd_add_source
 
   subroutine hd_get_dt(w, ixI^L, ixO^L, dtnew, dx^D, x)
@@ -961,9 +990,9 @@ contains
     real(dp), intent(in), optional :: inv_rho(ixO^S)
 
     if (present(inv_rho)) then
-       ke = 0.5d0 * sum(w(ixO^S, mom(:))**2, dim=ndim+1) * inv_rho
+       ke = 0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) * inv_rho
     else
-       ke = 0.5d0 * sum(w(ixO^S, mom(:))**2, dim=ndim+1) / w(ixO^S, rho_)
+       ke = 0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) / w(ixO^S, rho_)
     end if
   end function hd_kin_en
 
@@ -974,7 +1003,7 @@ contains
     real(dp)              :: inv_rho(ixO^S)
 
     ! Can make this more robust
-    inv_rho = 1.0d0 / w(ixO^S, rho_)
+    inv_rho = 1.0_dp / w(ixO^S, rho_)
   end function hd_inv_rho
 
   subroutine hd_handle_small_values(primitive, w, x, ixI^L, ixO^L, subname,&
@@ -1045,7 +1074,7 @@ contains
         where(flag(ixO^S) > 0) w(ixO^S,rho_) = small_density
 
         do idir = 1, ndir
-          where(flag(ixO^S) > 0) w(ixO^S, mom(idir)) = 0.0d0
+          where(flag(ixO^S) > 0) w(ixO^S, mom(idir)) = 0.0_dp
         end do
 
         if (hd_energy) then

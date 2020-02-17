@@ -13,7 +13,7 @@
 !==============================================================
 
  &filelist
-        base_filename='/home/meliani/Code/Data/HD/Jet_Cabrit/JetI_1D_'
+        base_filename='Output/Jet_HD_Cyl_2D_A/JetI_1D_'
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
@@ -83,6 +83,7 @@
         loglimit(1) = .false.
 
 
+
  /
          loglimit(4) = .true.
          loglimit(1)            = .true.
@@ -94,8 +95,8 @@
  &boundlist
         internalboundary  = .true.
         nghostcells       = 2
-        typeboundary_min1 = 7*'special'! 'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
-        typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
+        typeboundary_min1 = 8*'special'! 'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
+        typeboundary_max1 =  8*'cont'                                    ! C.L. droite <=> rmax
         /
         typeboundary_min2 =  7*'special'                                     ! C.L. inférieure <=> zmin
         typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax
@@ -132,6 +133,8 @@
         w_refine_weight(4)=0.5d0
 
         max_blocks = 512000
+        prolongprimitive = .true.
+        coarsenprimitive = .true.
 /
         ! can be added when is needed
         prolongprimitive= .true.
@@ -159,9 +162,17 @@
          He_abundance         = 0.0d0                     !
          hd_dust              = .false.   ! dust on
          hd_radiative_cooling =  .true. !  ! cooling off ! .true. ! cooling on  !
+         hd_chemical          = .true. ! use chemical
          hd_n_tracer          = 2
+
    /
 
+  &chemical_list
+       chemical_config%n_species = 1
+       chemical_config%small_to_zero = .true.
+       chemical_config%small_density = 1.0d-32 ! g/cm^3
+       chemical_config%neutral_fraction = 1.0d-3
+  /
 
  !'MLcosmol' : 'Use Mellema & Lundqvist (2002) cooling curve for zero metallicity '
  !'SPEX_DM'  : 'Use SPEX cooling curve for solar metallicity above 10^4 K. At lower temperatures,use Dalgarno & McCray (1972), with a pre-set ionization fraction of 10^-3 as described by Schure et al. (2009). '
@@ -194,7 +205,6 @@
  &usr_list
         usrconfig%ism_on              = .true.                      !> set ism
         usrconfig%cloud_on            = .false.                      !> set cloud
-        usrconfig%cloud_structure     = 2                           !> cloud structure type
         usrconfig%jet_yso_on          = .true.!.false.!.true.                      !> set a jet
         usrconfig%physunit_on         = .true.                      !> set the normalisation in use
         usrconfig%reset_medium        = .true.                      !> set on the reset

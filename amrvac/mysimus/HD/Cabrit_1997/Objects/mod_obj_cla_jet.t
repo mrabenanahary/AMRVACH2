@@ -706,7 +706,8 @@ end subroutine usr_cla_jet_set_patch
     end select
     if(dabs(self%myconfig%open_angle)>0.0_dp) then
        where(self%patch(ixO^S))
-        angle_theta(ixO^S)  =  datan(x(ixO^S,r_)/(dabs(self%myconfig%z_in+(x(ixO^S,zjet_)-box_limit(1,zjet_)))))
+        angle_theta(ixO^S)  =  &
+           datan(x(ixO^S,r_)/(dabs(self%myconfig%z_in+(x(ixO^S,zjet_)-box_limit(1,zjet_)))))
        end where
     else
        where(self%patch(ixO^S))
@@ -715,8 +716,10 @@ end subroutine usr_cla_jet_set_patch
     end if
 
    where(self%patch(ixO^S))
-    w(ixO^S,phys_ind%mom(r_))    = self%myconfig%velocity(r_)!_poloidal * dsin(angle_theta(ixO^S))
-    w(ixO^S,phys_ind%mom(zjet_)) = self%myconfig%velocity(zjet_)!_poloidal * dcos(angle_theta(ixO^S))
+  !  w(ixO^S,phys_ind%mom(r_))    = self%myconfig%velocity(r_)!_poloidal * dsin(angle_theta(ixO^S))
+  !  w(ixO^S,phys_ind%mom(zjet_)) = self%myconfig%velocity(zjet_)!_poloidal * dcos(angle_theta(ixO^S))
+     w(ixO^S,phys_ind%mom(r_))    = self%myconfig%velocity_poloidal * dsin(angle_theta(ixO^S))
+     w(ixO^S,phys_ind%mom(zjet_)) = self%myconfig%velocity_poloidal * dcos(angle_theta(ixO^S))
     w(ixO^S,phys_ind%mom(phi_))  = self%myconfig%velocity(phi_)
    end where
 

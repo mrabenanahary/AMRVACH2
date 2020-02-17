@@ -113,9 +113,9 @@ contains
     call set_coordinate_system(trim(usrconfig%coordinate_system))
     select case(trim(usrconfig%phys_inuse))
     case('hd')
-     call hd_activate
+     call hd_activate()
     case('mhd')
-     call mhd_activate
+     call mhd_activate()
     end select
 
     call usr_check_conflict

@@ -76,11 +76,11 @@ contains
     integer                      :: ix_bad(ndim)
     character(len=*), intent(in) :: subname
 
-    ix_bad = maxloc(w_flag(ixO^S)) + [ ixOmin^D-1 ]
+    ix_bad = maxloc(abs(w_flag(ixO^S))) + [ ixOmin^D-1 ]
 
     if (.not.crash) then
       write(*,*) "Error: small value of ", &
-                 trim(prim_wnames(maxval(w_flag(ixO^S)))), &
+                 trim(prim_wnames(maxval(abs(w_flag(ixO^S))))), &
                  " encountered when call ", subname
       write(*,*) "Iteration: ", it, " Time: ", global_time
       write(*,*) "Location: ", x({ix_bad(^D)}, :)

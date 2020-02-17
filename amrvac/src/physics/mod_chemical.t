@@ -174,17 +174,20 @@ contains
 
       Loop_ionisation0 :     do i_ion =thechemical_inuse%element(i_element)%ionmin,I_ionmax-1
        if(i_element==thechemical_inuse%myconfig%H_)then
-        thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%alpha_a0= (2.55d-13*(1.0d4*unit_temperature)**0.79_dp)
-        thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_a0 = 5.83d-11/dsqrt(unit_temperature)
-        thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_T0 = 157828.0_dp/unit_temperature
+        thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%alpha_a0= &
+                      (2.55d-13*(1.0d4*unit_temperature)**0.79_dp)
+        thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_a0 = &
+                      5.83d-11/dsqrt(unit_temperature)
+        thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_T0 = &
+                      157828.0_dp/unit_temperature
        elseif(i_element==thechemical_inuse%myconfig%H2_)then
         thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%alpha_a0= 0.0_dp
         thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_a0 = 0.0_dp
-        thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_T0      = 0.0_dp
+        thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_T0 = 0.0_dp
        elseif(i_element==thechemical_inuse%myconfig%He_)then
         thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%alpha_a0= 0.0_dp
         thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_a0 = 0.0_dp
-        thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_T0      = 0.0_dp
+        thechemical_inuse%element(i_element)%ion(i_ion)%myreccoef%colf_T0 = 0.0_dp
        else
         write(*,*)' This element : ',i_element,' is not implimented'
         call mpistop('Stop at chemical_elements_init in mod_chemical.t')
@@ -293,8 +296,11 @@ contains
        elsewhere
         f(ixO^S, ind_elem ) = 0.0d0
        end where
+
+
      end do  Loop_chemical_ion
     end do Loop_chemical_element
+
   end subroutine chemical_get_flux
 
   subroutine chemical_get_flux_prim(w, x, ixI^L, ixO^L, idim, f)
@@ -386,9 +392,6 @@ contains
     ! dummy for the moment
 
   end subroutine chemical_get_dt
-
-
-
 
 
   !--------------------------------------------------------------------
