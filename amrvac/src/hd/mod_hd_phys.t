@@ -54,6 +54,9 @@ module mod_hd_phys
   !> The adiabatic constant
   real(dp), public                :: hd_adiab = 1.0_dp
 
+  !> The isotherm temperature constant
+  real(dp), public                :: hd_temperature_isotherm = 1.0_dp
+
   !> The small_est allowed energy
   real(dp), protected             :: small_e
   !> The small_est allowed density
@@ -64,13 +67,18 @@ module mod_hd_phys
   !> Helium abundance over Hydrogen
   real(dp), public, protected  :: He_abundance=0.1d0
 
+  !> Type of gas
+  character(len=30), public, protected :: hd_chemical_gas_type='fullyionised'
   !> The number of waves
   integer :: nwwave = 4
+  !> use mean mup to calculate the temperature
+  logical           :: hd_mean_mup_on
   logical, allocatable,target    :: hd_iw_average(:)
 
   type(physconfig),target,public                 :: hd_config
   type(phys_variables_indices),target,public     :: hd_ind
-
+  ! for local use
+  real(kind=dp), private         :: gamma_1
   ! Public methods
   public :: hd_phys_init
   public :: hd_kin_en
@@ -91,7 +99,7 @@ contains
     namelist /hd_list/ hd_energy, hd_n_tracer, hd_gamma, hd_adiab, &
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
     hd_gravity, He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure,&
-    hd_chemical
+    hd_chemical,hd_chemical_gas_type,hd_mean_mup_on,hd_temperature_isotherm
     !---------------------------------------------------------
     error_message = 'At '//' mod_hd_phys.t'//'  in the procedure : hd_read_params'
     Loop_iparfile : do i_file = 1, size(files)
@@ -100,11 +108,13 @@ contains
       cond_ierror : if(i_reason>0)then
        write(*,*)' Error in reading the parameters file : ',trim(files(i_file))
        write(*,*)' Error at namelist: ', 'hd_list'
+       write(*,*)' Error number = ',i_reason
        write(*,*)' The code stops now '
        call mpistop(trim(error_message))
       elseif(i_reason<0)then cond_ierror
        write(*,*)' Reache the end of the file  : ',trim(files(i_file))
        write(*,*)' Error at namelist: hd_list'
+       write(*,*)' Error number = ',i_reason
        write(*,*)' The code stops now '
        call mpistop(trim(error_message))
       else cond_ierror
@@ -114,9 +124,10 @@ contains
 
     end do Loop_iparfile
 
+
   end subroutine hd_read_params
 
-  !> Write this module's parameters to a snapsoht
+  !> Write this module's parameters to a snapshot
   subroutine hd_write_info(fh)
     use mod_global_parameters
     integer, intent(in)                 :: fh
@@ -142,7 +153,7 @@ contains
     integer, intent(in)                :: ixI^L, ixO^L
     integer, intent(in)                :: idim
     integer                            :: hxO^L, kxC^L, iw
-    real(dp)                   :: inv_volume(ixI^S)
+    real(dp)                           :: inv_volume(ixI^S)
 
     ! shifted indexes
     hxO^L=ixO^L-kr(idim,^D);
@@ -184,6 +195,77 @@ contains
 
   end subroutine hd_angmomfix
 
+
+  subroutine hd_phys_set_config
+  use mod_global_parameters
+  use mod_physics
+  implicit none
+
+
+  use_particles                  = hd_particles
+
+  hd_config%dust_on              = hd_dust
+  hd_config%energy               = hd_energy
+  hd_config%gravity              = hd_gravity
+  hd_config%chemical_on          = hd_chemical
+  hd_config%chemical_gas_type    = hd_chemical_gas_type
+  hd_config%He_abundance         = He_abundance
+  hd_config%mean_mup_on          = hd_mean_mup_on
+  hd_config%dust_n_species       = 0
+  hd_config%ismhd                = .false.
+  hd_config%isrel                = .false.
+  hd_config%n_tracer             = hd_n_tracer
+  hd_config%gamma                = hd_gamma
+  hd_config%adiab                = hd_adiab
+  hd_config%temperature_isotherm = hd_temperature_isotherm
+
+  gamma_1 = hd_config%gamma   - 1.0_dp
+  hd_config%small_density        = small_density
+  hd_config%small_pressure       = small_pressure
+  if(hd_config%energy) then
+    hd_config%small_energy       = hd_config%small_pressure/gamma_1
+  end if
+  hd_config%radiative_cooling    = hd_radiative_cooling
+  hd_config%thermal_conduction   = hd_thermal_conduction
+  hd_config%viscosity            = hd_viscosity
+  hd_config%particles            = hd_particles
+
+  phys_energy                    = hd_config%energy
+
+
+  end subroutine hd_phys_set_config
+
+  subroutine hd_phys_to_phys
+
+    use mod_physics
+
+    phys_config     => hd_config
+    phys_ind        => hd_ind
+    !allocate(hd_iw_average(1:nw))
+    !hd_iw_average = .true.
+
+    phys_get_dt                   => hd_get_dt
+    phys_get_cmax                 => hd_get_cmax
+    phys_get_cbounds              => hd_get_cbounds
+    phys_get_flux                 => hd_get_flux
+    phys_get_v_idim               => hd_get_v
+    phys_add_source_geom          => hd_add_source_geom
+    phys_add_source               => hd_add_source
+    phys_to_conserved             => hd_to_conserved
+    phys_to_primitive             => hd_to_primitive
+    phys_check_params             => hd_check_params
+    phys_check_w                  => hd_check_w
+    phys_get_pthermal             => hd_get_pthermal
+    phys_get_temperature          => hd_get_temperature
+    phys_get_csound2              => hd_get_csound2
+    phys_write_info               => hd_write_info
+    phys_handle_small_values      => hd_handle_small_values
+    phys_angmomfix                => hd_angmomfix
+    phys_fill_chemical_ionisation =>hd_fill_chemical_ionisation
+    ! Whether diagonal ghost cells are required for the physics
+    phys_req_diagonal = .true. !.false.
+  end subroutine hd_phys_to_phys
+
   !> Initialize the module
   subroutine hd_phys_init()
     use mod_global_parameters
@@ -198,53 +280,37 @@ contains
 
     integer :: itr, idir
     !------------------------------------------------------
+    physics_type = "hd"
     call hd_read_params(par_files)
+    call hd_phys_set_config()
+    call hd_fill_phys_indices()
 
-    physics_type              = "hd"
-    phys_energy               = hd_energy
-    use_particles             = hd_particles
-    hd_config%dust_on         = hd_dust
-    hd_config%chemical_on     = hd_chemical
-    hd_config%He_abundance    = He_abundance
-    hd_config%dust_n_species  = 0
-    hd_config%ismhd           = .false.
-    hd_config%isrel           = .false.
-    hd_config%n_tracer        = hd_n_tracer
-    hd_config%gamma           = hd_gamma
-    hd_config%small_density   = small_density
-    hd_config%small_pressure  = small_pressure
-    hd_config%small_energy    = hd_config%small_pressure/(hd_config%gamma - 1.0_dp)
-    call hd_fill_phys_indices
-
-    !allocate(hd_iw_average(1:nw))
-    !hd_iw_average = .true.
-
-    phys_get_dt              => hd_get_dt
-    phys_get_cmax            => hd_get_cmax
-    phys_get_cbounds         => hd_get_cbounds
-    phys_get_flux            => hd_get_flux
-    phys_get_v_idim          => hd_get_v
-    phys_add_source_geom     => hd_add_source_geom
-    phys_add_source          => hd_add_source
-    phys_to_conserved        => hd_to_conserved
-    phys_to_primitive        => hd_to_primitive
-    phys_check_params        => hd_check_params
-    phys_check_w             => hd_check_w
-    phys_get_pthermal        => hd_get_pthermal
-    phys_get_temperature     => hd_get_temperature
-    phys_get_csound2         => hd_get_csound2
-    phys_write_info          => hd_write_info
-    phys_handle_small_values => hd_handle_small_values
-    phys_angmomfix           => hd_angmomfix
+    call hd_phys_to_phys()
 
 
-    ! Whether diagonal ghost cells are required for the physics
-    phys_req_diagonal = .true. !.false.
+
+
+    ! set the mean molecular mass and electron density
+    call hd_fill_chemical_ionisation(hd_config%He_abundance,hd_config%chemical_gas_type, &
+       hd_config%mean_nall_to_nH,hd_config%mean_mass,&
+      hd_config%mean_mup,hd_config%mean_ne_to_nH)
 
     ! derive units from basic units
     call hd_physical_units
+    ! the adiab value set from temperature is gamma==1
+    if(hd_config%temperature_isotherm>0)then
+      hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
+      if(dabs(gamma_1)<smalldouble)then
+        ! normalise value for adiab
+        hd_config%adiab  = hd_config%temperature_isotherm*phys_config%mean_mass
+        ! save in local hd paramteres
+        hd_adiab= hd_config%adiab
+        hd_temperature_isotherm = hd_config%temperature_isotherm
+      end if
+    end if
 
-    if (hd_dust) call dust_init(hd_ind,hd_config,rho_, mom(:), e_)
+    if (hd_config%dust_on) call dust_init(hd_ind,hd_config,rho_, mom(:), e_)
+
     if(hd_config%chemical_on)then
       call chemical_init(hd_ind,hd_config,rho_, mom(:), e_)
     end if
@@ -252,27 +318,26 @@ contains
 
 
     ! initialize thermal conduction module
-    if (hd_thermal_conduction) then
-      if (.not. hd_energy) &
-           call mpistop("thermal conduction needs hd_energy=T")
-      call thermal_conduction_init(hd_gamma)
+    if (hd_config%thermal_conduction) then
+      if (.not. hd_config%energy) &
+           call mpistop("thermal conduction needs hd_config%energy=T")
+      call thermal_conduction_init(hd_config%gamma)
     end if
 
     ! Initialize radiative cooling module
-    if (hd_radiative_cooling) then
-      if (.not. hd_energy) &
-           call mpistop("radiative cooling needs hd_energy=T")
-      call radiative_cooling_init(hd_gamma,He_abundance)
+    if (hd_config%radiative_cooling) then
+      if (.not. hd_config%energy) call mpistop("radiative cooling needs hd_config%energy=T")
+      call radiative_cooling_init(hd_ind,hd_config,hd_config%gamma,He_abundance)
     end if
 
     ! Initialize viscosity module
-    if (hd_viscosity) call viscosity_init(phys_wider_stencil,phys_req_diagonal)
+    if (hd_config%viscosity) call viscosity_init(phys_wider_stencil,phys_req_diagonal)
 
     ! Initialize gravity module
-    if (hd_gravity) call gravity_init()
+    if (hd_config%gravity) call gravity_init()
 
     ! Initialize particles module
-    if (hd_particles) then
+    if (hd_config%particles) then
        call particles_init()
        phys_req_diagonal = .true.
     end if
@@ -285,6 +350,8 @@ contains
        call mpistop("phys_check error: flux_type has wrong shape")
     end if
 
+
+
     nvector      = 1 ! No. vector vars
     allocate(iw_vector(nvector))
     iw_vector(1) = mom(1) - 1
@@ -293,13 +360,54 @@ contains
     hd_iw_average = .true.
     phys_iw_average => hd_iw_average
 
-    hd_config%energy = hd_energy
+    hd_config%energy = hd_config%energy
 
     phys_iw_average => hd_iw_average
     phys_config     => hd_config
-    phys_ind        => hd_ind
+    !phys_ind        => hd_ind
+    ! refill again to add
+    call hd_fill_convert_factor
   end subroutine hd_phys_init
 
+
+
+  subroutine hd_fill_chemical_ionisation(He_abundance_sub,hd_chemical_gas_type,mean_nall_to_nH &
+                                        ,mean_mass,mean_mup,mean_ne_to_nH)
+    use mod_global_parameters
+    implicit none
+    real(kind=dp), intent(in)    :: He_abundance_sub
+    character(len=*), intent(in) :: hd_chemical_gas_type
+    real(kind=dp), intent(out)   :: mean_nall_to_nH,mean_mass,mean_mup,mean_ne_to_nH
+    !----------------------------------------------------------
+    if(He_abundance_sub>0.0_dp)then
+      mean_nall_to_nH = (1.0_dp+2.0_dp*He_abundance_sub)
+      mean_mass       = (1.0_dp+4.0_dp*He_abundance_sub)
+      select case(trim(hd_chemical_gas_type))
+        case('fullymolecular')
+          mean_mup = mean_mass/(0.5_dp+He_abundance_sub)
+          mean_ne_to_nH =0.0_dp  ! is the value used in implimentation of low temperarure cooling table DM2
+        case('fullyatomic')
+          mean_mup = mean_mass/(1.0_dp+He_abundance_sub)
+          mean_ne_to_nH =0.0_dp ! is the value used in implimentation of low temperarure cooling table DM2
+        case('ionised')
+          mean_mup = mean_mass/(2.0_dp+2.0_dp*He_abundance_sub)
+          mean_ne_to_nH = (1.0_dp+He_abundance_sub)
+        case('fullyionised')
+          mean_mup = mean_mass/(2.0_dp+3.0_dp*He_abundance_sub)
+          mean_ne_to_nH = (1.0_dp+2.0_dp*He_abundance_sub)
+       case default
+         write(*,*) 'The chemical gas type : ', trim(hd_chemical_gas_type)
+          write (*,*) "Undefined gas chemical type entered in mod_hd_phys.t "
+          call mpistop('The stops at hd_fill_chemical_ionisation in src/hd/mod_hd_phys.t')
+      end select
+      !hd_config%mean_mup          = (2.0_dp+3.0_dp*He_abundance_sub)
+
+    else if(dabs(He_abundance_sub)<=smalldouble)then
+      mean_mass         = 1.0_dp
+      mean_mup          = 1.0_dp
+      mean_ne_to_nH     = 1.0_dp
+    end if
+  end   subroutine hd_fill_chemical_ionisation
 
   subroutine hd_fill_phys_indices
     use mod_global_parameters
@@ -314,7 +422,7 @@ contains
     mom(:) = var_set_momentum(ndir)
 
     ! Set index of energy variable
-    if (hd_energy) then
+    if (hd_config%energy) then
       nwwave = 4
       e_     = var_set_energy() ! energy density
       p_     = e_               ! gas pressure
@@ -325,11 +433,11 @@ contains
     end if
 
 
-    if(hd_n_tracer>0) then
-     allocate(tracer(hd_n_tracer))
+    if(hd_config%n_tracer>0) then
+     allocate(tracer(hd_config%n_tracer))
 
      ! Set starting index of tracers
-     do itr = 1, hd_n_tracer
+     do itr = 1, hd_config%n_tracer
       tracer(itr) = var_set_fluxvar("trc", "trp", itr, need_bc=.true.)
      end do
     end if
@@ -343,33 +451,40 @@ contains
     hd_ind%lfac_       =-1
     hd_ind%xi_         =-1
     hd_ind%psi_        =-1
-    if(hd_n_tracer>0)then
-      allocate(hd_ind%tracer(hd_n_tracer))
+
+    if(hd_config%mean_mup_on)then
+      hd_ind%mup_ = var_set_extravar('mup', 'mup')
+    end if
+
+    if(hd_config%n_tracer>0)then
+      allocate(hd_ind%tracer(hd_config%n_tracer))
       hd_ind%tracer(:) = tracer(:)
     end if
     hd_config%nw       = nw
     hd_config%nwflux   = nwflux
     hd_config%nwhllc   = nwflux
     hd_config%nwfluxbc = nwfluxbc
+
   end subroutine hd_fill_phys_indices
 
   subroutine hd_check_params
     use mod_global_parameters
     use mod_dust, only: dust_check_params
 
-    if (.not. hd_energy) then
-       if (hd_gamma <= 0.0_dp) call mpistop ("Error: hd_gamma <= 0")
-       if (hd_adiab <= 0.0_dp) call mpistop ("Error: hd_adiab <= 0")
-       small_pressure= hd_adiab*small_density**hd_gamma
+    if (.not. hd_config%energy) then
+       if (hd_config%gamma <= 0.0_dp) call mpistop ("Error: hd_gamma <= 0")
+       if (hd_config%adiab <= 0.0_dp) call mpistop ("Error: hd_adiab <= 0")
+       hd_config%small_pressure= hd_config%adiab*hd_config%small_density**hd_config%gamma
     else
-       if (hd_gamma <= 0.0_dp .or. hd_gamma == 1.0_dp) &
+       if (hd_config%gamma <= 0.0_dp .or. hd_config%gamma == 1.0_dp) &
             call mpistop ("Error: hd_gamma <= 0 or hd_gamma == 1.0")
-       small_e = small_pressure/(hd_gamma - 1.0_dp)
+       small_e = hd_config%small_pressure/gamma_1
     end if
 
-    if (hd_dust) call dust_check_params()
+    if (hd_config%dust_on) call dust_check_params()
 
   end subroutine hd_check_params
+
 
   subroutine hd_physical_units
     use mod_global_parameters
@@ -385,15 +500,16 @@ contains
       mp=mp_cgs
       kB=kB_cgs
     end if
-    if(unit_velocity==0) then
-      unit_density=(1.d0+4.d0*He_abundance)*mp*unit_numberdensity
-      unit_pressure=(2.d0+3.d0*He_abundance)*unit_numberdensity*kB*unit_temperature
+
+    if(unit_velocity<smalldouble) then
+      unit_density=phys_config%mean_mass*mp*unit_numberdensity
+      unit_pressure= unit_density/(phys_config%mean_mup*mp)*kB*unit_temperature
       unit_velocity=dsqrt(unit_pressure/unit_density)
       unit_time=unit_length/unit_velocity
     else
-      unit_density=(1.d0+4.d0*He_abundance)*mp*unit_numberdensity
-      unit_pressure=unit_density*unit_velocity**2
-      unit_temperature=unit_pressure/((2.d0+3.d0*He_abundance)*unit_numberdensity*kB)
+      unit_density=phys_config%mean_mass*mp*unit_numberdensity
+      unit_pressure=unit_density*unit_velocity**2.0_dp
+      unit_temperature=phys_config%mean_mup*mp*unit_pressure/(unit_density*kB)
       unit_time=unit_length/unit_velocity
     end if
 
@@ -405,52 +521,66 @@ contains
   subroutine hd_fill_convert_factor
     use mod_global_parameters
     use mod_dust, only : dust_physical_units
-  if(.not.allocated(w_convert_factor))then
+    use mod_radiative_cooling, only: rad_cooling_physical_units
+    !---------------------------------------------------
+    if(allocated(w_convert_factor))deallocate(w_convert_factor)
 
      allocate(w_convert_factor(nw))
-     w_convert_factor =1.0_dp
+     ! initialisation of the convert factor for the array
+     w_convert_factor           = 1.0_dp
+     ! set the convertion factor for the density
      w_convert_factor(rho_)     = unit_density
-     w_convert_factor(e_)       = unit_density*unit_velocity**2.0
+     ! set the convertion factor for the energy and pressure
+     if(hd_config%energy)w_convert_factor(e_)       = unit_density*unit_velocity**2.0_dp
+
+     ! set the convertion factor for the speed and the moment
      if(saveprim)then
       w_convert_factor(mom(:))  = unit_velocity
      else
       w_convert_factor(mom(:))  = unit_density*unit_velocity
      end if
-     if (hd_dust) call dust_physical_units
+
+     if (hd_config%dust_on) call dust_physical_units
+     if (hd_config%radiative_cooling) call rad_cooling_physical_units
+     if(hd_config%mean_mup_on)w_convert_factor(hd_ind%mup_) = hd_config%mean_mup
      time_convert_factor   = unit_time
      length_convert_factor = unit_length
-    end if
-  end   subroutine hd_fill_convert_factor
 
+
+  end   subroutine hd_fill_convert_factor
   !> Returns 0 in argument flag where values are ok
   subroutine hd_check_w(primitive, ixI^L, ixO^L, w, flag)
     use mod_global_parameters
     use mod_dust, only     : dust_check_w
     use mod_chemical, only : chemical_check_w
+    implicit none
+
+
     logical, intent(in)          :: primitive
     integer, intent(in)          :: ixI^L, ixO^L
     real(dp), intent(in)         :: w(ixI^S, nw)
     integer, intent(inout)       :: flag(ixI^S)
+    ! .. local ..
     real(dp)                     :: tmp(ixI^S)
     !-----------------------
     flag(ixO^S) = 0
 
-    if(hd_dust)call dust_check_w(primitive, ixI^L, ixO^L, flag, w)
-    if(hd_chemical)call chemical_check_w(primitive, ixI^L, ixO^L, flag, w)
+    if(hd_config%dust_on)call dust_check_w(primitive, ixI^L, ixO^L, flag, w)
+    if(hd_config%chemical_on)call chemical_check_w(primitive, ixI^L, ixO^L, flag, w)
 
-    where(w(ixO^S, rho_) < small_density) flag(ixO^S) = rho_
+    where(w(ixO^S, rho_) < hd_config%small_density) flag(ixO^S) = rho_
 
-    if (hd_energy) then
+    if (hd_config%energy) then
        if (primitive) then
-          where(w(ixO^S, e_) < small_pressure) flag(ixO^S) = e_
+          where(w(ixO^S, e_) < hd_config%small_pressure) flag(ixO^S) = e_
        else
-         where(w(ixO^S, rho_) > small_density)
-          tmp(ixO^S) = (hd_gamma - 1.0_dp)*(w(ixO^S, e_) - &
+         where(w(ixO^S, rho_) > hd_config%small_density)
+          tmp(ixO^S) = gamma_1*(w(ixO^S, e_) - &
                0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) / w(ixO^S, rho_))
           elsewhere
             tmp(ixO^S) =   w(ixO^S, e_)
          end where
-          where(tmp(ixO^S) < small_pressure) flag(ixO^S) = e_
+          where(tmp(ixO^S) < hd_config%small_pressure) flag(ixO^S) = e_
        endif
     end if
 
@@ -470,10 +600,11 @@ contains
     integer, intent(inout)       :: flag(ixI^S)
     !-----------------------
     flag(ixO^S) = 0
-    if (hd_energy) then
-      where(pth(ixO^S) < small_pressure) flag(ixO^S) = e_
+    if (hd_config%energy) then
+      where(pth(ixO^S) < hd_config%small_pressure) flag(ixO^S) = e_
     end if
   end subroutine hd_check_pth
+
   !> Transform primitive variables into conservative ones
   subroutine hd_to_conserved(ixI^L, ixO^L, w, x)
     use mod_global_parameters
@@ -481,14 +612,14 @@ contains
     integer, intent(in)             :: ixI^L, ixO^L
     real(dp), intent(inout) :: w(ixI^S, nw)
     real(dp), intent(in)    :: x(ixI^S, 1:ndim)
-    real(dp)                :: invgam
+  !  real(dp)                :: invgam
     integer                         :: idir, itr
 
-    if (hd_energy) then
-       invgam = 1.0_dp/(hd_gamma - 1.0_dp)
+    if (hd_config%energy) then
+    !   invgam = 1.0_dp/(hd_config%gamma - 1.0_dp)
        ! Calculate total energy from pressure and kinetic energy
-       w(ixO^S, e_) = w(ixO^S, e_) * invgam + &
-            0.5d0 * sum(w(ixO^S, mom(:))**2, dim=ndim+1) * w(ixO^S, rho_)
+       w(ixO^S, e_) = w(ixO^S, e_)/gamma_1  + &
+            0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) * w(ixO^S, rho_)
     end if
 
     ! Convert velocity to momentum
@@ -496,11 +627,12 @@ contains
        w(ixO^S, mom(idir)) = w(ixO^S, rho_) * w(ixO^S, mom(idir))
     end do
 
-    if (hd_dust) then
+    if (hd_config%dust_on) then
       call dust_to_conserved(ixI^L, ixO^L, w, x)
     end if
 
-    if (check_small_values) call hd_handle_small_values(.false., w, x, ixI^L, ixO^L, 'hd_to_conserved')
+    if (check_small_values) &
+     call hd_handle_small_values(.false., w, x, ixI^L, ixO^L, 'hd_to_conserved')
 
   end subroutine hd_to_conserved
 
@@ -508,20 +640,23 @@ contains
   subroutine hd_to_primitive(ixI^L, ixO^L, w, x)
     use mod_global_parameters
     use mod_dust, only: dust_to_primitive
+    implicit none
 
     integer, intent(in)             :: ixI^L, ixO^L
     real(dp), intent(inout)         :: w(ixI^S, nw)
     real(dp), intent(in)            :: x(ixI^S, 1:ndim)
+    ! .. local ..
     integer                         :: itr, idir
     real(dp)                        :: inv_rho(ixO^S)
-
-    if (check_small_values) call hd_handle_small_values(.true., w, x, ixI^L, ixO^L, 'hd_to_primitive')
+    !--------------------------------
+    if (check_small_values) call hd_handle_small_values(.true., w, x, &
+                                              ixI^L, ixO^L, 'hd_to_primitive')
 
     inv_rho = 1.0_dp / w(ixO^S, rho_)
 
-    if (hd_energy) then
+    if (hd_config%energy) then
        ! Compute pressure
-       w(ixO^S, e_) = (hd_gamma - 1.0_dp) * (w(ixO^S, e_) - &
+       w(ixO^S, e_) = gamma_1 * (w(ixO^S, e_) - &
             hd_kin_en(w, ixI^L, ixO^L, inv_rho))
     end if
 
@@ -531,7 +666,7 @@ contains
     end do
 
     ! Convert dust momentum to dust velocity
-    if (hd_dust) then
+    if (hd_config%dust_on) then
       call dust_to_primitive(ixI^L, ixO^L, w, x)
     end if
 
@@ -546,8 +681,8 @@ contains
     real(dp)             :: w(ixI^S, nw)
     real(dp), intent(in) :: x(ixI^S, 1:ndim)
 
-    if (hd_energy) then
-       w(ixO^S, e_) = (hd_gamma - 1.0_dp) * w(ixO^S, rho_)**(1.0_dp - hd_gamma) * &
+    if (hd_config%energy) then
+       w(ixO^S, e_) = gamma_1 * w(ixO^S, rho_)**(-gamma_1) * &
             (w(ixO^S, e_) - hd_kin_en(w, ixI^L, ixO^L))
     else
        call mpistop("energy from entropy can not be used with -eos = iso !")
@@ -561,9 +696,9 @@ contains
     real(dp)             :: w(ixI^S, nw)
     real(dp), intent(in) :: x(ixI^S, 1:ndim)
 
-    if (hd_energy) then
-       w(ixO^S, e_) = w(ixO^S, rho_)**(hd_gamma - 1.0_dp) * w(ixO^S, e_) &
-            / (hd_gamma - 1.0_dp) + hd_kin_en(w, ixI^L, ixO^L)
+    if (hd_config%energy) then
+       w(ixO^S, e_) = w(ixO^S, rho_)**gamma_1 * w(ixO^S, e_) &
+            / gamma_1 + hd_kin_en(w, ixI^L, ixO^L)
     else
        call mpistop("entropy from energy can not be used with -eos = iso !")
     end if
@@ -596,7 +731,7 @@ contains
 
     cmax(ixO^S) = abs(v(ixO^S))+csound(ixO^S)
 
-    if (hd_dust) then
+    if (hd_config%dust_on) then
       call dust_get_cmax(w, x, ixI^L, ixO^L, idim, cmax)
     end if
   end subroutine hd_get_cmax
@@ -618,26 +753,26 @@ contains
     real(dp)                          :: wmean(ixI^S,nw)
     real(dp), dimension(ixI^S)        :: umean, dmean, csoundL, csoundR,&
                                          tmp1,tmp2,tmp3
-
+    !---------------------------------------------------
     if (typeboundspeed/='cmaxmean') then
       ! This implements formula (10.52) from "Riemann Solvers and Numerical
       ! Methods for Fluid Dynamics" by Toro.
 
       tmp1(ixO^S)=sqrt(wLp(ixO^S,rho_))
       tmp2(ixO^S)=sqrt(wRp(ixO^S,rho_))
-      tmp3(ixO^S)=1.d0/(sqrt(wLp(ixO^S,rho_))+sqrt(wRp(ixO^S,rho_)))
+      tmp3(ixO^S)=1.0_dp/(sqrt(wLp(ixO^S,rho_))+sqrt(wRp(ixO^S,rho_)))
       umean(ixO^S)=(wLp(ixO^S,mom(idim))*tmp1(ixO^S)+wRp(ixO^S,mom(idim))*tmp2(ixO^S))*tmp3(ixO^S)
 
-      if(hd_energy) then
-        csoundL(ixO^S)=hd_gamma*wLp(ixO^S,p_)/wLp(ixO^S,rho_)
-        csoundR(ixO^S)=hd_gamma*wRp(ixO^S,p_)/wRp(ixO^S,rho_)
+      if(hd_config%energy) then
+        csoundL(ixO^S)=hd_config%gamma*wLp(ixO^S,p_)/wLp(ixO^S,rho_)
+        csoundR(ixO^S)=hd_config%gamma*wRp(ixO^S,p_)/wRp(ixO^S,rho_)
       else
-        csoundL(ixO^S)=hd_gamma*hd_adiab*wLp(ixO^S,rho_)**(hd_gamma-one)
-        csoundR(ixO^S)=hd_gamma*hd_adiab*wRp(ixO^S,rho_)**(hd_gamma-one)
+        csoundL(ixO^S)=hd_config%gamma*hd_config%adiab*wLp(ixO^S,rho_)**gamma_1
+        csoundR(ixO^S)=hd_config%gamma*hd_config%adiab*wRp(ixO^S,rho_)**gamma_1
       end if
 
       dmean(ixO^S) = (tmp1(ixO^S)*csoundL(ixO^S)+tmp2(ixO^S)*csoundR(ixO^S)) * &
-           tmp3(ixO^S) + 0.5d0*tmp1(ixO^S)*tmp2(ixO^S)*tmp3(ixO^S)**2 * &
+           tmp3(ixO^S) + 0.5_dp*tmp1(ixO^S)*tmp2(ixO^S)*tmp3(ixO^S)**2 * &
            (wRp(ixO^S,mom(idim))-wLp(ixO^S,mom(idim)))**2
 
       dmean(ixO^S)=sqrt(dmean(ixO^S))
@@ -648,7 +783,7 @@ contains
         cmax(ixO^S)=abs(umean(ixO^S))+dmean(ixO^S)
       end if
 
-      if (hd_dust) then
+      if (hd_config%dust_on) then
         wmean(ixO^S,1:nwflux)=0.5d0*(wLC(ixO^S,1:nwflux)+wRC(ixO^S,1:nwflux))
         call dust_get_cmax(wmean, x, ixI^L, ixO^L, idim, cmax, cmin)
       end if
@@ -667,7 +802,7 @@ contains
         cmax(ixO^S)=abs(tmp1(ixO^S))+csoundR(ixO^S)
       end if
 
-      if (hd_dust) then
+      if (hd_config%dust_on) then
         call dust_get_cmax(wmean, x, ixI^L, ixO^L, idim, cmax, cmin)
       end if
     end if
@@ -682,12 +817,16 @@ contains
     real(dp), intent(in)    :: w(ixI^S,nw)
     real(dp), intent(in)    :: x(ixI^S,1:ndim)
     real(dp), intent(out)   :: csound2(ixI^S)
-
-    if(hd_energy) then
+    !------------------------------------------
+    if(hd_config%energy) then
       call hd_get_pthermal(w,x,ixI^L,ixO^L,csound2)
-      csound2(ixO^S)=hd_gamma*csound2(ixO^S)/w(ixO^S,rho_)
+      csound2(ixO^S)=hd_config%gamma*csound2(ixO^S)/w(ixO^S,rho_)
     else
-      csound2(ixO^S)=hd_gamma*hd_adiab*w(ixO^S,rho_)**(hd_gamma-one)
+      if(dabs(gamma_1)<smalldouble) then
+        csound2(ixO^S)=hd_config%adiab
+      else
+        csound2(ixO^S)=hd_config%gamma*hd_config%adiab*w(ixO^S,rho_)**gamma_1
+      end if
     end if
   end subroutine hd_get_csound2
 
@@ -700,12 +839,13 @@ contains
     real(dp), intent(in)         :: x(ixI^S, 1:ndim)
     real(dp), intent(out)        :: pth(ixI^S)
     !----------------------------------------------------
-    if (hd_energy) then
-       pth(ixO^S) = (hd_gamma - 1.0_dp) * (w(ixO^S, e_) - &
+    if (hd_config%energy) then
+       pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
             hd_kin_en(w, ixI^L, ixO^L))
     else
-       pth(ixO^S) = hd_adiab * w(ixO^S, rho_)**hd_gamma
+       pth(ixO^S) = hd_config%adiab * w(ixO^S, rho_)**hd_config%gamma
     end if
+
     !if (check_small_values)call hd_handle_small_values_pressure(ixI^L,ixO^L,x,&
     !                                                            'ptherm',pth,w)
   end subroutine hd_get_pthermal
@@ -717,10 +857,24 @@ contains
     real(dp), intent(in)         :: w(ixI^S, nw)
     real(dp), intent(in)         :: x(ixI^S, 1:ndim)
     real(dp), intent(out)        :: temperature(ixI^S)
-    real(dp)                     :: pth(ixI^S)
+    real(dp), dimension(ixI^S)   :: pth(ixI^S)
+    logical , dimension(ixI^S)   :: patch_mult_mup
     !----------------------------------------------------
-    call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
-    temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
+    if (hd_config%energy) then
+      call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
+      temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
+      if(hd_config%mean_mup_on)then
+        patch_mult_mup(ixO^S) = dabs(w(ixO^S, phys_ind%mup_)-1.0_dp)>smalldouble &
+             .or. w(ixO^S, phys_ind%mup_)>smalldouble
+        if(any(patch_mult_mup(ixO^S)))then
+          where(patch_mult_mup(ixO^S))
+            temperature(ixO^S) =temperature(ixO^S)*w(ixO^S,phys_ind%mup_)
+          end where
+        end if
+      end if
+    else
+      Temperature(ixO^S) = hd_config%adiab/phys_config%mean_mass
+    end if
   end subroutine hd_get_temperature
 
 
@@ -747,23 +901,23 @@ contains
 
     f(ixO^S, mom(idim)) = f(ixO^S, mom(idim)) + pth(ixO^S)
 
-    if(hd_energy) then
+    if(hd_config%energy) then
       ! Energy flux is v_i*e + v*p ! Check? m_i/rho*p
       f(ixO^S, e_) = v(ixO^S) * (w(ixO^S, e_) + pth(ixO^S))
     end if
 
-    do itr = 1, hd_n_tracer
+    do itr = 1, hd_config%n_tracer
        f(ixO^S, tracer(itr)) = v(ixO^S) * w(ixO^S, tracer(itr))
     end do
 
     ! Dust fluxes
-    if (hd_dust) then
+    if (hd_config%dust_on) then
       call dust_get_flux(w, x, ixI^L, ixO^L, idim, f)
     end if
 
     ! chemical fluxes
 
-    if (hd_chemical) then
+    if (hd_config%chemical_on) then
       call chemical_get_flux(w, x, ixI^L, ixO^L, idim, f)
     end if
   end subroutine hd_get_flux_cons
@@ -785,10 +939,10 @@ contains
     real(dp)                        :: pth(ixO^S)
     integer                         :: idir, itr
 
-    if (hd_energy) then
+    if (hd_config%energy) then
        pth(ixO^S) = w(ixO^S,p_)
     else
-       pth(ixO^S) = hd_adiab * w(ixO^S, rho_)**hd_gamma
+       pth(ixO^S) = hd_config%adiab * w(ixO^S, rho_)**hd_config%gamma
     end if
 
     f(ixO^S, rho_) = w(ixO^S,mom(idim)) * w(ixO^S, rho_)
@@ -800,27 +954,27 @@ contains
 
     f(ixO^S, mom(idim)) = f(ixO^S, mom(idim)) + pth(ixO^S)
 
-    if(hd_energy) then
+    if(hd_config%energy) then
       ! Energy flux is v_i*e + v*p ! Check? m_i/rho*p
       f(ixO^S, e_) = w(ixO^S,mom(idim)) * (wC(ixO^S, e_) + w(ixO^S,p_))
     end if
 
-    do itr = 1, hd_n_tracer
+    do itr = 1, hd_config%n_tracer
        f(ixO^S, tracer(itr)) = w(ixO^S,mom(idim)) * w(ixO^S, tracer(itr))
     end do
 
     ! Dust fluxes
-    if (hd_dust) then
+    if (hd_config%dust_on) then
       call dust_get_flux_prim(w, x, ixI^L, ixO^L, idim, f)
     end if
 
     ! Viscosity fluxes - viscInDiv
-    if (hd_viscosity) then
-      call visc_get_flux_prim(w, x, ixI^L, ixO^L, idim, f, hd_energy)
+    if (hd_config%viscosity) then
+      call visc_get_flux_prim(w, x, ixI^L, ixO^L, idim, f, hd_config%energy)
     endif
 
     ! chemical fluxes
-    if (hd_chemical) then
+    if (hd_config%chemical_on) then
       call chemical_get_flux_prim(w, x, ixI^L, ixO^L, idim, f)
     end if
   end subroutine hd_get_flux
@@ -920,25 +1074,26 @@ contains
     logical, intent(in)     :: qsourcesplit
     logical, intent(inout)  :: active
 
-    if(hd_dust) then
+    if(hd_config%dust_on) then
       call dust_add_source(qdt,ixI^L,ixO^L,wCT,w,x,qsourcesplit,active)
     end if
 
-    if(hd_radiative_cooling) then
+    if(hd_config%radiative_cooling) then
       call radiative_cooling_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
            qsourcesplit,active)
     end if
 
-    if(hd_viscosity) then
+    if(hd_config%viscosity) then
       call viscosity_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
-           hd_energy,qsourcesplit,active)
+           hd_config%energy,qsourcesplit,active)
     end if
 
-    if(hd_gravity) then
+    if(hd_config%gravity) then
       call gravity_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
-           hd_energy,qsourcesplit,active)
+           hd_config%energy,qsourcesplit,active)
     end if
-    if(hd_chemical) then
+
+    if(hd_config%chemical_on) then
       call chemical_add_source(qdt,ixI^L,ixO^L,wCT,w,x,&
                qsourcesplit,active)
     end if
@@ -962,7 +1117,7 @@ contains
 
     dtnew = bigdouble
 
-    if(hd_dust) then
+    if(hd_config%dust_on) then
       call dust_get_dt(w, ixI^L, ixO^L, dtnew, dx^D, x)
     end if
 
@@ -974,10 +1129,10 @@ contains
       call viscosity_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
     end if
 
-    if(hd_gravity) then
+    if(hd_config%gravity) then
       call gravity_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
     end if
-    if(hd_chemical) then
+    if(hd_config%chemical_on) then
       call chemical_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
     end if
   end subroutine hd_get_dt
@@ -1033,7 +1188,7 @@ contains
       case ("replace")
         call hd_small_values_floor(primitive, w, x, ixI^L, ixO^L, subname,&
                                      flag)
-        if(hd_dust)call dust_set_floor(primitive,ixI^L,ixO^L,flag,x,w)
+        if(hd_config%dust_on)call dust_set_floor(primitive,ixI^L,ixO^L,flag,x,w)
       case ("average")
         call small_values_average(ixI^L, ixO^L,subname, w, x, flag,ierror)
 
@@ -1041,7 +1196,7 @@ contains
           call hd_small_values_floor(primitive, w, x, ixI^L, ixO^L, subname,&
                                      flag)
          end if
-         cond_dust : if(hd_dust)then
+         cond_dust : if(hd_config%dust_on)then
           cond_dust_error : if(any(flag(ixO^S)<0)) then
            call dust_set_floor(primitive,ixI^L,ixO^L,flag,x,w)
           end if cond_dust_error
@@ -1071,21 +1226,21 @@ contains
     real(dp)                        :: smallone
     integer                         :: idir
      if(all(flag(ixO^S) <= 0)) return
-        where(flag(ixO^S) > 0) w(ixO^S,rho_) = small_density
+        where(flag(ixO^S) > 0) w(ixO^S,rho_) = hd_config%small_density
 
         do idir = 1, ndir
           where(flag(ixO^S) > 0) w(ixO^S, mom(idir)) = 0.0_dp
         end do
 
-        if (hd_energy) then
+        if (hd_config%energy) then
           if(primitive) then
-            smallone = small_pressure
+            smallone = hd_config%small_pressure
           else
             smallone = small_e
           end if
           where(flag(ixO^S) > 0) w(ixO^S,e_) = smallone
         end if
-        if(hd_dust)call dust_set_floor(primitive,ixI^L,ixO^L,flag,x,w)
+        if(hd_config%dust_on)call dust_set_floor(primitive,ixI^L,ixO^L,flag,x,w)
   end subroutine hd_small_values_floor
 
 
@@ -1111,7 +1266,7 @@ contains
     if (any(flag(ixO^S) /= 0)) then
       select case (small_values_method)
       case ("replace")
-        where(flag(ixO^S) > 0) pth(ixO^S) = small_pressure
+        where(flag(ixO^S) > 0) pth(ixO^S) = hd_config%small_pressure
       case ("average")
         call small_var_average(ixI^L, ixO^L, pth, x, flag)
       case default

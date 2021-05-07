@@ -335,9 +335,9 @@ module mod_usr_methods
      end    subroutine special_global
 
    !> Initialize the method and limiter
-   subroutine reset_solver(ixI^L,ixO^L,qt,w,x,old_method,old_limiter,usr_method,usr_limiter)
+   subroutine reset_solver(ixI^L,ixO^L,idims,qt,w,x,old_method,old_limiter,usr_method,usr_limiter)
      use mod_global_parameters
-     integer, intent(in)             :: ixI^L, ixO^L
+     integer, intent(in)             :: ixI^L, ixO^L,idims
      real(kind=dp), intent(in)       :: qt
      double precision, intent(in)    :: x(ixI^S,1:ndim)
      double precision, intent(in)    :: w(ixI^S,1:nw)

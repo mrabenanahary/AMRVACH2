@@ -1,0 +1,6 @@
+export AMRVAC_DIR=/obs/meliani/Projects/New_V/sn2_stage
+export SCRATCH_DIR=/Users/meliani/Documents/Work/Data/Scratch
+alias setup.pl=$AMRVAC_DIR/setup.pl
+PATH="$PATH:$AMRVAC_DIR:$AMRVAC_DIR/tools"
+export ARCH_LOC=intel_mesopsl
+export NDIM_LOC=2

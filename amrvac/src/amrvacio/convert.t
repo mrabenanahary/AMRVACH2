@@ -63,25 +63,26 @@ use mod_limiter
 use mod_physics, only: physics_type, phys_to_primitive
 
 integer, intent(in) :: qunit, igrid
-double precision, intent(in), dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
-double precision, intent(in), dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
+real(kind=dp)   , intent(in), dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
+real(kind=dp)   , intent(in), dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
 integer :: ixC^L,ixCC^L
 logical, intent(in) :: first
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP
-double precision,dimension(0:nw+nwauxio),intent(out)       :: normconv
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP
+real(kind=dp)   ,dimension(0:nw+nwauxio),intent(out)       :: normconv
 
-double precision :: ldw(ixG^T), dwC(ixG^T)
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC
-double precision, dimension(ixG^T,1:nw+nwauxio)   :: w
-double precision :: dx^D
+real(kind=dp)    :: ldw(ixG^T), dwC(ixG^T)
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC
+real(kind=dp)   , dimension(ixG^T,1:nw+nwauxio)   :: w
+real(kind=dp)    :: dx^D
 integer :: nxCC^D,idims,jxC^L,iwe
 integer :: nx^D, nxC^D, ix^D, ix, iw, level, idir
 logical, save :: subfirst=.true.
+
 !-----------------------------------------------------------------------------
 
 
@@ -96,7 +97,10 @@ dx^D=dx(^D,level);
 normconv(0) = length_convert_factor
 normconv(1:nw) = w_convert_factor
 
+
 w(ixG^T,1:nw)=pw(igrid)%w(ixG^T,1:nw)
+
+
 
 if (nwextra>0) then
  ! here we actually fill the ghost layers for the nwextra variables using
@@ -209,14 +213,14 @@ use mod_global_parameters
 
 integer :: ix^L, ix^D, idim, iw, ivector, iw0
 integer, dimension(nw) :: vectoriw
-double precision :: x_TEC(ndim), w_TEC(nw+nwauxio)
-double precision, dimension(ndim,ndim) :: normal
+real(kind=dp)    :: x_TEC(ndim), w_TEC(nw+nwauxio)
+real(kind=dp)   , dimension(ndim,ndim) :: normal
 
-double precision, dimension(ix^S,ndim) :: xC
-double precision, dimension(ix^S,nw+nwauxio)   :: wC
+real(kind=dp)   , dimension(ix^S,ndim) :: xC
+real(kind=dp)   , dimension(ix^S,nw+nwauxio)   :: wC
 
-double precision, dimension(ix^S,ndim) :: x_TMP
-double precision, dimension(ix^S,nw+nwauxio)   :: w_TMP
+real(kind=dp)   , dimension(ix^S,ndim) :: x_TMP
+real(kind=dp)   , dimension(ix^S,nw+nwauxio)   :: w_TMP
 !-----------------------------------------------------------------------------
 
 iw0=0
@@ -498,10 +502,10 @@ integer             :: filenr,ncells,ncells^D,ncellg,ncellx^D,jg^D,jig^D
 character(len=name_len) :: wnamei(1:nw+nwauxio),xandwnamei(1:ndim+nw+nwauxio)
 character(len=1024) :: outfilehead
 
-double precision :: wval1,xval1
-double precision, dimension({^D&1:1},1:nw+nwauxio)   :: wval
-double precision, dimension({^D&1:1},1:ndim)         :: xval
-double precision:: normconv(0:nw+nwauxio)
+real(kind=dp)    :: wval1,xval1
+real(kind=dp)   , dimension({^D&1:1},1:nw+nwauxio)   :: wval
+real(kind=dp)   , dimension({^D&1:1},1:ndim)         :: xval
+real(kind=dp)   :: normconv(0:nw+nwauxio)
 
 integer                  :: iw,iiw,writenw,iwrite(1:nw+nwauxio),iigrid,idim
 logical                  :: save_volume,save_multilevel
@@ -706,7 +710,7 @@ character(len=1024)     :: outfilehead
 !.. MPI variables ..
 integer                  :: igrid_recv,ipe,ncells,ncells^D
 logical                  :: save_volume,save_multilevel
-double precision         :: w_recv(ixG^T,1:nw),x_recv(ixG^T,1:ndim)
+real(kind=dp)            :: w_recv(ixG^T,1:nw),x_recv(ixG^T,1:ndim)
 integer, allocatable     :: intstatus(:,:)
 Real(kind=dp)            :: normconv(0:nw+nwauxio)
 !-----------------------------------------------------------------------------
@@ -820,16 +824,16 @@ integer :: nx^D,nxC^D,nodesonlevel,elemsonlevel,ixC^L,ixCC^L
 integer ::              nodes, elems
 
 
-double precision :: x_TEC(ndim), w_TEC(nw+nwauxio)
+real(kind=dp)    :: x_TEC(ndim), w_TEC(nw+nwauxio)
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP
-double precision, dimension(0:nw+nwauxio)                   :: normconv
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP
+real(kind=dp)   , dimension(0:nw+nwauxio)                   :: normconv
 logical :: fileopen,first
 character(len=80) :: filename
 integer  :: filenr
@@ -1089,16 +1093,16 @@ use mod_global_parameters
 
 integer, intent(in) ::    qunit
 
-double precision ::  x_VTK(1:3)
+real(kind=dp)    ::  x_VTK(1:3)
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP
-double precision, dimension(0:nw+nwauxio)                   :: normconv
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP
+real(kind=dp)   , dimension(0:nw+nwauxio)                   :: normconv
 integer::               igrid,iigrid,level,igonlevel,icel,ixC^L,ixCC^L,iw
 integer::               NumGridsOnLevel(1:nlevelshi)
 integer :: nx^D,nxC^D,nodesonlevel,elemsonlevel,nc,np,VTK_type,ix^D
@@ -1268,16 +1272,16 @@ use mod_global_parameters
 
 integer, intent(in) ::    qunit
 
-double precision ::  x_VTK(1:3)
+real(kind=dp)    ::  x_VTK(1:3)
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio):: wC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)  :: wCC_TMP
-double precision :: normconv(0:nw+nwauxio)
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio):: wC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)  :: wCC_TMP
+real(kind=dp)    :: normconv(0:nw+nwauxio)
 
 integer, allocatable :: intstatus(:,:)
 integer :: ipe,igrid,level,icel,ixC^L,ixCC^L,Morton_no,Morton_length
@@ -1293,6 +1297,7 @@ character(len=1024) :: outfilehead
 
 logical ::   fileopen,cell_corner=.true.
 logical, allocatable :: Morton_aim(:),Morton_aim_p(:)
+
 !-----------------------------------------------------------------------------
 
 normconv=one
@@ -1558,6 +1563,11 @@ else
        write(qunit) {(|}real(wC_TMP(ix^D,iw)*normconv(iw)),{ix^D=ixCmin^D,ixCmax^D)}
      else
        write(qunit) lengthcc
+
+
+
+
+
        write(qunit) {(|}real(wCC_TMP(ix^D,iw)*normconv(iw)),{ix^D=ixCCmin^D,ixCCmax^D)}
      end if
    enddo
@@ -1740,14 +1750,14 @@ use mod_global_parameters
 
 integer, intent(in) ::    qunit
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP,xC_TMP_recv
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP,xCC_TMP_recv
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP,xC_TMP_recv
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP,xCC_TMP_recv
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP,wC_TMP_recv
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP,wCC_TMP_recv
-double precision, dimension(0:nw+nwauxio)                   :: normconv
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP,wC_TMP_recv
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP,wCC_TMP_recv
+real(kind=dp)   , dimension(0:nw+nwauxio)                   :: normconv
 integer::               igrid,iigrid,level,ixC^L,ixCC^L
 integer::               NumGridsOnLevel(1:nlevelshi)
 integer :: nx^D
@@ -1764,7 +1774,7 @@ character(len=1024) :: outfilehead
 logical :: fileopen
 integer :: ipe,Morton_no,Morton_length
 integer :: ixrvC^L, ixrvCC^L, siz_ind, ind_send(5*^ND), ind_recv(5*^ND)
-double precision    :: origin(1:3), spacing(1:3)
+real(kind=dp)       :: origin(1:3), spacing(1:3)
 integer :: wholeExtent(1:6), ig^D
 type(tree_node_ptr) :: tree
 !-----------------------------------------------------------------------------
@@ -1908,13 +1918,13 @@ use mod_global_parameters
 
 integer, intent(in) ::    qunit
 !
-double precision, dimension(0:nw+nwauxio)                   :: normconv
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim)         :: xC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)           :: xCC_TMP
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim)         :: xC
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)           :: xCC
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP
+real(kind=dp)   , dimension(0:nw+nwauxio)                   :: normconv
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim)         :: xC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)           :: xCC_TMP
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim)         :: xC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)           :: xCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP
 character(len=name_len)   :: wnamei(1:nw+nwauxio),xandwnamei(1:ndim+nw+nwauxio)
 character(len=1024) :: outfilehead
 integer             :: nx^D,nxC^D,nc,np, igrid,ixC^L,ixCC^L,level,Morton_no
@@ -2006,16 +2016,16 @@ use mod_global_parameters
 
 integer, intent(in) ::    qunit
 
-double precision ::  x_VTK(1:3)
+real(kind=dp)    ::  x_VTK(1:3)
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP,xC_TMP_recv
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP,xCC_TMP_recv
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP,xC_TMP_recv
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP,xCC_TMP_recv
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP,wC_TMP_recv
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP,wCC_TMP_recv
-double precision, dimension(0:nw+nwauxio)                   :: normconv
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP,wC_TMP_recv
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP,wCC_TMP_recv
+real(kind=dp)   , dimension(0:nw+nwauxio)                   :: normconv
 integer::               igrid,iigrid,level,ixC^L,ixCC^L
 integer::               NumGridsOnLevel(1:nlevelshi)
 integer :: nx^D,nxC^D,nodesonlevel,elemsonlevel,nc,np,ix^D
@@ -2186,16 +2196,16 @@ use mod_global_parameters
 integer, intent(in) :: qunit
 integer, intent(in) :: ixI^L,ixC^L,ixCC^L
 integer, intent(in) :: igrid,nc,np,nx^D,nxC^D
-double precision, intent(in) :: normconv(0:nw+nwauxio)
+real(kind=dp)   , intent(in) :: normconv(0:nw+nwauxio)
 character(len=name_len), intent(in)::  wnamei(1:nw+nwauxio)
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC
 
-double precision ::  x_VTK(1:3)
+real(kind=dp)    ::  x_VTK(1:3)
 integer :: iw,ix^D,icel,VTK_type
 !----------------------------------------------------------------------------
 
@@ -2294,11 +2304,11 @@ use mod_global_parameters
 integer, intent(in) :: qunit
 integer, intent(in) :: ixI^L,ixC^L,ixCC^L
 integer, intent(in) :: ig^D,nx^D
-double precision, intent(in) :: normconv(0:nw+nwauxio)
+real(kind=dp)   , intent(in) :: normconv(0:nw+nwauxio)
 character(len=name_len), intent(in)::  wnamei(1:nw+nwauxio)
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC
 
 integer :: iw,ix^D
 integer :: extent(1:6)
@@ -2455,16 +2465,16 @@ integer ::              nodes, elems
 
 integer, allocatable :: intstatus(:,:)
 
-double precision :: x_TEC(ndim), w_TEC(nw+nwauxio)
+real(kind=dp)    :: x_TEC(ndim), w_TEC(nw+nwauxio)
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP,xC_TMP_recv
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP,xCC_TMP_recv
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP,xC_TMP_recv
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP,xCC_TMP_recv
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP,wC_TMP_recv
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP,wCC_TMP_recv
-double precision, dimension(0:nw+nwauxio)                   :: normconv
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP,wC_TMP_recv
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP,wCC_TMP_recv
+real(kind=dp)   , dimension(0:nw+nwauxio)                   :: normconv
 logical :: fileopen,first
 integer :: Morton_no,ipe,levmin_recv,levmax_recv,igrid_recv,level_recv
 integer :: ixrvC^L,ixrvCC^L
@@ -2920,20 +2930,20 @@ use mod_global_parameters
 
 integer, intent(in) ::    qunit
 
-double precision ::  x_VTK(1:3)
+real(kind=dp)    ::  x_VTK(1:3)
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP
-double precision, dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
-double precision, dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC_TMP
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,ndim) :: xC
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,ndim)   :: xCC
 
-double precision, dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP
-double precision, dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP
+real(kind=dp)   , dimension(ixMlo^D-1:ixMhi^D,nw+nwauxio)   :: wC_TMP
+real(kind=dp)   , dimension(ixMlo^D:ixMhi^D,nw+nwauxio)     :: wCC_TMP
 
 integer :: igrid,iigrid,level,igonlevel,icel,ixC^L,ixCC^L,Morton_no
 integer ::               NumGridsOnLevel(1:nlevelshi)
 integer :: nx^D,nxC^D,nodesonlevel,elemsonlevel,nc,np,VTK_type,ix^D
-double precision :: normconv(0:nw+nwauxio)
+real(kind=dp)    :: normconv(0:nw+nwauxio)
 character(len=80) :: pfilename
 character(len=name_len) :: wnamei(1:nw+nwauxio),xandwnamei(1:ndim+nw+nwauxio)
 character(len=1024) :: outfilehead
@@ -3202,8 +3212,8 @@ subroutine calc_x(igrid,xC,xCC)
   use mod_global_parameters
 
   integer, intent(in)               :: igrid
-  double precision, intent(out)     :: xC(ixMlo^D-1:ixMhi^D,ndim)
-  double precision, intent(out)     :: xCC(ixMlo^D:ixMhi^D,ndim)
+  real(kind=dp)   , intent(out)     :: xC(ixMlo^D-1:ixMhi^D,ndim)
+  real(kind=dp)   , intent(out)     :: xCC(ixMlo^D:ixMhi^D,ndim)
   ! .. local ..
   integer                           :: ixC^L, idims, level, ix
 

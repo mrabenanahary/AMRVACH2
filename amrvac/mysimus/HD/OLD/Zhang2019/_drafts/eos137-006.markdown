@@ -1,0 +1,22 @@
+
+
+---
+layout: "post"
+title: "EOS137-006"
+date: "2020-04-09 15:35"
+---
+
+Source :  ESO 137-006
+ESO 137-006
+<p>Amas de galaxie :Norma galaxy cluster (Abell 3627)</p>
+<p>La structure courbé du jet résulte du mouvement de la galaxies vers le centre de l’amas ou du champ magnetic grand echelle dans  ICM</p>
+<p>Les observations effectue 1030 MHz et ∼1400 MHz avec MeerKAT.</p>
+![](assets/eos137-006-61dc8b42.png)
+Le jet montre une augmentation de l'emission dans deux regions de chaque coté du noyau central à une distance 1.5kpc.
+Ces noeuds résults de la possible chute de pression dans le ISM.
+A partir de ce noeud le jet devient diffus et la structure en plume du jet.
+
+
+La structure en courbure se produit après le noeud de re-collimation.
+
+Les auteurs pose les questions: si les structures résults des propriètés du ICM.

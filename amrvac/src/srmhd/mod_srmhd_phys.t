@@ -167,6 +167,9 @@ contains
     srmhd_config%gamma          = srmhd_gamma
     srmhd_config%small_density =srmhd_small_density
     srmhd_config%small_pressure=srmhd_small_pressure
+    srmhd_config%absaccNR      = srmhd_absaccNR
+    srmhd_config%tolerNr       = srmhd_tolerNr
+    srmhd_config%maxiterationNR= srmhd_maxiterationNR
 
     ! set default gamma for polytropic/isothermal process
     if(.not.srmhd_energy) srmhd_gamma=1.d0
@@ -245,13 +248,14 @@ contains
     phys_check_params        => srmhd_check_params
     phys_check_w             => srmhd_check_w
     phys_get_pthermal        => srmhd_get_pthermal
+    !phys_get_comove_B2       => srmhd_get_comove_B2
     phys_boundary_adjust     => srmhd_boundary_adjust
     phys_write_info          => srmhd_write_info
     phys_angmomfix           => srmhd_angmomfix
     phys_handle_small_values => srmhd_handle_small_values
     phys_ind                  =>srmhd_ind
-
-
+    phys_get_4u_from_3v      => srmhd_get_4u_from_3v
+    phys_get_3v_from_4u      => srmhd_get_3v_from_4u
 
     ! Whether diagonal ghost cells are required for the physics
     !if(type_divb < divb_linde) phys_req_diagonal = .false.

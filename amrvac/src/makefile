@@ -52,6 +52,7 @@ mod_advance.o: mod_particles.mod
 mod_advance.o: mod_physics.mod
 mod_advance.o: mod_source.mod
 mod_advance.o: mod_tvd.mod
+mod_advance.o: mod_usr_methods.mod	
 mod_amrvac.o: mod_geometry.mod
 mod_bc_data.o: mod_lookup_table.mod
 mod_dust.o: mod_physics.mod

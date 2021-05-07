@@ -1,0 +1,6 @@
+export AMRVAC_DIR=/home/meliani/ownCloud/Project/sn2_stage
+export SCRATCH_DIR=/Users/meliani/Documents/Work/Data/Scratch
+alias setup.pl=$AMRVAC_DIR/setup.pl
+PATH="$PATH:$AMRVAC_DIR:$AMRVAC_DIR/tools"
+export ARCH_LOC=openmpi_run
+export NDIM_LOC=2

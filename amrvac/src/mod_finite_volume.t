@@ -21,14 +21,14 @@ contains
     use mod_source, only: addsource2
 
     integer, intent(in) :: ixI^L, ixO^L, idim^LIM
-    double precision, intent(in) :: qdt, qtC, qt, dx^D, x(ixI^S,1:ndim)
-    double precision, intent(inout) :: wCT(ixI^S,1:nw), wnew(ixI^S,1:nw)
+    real(kind=dp)   , intent(in) :: qdt, qtC, qt, dx^D, x(ixI^S,1:ndim)
+    real(kind=dp)   , intent(inout) :: wCT(ixI^S,1:nw), wnew(ixI^S,1:nw)
 
-    double precision, dimension(ixI^S,1:nw) :: wprim, wLC, wRC
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim, wLC, wRC
     ! left and right constructed status in primitive form, needed for better performance
-    double precision, dimension(ixI^S,1:nw) :: wLp, wRp
-    double precision :: fLC(ixI^S, nwflux), fRC(ixI^S, nwflux)
-    double precision :: dxinv(1:ndim)
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wLp, wRp
+    real(kind=dp)    :: fLC(ixI^S, nwflux), fRC(ixI^S, nwflux)
+    real(kind=dp)    :: dxinv(1:ndim)
     integer :: idim, iw, ix^L, hxO^L
 
     ! Expand limits in each idim direction in which fluxes are added
@@ -90,28 +90,28 @@ contains
     use mod_global_parameters
     use mod_tvd, only:tvdlimit2
     use mod_source, only: addsource2
-
+    use mod_usr_methods, only: usr_reset_solver
     character(len=*), intent(in)                         :: method
-    double precision, intent(in)                         :: qdt, qtC, qt, dx^D
+    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
     integer, intent(in)                                  :: ixI^L, ixO^L, idim^LIM
-    double precision, dimension(ixI^S,1:ndim), intent(in) ::  x
-    double precision, dimension(ixI^S,1:nw)               :: wCT, wnew, wold
-    double precision, dimension(ixI^S,1:nwflux,1:ndim)  :: fC
+    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
+    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wCT, wnew, wold
+    real(kind=dp)   , dimension(ixI^S,1:nwflux,1:ndim)  :: fC
 
     ! primitive w at cell center
-    double precision, dimension(ixI^S,1:nw) :: wprim
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim
     ! left and right constructed status in conservative form
-    double precision, dimension(ixI^S,1:nw) :: wLC, wRC
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wLC, wRC
     ! left and right constructed status in primitive form, needed for better performance
-    double precision, dimension(ixI^S,1:nw) :: wLp, wRp
-    double precision, dimension(ixI^S, nwflux) :: fLC, fRC
-    double precision, dimension(ixI^S)      :: cmaxC
-    double precision, dimension(ixI^S)      :: cminC
-    double precision, dimension(ixO^S)      :: inv_volume
-    double precision, dimension(1:ndim)     :: dxinv
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wLp, wRp
+    real(kind=dp)   , dimension(ixI^S, nwflux) :: fLC, fRC
+    real(kind=dp)   , dimension(ixI^S)      :: cmaxC
+    real(kind=dp)   , dimension(ixI^S)      :: cminC
+    real(kind=dp)   , dimension(ixO^S)      :: inv_volume
+    real(kind=dp)   , dimension(1:ndim)     :: dxinv
     integer, dimension(ixI^S)               :: patchf
     integer :: idim, iw, ix^L, hxO^L, ixC^L, ixCR^L, kxC^L, kxR^L
-
+    character(len=len(method))              :: method_loc
     !----------------------------------------------------------------
     if (idimmax>idimmin .and. typelimited=='original')&
          call mpistop("Error in fv: Unsplit dim. and original is limited")
@@ -133,7 +133,16 @@ contains
 
 
     ^D&dxinv(^D)=-qdt/dx^D;
-    do idim= idim^LIM
+    ! initialise the flux scheme
+    method_loc=trim(method)
+
+    Loop_idims_flux: do idim= idim^LIM
+       !allow the user to change localy the numerical method
+       !Mialy : this should be at the end of the finite volume treatment
+       !after cooling source term and then L1 is being properly computed
+       !so that solver is changed for the next time step
+       call usr_reset_solver(ixI^L,ixI^L,idim,qt,wprim,x,method,&
+                type_limiter(node(plevel_,saveigrid)),method_loc,typelimiter)
        ! use interface value of w0 at idim
        block%iw0=idim
 
@@ -172,7 +181,7 @@ contains
        call phys_get_flux(wLC,wLp,x,ixI^L,ixC^L,idim,fLC)
        call phys_get_flux(wRC,wRp,x,ixI^L,ixC^L,idim,fRC)
        ! estimating bounds for the minimum and maximum signal velocities
-       if(method=='tvdlf'.or.method=='tvdmu') then
+       if(method_loc=='tvdlf'.or.method_loc=='tvdmu') then
          call phys_get_cbounds(wLC,wRC,wLp,wRp,x,ixI^L,ixC^L,idim,cmaxC)
        else
          call phys_get_cbounds(wLC,wRC,wLp,wRp,x,ixI^L,ixC^L,idim,cmaxC,&
@@ -180,7 +189,7 @@ contains
        end if
 
        ! use approximate Riemann solver to get flux at interfaces
-       select case(method)
+       select case(method_loc)
        case('tvdmu')
          call get_Riemann_flux_tvdmu()
        case('tvdlf')
@@ -194,10 +203,10 @@ contains
        case default
          call mpistop('unkown Riemann flux')
        end select
-    end do ! Next idim
+    end do Loop_idims_flux ! Next idim
     block%iw0=0
 
-    do idim= idim^LIM
+    Loop_idims_wnew : do idim= idim^LIM
        hxO^L=ixO^L-kr(idim,^D);
 
        ! Multiply the fluxes by -dt/dx since Flux fixing expects this
@@ -209,10 +218,10 @@ contains
           fC(ixI^S,1:nwflux,idim)=-qdt*fC(ixI^S,1:nwflux,idim)
           if (.not. angmomfix) then ! default case
             inv_volume = 1.0d0/block%dvolume(ixO^S)
-            do iw=1,nwflux
+            Loop_iw_new : do iw=1,nwflux
               wnew(ixO^S,iw)=wnew(ixO^S,iw) + (fC(ixO^S,iw,idim)-fC(hxO^S,iw,idim)) * &
                   inv_volume
-            enddo
+            end do Loop_iw_new
           else
             ! If angular momentum conserving way to solve the equations,
             ! some fluxes additions need to be treated specifically
@@ -221,10 +230,10 @@ contains
        end if
 
        ! For the MUSCL scheme apply the characteristic based limiter
-       if (method=='tvdmu') &
+       if (method_loc=='tvdmu') &
             call tvdlimit2(method,qdt,ixI^L,ixC^L,ixO^L,idim,wLC,wRC,wnew,x,fC,dx^D)
 
-    end do ! Next idim
+    end do Loop_idims_wnew ! Next idim
 
     if (.not.slab.and.idimmin==1) &
          call phys_add_source_geom(qdt,ixI^L,ixO^L,wCT,wnew,x)
@@ -236,6 +245,10 @@ contains
     ! check and optionally correct unphysical values
     call phys_handle_small_values(.false.,wnew,x,ixI^L,ixO^L,&
                                   'finite_volume')
+
+    !allow the user to change localy the numerical method
+    !call usr_reset_solver(ixI^L,ixI^L,idim,qt,wnew,x,method,&
+    !         type_limiter(node(plevel_,saveigrid)),method_loc,typelimiter)
 
   contains
 
@@ -253,7 +266,7 @@ contains
     end subroutine get_Riemann_flux_tvdmu
 
     subroutine get_Riemann_flux_tvdlf()
-      double precision :: fac(ixC^S)
+      real(kind=dp)    :: fac(ixC^S)
 
       fac = -0.5d0*tvdlfeps*cmaxC(ixC^S)
 
@@ -279,7 +292,7 @@ contains
 
     subroutine get_Riemann_flux_hll()
 
-      double precision :: fac(ixC^S), div(ixC^S)
+      real(kind=dp)    :: fac(ixC^S), div(ixC^S)
 
       where(cminC(ixC^S) >= zero)
         patchf(ixC^S) = -2
@@ -321,8 +334,8 @@ contains
 
     subroutine get_Riemann_flux_hllc()
       implicit none
-      double precision, dimension(ixI^S,1:nwflux)     :: whll, Fhll, fCD
-      double precision, dimension(ixI^S)              :: lambdaCD
+      real(kind=dp)   , dimension(ixI^S,1:nwflux)     :: whll, Fhll, fCD
+      real(kind=dp)   , dimension(ixI^S)              :: lambdaCD
 
       patchf(ixC^S) =  1
       where(cminC(ixC^S) >= zero)
@@ -381,11 +394,11 @@ contains
     subroutine get_Riemann_flux_hlld()
       use mod_mhd_phys
       implicit none
-      double precision, dimension(ixI^S,1:nwflux) :: w1R,w1L,f1R,f1L
-      double precision, dimension(ixI^S,1:nwflux) :: w2R,w2L
-      double precision, dimension(ixI^S) :: sm,s1R,s1L,suR,suL,Bx
-      double precision, dimension(ixI^S) :: pts,ptR,ptL,signBx,r1L,r1R,tmp
-      double precision, dimension(ixI^S,ndir) :: vRC, vLC
+      real(kind=dp)   , dimension(ixI^S,1:nwflux) :: w1R,w1L,f1R,f1L
+      real(kind=dp)   , dimension(ixI^S,1:nwflux) :: w2R,w2L
+      real(kind=dp)   , dimension(ixI^S) :: sm,s1R,s1L,suR,suL,Bx
+      real(kind=dp)   , dimension(ixI^S) :: pts,ptR,ptL,signBx,r1L,r1R,tmp
+      real(kind=dp)   , dimension(ixI^S,ndir) :: vRC, vLC
       integer :: ip1,ip2,ip3,idir
 
       f1R=0.d0
@@ -541,15 +554,15 @@ contains
 
     integer, intent(in) :: ixI^L, ixL^L, ixR^L, idim
     logical, intent(in) :: needprim
-    double precision, dimension(ixI^S,1:nw) :: w, wCT
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: w, wCT
     ! left and right constructed status in conservative form
-    double precision, dimension(ixI^S,1:nw) :: wLC, wRC
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wLC, wRC
     ! left and right constructed status in primitive form
-    double precision, dimension(ixI^S,1:nw) :: wLp, wRp
-    double precision, dimension(ixI^S,1:ndim) :: x
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wLp, wRp
+    real(kind=dp)   , dimension(ixI^S,1:ndim) :: x
 
     integer            :: jxR^L, ixC^L, jxC^L, iw
-    double precision   :: ldw(ixI^S), rdw(ixI^S), dwC(ixI^S)
+    real(kind=dp)      :: ldw(ixI^S), rdw(ixI^S), dwC(ixI^S)
     logical            :: limiter_need_log
     ! integer            :: flagL(ixI^S), flagR(ixI^S)
      limiter_need_log=.false.

@@ -36,6 +36,15 @@ module mod_radiative_cooling
   !> Helium abundance over Hydrogen
   real(kind=dp)   , private    :: He_abundance
 
+  !> Chemical_gas_type
+  character(len=std_len), private :: rc_chemical_gas_type
+
+  real(kind=dp)    , private               :: mean_mass
+  real(kind=dp)    , private               :: mean_mup
+  real(kind=dp)    , private               :: mean_ne_to_nH
+  real(kind=dp)    , private               :: mean_nall_to_nH
+
+
   !> resolution of temperature in interpolated tables
   integer, private :: ncool
 
@@ -52,7 +61,7 @@ module mod_radiative_cooling
   logical :: rc_split=.false.
 
   !> Index of the density (in the w array)
-  integer, private, parameter              :: rho_ = 1
+  integer, private, protected              :: rho_
 
   !> Indices of the momentum density
   integer, allocatable, private, protected :: mom(:)
@@ -60,9 +69,62 @@ module mod_radiative_cooling
   !> Index of the energy density
   integer, private, protected              :: e_
 
+  !> Index of cooling erg/s
+  integer, private, protected              :: Lcool1_
+
+  !> Index of cooling time
+  integer, private, protected              :: dtcool1_
+
+  !!> Index of cooling time
+  !integer, private, protected              :: mucool1_
+
+  logical, private, protected              :: coolsaveL
+  logical, private, protected              :: coolsavedT
+  logical, private, protected              :: coolsavemu
+  !> inonisation rate
+  !real(kind=dp), private, protected        :: coolfn=1.0d-3
+  type cooling_config
+    logical                  :: saveL
+    logical                  :: savedT
+    logical                  :: savemu
+      !> Coefficent of cooling time step
+      real(kind=dp)           :: cfrac
+
+      !> Lower limit of temperature
+      real(kind=dp)           :: tlow
+
+      !> Helium abundance over Hydrogen
+      real(kind=dp)           :: He_abundance
+
+      !> Chemical_gas_type
+      character(len=std_len) :: rc_chemical_gas_type
+
+      real(kind=dp)                   :: mean_mass
+      real(kind=dp)                   :: mean_mup
+      real(kind=dp)                   :: mean_ne_to_nH
+      real(kind=dp)                   :: mean_nall_to_nH
+
+      !> resolution of temperature in interpolated tables
+      integer                 :: npoint
+
+      !> Name of cooling curve
+      character(len=std_len)  :: curve
+
+      !> Name of cooling method
+      character(len=std_len)  :: method
+
+      !> Fixed temperature not lower than tlow
+      logical, private        :: Tfix
+
+      !> Add cooling source in a split way (.true.) or un-split way (.false.)
+      logical                 :: rc_split
+
+
+  end type cooling_config
+  type(cooling_config), public, protected :: coolconfig
   !> The adiabatic index
   real(kind=dp)   , private :: rc_gamma
-
+  real(kind=dp)   , private :: unit_luminosity
   real(kind=dp)   , allocatable :: tcool(:), Lcool(:), dLdtcool(:)
   real(kind=dp)   , allocatable :: Yc(:), invYc(:)
   real(kind=dp)     :: Tref, Lref, tcoolmin,tcoolmax
@@ -587,60 +649,295 @@ module mod_radiative_cooling
    real(kind=dp),private   :: rc_gammamin1
   contains
 
-    !> Read this module"s parameters from a file
+    !> Read this module's parameters from a file
     subroutine rc_params_read(files)
       use mod_global_parameters, only: unitpar
       character(len=*), intent(in) :: files(:)
-      integer                      :: n
+      integer                      :: i_file,i_reason
+      character(len=70)            :: error_message
 
-      namelist /rc_list/ coolcurve, coolmethod, ncool, cfrac, tlow, Tfix
+      namelist /rc_list/ coolcurve, coolmethod, ncool, cfrac, tlow, Tfix,&
+                         coolsaveL,coolsavedT,coolsavemu,&
+                         He_abundance,rc_chemical_gas_type,mean_mass,&
+                         mean_mup,mean_ne_to_nH,mean_nall_to_nH
+    error_message = 'At '//' mod_radiative_cooling.t'//'  in the procedure : rc_read_params'
+    Loop_iparfile : do i_file = 1, size(files)
+      open(unitpar, file=trim(files(i_file)), status="old")
+      read(unitpar, rc_list, iostat=i_reason)
+      cond_ierror : if(i_reason>0)then
+       write(*,*)' Error in reading the parameters file : ',trim(files(i_file))
+       write(*,*)' Error at namelist: ', 'rc_list'
+       write(*,*)' Error number = ',i_reason
+       write(*,*)' The code stops now '
+       call mpistop(trim(error_message))
+      elseif(i_reason<0)then cond_ierror
+       write(*,*)' Reache the end of the file  : ',trim(files(i_file))
+       write(*,*)' Error at namelist: rc_list'
+       write(*,*)' Error number = ',i_reason
+       write(*,*)' The code stops now '
+       call mpistop(trim(error_message))
+      else cond_ierror
+       write(*,*)' End of reading of the rc_list'
+      end if cond_ierror
+      close(unitpar)
 
-      do n = 1, size(files)
-        open(unitpar, file=trim(files(n)), status="old")
-        read(unitpar, rc_list, end=111)
-111     close(unitpar)
-      end do
+    end do Loop_iparfile
+    if(tlow>0.9*bigdouble)tlow=-1.0_dp
+
+      ! reset the setting according to user configuration
+      coolconfig%He_abundance = He_abundance
+      coolconfig%npoint = ncool
+      coolconfig%curve  = coolcurve
+      coolconfig%method = coolmethod
+      coolconfig%cfrac  = cfrac
+      coolconfig%tlow   = tlow
+      coolconfig%Tfix   = Tfix
+      coolconfig%saveL  = coolsaveL
+      coolconfig%savedT = coolsavedT
+      coolconfig%savemu = coolsavemu
+      coolconfig%mean_mass     = mean_mass
+      coolconfig%mean_mup     = mean_mup
+      coolconfig%mean_ne_to_nH     = mean_ne_to_nH
+      coolconfig%mean_nall_to_nH     = mean_nall_to_nH
+      coolconfig%He_abundance     = He_abundance
+      coolconfig%rc_chemical_gas_type     = rc_chemical_gas_type
+
+      call rc_fill_chemical_ionisation(coolconfig%He_abundance,&
+                    coolconfig%rc_chemical_gas_type,coolconfig%mean_nall_to_nH, &
+                                            coolconfig%mean_mass,coolconfig%mean_mup,&
+                                            coolconfig%mean_ne_to_nH)
+
+
 
     end subroutine rc_params_read
 
-    !> Radiative cooling initialization
-    subroutine radiative_cooling_init(phys_gamma,He_abund)
-      use mod_global_parameters
+    !> Radiative cooling set default parameters
+    subroutine radiative_cooling_config_default(phys_config_inuse)
+      type(physconfig)                :: phys_config_inuse
+      !-------------------------------------
+      rc_gamma=phys_config_inuse%gamma
+      He_abundance=phys_config_inuse%He_abundance
 
-      real(kind=dp)   , intent(in) :: phys_gamma,He_abund
-
-      real(kind=dp)   , dimension(:), allocatable :: t_table
-      real(kind=dp)   , dimension(:), allocatable :: L_table
-      real(kind=dp)    :: ratt, Lerror
-      real(kind=dp)    ::fact1, fact2, fact3, dL1, dL2
-      real(kind=dp)    :: tstep, Lstep
-      integer :: ntable, i, j, ic, nwx,idir
-      logical :: jump
-
-      rc_gamma=phys_gamma
-
-      He_abundance=He_abund
+      ! old setting to be deleted
       ncool=4000
       coolcurve='JCcorona'
       coolmethod='exact'
       cfrac=0.1d0
-      tlow=bigdouble
-      Tfix=.false.
+      tlow       = -1.0_dp
+      Tfix       = .false.
+      coolsaveL  = .false.
+      coolsavedT = .false.
+      coolsavemu  = .false.
+      !mean_ne_to_nH = 1.0d-3
+      mean_mass   = (1.0_dp+4.0_dp*He_abundance)
+      mean_mup     = mean_mass/(2.0_dp+2.0_dp*He_abundance)
+      mean_ne_to_nH     = (1.0_dp+He_abundance)
+      mean_nall_to_nH     = (1.0_dp+2.0_dp*He_abundance)
+      rc_chemical_gas_type = 'fullyionised'
+
 
       rc_gammamin1 = rc_gamma -1.0_dp
-      call rc_params_read(par_files)
 
-      ! Determine flux variables
-      nwx = 1                  ! rho (density)
+      ! new setting
+      coolconfig%He_abundance=He_abundance
+      coolconfig%npoint = 4000
+      coolconfig%curve  = 'JCcorona'
+      coolconfig%method = 'exact'
+      coolconfig%cfrac  = 0.1_dp
+      coolconfig%tlow   = -1.0_dp
+      coolconfig%Tfix       = .false.
+      coolconfig%saveL  = .false.
+      coolconfig%savedT = .false.
+      coolconfig%savemu  = .false.
+      !coolconfig%mean_ne_to_nH     = 1.0d-3
+      coolconfig%mean_mass   = (1.0_dp+4.0_dp*coolconfig%He_abundance)
+      coolconfig%mean_mup     = coolconfig%mean_mass/(2.0_dp+2.0_dp*coolconfig%He_abundance)
+      coolconfig%mean_ne_to_nH     = (1.0_dp+coolconfig%He_abundance)
+      coolconfig%mean_nall_to_nH     = (1.0_dp+2.0_dp*coolconfig%He_abundance)
+      coolconfig%rc_chemical_gas_type = 'fullyionised'
 
-      allocate(mom(ndir))
-      do idir = 1, ndir
-         nwx    = nwx + 1
-         mom(idir) = nwx       ! momentum density
-      end do
+      call rc_fill_chemical_ionisation(coolconfig%He_abundance,&
+                    coolconfig%rc_chemical_gas_type,coolconfig%mean_nall_to_nH, &
+                                            coolconfig%mean_mass,coolconfig%mean_mup,&
+                                            coolconfig%mean_ne_to_nH)
 
-      nwx = nwx + 1
-      e_     = nwx          ! energy density
+
+    end subroutine radiative_cooling_config_default
+
+
+    !> Radiative cooling initialization
+  subroutine radiative_cooling_init(phys_indices_inuse,phys_config_inuse,&
+                                      phys_gamma_insuse,phys_He_abund_insuse)
+    use mod_global_parameters
+
+    type(phys_variables_indices)    :: phys_indices_inuse
+    type(physconfig)                :: phys_config_inuse
+    real(kind=dp)   , intent(in)    :: phys_gamma_insuse,phys_He_abund_insuse
+      ! .. local ..
+    real(kind=dp)    :: tstep, Lstep
+    integer ::  i,j
+    !---------------------------------------------------------
+
+
+
+
+    call radiative_cooling_config_default(phys_config_inuse)
+    call rc_params_read(par_files)
+    phys_config_inuse%cool_saveL   = coolconfig%saveL
+    phys_config_inuse%cool_savedT  = coolconfig%savedT
+
+    ! set the cooling variables indices
+    call cooling_fill_phys_indices(phys_indices_inuse)
+    !call rad_cooling_physical_units()
+    ! Scale the lower temperature imposed by the user
+    if (tlow>0.0_dp)tlow = tlow / unit_temperature
+
+
+    cond_analytical : if(trim(coolcurve)/='analytical')then
+      ! fill Lambda_HD and associate temperature array
+      call cooling_fill_curve()
+
+
+      ! Scale both T and Lambda
+      tcool(1:ncool) = tcool(1:ncool) / unit_temperature
+      Lcool(1:ncool) = Lcool(1:ncool) / unit_luminosity
+    !(1.d0+2.d0*He_abundance)
+      tcoolmin       = tcool(1)+smalldouble  ! avoid pointless interpolation
+      tcoolmax       = tcool(ncool)
+      ! smaller value for lowest temperatures from cooling table and user's choice
+      if (tlow<0.0_dp)tlow = tcoolmin
+
+      lgtcoolmin = dlog10(tcoolmin)
+      lgtcoolmax = dlog10(tcoolmax)
+      lgstep = (lgtcoolmax-lgtcoolmin)/ dble(ncool-1)
+
+      dLdtcool(1)     = (Lcool(2)-Lcool(1))/(tcool(2)-tcool(1))
+      dLdtcool(ncool) = (Lcool(ncool)-Lcool(ncool-1))/(tcool(ncool)-tcool(ncool-1))
+
+      !do i=2,ncool-1
+      !  dLdtcool(i) = (Lcool(i+1)-Lcool(i-1))/(tcool(i+1)-tcool(i-1))
+      !enddo
+      dLdtcool(2:ncool-1) = (Lcool(3:ncool)-Lcool(1:ncool-2))/(tcool(3:ncool)-tcool(1:ncool-2))
+
+
+      cond_exact: if( coolmethod == 'exact' ) then
+        !> this method is set according to van marle & Keppens 2010; equation 17
+            Tref = tcoolmax
+            Lref = Lcool(ncool)
+            Yc(ncool) = zero
+            Loop_i: do i=ncool-1, 1, -1
+               Yc(i) = Yc(i+1)
+               Loop_j: do j=1,100
+                  tstep = 1.0d-2*(tcool(i+1)-tcool(i))
+                  call findL(tcool(i+1)-j*tstep, 1.0_dp,Lstep)
+                  Yc(i) = Yc(i) + Lref/Tref*tstep/Lstep
+               enddo Loop_j
+            enddo Loop_i
+
+      endif cond_exact
+    else cond_analytical
+      call mpistop ('is not implimented for the moment')
+      ! dummy to be added
+    end if   cond_analytical
+
+    phys_config%cool_tlow=tlow
+
+  end subroutine radiative_cooling_init
+
+
+  subroutine rc_fill_chemical_ionisation(He_abundance_sub,rc_chemical_gas_type,mean_nall_to_nH &
+                                        ,mean_mass,mean_mup,mean_ne_to_nH)
+    use mod_global_parameters
+    implicit none
+    real(kind=dp), intent(in)    :: He_abundance_sub
+    character(len=*), intent(in) :: rc_chemical_gas_type
+    real(kind=dp), intent(out)   :: mean_nall_to_nH,mean_mass,mean_mup,mean_ne_to_nH
+    !----------------------------------------------------------
+    if(He_abundance_sub>0.0_dp)then
+      mean_nall_to_nH = (1.0_dp+2.0_dp*He_abundance_sub)
+      mean_mass       = (1.0_dp+4.0_dp*He_abundance_sub)
+      select case(trim(rc_chemical_gas_type))
+        case('fullymolecular')
+          mean_mup = mean_mass/(0.5_dp+He_abundance_sub)
+          mean_ne_to_nH =0.0_dp  ! is the value used in implimentation of low temperarure cooling table DM2
+        case('fullyatomic')
+          mean_mup = mean_mass/(1.0_dp+He_abundance_sub)
+          mean_ne_to_nH =0.0_dp ! is the value used in implimentation of low temperarure cooling table DM2
+        case('ionised')
+          mean_mup = mean_mass/(2.0_dp+2.0_dp*He_abundance_sub)
+          mean_ne_to_nH = (1.0_dp+He_abundance_sub)
+        case('fullyionised')
+          mean_mup = mean_mass/(2.0_dp+3.0_dp*He_abundance_sub)
+          mean_ne_to_nH = (1.0_dp+2.0_dp*He_abundance_sub)
+       case default
+         write(*,*) 'The chemical gas type : ', trim(rc_chemical_gas_type)
+          write (*,*) "Undefined gas chemical type entered in mod_hd_phys.t "
+          call mpistop('The stops at rc_fill_chemical_ionisation in src/hd/mod_hd_phys.t')
+      end select
+      !hd_config%mean_mup          = (2.0_dp+3.0_dp*He_abundance_sub)
+
+    else if(dabs(He_abundance_sub)<=smalldouble)then
+      mean_mass         = 1.0_dp
+      mean_mup          = 1.0_dp
+      mean_ne_to_nH     = 1.0_dp
+    end if
+  end   subroutine rc_fill_chemical_ionisation
+
+  subroutine rad_cooling_physical_units
+
+    use mod_global_parameters
+    use mod_physics
+    implicit none
+    !.......................
+     unit_luminosity=  unit_pressure/( unit_numberdensity**2.0_dp * unit_time &
+                                 *  phys_config%mean_mass**2.0_dp)
+
+
+
+     if(coolsavedT)w_convert_factor(dtcool1_) = unit_time
+     if(coolsaveL)w_convert_factor(Lcool1_)   = unit_luminosity
+
+  end subroutine rad_cooling_physical_units
+
+  !> set the cooling variables indices
+  subroutine cooling_fill_phys_indices(phys_indices_inuse)
+    use mod_global_parameters
+    implicit none
+    type(phys_variables_indices)    :: phys_indices_inuse
+    integer                         :: idir
+    ! Determine flux variables
+    rho_= phys_indices_inuse%rho_
+    allocate(mom(ndir))
+    Loop_idir : do idir = 1, ndir
+       mom(idir) = phys_indices_inuse%mom(idir)!nwx       ! momentum density
+    end do Loop_idir
+    e_     = phys_indices_inuse%e_!nwx          ! energy density
+
+
+    if(coolconfig%saveL)then
+      Lcool1_   = var_set_extravar('L', 'L', 1)
+      phys_indices_inuse%Lcool1_   = Lcool1_
+    end if
+    if(coolconfig%savedT)then
+      dtcool1_ = var_set_extravar('dtcool', 'dtcool', 1)
+      phys_indices_inuse%dtcool1_ = dtcool1_
+    end if
+
+  end   subroutine cooling_fill_phys_indices
+
+  !> fill the cooling curve Lambda_HD and T (Temperature)
+  subroutine cooling_fill_curve
+   use mod_global_parameters
+   implicit none
+   ! .. local ..
+   real(kind=dp)   , dimension(:), allocatable :: t_table
+   real(kind=dp)   , dimension(:), allocatable :: L_table
+   real(kind=dp)    :: ratt, Lerror
+   real(kind=dp)    ::fact1, fact2, fact3, dL1, dL2
+   real(kind=dp)    :: tstep, Lstep
+   integer :: ntable, i, j, ic, idir
+   logical :: jump
+   !------------------------------------------------------------
 
       allocate(tcool(1:ncool), Lcool(1:ncool), dLdtcool(1:ncool))
       allocate(Yc(1:ncool), invYc(1:ncool))
@@ -679,18 +976,46 @@ module mod_radiative_cooling
       case('MB')
          if(mype ==0) &
          write(*,'(3a)') 'Use MacDonald & Bailey (1981) cooling curve '&
-              ,'as implemented in ZEUS-3D, with the values '&
-              ,'from Delgano & McCRay (1972) for low temperatures.'
+              ,'as implemented in ZEUS-3D for log(T)>=4.0 K, with the values '&
+              ,'from Dalgarno & McCRay (1972) for low temperatures as'&
+              ,'tabulated from Schure et al. (2006) at f_i=1e-3 between'&
+              ,'log(T)=1.0 and 4.0 K (4.0 K excluded).'
 
-         ntable = n_MB + 20
+         !ntable = n_MB + 20
+         ntable = n_DM_2 + n_MB - 1
 
          allocate(t_table(1:ntable))
          allocate(L_table(1:ntable))
 
-         t_table(1:ntable) = t_DM(1:21)
-         L_table(1:ntable) = l_DM(1:21)
-         t_table(22:ntable) = t_MB(2:n_MB)
-         L_table(22:ntable) = l_MB(2:n_MB)
+         !t_table(1:ntable) = t_DM(1:21)
+         !L_table(1:ntable) = l_DM(1:21)
+         !t_table(22:ntable) = t_MB(2:n_MB)
+         !L_table(22:ntable) = l_MB(2:n_MB)
+         !
+         ! To be used together with the SPEX table for the SPEX_DM option
+         ! Assuming an ionization fraction of 10^-3 with log(T_break) = 4.0
+         !
+         t_table(1:ntable) = t_DM_2(1:n_DM_2-1)
+         L_table(1:ntable) = l_DM_2(1:n_DM_2-1)
+         t_table(n_DM_2:ntable) = t_MB(1:n_MB)
+         L_table(n_DM_2:ntable) = l_MB(1:n_MB)
+
+         case('MB_original')
+            if(mype ==0) &
+            write(*,'(3a)') 'Use MacDonald & Bailey (1981) cooling curve '&
+                 ,'as implemented in ZEUS-3D, with the values '&
+                 ,'from Delgano & McCRay (1972) for low temperatures.'
+
+            ntable = n_MB + 20
+
+
+            allocate(t_table(1:ntable))
+            allocate(L_table(1:ntable))
+
+            t_table(1:ntable) = t_DM(1:21)
+            L_table(1:ntable) = l_DM(1:21)
+            t_table(22:ntable) = t_MB(2:n_MB)
+            L_table(22:ntable) = l_MB(2:n_MB)
 
       case('MLcosmol')
          if(mype ==0) &
@@ -780,6 +1105,8 @@ module mod_radiative_cooling
          L_table(1:n_DM_2-1) = L_DM_2(1:n_DM_2-1)
          t_table(n_DM_2:ntable) = t_SPEX(6:n_SPEX)
          L_table(n_DM_2:ntable) = l_SPEX(6:n_SPEX) + log10(nenh_SPEX(6:n_SPEX))
+
+      !  if(phys_config%chemical_on)L_table(1:n_DM_2-1)=L_table(1:n_DM_2-1)/coolconfig%fn
       case default
          call mpistop("This coolingcurve is unknown")
       end select
@@ -853,49 +1180,12 @@ module mod_radiative_cooling
       tcool(1:ncool) = 10.0_dp**tcool(1:ncool)
       Lcool(1:ncool) = 10.0_dp**Lcool(1:ncool)
 
-      ! Scale both T and Lambda
-      tcool(1:ncool) = tcool(1:ncool) / unit_temperature
-      Lcool(1:ncool) = Lcool(1:ncool) * unit_numberdensity**2 * unit_time / unit_pressure * (1.d0+2.d0*He_abundance)
-      tcoolmin       = tcool(1)+smalldouble  ! avoid pointless interpolation
-      ! smaller value for lowest temperatures from cooling table and user's choice
-      if (tlow==bigdouble)then
-         tlow = tcoolmin
-      else
-         tlow = tlow / unit_temperature
-      end if
-
-
-      tcoolmax       = tcool(ncool)
-
-      lgtcoolmin = dlog10(tcoolmin)
-      lgtcoolmax = dlog10(tcoolmax)
-      lgstep = (lgtcoolmax-lgtcoolmin) * 1.d0 / (ncool-1)
-
-      dLdtcool(1)     = (Lcool(2)-Lcool(1))/(tcool(2)-tcool(1))
-      dLdtcool(ncool) = (Lcool(ncool)-Lcool(ncool-1))/(tcool(ncool)-tcool(ncool-1))
-
-      do i=2,ncool-1
-       dLdtcool(i) = (Lcool(i+1)-Lcool(i-1))/(tcool(i+1)-tcool(i-1))
-      enddo
 
       deallocate(t_table)
       deallocate(L_table)
+    end subroutine cooling_fill_curve
 
-      if( coolmethod == 'exact' ) then
-         Tref = tcoolmax
-         Lref = Lcool(ncool)
-         Yc(ncool) = zero
-         do i=ncool-1, 1, -1
-            Yc(i) = Yc(i+1)
-            do j=1,100
-               tstep = 1.0d-2*(tcool(i+1)-tcool(i))
-               call findL(tcool(i+1)-j*tstep, Lstep)
-               Yc(i) = Yc(i) + Lref/Tref*tstep/Lstep
-            enddo
-         enddo
-      endif
 
-    end subroutine radiative_cooling_init
 
     subroutine cooling_get_dt(w,ixI^L,ixO^L,dtnew,dx^D,x)
       use mod_global_parameters
@@ -906,7 +1196,7 @@ module mod_radiative_cooling
       real(kind=dp)   , intent(inout) :: dtnew
 
 
-      real(kind=dp)                   :: etherm(ixI^S),rho_electron(ixO^S)
+      real(kind=dp)                   :: etherm(ixI^S),ndensity_electron(ixO^S)
       real(kind=dp)                   :: L1,Tlocal1, ptherm(ixI^S), lum(ixI^S)
       real(kind=dp)                   :: plocal, rholocal
       real(kind=dp)                   :: Lmax
@@ -915,9 +1205,9 @@ module mod_radiative_cooling
       ! Limit timestep to avoid cooling problems when using explicit cooling
       !
       if(phys_config%chemical_on) then
-        call chemical_get_electron_density(ixI^L, ixO^L,w,rho_electron)
+        call chemical_get_electron_density(ixI^L, ixO^L,w,ndensity_electron)
       else
-        rho_electron(ixO^S) =   w(ixO^S,rho_)
+        ndensity_electron(ixO^S) =   w(ixO^S,rho_)
       end if
       if(coolmethod == 'explicit1') then
        call phys_get_pthermal(w,x,ixI^L,ixO^L,ptherm)
@@ -931,18 +1221,19 @@ module mod_radiative_cooling
          !  Stop wasting time and go to next gridpoint.
          !  If the temperature is higher than the maximum,
          !  assume Bremmstrahlung
-         if( Tlocal1<=tcoolmin ) then
+         if( Tlocal1<=max(tcoolmin,tlow) ) then
             L1 = zero
          else if( Tlocal1>=tcoolmax )then
             L1         = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-            L1         = L1*(rholocal*rho_electron(ix^D))
+            L1         = L1*(rholocal*ndensity_electron(ix^D))
          else
-            call findL(Tlocal1,L1)
-            L1         = L1*(rholocal*rho_electron(ix^D))
+            call findL(Tlocal1,ndensity_electron(ix^D),L1)
+            L1         = L1*(rholocal*ndensity_electron(ix^D))
          endif
          lum(ix^D) = L1
         {enddo^D&\}
         etherm(ixO^S)=ptherm(ixO^S)/(rc_gammamin1)
+        !if(coolsavedT)w(ixO^S,dtcool1_) = cfrac*(etherm(ixO^S)/max(lum(ixO^S),smalldouble))
         dtnew = cfrac*minval(etherm(ixO^S)/max(lum(ixO^S),smalldouble))
       endif
 
@@ -961,7 +1252,7 @@ module mod_radiative_cooling
       real(kind=dp)                :: w(ixI^S,1:nw)
       real(kind=dp)   , intent(out):: coolrate(ixI^S)
 
-      real(kind=dp)    :: etherm(ixI^S),rho_electron(ixO^S)
+      real(kind=dp)    :: etherm(ixI^S),ndensity_electron(ixO^S)
       real(kind=dp)    :: L1,Tlocal1, ptherm(ixI^S)
       real(kind=dp)    :: plocal, rholocal
       real(kind=dp)    :: emin
@@ -971,9 +1262,9 @@ module mod_radiative_cooling
       call phys_get_pthermal(w,x,ixI^L,ixO^L,ptherm)
 
       if(phys_config%chemical_on) then
-        call chemical_get_electron_density(ixI^L, ixO^L,w,rho_electron)
+        call chemical_get_electron_density(ixI^L, ixO^L,w,ndensity_electron)
       else
-        rho_electron(ixO^S) =   w(ixO^S,rho_)
+        ndensity_electron(ixO^S) =   w(ixO^S,rho_)
       end if
 
       {do ix^DB = ixO^LIM^DB\}
@@ -984,14 +1275,14 @@ module mod_radiative_cooling
          !
          !  Determine explicit cooling
          !
-         if( Tlocal1<=tcoolmin ) then
+         if( Tlocal1<=max(tcoolmin,tlow) ) then
             L1         = zero
          else if( Tlocal1>=tcoolmax )then
             L1         = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-            L1         = L1*(rholocal*rho_electron(ix^D))
+            L1         = L1*(rholocal*ndensity_electron(ix^D))
          else
-            call findL(Tlocal1,L1)
-            L1         = L1*(rholocal*rho_electron(ix^D))
+            call findL(Tlocal1,ndensity_electron(ix^D),L1)
+            L1         = L1*(rholocal*ndensity_electron(ix^D))
          endif
          coolrate(ix^D)= L1
       {enddo^D&\}
@@ -1009,6 +1300,15 @@ module mod_radiative_cooling
       real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
       logical, intent(in) :: qsourcesplit
       logical, intent(inout) :: active
+
+      call rc_fill_chemical_ionisation(coolconfig%He_abundance,&
+                    coolconfig%rc_chemical_gas_type,coolconfig%mean_nall_to_nH, &
+                                            coolconfig%mean_mass,coolconfig%mean_mup,&
+                                            coolconfig%mean_ne_to_nH)
+      !write(*,*) coolconfig%He_abundance,&
+      !              coolconfig%rc_chemical_gas_type,coolconfig%mean_nall_to_nH, &
+      !                                      coolconfig%mean_mass,coolconfig%mean_mup,&
+      !                                      coolconfig%mean_ne_to_nH
 
       if(qsourcesplit .eqv. rc_split) then
         active = .true.
@@ -1046,20 +1346,16 @@ module mod_radiative_cooling
       real(kind=dp)   , intent(in)    :: qdt, x(ixI^S,1:ndim), wCT(ixI^S,1:nw)
       real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
 
-      real(kind=dp)    :: etherm(ixI^S), emin
-      integer :: ix^D
-
+      real(kind=dp)    :: etherm_emin(ixI^S)
+      !--------------------------------------------
       !tfloor = tlow
-
-      call phys_get_pthermal(w,x,ixI^L,ixO^L,etherm)
-
-      {do ix^DB = ixO^LIM^DB\}
-         emin         = w(ix^D,rho_)*tfloor/(rc_gammamin1)
-         etherm(ix^D) = etherm(ix^D)/(rc_gammamin1)
-         if( etherm(ix^D) < emin )then
-            w(ix^D,e_)=w(ix^D,e_)-etherm(ix^D)+emin
-         end if
-      {enddo^D&\}
+      ! use 'etherm' to save the pressure
+      call phys_get_pthermal(w,x,ixI^L,ixO^L,etherm_emin)
+      ! compute the thermal energy min the minimum thermal energy
+      etherm_emin(ixO^S) = etherm_emin(ixO^S)/(rc_gammamin1)-( w(ixO^S,rho_)*tfloor/(rc_gammamin1))
+      where(etherm_emin(ixO^S)<0.0_dp )
+          w(ixO^S,e_)=w(ixO^S,e_)-etherm_emin(ixO^S)
+      end where
 
     end subroutine floortemperature
 
@@ -1073,27 +1369,29 @@ module mod_radiative_cooling
       real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
       real(kind=dp)                   :: wCT(ixI^S,1:nw)
 
-      real(kind=dp)    :: L1,Tlocal1, ptherm(ixI^S),pnew(ixI^S),rho_electron(ixO^S)
-      real(kind=dp)    :: plocal, rholocal
+      real(kind=dp)    :: L_hd,Tlocal1
+      real(kind=dp), dimension(ixI^S)    ::  pnew,temperature!,ndensity_electron
+      real(kind=dp)    ::  nlocal !rholocal
       real(kind=dp)    :: emin, Lmax
 
       integer :: ix^D
       integer :: icool
+      !-----------------------------------------------
 
-      call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew)
-      if(phys_config%chemical_on) then
-        call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
-      else
-        rho_electron(ixO^S) =   wCT(ixO^S,rho_)
-      end if
+      call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
+      ! if(phys_config%chemical_on) then
+      !   call chemical_get_electron_density(ixI^L, ixO^L,wCT,ndensity_electron)
+      ! else
+      !   ndensity_electron(ixO^S) =   wCT(ixO^S,rho_)
+      ! end if
       {do ix^DB = ixO^LIM^DB\}
-         plocal   = ptherm(ix^D)
-         rholocal = wCT(ix^D,rho_)
-         emin     = rholocal*tlow/rc_gammamin1
+         !plocal   = ptherm(ix^D)
+         nlocal    = wCT(ix^D,rho_)
+         emin     = nlocal*tlow/rc_gammamin1
          Lmax     = max(zero,pnew(ix^D)/rc_gammamin1-emin)/qdt
          !  Tlocal = P/rho
-         Tlocal1  = max(plocal/rholocal,smalldouble)
+         Tlocal1  = max(temperature(ix^D),smalldouble)!max(plocal/nlocal,smalldouble)
          !
          !  Determine explicit cooling
          !
@@ -1101,20 +1399,23 @@ module mod_radiative_cooling
          !  Stop wasting time and go to next gridpoint.
          !  If the temperature is higher than the maximum,
          !  assume Bremmstrahlung
-         if( Tlocal1<=tcoolmin ) then
-            L1 = zero
+         if( Tlocal1<=max(tcoolmin,tlow) ) then
+            L_hd = zero
          else if( Tlocal1>=tcoolmax )then
-            L1         = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-            L1         = L1*(rholocal*rho_electron(ix^D))
-            L1         = min(L1,Lmax)
-            w(ix^D,e_) = w(ix^D,e_)-L1*qdt
+            L_hd         = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
+            L_hd         = L_hd*(nlocal*nlocal)
+            L_hd         = min(L_hd,Lmax)
+            w(ix^D,e_) = w(ix^D,e_)-L_hd*qdt
          else
-            call findL(Tlocal1,L1)
-            L1         = L1*(rholocal*rho_electron(ix^D))
-            L1         = min(L1,Lmax)
-            w(ix^D,e_) = w(ix^D,e_)-L1*qdt
-
+            call findL(Tlocal1,nlocal,L_hd)
+            L_hd         = L_hd*(nlocal*nlocal)
+            L_hd         = min(L_hd,Lmax)
+            w(ix^D,e_) = w(ix^D,e_)-L_hd*qdt
          endif
+         if(coolsavedT)then
+           w(ix^D,dtcool1_) = cfrac*(pnew(ix^D)/rc_gammamin1/max(L_hd,smalldouble))
+         end if
+         if(coolsaveL)w(ix^D,Lcool1_)   = L_hd
       {enddo^D&\}
 
     end subroutine cool_explicit1
@@ -1139,7 +1440,7 @@ module mod_radiative_cooling
 
       integer :: idt,ndtstep
 
-      real(kind=dp)    :: L1,Tlocal1,ptherm(ixI^S),pnew(ixI^S),rho_electron(ixO^S)
+      real(kind=dp)    :: L1,Tlocal1,ptherm(ixI^S),pnew(ixI^S),ndensity_electron(ixO^S)
       real(kind=dp)    :: plocal, rholocal
       real(kind=dp)    :: emin, Lmax
 
@@ -1149,9 +1450,9 @@ module mod_radiative_cooling
       call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew )
       if(phys_config%chemical_on) then
-        call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
+        call chemical_get_electron_density(ixI^L, ixO^L,wCT,ndensity_electron)
       else
-        rho_electron(ixO^S) =   wCT(ixO^S,rho_)
+        ndensity_electron(ixO^S) =   wCT(ixO^S,rho_)
       end if
 
       {do ix^DB = ixO^LIM^DB\}
@@ -1172,16 +1473,16 @@ module mod_radiative_cooling
          !  Stop wasting time and go to next gridpoint.
          !  If the temperature is higher than the maximum,
          !  assume Bremmstrahlung
-         if( Tlocal1<=tcoolmin ) then
+         if( Tlocal1<=max(tcoolmin,tlow) ) then
             Ltest = zero
          else if( Tlocal1>=tcoolmax )then
             Ltest = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-            Ltest = L1*(rholocal*rho_electron(ix^D))
+            Ltest = L1*(rholocal*ndensity_electron(ix^D))
             Ltest = min(L1,Lmax)
             if( dtmax>cfrac*etherm/Ltest) dtmax = cfrac*etherm/Ltest
          else
-            call findL(Tlocal1,Ltest)
-            Ltest = Ltest*(rholocal*rho_electron(ix^D))
+            call findL(Tlocal1,ndensity_electron(ix^D),Ltest)
+            Ltest = Ltest*(rholocal*ndensity_electron(ix^D))
             Ltest = min(Ltest,Lmax)
             if( dtmax>cfrac*etherm/Ltest) dtmax = cfrac*etherm/Ltest
          endif
@@ -1201,16 +1502,16 @@ module mod_radiative_cooling
             Lmax   = max(zero,etherm-emin)/dtstep
             !  Tlocal = P/rho
             Tlocal1 = plocal/(rholocal)
-            if( Tlocal1<=tcoolmin ) then
+            if( Tlocal1<=max(tcoolmin,tlow) ) then
                L1 = zero
                exit
             else if( Tlocal1>=tcoolmax )then
                L1 = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-               L1 = L1*(rholocal*rho_electron(ix^D))
+               L1 = L1*(rholocal*ndensity_electron(ix^D))
                L1 = min(L1,Lmax)
             else
-               call findL(Tlocal1,L1)
-               L1 = L1*(rholocal*rho_electron(ix^D))
+               call findL(Tlocal1,ndensity_electron(ix^D),L1)
+               L1 = L1*(rholocal*ndensity_electron(ix^D))
                L1 = min(L1,Lmax)
             endif
 
@@ -1218,6 +1519,8 @@ module mod_radiative_cooling
             etherm = etherm - L1*dtstep
          enddo
          w(ix^D,e_) = w(ix^D,e_) -de
+         if(coolsavedT)w(ix^D,dtcool1_) = cfrac*(plocal/rc_gammamin1/max(L1,smalldouble))
+         if(coolsaveL)w(ix^D,Lcool1_) = L1
       {enddo^D&\}
 
     end subroutine cool_explicit2
@@ -1240,15 +1543,19 @@ module mod_radiative_cooling
       real(kind=dp)    :: plocal, rholocal
       real(kind=dp)    :: emin, Lmax
 
-      real(kind=dp)    :: ptherm(ixI^S),pnew(ixI^S),rho_electron(ixO^S)
+      real(kind=dp)    :: ptherm(ixI^S),pnew(ixI^S),ndensity_electron(ixO^S)
       integer :: ix^D
+
+
+
+
 
       call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew )
       if(phys_config%chemical_on) then
-        call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
+        call chemical_get_electron_density(ixI^L, ixO^L,wCT,ndensity_electron)
       else
-        rho_electron(ixO^S) =   wCT(ixO^S,rho_)
+        ndensity_electron(ixO^S) =   wCT(ixO^S,rho_)
       end if
       {do ix^DB = ixO^LIM^DB\}
          plocal   = ptherm(ix^D)
@@ -1264,16 +1571,16 @@ module mod_radiative_cooling
          !  Stop wasting time and go to next gridpoint.
          !  If the temperature is higher than the maximum,
          !  assume Bremmstrahlung
-         if( Tlocal1<=tcoolmin ) then
+         if( Tlocal1<=max(tcoolmin,tlow) ) then
             L1 = zero
             L2 = zero
          else
            if( Tlocal1>=tcoolmax )then
               L1 = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
            else
-              call findL(Tlocal1,L1)
+              call findL(Tlocal1,ndensity_electron(ix^D),L1)
            end if
-           L1      = L1*(rholocal*rho_electron(ix^D))
+           L1      = L1*(rholocal*ndensity_electron(ix^D))
            etemp   = plocal/(rc_gammamin1) - L1*qdt
            Tlocal2 = etemp*(rc_gammamin1)/(rholocal)
            !
@@ -1284,11 +1591,13 @@ module mod_radiative_cooling
            else if( Tlocal2>=tcoolmax )then
               L2 = Lcool(ncool)*sqrt(Tlocal2/tcoolmax)
            else
-              call findL(Tlocal2,L2)
+              call findL(Tlocal2,ndensity_electron(ix^D),L2)
            end if
-           L2  = L2*(rholocal*rho_electron(ix^D))
+           L2  = L2*(rholocal*ndensity_electron(ix^D))
            w(ix^D,e_) = w(ix^D,e_) - min(half*(L1+L2),Lmax)*qdt
          endif
+         if(coolsavedT)w(ix^D,dtcool1_) = cfrac*(plocal/rc_gammamin1/max(L1,smalldouble))
+         if(coolsaveL)w(ix^D,Lcool1_) = L1
       {enddo^D&\}
 
     end subroutine cool_semiimplicit
@@ -1305,21 +1614,24 @@ module mod_radiative_cooling
       real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
       real(kind=dp)                   :: wCT(ixI^S,1:nw)
       real(kind=dp)    :: Ltemp,Tlocal1,Tnew,f1,f2
-      real(kind=dp)    :: ptherm(ixI^S), pnew(ixI^S),rho_electron(ixO^S)
+      real(kind=dp)    :: ptherm(ixI^S), pnew(ixI^S),ndensity_electron(ixO^S)
 
       real(kind=dp)    :: plocal, rholocal, elocal
       real(kind=dp)    :: emin, Lmax, eold, enew, estep
+
       integer, parameter :: maxiter = 100
       real(kind=dp)   , parameter :: e_error = 1.0D-6
 
       integer :: ix^D, j
 
+
+
       call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew )
       if(phys_config%chemical_on) then
-        call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
+        call chemical_get_electron_density(ixI^L, ixO^L,wCT,ndensity_electron)
       else
-        rho_electron(ixO^S) =   wCT(ixO^S,rho_)
+        ndensity_electron(ixO^S) =   wCT(ixO^S,rho_)
       end if
 
       {do ix^DB = ixO^LIM^DB\}
@@ -1337,7 +1649,7 @@ module mod_radiative_cooling
          !  Stop wasting time and go to next gridpoint.
          !  If the temperature is higher than the maximum,
          !  assume Bremmstrahlung
-         if( Tlocal1<=tcoolmin ) then
+         if( Tlocal1<=max(tcoolmin,tlow) ) then
             Ltemp = zero
          else
            eold  = elocal
@@ -1353,9 +1665,9 @@ module mod_radiative_cooling
              else if( Tnew>=tcoolmax )then
                Ltemp = Lcool(ncool)*sqrt(Tnew/tcoolmax)
              else
-               call findL(Tnew,Ltemp)
+               call findL(Tnew,ndensity_electron(ix^D),Ltemp)
              end if
-             Ltemp = Ltemp*(rholocal*rho_electron(ix^D))
+             Ltemp = Ltemp*(rholocal*ndensity_electron(ix^D))
              eold  = enew + Ltemp*qdt
 
              f1 = elocal -eold
@@ -1368,6 +1680,8 @@ module mod_radiative_cooling
            enddo
          endif
          w(ix^D,e_)     = w(ix^D,e_) - min(Ltemp,Lmax)*qdt
+         if(coolsavedT)w(ix^D,dtcool1_) = cfrac*(plocal/rc_gammamin1/max(min(Ltemp,Lmax),smalldouble))
+         if(coolsaveL)w(ix^D,Lcool1_) = min(Ltemp,Lmax)
       {enddo^D&\}
 
     end subroutine cool_implicit
@@ -1381,37 +1695,57 @@ module mod_radiative_cooling
       integer, intent(in)             :: ixI^L, ixO^L
       real(kind=dp)   , intent(in)    :: qdt, x(ixI^S,1:ndim)
       real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
-      real(kind=dp)                   :: wCT(ixI^S,1:nw)
-
+      real(kind=dp)   , intent(in)    :: wCT(ixI^S,1:nw)
+      ! .. local ..
       real(kind=dp)    :: Y1, tc, Y2
-      real(kind=dp)    :: L1,Tlocal1, ptherm(ixI^S), Tlocal2, pnew(ixI^S)
-      real(kind=dp)    :: plocal, rholocal, invgam
+      real(kind=dp)    :: L1,Tlocal1,  Tlocal2
+      real(kind=dp), dimension(ixI^S) :: ptherm,pnew,temperature
+      real(kind=dp)    :: nlocal,nHlocal
       real(kind=dp)    :: emin, Lmax, fact
-      real(kind=dp)    :: rho_electron(ixO^S)
+
+      real(kind=dp)    :: ndensity_electron(ixO^S)
 
       integer :: ix^D
       integer :: icool
+      !------------------------------------------
 
-      call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
+
+
+
+    !  call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew )
-
+      call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
       fact = Lref*qdt/Tref
 
-      invgam=1.0_dp/(rc_gammamin1)
-      if(phys_config%chemical_on) then
-        call chemical_get_electron_density(ixI^L, ixO^L,wCT,rho_electron)
-      else
-        rho_electron(ixO^S) =   wCT(ixO^S,rho_)
-      end if
-      {do ix^DB = ixO^LIM^DB\}
-         plocal   = ptherm(ix^D)
-         rholocal = wCT(ix^D,rho_)
+      !write(*,*) coolconfig%He_abundance,&
+      !              coolconfig%rc_chemical_gas_type,coolconfig%mean_nall_to_nH, &
+      !                                      coolconfig%mean_mass,coolconfig%mean_mup,&
+      !                                      coolconfig%mean_ne_to_nH
 
-         emin     = w(ix^D,rho_)*tlow*invgam
-         Lmax     = max(zero,(pnew(ix^D)*invgam-emin)/qdt)
+
+      !invgam=1.0_dp/(rc_gammamin1)
+      ! if(phys_config%chemical_on) then
+      !   call chemical_get_electron_density(ixI^L, ixO^L,wCT,ndensity_electron)
+      ! else
+      !   ndensity_electron(ixO^S) =   wCT(ixO^S,rho_)
+      ! end if
+      {do ix^DB = ixO^LIM^DB\}
+        ! plocal   = ptherm(ix^D)
+         !v<== it's noted rho_ but in fact the passed array wCT is equalt to nH
+         nHlocal = wCT(ix^D,rho_)
+         ! ntot = <m>/mu*nH
+         nlocal = wCT(ix^D,rho_)
+         !*(coolconfig%mean_mass/coolconfig%mean_mup)*wCT(ix^D,rho_)
+         ! input from mod_source.t that will call this subroutine
+         ! is not the total mass rho but the hydrogen number density nH
+
+
+
+         emin     = nlocal*tlow/(rc_gammamin1) ! =P/(gamma-1)
+         Lmax     = max(zero,(pnew(ix^D)/(rc_gammamin1)-emin)/qdt)!dimension of Lambda_Hd*nH*nH
 
          !  Tlocal = P/rho
-         Tlocal1   = max(plocal/rholocal,smalldouble)
+         Tlocal1   = max(temperature(ix^D),smalldouble)
          !
          !  Determine explicit cooling
          !
@@ -1419,40 +1753,50 @@ module mod_radiative_cooling
          !  Stop wasting time and go to next gridpoint.
          !  If the temperature is higher than the maximum,
          !  assume Bremmstrahlung
-         if( Tlocal1<=tcoolmin ) then
+         if( Tlocal1<=max(tcoolmin,tlow) ) then
             L1 = zero
          else if( Tlocal1>=tcoolmax )then
             L1         = Lcool(ncool)*sqrt(Tlocal1/tcoolmax)
-            L1         = L1*(rholocal*rho_electron(ix^D))
+            L1         = L1*(nlocal*nlocal)
             L1         = min(L1,Lmax)
             w(ix^D,e_) = w(ix^D,e_)-L1*qdt
          else
-            call findL(Tlocal1,L1)
-            call findY(Tlocal1,Y1)
-            tc         = Tlocal1*invgam/(rholocal*L1)
-            Y2         = Y1+(Tlocal1*fact)/(L1*tc)
+            call findL(Tlocal1,nlocal,L1) !get Lambda_HD
+            call findY(Tlocal1,nlocal,Y1) !get Y(T)
+            !tc         = Tlocal1/(rc_gammamin1)/(nlocal*L1) !=t_cool in Townsend 2009
+            !Y2         = Y1+(Tlocal1*fact)/(L1*tc)
+            ! tc=t_cool in Townsend 2009
+            ! tc = n_all * T / ((gamma-1)*nH*nH*Lambda_HD)
+            tc         = nlocal*Tlocal1/(rc_gammamin1)/(nHlocal*nHlocal*L1)
+            Y2         = Y1+(Tlocal1*fact)/(L1*tc) ! must be dimensionless
             call findT(Tlocal2,Y2)
 
             if(Tlocal2<=tcoolmin) then
-              L1 = Lmax
+              L1 = Lmax/(nHlocal*nHlocal) !since L1 will be multipled by (nHlocal*nHlocal)
             else
-              L1 = (Tlocal1-Tlocal2)*invgam/(rholocal*qdt)
+            ! Zakaria told this, below, is an interpolation of the L1 value from
+            ! Tlocal1=T^(n) and Tlocal2=T^(n+1)
+              L1 = ((Tlocal1-Tlocal2)*nlocal)/(rc_gammamin1)/(nHlocal*nHlocal*qdt) !missed some terms
             endif
 
-            L1          = L1*(rholocal*rho_electron(ix^D))
+            L1          = L1*(nHlocal*nHlocal)!transform L1 from Lambda_HD to S=Lambda_HD*nH*nH
             L1          = min(L1,Lmax)
+            !if(it==1) write(*,*) w(ix^D,e_), w_convert_factor(e_), w(ix^D,e_)*w_convert_factor(e_)
             w(ix^D,e_)  = w(ix^D,e_)-L1*qdt
          endif
+         if(coolsavedT)w(ix^D,dtcool1_) = cfrac*(pnew(ix^D)/rc_gammamin1/max(L1,smalldouble))
+         if(coolsaveL)w(ix^D,Lcool1_) = L1
+
       {enddo^D&\}
 
     end subroutine cool_exact
 
-    subroutine findL (tpoint,Lpoint)
+    subroutine findL (tpoint,rhopoint,Lpoint)
     !  Fast search option to find correct point
     !  in cooling curve
       use mod_global_parameters
 
-      real(kind=dp)   ,intent(IN)   :: tpoint
+      real(kind=dp)   ,intent(IN)   :: tpoint,rhopoint
       real(kind=dp)   , intent(OUT) :: Lpoint
       integer :: ipoint
       integer :: jl,jc,jh
@@ -1488,13 +1832,13 @@ module mod_radiative_cooling
 
     end subroutine findL
 
-    subroutine findY (tpoint,Ypoint)
+    subroutine findY (tpoint,rhopoint,Ypoint)
 
     !  Fast search option to find correct point in cooling time
 
       use mod_global_parameters
 
-      real(kind=dp)   ,intent(IN)   :: tpoint
+      real(kind=dp)   ,intent(IN)   :: tpoint,rhopoint
       real(kind=dp)   , intent(OUT) :: Ypoint
       integer :: ipoint
       integer :: jl,jc,jh
@@ -1610,13 +1954,13 @@ module mod_radiative_cooling
     end subroutine finddLdt
 
 
-  subroutine chemical_get_electron_density(ixI^L, ixO^L,w,rho_electron)
+  subroutine chemical_get_electron_density(ixI^L, ixO^L,w,ndensity_electron)
     use mod_global_parameters
     implicit none
     integer, intent(in)            :: ixI^L, ixO^L
     real(kind=dp), intent(in)      :: w(ixI^S,1:nw)
-    real(dp), intent(out)          :: rho_electron(ixO^S)
+    real(dp), intent(out)          :: ndensity_electron(ixO^S)
     !-------------------------------------
-    rho_electron = w(ixO^S,rho_)
+    ndensity_electron = w(ixO^S,rho_)
   end subroutine chemical_get_electron_density
 end module mod_radiative_cooling

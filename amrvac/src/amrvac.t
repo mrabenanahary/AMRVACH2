@@ -180,7 +180,7 @@ contains
          time_last_print = timeio0
          if (mype == 0) then
            write(*, '(I10,ES12.3,ES12.3,ES12.3)') it, global_time, dt, timeio0 - time_in
- write(*, '(a,I10,ES12.3,ES12.3,ES12.3)') 'physical dimension',it, global_time*unit_time, dt*unit_time, timeio0 - time_in
+           write(*, '(a,I10,a,ES12.3,a,ES12.3,ES12.3)') 'In CGS ',it, ' T=',global_time*unit_time, ' dT=',dt*unit_time
          end if
        end if
 

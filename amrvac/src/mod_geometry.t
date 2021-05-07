@@ -18,7 +18,7 @@ contains
       typeaxial='slab'
       x_=1; r_      = 1
       y_=2; phi_    = 2
-      z_=3; theta_  = 3        
+      z_=3; theta_  = 3
     case ("Cartesian_1.5D")
       if (ndim /= 1) call mpistop("Geometry Cartesian_1.5D but ndim /= 1")
       typeaxial='slab'
