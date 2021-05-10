@@ -1067,9 +1067,9 @@ end if
          temperature(ixO^S)      = w(ixO^S,phys_ind%pressure_)/w(ixO^S,phys_ind%rho_)
          temperature_init(ixO^S) =  w_init(ixO^S,phys_ind%pressure_)&
                                    / w_init(ixO^S,phys_ind%rho_)
-        patch_temperature(ixO^S) = dabs(w(ixO^S,phys_ind%pressure_)-&
+        patch_temperature(ixO^S) = dabs(temperature(ixO^S)-&
                                     temperature_init(ixO^S))&
-                                    <=self%myconfig%reset_dtemperature
+                                    >=self%myconfig%reset_dtemperature
        elsewhere
           patch_temperature(ixO^S) = .false.
        end where

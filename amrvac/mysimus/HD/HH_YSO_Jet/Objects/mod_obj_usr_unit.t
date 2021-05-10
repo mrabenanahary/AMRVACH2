@@ -345,7 +345,10 @@ end subroutine usr_physical_unit_set_unit
    self%myconfig%mass_flux        = self%myconfig%mass/self%myconfig%time
    self%myconfig%energy_flux      = self%myconfig%energy/self%myconfig%time
    self%myconfig%luminosity       = self%myconfig%pressure &
-                          /(self%myconfig%number_density*unit_time * self%myconfig%mean_mass**2.0_dp)
+                          /(self%myconfig%number_density**2.0_dp*unit_time * self%myconfig%mean_mass**2.0_dp)
+
+    ! in mod_radiative_cooling : unit_luminosity=  unit_pressure/( unit_numberdensity**2.0_dp * unit_time &
+    !                            *  phys_config%mean_mass**2.0_dp)
 
     ! set the physical unit
     unit_length        = self%myconfig%length
