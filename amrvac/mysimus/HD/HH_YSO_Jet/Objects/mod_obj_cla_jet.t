@@ -1642,7 +1642,7 @@ end subroutine usr_cla_add_source
             amplitude_profile =  self%myconfig%variation_velocity_poloidal/&
                                  self%myconfig%velocity_poloidal
             where(self%ejecta_patch(ixO^S))
-             w(ixO^S,phys_ind%rho_) = w(ixO^S,phys_ind%rho_)/&
+             w(ixO^S,phys_ind%rho_) =  self%myconfig%density/&
                                       (1.0_dp+amplitude_profile*Vprofile)
             end where
             !----------------------------------------------------
@@ -1651,7 +1651,7 @@ end subroutine usr_cla_add_source
             !----------------------------------------------------
             cond_pressure_variation_on : if(self%myconfig%pressure_variation_on)then
               where(self%ejecta_patch(ixO^S))
-               w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_)/&
+               w(ixO^S,phys_ind%pressure_) =  self%myconfig%pressure/&
                                         (1.0_dp+amplitude_profile*Vprofile)
               end where
             end if cond_pressure_variation_on

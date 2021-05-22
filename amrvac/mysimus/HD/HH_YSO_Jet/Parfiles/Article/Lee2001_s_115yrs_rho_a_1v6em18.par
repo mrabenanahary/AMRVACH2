@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        nwauxio = 10
+        nwauxio = 4
         /
         restart_from_file='Jet_Shang06_0118.dat'
         /
@@ -113,11 +113,11 @@
         xprobmin1 =  0.0d0    ! cm
         xprobmax1 =  6.666666666666667d16!1.3333333333333334d16!dr=13.92 AU
         xprobmin2 =  0.0d0    ! cm
-        xprobmax2 =  1.5d17!5.0d17!1.25d17!dz=13.92 AU
+        xprobmax2 =  1.8333333333333334d17!1.5d17!5.0d17!1.25d17!dz=13.92 AU
 
         ! total cell at level 1
         domain_nx1= 320!64!dr=13.92 AU
-        domain_nx2= 720!2400!600!dz=13.92 AU
+        domain_nx2= 880!720!2400!600!dz=13.92 AU
         ! number of cell by block
         block_nx1 = 8!8!
         block_nx2 = 8!8!
@@ -303,8 +303,8 @@ ism_config%He_abundance      = 0.1
 &usr_usrboundary_ism_list
   usrboundary_config%boundary_type(1,2) = 'fix'
   usrboundary_config%boundary_type(2,2) = 'open'
-  usrboundary_config%useprimitive       = .false.
-  usrboundary_config%flux_frac          = 1.0d-2
+  usrboundary_config%useprimitive       = .true.
+  usrboundary_config%flux_frac          = 9.0d-1
 /
 
 !11/12/19 : pour le jet et le projet n°1 de Sylvie Cabrit sur son article de 1997, les paramètres ci-dessous pour le jet ont été testés
@@ -344,8 +344,8 @@ ism_config%He_abundance      = 0.1
 
     cla_jet_config%open_angle            = 0.0d0 !>>HH4647 !>  cla_jet initial open angle  (degre): 0.0d0 = jet droit cylindrique
     cla_jet_config%z_in                  =  -46.275d18 !> cla_jet inner boundary position
-    cla_jet_config%z_impos               =  1.644d15 !>>HH4647 !3.50d14  ! 1d15!6.52128d14!3.26128d15!1.495978707d13!1.495978707d14!> cla_jet initial jet-wind region height : 1.495978707e15 cm = 100 au
-    cla_jet_config%z_out_init            =  1.66d15 !>>HH4647 !3.52d14 ! 2d15!9.52128d14!3.26128d15!1.495978707d13!1.495978707d14!0.5d15!0.5d14!> cla_jet  impose z height : 1.495978707e15 cm = 100 au
+    cla_jet_config%z_impos               =  2.5d15!1.644d15 !>>HH4647 !3.50d14  ! 1d15!6.52128d14!3.26128d15!1.495978707d13!1.495978707d14!> cla_jet initial jet-wind region height : 1.495978707e15 cm = 100 au
+    cla_jet_config%z_out_init            =  2.53d15!1.66d15 !>>HH4647 !3.52d14 ! 2d15!9.52128d14!3.26128d15!1.495978707d13!1.495978707d14!0.5d15!0.5d14!> cla_jet  impose z height : 1.495978707e15 cm = 100 au
     cla_jet_config%r_out_init            =  2.5d15!7.47d14 !=50 UA>>HH4647 3.0d15!1.611031692203301d15!> cla_jet inner boundary wind position : zhang19 = 7.48d14 cm = 50 au
     cla_jet_config%r_out_impos           =  2.5d15!7.47d14 !=50 UA>>HH4647 !1.611031692203301d15!> cla_jet  impose radius : Rjet (Cabrit1997) = 0.5d16 cm; zhang19 = 7.48d14 , necessary to impose density or mass flux on the inner boundary
 
@@ -370,7 +370,7 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%variation_velocity(2) =  6.0d6
     cla_jet_config%variation_velocity(3) =  0.0d0
     cla_jet_config%variation_time        =  3.629124d9!9.782856d9!=310 yrs
-    cla_jet_config%variation_position    =  0.0d0,1.644d15 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
+    cla_jet_config%variation_position    =  0.0d0,2.5d15,0.0d0!0.0d0,1.644d15 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
     cla_jet_config%variation_type        =  'sin' !>>HH4647 !Zheng19='sawtooth' ? (d ares Sylvie) >> vérifier avec 'sin' ! 'sin'!'sin' !'door'! type of the velocity variation induced in the velocity profile, see subroutine usr_mat_profile_scalar in mod_obj_mat.t to see which possibilities are avalaible
     cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation
     cla_jet_config%variation_phys_variable(1) =  3 ! 3 mean the velocity in Z direction

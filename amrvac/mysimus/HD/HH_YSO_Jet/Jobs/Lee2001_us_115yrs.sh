@@ -16,7 +16,7 @@ srun --ntasks=$SLURM_JOB_NUM_NODES mkdir -p $SCRATCH
 #SCRATCH=/scratch/$USER/run
 
 cd /data/$USER/Output
-mkdir ${SLURM_JOB_NAME}_b
+mkdir ${SLURM_JOB_NAME}
 
 cd $SCRATCH
 srun --ntasks=$SLURM_JOB_NUM_NODES mkdir -p Output
@@ -33,8 +33,8 @@ pwd
 #mpirun -n $SLURM_NTASKS amrvac -i zheng19.par
 srun --ntasks=$SLURM_JOB_NUM_NODES more ${SLURM_JOB_NAME}.par
 mpiexec amrvac -i ${SLURM_JOB_NAME}.par
-srun --ntasks=$SLURM_JOB_NUM_NODES mv Output/${SLURM_JOB_NAME}/* /data/$USER/Output/${SLURM_JOB_NAME}_b/.
-srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jobs/slurm-${SLURM_JOB_NAME}-${SLURM_JOBID}.out /data/$USER/Output/${SLURM_JOB_NAME}_b/.
+srun --ntasks=$SLURM_JOB_NUM_NODES mv Output/${SLURM_JOB_NAME}/* /data/$USER/Output/${SLURM_JOB_NAME}/.
+srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jobs/slurm-${SLURM_JOB_NAME}-${SLURM_JOBID}.out /data/$USER/Output/${SLURM_JOB_NAME}/.
 cd ${SLURM_SUBMIT_DIR}
 #mv ${SCRATCH}/MonProg.out .
 #srun --ntasks=$SLURM_JOB_NUM_NODES rm -rf ${SCRATCH}

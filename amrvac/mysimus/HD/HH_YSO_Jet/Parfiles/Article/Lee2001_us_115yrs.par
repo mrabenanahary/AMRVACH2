@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        nwauxio = 10
+        nwauxio = 4
         /
         restart_from_file='Jet_Shang06_0118.dat'
         /
@@ -113,11 +113,11 @@
         xprobmin1 =  0.0d0    ! cm
         xprobmax1 =  6.666666666666667d16!1.3333333333333334d16!dr=13.92 AU
         xprobmin2 =  0.0d0    ! cm
-        xprobmax2 =  1.5d17!5.0d17!1.25d17!dz=13.92 AU
+        xprobmax2 =  1.8333333333333334d17!1.5d17!5.0d17!1.25d17!dz=13.92 AU
 
         ! total cell at level 1
         domain_nx1= 320!64!dr=13.92 AU
-        domain_nx2= 720!2400!600!dz=13.92 AU
+        domain_nx2= 880!720!2400!600!dz=13.92 AU
         ! number of cell by block
         block_nx1 = 8!8!
         block_nx2 = 8!8!
@@ -279,7 +279,7 @@
   ism_config%boundary_on        = .true.
 
 ism_config%profile_typeaxial  = 'spherical'!'projection_direction'
-ism_config%profile_idir       = 1.0,0.0,0.0       !z=2,r=1  !  ism profile direction
+ism_config%profile_idir       = 0.0,1.0,0.0       !z=2,r=1  !  ism profile direction
 
 ism_config%profile_center     = 0,0,0
 
@@ -303,8 +303,8 @@ ism_config%He_abundance      = 0.1
 &usr_usrboundary_ism_list
   usrboundary_config%boundary_type(1,2) = 'fix'
   usrboundary_config%boundary_type(2,2) = 'open'
-  usrboundary_config%useprimitive       = .false.
-  usrboundary_config%flux_frac          = 1.0d-2
+  usrboundary_config%useprimitive       = .true.
+  usrboundary_config%flux_frac          = 9.0d-1
 /
 
 !11/12/19 : pour le jet et le projet n°1 de Sylvie Cabrit sur son article de 1997, les paramètres ci-dessous pour le jet ont été testés

@@ -17,6 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
+        restart_from_file='Jet_Shang06_B4_0075.dat'
         nwauxio = 10
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -57,7 +58,7 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  1.3885344d11! 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !it_max=10
 
 
@@ -73,8 +74,8 @@
 
  &methodlist
         time_integrator          =  'twostep'
-        typepred1                =  20*'hllcd'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
-        flux_scheme              =  20*'hllcd'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        typepred1                =  20*'hllcd'!'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        flux_scheme              =  20*'hllcd'!'tvdlf'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
         limiter                  =  20*'minmod'!>>HH4647 !'koren'!'cada3'
         small_pressure           = 1.0d-9
         small_density            = 1.0d-8
@@ -220,7 +221,7 @@
         !usrconfig%phys_temperature_isotherm     = 100 ! Le 2001
         !usrconfig%temperature_max  = 5d4
         usrconfig%reset_flux_scheme_on          = .true.
-        usrconfig%reset_flux_scheme_diffuse     = 'tvdlf'
+        usrconfig%reset_flux_scheme_diffuse     = 'hllcd'
         usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
         usrconfig%reset_flux_scheme_thresholdL1_max = 1.0d20
 
@@ -261,12 +262,12 @@
 
   ism_config%reset_on           = .true.    ! ism reset
   ism_config%reset_coef         = 0.9! 0.0     ! ism reset  coefficient : 19-03-2021 --> don't use it ! it creates bugs when >0.0d0
-  ism_config%reset_dtemperature = 1.0d-6    !> set the pressure variation
+  ism_config%reset_dtemperature = 1.0d-6    !ism reset:  maximum temperature variation to check if it is heated to cooled
   ism_config%reset_distance(2)  =  1.01d18  ! ism rest distance
   ism_config%reset_scale(2)     =  5d16     ! ism reset scalling distance
 
 !  ism_config%boundary_cond(2,2) = 'open'
-!  ism_config%boundary_cond(1,2) = 'fix'
+!  ism_config%boundary_cond(1,2) = 'disc'
   ism_config%boundary_on        = .true.
 
 ism_config%profile_typeaxial  = 'spherical'!'projection_direction'

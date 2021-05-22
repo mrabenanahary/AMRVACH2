@@ -24,7 +24,7 @@ srun --ntasks=$SLURM_JOB_NUM_NODES mkdir -p Output
 srun --ntasks=$SLURM_JOB_NUM_NODES mkdir -p Output/${SLURM_JOB_NAME}
 srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Parfiles/Article/${SLURM_JOB_NAME}.par .
 srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/amrvac .
-#srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jet_Shang06_B4_0014.dat .
+srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jet_Shang06_B4_0075.dat .
 echo ${SLURM_JOBID}
 echo $HOSTNAME
 pwd

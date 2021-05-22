@@ -1735,7 +1735,9 @@ module mod_radiative_cooling
          nHlocal = wCT(ix^D,rho_)
          ! ntot = <m>/mu*nH
          nlocal = wCT(ix^D,rho_)
-         !*(coolconfig%mean_mass/coolconfig%mean_mup)*wCT(ix^D,rho_)
+         !*(coolconfig%mean_mass/coolconfig%mean_mup)*wCT(ix^D,rho_)! in this module,
+         ! plocal \propto nlocal is already normalised so that here nlocal=ntot=nHlocal=nH
+         ! so there is no need for a pre-factor (coolconfig%mean_mass/coolconfig%mean_mup)
          ! input from mod_source.t that will call this subroutine
          ! is not the total mass rho but the hydrogen number density nH
 
