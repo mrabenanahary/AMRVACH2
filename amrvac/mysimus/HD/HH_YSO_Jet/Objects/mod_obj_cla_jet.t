@@ -58,7 +58,6 @@ module mod_obj_cla_jet
     real(dp)             :: tracer_init_density    !> cla_jet tracer initial density
     real(dp)             :: tracer_small_density   !> cla_jet tracer small density cut
     character(len=20)    :: shape                  !> cla_jet shape
-    character(len=20)    :: head_shape                  !> cla_jet head shape
     character(len=20)    :: profile                !> cla_jet profile
 
     integer              :: refine_min_level       !> jet minimum refinent level
@@ -271,7 +270,6 @@ contains
 
 
   self%myconfig%shape                  = 'cylinder'
-  self%myconfig%head_shape             = 'cartesian'
   self%myconfig%profile                = 'uniform'
   self%myconfig%open_angle             =  0.0_dp
   self%myconfig%tracer_on              = .false.
@@ -306,81 +304,6 @@ contains
   thetajet_                            = 2
   rjet_                                = 1
   call self%mydust%set_default()
-  !M> List of user-defined (then used/manipulated in this .t fortran module) jet parameters:
-  !M>
-  !M> self%myconfig%unit = physical unit of parameter file
-  !M> self%myconfig%time_cla_jet_on = jet launching initial time inside the simulation box
-  !M> self%myconfig%density = rho = jet total density [n(H+H^+)+2n(H_2)+n(He)]*m_H (g/cm^3)
-  !M> self%myconfig%number_density = n_H = jet hydrogen-formed species number density [n(H+H^2)+2*n(H_2)] (1/cm^3)
-  !M> self%myconfig%temperature = T = jet temperature (K)
-  !M> self%myconfig%pressure = p = jet pressure (Ba)
-  !M> self%myconfig%chemical_gas_type = f_gas = form of the simulated fluid (molecular, atomic, fully ionised, ionised) : determines the mean H-formed species mass factor mean_mass = rho/(m_H*n_H)
-  !M>  and mean_mup = mean_mass/(n())
-  !M> self%myconfig%He_abundance = x(He) = He abundance relative to the density of hydrogen-formed species proton density n_H=n(H+H^)+2*n(H_2) : x(He)=[n(He)*n_H*m_H]/[n_H*m_H]=n(He)/n_H
-  !real(kind=dp)        :: mean_mass
-  !real(kind=dp)        :: mean_mup
-  !real(kind=dp)        :: mean_ne_to_nH
-  !real(kind=dp)        :: mean_nall_to_nH
-
-  !real(dp)             :: mach_number            !> cla_jet  mach number
-  !real(dp)             :: c_sound                !> cla_jet  sound speed (cm/s)
-  !real(dp)             :: velocity(1:3)          !> cla_jet  velocity (cm/s)
-  !real(dp)             :: velocity_toroidal      !> cla_jet  toroidal velocity (cm/s)
-  !real(dp)             :: velocity_poloidal      !> cla_jet  poloidal velocity (cm/s)
-  !real(dp)             :: power                  !> wind power flux
-  !real(dp)             :: mass_flux              !> wind mass flux
-
-
-  !real(dp)             :: open_angle             !> cla_jet initial open angle  (degre)
-  !real(dp)             :: z_in                   !> cla_jet inner boundary position
-  !real(dp)             :: z_impos                !> cla_jet  impose r
-  !real(dp)             :: r_out_init             !> cla_jet inner boundary wind position
-  !real(dp)             :: z_out_init             !> cla_jetinitial wind region
-  !real(dp)             :: r_out_impos                !> cla_jet  impose radius
-  !real(dp)             :: r_in_init              !> initial wind region
-  !real(dp)             :: center(1:3)            !> cla_jet center position (cm)
-  !real(dp)             :: extend(1:3)            !> cla_jet region in space (cm)
-
-  !logical              :: tracer_on              !> cla_jet logical to set tracer
-  !integer              :: itr                    !> cla_jet tracer indice
-  !real(dp)             :: tracer_init_density    !> cla_jet tracer initial density
-  !real(dp)             :: tracer_small_density   !> cla_jet tracer small density cut
-  !character(len=20)    :: shape                  !> cla_jet shape
-  !character(len=20)    :: profile                !> cla_jet profile
-
-  !integer              :: refine_min_level       !> jet minimum refinent level
-  !integer              :: refine_max_level       !> jet maximum refinent level
-  !real(dp)             :: coarsen_distance       !> jet  distance to start coarsen
-  !real(dp)             :: coarsen_var_distance   !> jetscaling distance for coarsen
-
-  !logical              :: variation_on           !>  jet variation  condition
-  !character(len=40)    :: variation_type         !> jet type of the power variation
-  !real(dp)             :: variation_time         !> jet variation characteristic time
-  !integer              :: variation_phys_nvariable!> jet variation number of variable will change in time
-  !integer              :: variation_phys_variable(5)!> jet variation  variable will change in time
-  !real(dp)             :: variation_velocity(3)  !> jet variation bottom velocity
-  !real(dp)             :: variation_velocity_poloidal  !> jet variation bottom velocity  poloidal
-  !real(dp)             :: variation_velocity_toroidal  !> jet variation bottom velocity  toroidal
-  !real(dp)             :: variation_velocity_amplitude !> jet variation characteristic time
-
-  !real(dp)             :: variation_start_time  !> jet variation starting time
-  !real(dp)             :: variation_end_time    !> jet variation end  time
-  !real(dp)             :: variation_position(3) !> jet variation space position
-  !logical              :: dust_on                !> cla_jet with dust in is true
-  !real(dp)             :: dust_frac              !> cla_jet dust fraction
-  !character(len=20)    :: dust_profile           !> cla_jet dust inside profile
-
-  write(*,*) ' mod_obj_cla_jet.t--> usr_cla_jet_set_default'
-  write(*,*) 'self : chemical_composition | ',&
-  'xHe | mean_nall_to_nH |',&
-  ' mean_mass | mean_ne_to_nH | mean_mup '
-  write(*,*) self%myconfig%chemical_gas_type,&
-  self%myconfig%He_abundance,&
-  self%myconfig%mean_nall_to_nH,&
-  self%myconfig%mean_mass,&
-  self%myconfig%mean_ne_to_nH,&
-  self%myconfig%mean_mup
-
  end subroutine usr_cla_jet_set_default
  !--------------------------------------------------------------------
  !> subroutine check the parfile setting for cla_jet
@@ -392,7 +315,7 @@ contains
    real(dp)                   :: mp,kb, jet_surface_init,&
                                  Magnetic_poloidal
    real(kind=dp)              :: jet_radius_out_init, jet_radius_in_init
-   real(kind=dp)              :: open_angle_in,z0, ztot
+   real(kind=dp)              :: open_angle_in,z0
    integer                    :: idims
    !-----------------------------------
    zjet_     = min(zjet_,ndim)
@@ -406,32 +329,13 @@ contains
      kB=kB_cgs
    end if
 
-   write(*,*) ' mod_obj_cla_jet.t--> usr_cla_jet_set_default'
-   write(*,*) 'self (before): chemical_composition | ',&
-   'xHe | mean_nall_to_nH |',&
-   ' mean_mass | mean_ne_to_nH | mean_mup '
-   write(*,*) self%myconfig%chemical_gas_type,&
-   self%myconfig%He_abundance,&
-   self%myconfig%mean_nall_to_nH,&
-   self%myconfig%mean_mass,&
-   self%myconfig%mean_ne_to_nH,&
-   self%myconfig%mean_mup
-
     call phys_fill_chemical_ionisation(self%myconfig%He_abundance,self%myconfig%chemical_gas_type, &
        self%myconfig%mean_nall_to_nH,self%myconfig%mean_mass,&
       self%myconfig%mean_mup,self%myconfig%mean_ne_to_nH)
 
-    write(*,*) ' mod_obj_cla_jet.t--> usr_cla_jet_set_default'
-    write(*,*) 'self (after): chemical_composition | ',&
-    'xHe | mean_nall_to_nH |',&
-    ' mean_mass | mean_ne_to_nH | mean_mup '
-    write(*,*) self%myconfig%chemical_gas_type,&
-    self%myconfig%He_abundance,&
-    self%myconfig%mean_nall_to_nH,&
-    self%myconfig%mean_mass,&
-    self%myconfig%mean_ne_to_nH,&
-    self%myconfig%mean_mup
-
+   !--------------------------------
+   ! reajust all the position
+   !--------------------------------
 
    if(ndim>1) then
    self%myconfig%r_in_init   = nint((self%myconfig%r_in_init/unit_length-box_limit(1,r_)) &
@@ -471,40 +375,14 @@ contains
                                 +0.5_dp*dx(idims,refine_max_level)*unit_length
   end do  Loop_dim
 
-   cond_vtor_set : if (self%myconfig%velocity_toroidal>0.0_dp) then
-     self%myconfig%velocity(phi_)   = self%myconfig%velocity_toroidal
-   else  cond_vtor_set
-     self%myconfig%velocity_toroidal     = self%myconfig%velocity(phi_)
-   end if cond_vtor_set
 
-   cond_vpol_set : if (self%myconfig%velocity_poloidal>0.0_dp) then
-      self%myconfig%velocity(r_)     = self%myconfig%velocity_poloidal*&
-            dsin(self%myconfig%open_angle*dpi/180.0_dp)
-      self%myconfig%velocity(zjet_) = self%myconfig%velocity_poloidal*&
-             dcos(self%myconfig%open_angle*dpi/180.0_dp)
-      self%myconfig%velocity(phi_)   = 0.0_dp
-
-   else cond_vpol_set
-      self%myconfig%velocity_poloidal=dsqrt(self%myconfig%velocity(r_)**2.0_dp&
-                                           +self%myconfig%velocity(zjet_)**2.0_dp)
-   end if cond_vpol_set
-
-   ! if(self%myconfig%r_out_init>0.0_dp) then
-   !   if(self%myconfig%open_angle>0.0_dp)then
-   !    self%myconfig%z_in  = self%myconfig%r_out_init/dtan(self%myconfig%open_angle)
-   !   else
-   !    self%myconfig%z_in=min(box_limit(1,zjet_)/2.0_dp,self%myconfig%z_in)
-   !   end if
-   ! end if
 
 print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
    print*, 'jet shape ', self%myconfig%shape
    cond_theta_O : if(self%myconfig%open_angle>0.0_dp)then
       self%myconfig%shape='conical'
-      ztot                  = self%myconfig%r_out_init/dtan(self%myconfig%open_angle*dpi/180.0_dp)
-      z0 = ztot - self%myconfig%z_out_init
-      jet_radius_out_init = dsqrt(self%myconfig%r_out_init**2.0_dp&
-                          +(z0+self%myconfig%z_out_init)**2.0_dp)
+      z0                  = self%myconfig%r_out_init/dtan(self%myconfig%open_angle*dpi/180.0_dp)
+      jet_radius_out_init = dsqrt(self%myconfig%r_out_init**2.0_dp+z0**2.0_dp)
       jet_radius_in_init  = jet_radius_out_init
       if(self%myconfig%r_in_init>0.0_dp)then
         open_angle_in       = self%myconfig%open_angle*self%myconfig%r_out_init/self%myconfig%r_in_init
@@ -515,6 +393,7 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
      jet_radius_out_init = self%myconfig%r_out_init
      jet_radius_in_init  = self%myconfig%r_in_init
    end if cond_theta_O
+
    print*, 'jet shape ', self%myconfig%shape
    print*, 'jet typeaxial ', typeaxial
    print*,'the jet Surface = ',jet_surface_init
@@ -544,6 +423,29 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
    end select
    print*, 'jet typeaxial ', typeaxial
    print*,'the jet Surface = ',jet_surface_init
+
+   !--------------------------------
+   ! velocity
+   !--------------------------------
+   cond_vtor_set : if (self%myconfig%velocity_toroidal>0.0_dp) then
+     self%myconfig%velocity(phi_)   = self%myconfig%velocity_toroidal
+   else  cond_vtor_set
+     self%myconfig%velocity_toroidal     = self%myconfig%velocity(phi_)
+   end if cond_vtor_set
+
+   cond_vpol_set : if (self%myconfig%velocity_poloidal>0.0_dp) then
+      self%myconfig%velocity(r_)     = self%myconfig%velocity_poloidal*&
+            dsin(self%myconfig%open_angle*dpi/180.0_dp)
+      self%myconfig%velocity(theta_) = self%myconfig%velocity_poloidal*&
+             dcos(self%myconfig%open_angle*dpi/180.0_dp)
+      self%myconfig%velocity(phi_)   = 0.0_dp
+
+   else cond_vpol_set
+      self%myconfig%velocity_poloidal=dsqrt(self%myconfig%velocity(r_)**2.0_dp&
+                                           +self%myconfig%velocity(theta_)**2.0_dp)
+   end if cond_vpol_set
+
+
 
 
 
@@ -888,9 +790,9 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
   ! .. local ..
   integer                    :: idims
   real(dp)                   :: x_edge(ixI^S,1:ndim)
-  real(dp), dimension(ixI^S) :: dist_edge,jet_radius, jet_h, jet_ortho_r
+  real(dp), dimension(ixI^S) :: dist_edge,jet_radius
   real(dp)                   :: r_in,r_out
-  real(dp)                   :: z_down,z_out,min_dist,ztot,z0,r0
+  real(dp)                   :: z_down,z_out,min_dist,z0,r0
   !----------------------------------
   ! check distance
 
@@ -931,253 +833,64 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
   if(.not.allocated(self%patch))allocate(self%patch(ixI^S))
 
   self%patch              = .false.
-  !print*, 'jet shape ', self%myconfig%shape
-  !print*, 'jet typeaxial ', typeaxial
-  !------------------------------------------------
-  ! * Select the actual jet shape :
-  ! * <!> : it is 'conical' IF user chose jet open_angle>0°
-  !------------------------------------------------
-  select case(trim(self%myconfig%shape))
-  !------------------------------------------------
-  ! * Case: conical jet shape:
-  !------------------------------------------------
-  case('conical')
-    !------------------------------------------------
-    ! ** Select the actual axial geometry frame used:
-    !------------------------------------------------
-    select case(typeaxial)
-    !------------------------------------------------
-    ! ** If spherical frame:
-    !------------------------------------------------
-    case('spherical')
-      self%patch(ixO^S)  = dabs(x(ixO^S,theta_))<=self%myconfig%open_angle
-      !------------------------------------------------
-      ! *** If any dimension (since 1D==>zjet=1) :
-      !------------------------------------------------
-      if(zjet_<=ndim) then
-        self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,r_)<=z_out .and. &
-                         x(ixO^S,r_)>=z_down
 
+  select case(trim(self%myconfig%shape))
+  case('conical')
+    if(ndim>1) then
+      z0   = r_out/dtan(self%myconfig%open_angle)
+    else
+      z0   = 0.0_dp
+    end if
+    select case(typeaxial)
+      case('spherical')
+        self%patch(ixO^S)  = dabs(x(ixO^S,theta_))<=self%myconfig%open_angle
+        if(zjet_<=ndim) then
+         self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
+                           x(ixO^S,zjet_)>=z_down
       end if
-      !------------------------------------------------
-      ! ***End if any dimension
-      !------------------------------------------------
-    !------------------------------------------------
-    ! **If slab or cylindrical frame:
-    !------------------------------------------------
     case('slab','cylindrical')
-      !------------------------------------------------
-      ! ***If we're >= 2D:
-      !------------------------------------------------
-      if(ndim>1)then
-        !self%patch(ixO^S)  = dabs(x(ixO^S,rjet_))<=r_out&
-        !          +dabs(x(ixO^S,zjet_)-box_limit(1,zjet_))&
-        !          *dtan(self%myconfig%open_angle) .and. &
-        !           dabs(x(ixO^S,r_))>=r_in&
-        !          -dabs(x(ixO^S,zjet_)-box_limit(1,zjet_))&
-        !          *dtan(self%myconfig%open_angle)
-        ! Make the domaine in cylindrical frame for jet
-        ! between r_out at z=z_impos and =r_out-self%myconfig%z_impos
-        ! *dtan(self%myconfig%open_angle) at z=0
-        !
-        ! at any z and
-        !
-        ! r=r_in
-        ! -dabs(self%myconfig%z_impos+
-        ! at z=z_impos and =r_in at z=0
-        !
-        ! at any z
-        jet_ortho_r(ixO^S) = dabs(z_out-x(ixO^S,zjet_))&
-        *dtan(self%myconfig%open_angle)
-        self%patch(ixO^S)  = dabs(x(ixO^S,rjet_))<=r_out&
-                  -jet_ortho_r(ixO^S) .and. &
-                   dabs(x(ixO^S,rjet_))>=r_in&
-                  -jet_ortho_r(ixO^S)
+      cond_nooned : if(ndim>1)then
+        self%patch(ixO^S)  = dabs(x(ixO^S,rjet_))<=dtan(self%myconfig%open_angle)*(z0+x(ixO^S,zjet_)) &
+         .and. dabs(x(ixO^S,r_))>=r_in
 
         if(zjet_<=ndim) then
-          !------------------------------------------------
-          ! **** Select the jet head shape
-          !------------------------------------------------
-          select case(trim(self%myconfig%head_shape))
-          !------------------------------------------------
-          ! **** If you want the head to be spherical shaped:
-          !------------------------------------------------
-          case('spherical')
-            ztot                = r_out/dtan(self%myconfig%open_angle) !
-            z0                  = ztot-z_out !ztot = z_impos + z0
-            !radius relative to (-z0,0) at cylindrical r=r_out_init:
-            r0                = dsqrt((z_out+z0)**2.0_dp&
-                                +r_out**2.0_dp)
-            !radius relative to (-z0,0) for every cylindrical (r,z):
-            jet_radius(ixO^S)      = dsqrt((x(ixO^S,zjet_)+z0)**2.0_dp&
-                                    +x(ixO^S,rjet_)**2.0_dp)
-            !for every r and z, select cylindrical r that are below r0
-            self%patch(ixO^S)  = self%patch(ixO^S).and. jet_radius(ixO^S)<=r0&
-                                .and. x(ixO^S,zjet_)>=z_down
-          !------------------------------------------------
-          ! **** Default for head is cartesian shaped:
-          !------------------------------------------------
-          case default
-            self%patch(ixO^S)  = self%patch(ixO^S).and.  x(ixO^S,zjet_)<z_out .and. &
-                                    x(ixO^S,zjet_)>=z_down
-          end select
-          !------------------------------------------------
-          ! **** End select the jet head shape
-          !------------------------------------------------
+
+           jet_radius(ixO^S) = dsqrt((z0 + x(ixO^S,zjet_))**2.0_dp+x(ixO^S,rjet_)**2.0_dp)
+
+          self%patch(ixO^S)  = self%patch(ixO^S).and.  jet_radius(ixO^S)<(z_out+z0)
         end if
-      !------------------------------------------------
-      ! *** Else, if we're 1D:
-      !------------------------------------------------
-      else
-        self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
-                                x(ixO^S,zjet_)>=z_down
-      end if
-      !------------------------------------------------
-      ! *** End if we're >=2D or if we're 1D
-      !------------------------------------------------
+      else  cond_nooned
+        self%patch(ixO^S)  = x(ixO^S,zjet_)<=z_out .and. x(ixO^S,zjet_)>=z_down
+      end if cond_nooned
     end select
-    !------------------------------------------------
-    ! ** End select the actual axial geometry frame used
-    !------------------------------------------------
-  !------------------------------------------------
-  ! * End case conical jet shape
-  !------------------------------------------------
-  !------------------------------------------------
-  ! * Case: cylindrical jet shape
-  ! * (assuming cylindrical geometry frame):
-  !------------------------------------------------
+
   case('cylindrical')
     self%patch(ixO^S)  = dabs(x(ixO^S,rjet_))<=r_out .and. &
                          dabs(x(ixO^S,rjet_))>=r_in
-    !------------------------------------------------
-    ! ** If we're >= 2D:
-    !------------------------------------------------
-    !if(zjet_<=ndim) then
-    if(ndim>1) then
-        !------------------------------------------------
-        ! *** Select the jet head shape
-        !------------------------------------------------
-        select case(trim(self%myconfig%head_shape))
-        !------------------------------------------------
-        ! *** If you want the head to be spherical shaped:
-        !------------------------------------------------
-        case('spherical')
-          !height z relative to (0,0) at any cylindrical r:
-          jet_h(ixO^S)      = z_out&
-          +dsqrt(dabs(r_out**2.0_dp-x(ixO^S,rjet_)**2.0_dp))
-          !for every r and z, select z that are below jet_h
-          self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)&
-                              <=jet_h(ixO^S)&
-                              .and. x(ixO^S,zjet_)>=z_down
-        !------------------------------------------------
-        ! *** Default for head is cartesian shaped:
-        !------------------------------------------------
-        case default
-          self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
-                           x(ixO^S,zjet_)>=z_down
-        end select
-        !------------------------------------------------
-        ! *** End select the jet head shape
-        !------------------------------------------------
-        !self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
-        !                  x(ixO^S,zjet_)>=z_down
-    !------------------------------------------------
-    ! ** Else, if we're 1D:
-    !------------------------------------------------
-    else
-        self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
-                          x(ixO^S,zjet_)>=z_down
+    if(zjet_<=ndim) then
+       self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
+                         x(ixO^S,zjet_)>=z_down
     end if
-    !------------------------------------------------
-    ! ** End if we're >=2D or if we're 1D
-    !------------------------------------------------
-  !------------------------------------------------
-  ! * End case cylindrical jet shape
-  !------------------------------------------------
-  !------------------------------------------------
-  ! * Case: cartesian jet shape
-  ! * (assuming cylindrical geometry frame):
-  !------------------------------------------------
+
   case('cartesian')
-    !------------------------------------------------
-    ! ** If we're >= 2D:
-    !------------------------------------------------
     if(ndim>1) then
-     self%patch(ixO^S)  = x(ixO^S,rjet_)<=r_out .and. &
-                         x(ixO^S,rjet_)>=r_in
-    !------------------------------------------------
-    ! ** Else, if we're 1D:
-    !------------------------------------------------
+     self%patch(ixO^S)  = x(ixO^S,r_)<=r_out .and. &
+                         x(ixO^S,r_)>=r_in
     else
        self%patch(ixO^S)  = .true.
     end if
-    !------------------------------------------------
-    ! ** End if we're >= 2D or if we're 1D
-    !------------------------------------------------
-
 
     if(zjet_<=ndim) then
-      !------------------------------------------------
-      ! *** Select the jet head shape
-      !------------------------------------------------
-      select case(trim(self%myconfig%head_shape))
-      !------------------------------------------------
-      ! *** If you want the head to be spherical shaped
-      ! in 2D :
-      !------------------------------------------------
-      case('spherical')
-        !------------------------------------------------
-        ! **** If we're >= 2D:
-        !------------------------------------------------
-        if(ndim>1) then
-          !height z relative to (0,0) at any cylindrical r:
-          jet_h(ixO^S)      = z_out&
-          +dsqrt(dabs(r_out**2.0_dp-x(ixO^S,rjet_)**2.0_dp))
-          !for every r and z, select z that are below jet_h
-          self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)&
-                              <=jet_h(ixO^S)&
-                              .and. x(ixO^S,zjet_)>=z_down
-        !------------------------------------------------
-        ! **** Else, if we're 1D:
-        !------------------------------------------------
-        else
-          self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
-                            x(ixO^S,zjet_)>=z_down
-        end if
-        !------------------------------------------------
-        ! **** End if we're >= 2D or if we're 1D
-        !------------------------------------------------
-      !------------------------------------------------
-      ! *** Default for head is cartesian shaped for any
-      ! dimension :
-      !------------------------------------------------
-      case default
-        self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
-                          x(ixO^S,zjet_)>=z_down
-      end select
-      !------------------------------------------------
-      ! *** End select the jet head shape
-      !------------------------------------------------
+       self%patch(ixO^S)  = self%patch(ixO^S).and. x(ixO^S,zjet_)<=z_out .and. &
+                         x(ixO^S,zjet_)>=z_down
     end if
-  !------------------------------------------------
-  ! * End case cartesian jet shape
-  !------------------------------------------------
-  !------------------------------------------------
-  ! * Case: any other unknown jet shape is entered,
-  ! * the code stops and raise an exception
-  !------------------------------------------------
+
   case default
      write(*,*)'this cla_jet shape ',trim(self%myconfig%shape),' is not implimented'
      call mpistop('This cla_jet shape is not implimented in usr_cla_jet_patch at mod_usr.t')
-  !------------------------------------------------
-  ! * End case any other unknown jet shape
-  !----------------------------------------------
   end select
-  !------------------------------------------------
-  ! * End select the actual jet shape
-  !------------------------------------------------
 end subroutine usr_cla_jet_set_patch
-!-------------------------------------------------------------------
+!--------------------------------------------------------------------
  !> subroutine setting for cla_jet
  subroutine usr_cla_jet_set_w(ixI^L,ixO^L,qt,x,w,self)
   implicit none
@@ -1192,7 +905,7 @@ end subroutine usr_cla_jet_set_patch
   real(kind=dp), dimension(ixI^S) :: fprofile,angle_theta,&
                                     jet_surface,&
                                     jet_radius_in,jet_radius
-  real(kind=dp)                   :: z0,ztot,open_angle_in
+  real(kind=dp)                   :: z0,open_angle_in
   real(kind=dp), dimension(ixI^S,1:ndim)::project_speed
   !integer::ix2
   !----------------------------------
@@ -1220,8 +933,7 @@ end subroutine usr_cla_jet_set_patch
     case('slab','cylindrical')
       if(ndim>1)then
         open_angle_in       = self%myconfig%open_angle*self%myconfig%r_in_init/self%myconfig%r_out_init
-        ztot                = self%myconfig%r_out_init/dtan(self%myconfig%open_angle)
-        z0 = ztot-self%myconfig%z_impos
+        z0                  = self%myconfig%r_out_init/dtan(self%myconfig%open_angle)
         where(self%patch(ixO^S))
           jet_radius(ixO^S) = dsqrt((z0 + x(ixO^S,zjet_))**2.0_dp+x(ixO^S,rjet_)**2.0_dp)
 
@@ -1420,8 +1132,6 @@ end subroutine usr_cla_add_source
      call self%mydust%handel_small_val(ixI^L,ixO^L,qt,x,w)
    end if cond_dust_on
  end subroutine usr_cla_process_grid
-
-
  !--------------------------------------------------------------------
   subroutine usr_cla_ejecta_set_patch(ixI^L,ixO^L,qt,x,w,self)
      integer, intent(in)            :: ixI^L,ixO^L
@@ -1431,126 +1141,47 @@ end subroutine usr_cla_add_source
      class(cla_jet)                 :: self
      ! .. local ..
      integer                        :: iw,n_cells
-     real(kind=dp)                  :: z0,ztot,r0
-     real(kind=dp), dimension(ixI^S):: jet_radius, jet_h
+     real(kind=dp)                  :: z0,r0
+     real(kind=dp), dimension(ixI^S):: jet_radius
      !------------------------------------------------------
      if(allocated(self%ejecta_patch))deallocate(self%ejecta_patch)
      allocate(self%ejecta_patch(ixI^S))
-      n_cells= self%myconfig%variation_n_cells !1!2
+      n_cells= self%myconfig%variation_n_cells !by default = 2
       cond_time_var : if(qt>=self%myconfig%variation_start_time&
                          .and.qt<=self%myconfig%variation_end_time) then
-       !------------------------------------------------
-       ! * If the actual jet shape is conical :
-       !------------------------------------------------
+
         cond_conical : if(trim(self%myconfig%shape)=='conical')then
-          !------------------------------------------------
-          ! ** Select the actual axial geometry frame used:
-          !------------------------------------------------
           select case(typeaxial)
-          !------------------------------------------------
-          ! ** Case: spherical frame:
-          !------------------------------------------------
-          case('spherical')
-            self%ejecta_patch(ixO^S) = (dabs(x(ixO^S,rjet_)&
-                                          -self%myconfig%variation_position(zjet_))&
-                                          <dxlevel(zjet_)*n_cells)
-!            angle_theta(ixO^S)          =  self%myconfig%open_angle
-          !------------------------------------------------
-          ! ** End case: spherical frame
-          !------------------------------------------------
-          !------------------------------------------------
-          ! ** Case: slab or cylindrical frame:
-          !------------------------------------------------
-          case('slab','cylindrical')
-            !------------------------------------------------
-            ! *** Select the jet head shape
-            !------------------------------------------------
-            select case(trim(self%myconfig%head_shape))
-            !------------------------------------------------
-            ! *** If you want the head to be spherical shaped
-            ! in 2D :
-            !------------------------------------------------
             case('spherical')
-              ztot                = self%myconfig%r_out_init/dtan(self%myconfig%open_angle) !
-              z0                  = ztot-self%myconfig%variation_position(zjet_) !ztot = z_impos + z0
-            !  !radius relative to (-z0,0) at cylindrical r=r_out_init:
-              r0                = dsqrt((self%myconfig%variation_position(zjet_)+z0)**2.0_dp&
-              +self%myconfig%r_out_init**2.0_dp)
-            !  !radius relative to (-z0,0) for every cylindrical (r,z):
-              jet_radius(ixO^S)      = dsqrt((x(ixO^S,zjet_)+z0)**2.0_dp&
-                                      +x(ixO^S,rjet_)**2.0_dp)
-            !  !for every r and z, select cylindrical r that are between
-            !  ! r0 +/- dz(maxlevel,z)
-              self%ejecta_patch(ixO^S)  = (jet_radius(ixO^S)-r0)<=dxlevel(zjet_)*n_cells
+              self%ejecta_patch(ixO^S) = (x(ixO^S,rjet_)&
+                                          -self%myconfig%variation_position(rjet_)&
+                                          <dxlevel(zjet_)*n_cells)
+  !            angle_theta(ixO^S)          =  self%myconfig%open_angle
+            case('slab','cylindrical')
+             z0                = self%myconfig%r_out_init/dtan(self%myconfig%open_angle)
+
+             r0                = dsqrt((self%myconfig%variation_position(zjet_)+z0)**2.0_dp+&
+             self%myconfig%r_out_init**2.0_dp)
+
+             jet_radius(ixO^S) = dsqrt((z0 + x(ixO^S,zjet_))**2.0_dp+x(ixO^S,rjet_)**2.0_dp)
+
+              self%ejecta_patch(ixO^S)  = (jet_radius(ixO^S)-r0)<dxlevel(zjet_)*n_cells
 
 
 
     !           angle_theta(ixO^S)          =  datan(x(ixO^S,r_)/(z0+x(ixO^S,zjet_)))
-            !------------------------------------------------
-            ! *** Default for head is cartesian shaped:
-            !------------------------------------------------
-            case default
-              self%ejecta_patch(ixO^S)  = dabs(x(ixO^S,zjet_)                           &
-                  -self%myconfig%variation_position(zjet_))&
-                  <=dxlevel(zjet_)*n_cells
-            end select
-            !------------------------------------------------
-            ! *** End select the jet head shape
-            !------------------------------------------------
-          !------------------------------------------------
-          ! ** End case: slab or cylindrical frame
-          !------------------------------------------------
           end select
-          !------------------------------------------------
-          ! ** End select the actual axial geometry frame used
-          !------------------------------------------------
-        !------------------------------------------------
-        ! * If the actual jet shape is anything else :
-        ! * 'cylindrical', 'cartesian'
-        !------------------------------------------------
         else  cond_conical
-          !------------------------------------------------
-          ! *** Select the jet head shape
-          !------------------------------------------------
-          select case(trim(self%myconfig%head_shape))
-          !------------------------------------------------
-          ! *** If you want the head to be spherical shaped
-          ! in 2D :
-          !------------------------------------------------
-          case('spherical')
-            !height z relative to (0,0) at any cylindrical r:
-            jet_h(ixO^S)      = self%myconfig%variation_position(zjet_)&
-            +dsqrt(dabs(self%myconfig%r_out_init**2.0_dp-x(ixO^S,rjet_)**2.0_dp))
-            !for every r and z, select z that are below jet_h
-            self%ejecta_patch(ixO^S)  = (x(ixO^S,zjet_)-jet_h(ixO^S))&
-                                      <=dxlevel(zjet_)*n_cells
 
-
-
-          !           angle_theta(ixO^S)          =  datan(x(ixO^S,r_)/(z0+x(ixO^S,zjet_)))
-          !------------------------------------------------
-          ! *** Default for head is cartesian shaped:
-          !------------------------------------------------
-          case default
-            self%ejecta_patch(ixO^S) = (x(ixO^S,zjet_)                           &
-                                           -self%myconfig%variation_position(zjet_))&
-                                           <=dxlevel(zjet_)*n_cells
-          end select
-          !------------------------------------------------
-          ! *** End select the jet head shape
-          !------------------------------------------------
-
+          self%ejecta_patch(ixO^S) = (x(ixO^S,zjet_)                           &
+                                         -self%myconfig%variation_position(zjet_))&
+                                         <dxlevel(zjet_)*n_cells
 
     !      angle_theta(ixO^S)  = 0.0_dp
-
         end if cond_conical
-        !------------------------------------------------
-        ! * End if the actual jet shape is conical
-        ! * or if the actual jet shape is anything else
-        !------------------------------------------------
 
 
-        cond_inside : if(any(self%ejecta_patch(ixO^S)))then
+       cond_inside : if(any(self%ejecta_patch(ixO^S)))then
 
           if(.not.allocated(self%patch))then
             call self%set_patch(ixI^L,ixO^L,qt,x)
@@ -1571,12 +1202,12 @@ end subroutine usr_cla_add_source
    class(cla_jet)                 :: self
    ! .. local ..
    integer                        :: iw,n_cells
-   real(kind=dp)                  :: Vprofile,z0,ztot,amplitude_profile
+   real(kind=dp)                  :: Vprofile,z0,amplitude_profile
   ! logical, dimension(ixI^S)      :: patch_ejecta_surface
    real(kind=dp), dimension(ixI^S)       :: angle_theta,jet_radius
    real(kind=dp), dimension(ixI^S,1:ndim)::project_speed
    !------------------------------------------------------
-    n_cells= self%myconfig%variation_n_cells
+    !n_cells= self%myconfig%variation_n_cells
     cond_time_var : if(qt>=self%myconfig%variation_start_time&
                        .and.qt<=self%myconfig%variation_end_time) then
 
@@ -1588,8 +1219,8 @@ end subroutine usr_cla_add_source
             project_speed(ixO^S,zjet_)  = dcos(self%myconfig%open_angle)
           case('slab','cylindrical')
             if(ndim>1)then
-              ztot                = self%myconfig%r_out_init/dtan(self%myconfig%open_angle)
-              z0 = ztot -self%myconfig%z_out_init
+              z0                = self%myconfig%r_out_init/dtan(self%myconfig%open_angle)
+
               jet_radius(ixO^S) = dsqrt((z0 + x(ixO^S,zjet_))**2.0_dp+x(ixO^S,rjet_)**2.0_dp)
               angle_theta(ixO^S)          =  datan(x(ixO^S,r_)/(z0+x(ixO^S,zjet_)))
               project_speed(ixO^S,rjet_)  = x(ixO^S,r_)/jet_radius(ixO^S)
