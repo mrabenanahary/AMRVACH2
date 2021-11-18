@@ -133,17 +133,19 @@ module mod_radiative_cooling
   integer          :: n_DM      , n_MB      , n_MLcosmol &
                     , n_MLwc    , n_MLsolar1, n_SPEX     &
                     , n_JCcorona, n_cl_ism  , n_cl_solar &
-                    , n_DM_2
+                    , n_DM_2, n_DM_x1em1, n_DM_x1em2, n_DM_x1em4
 
   real(kind=dp)    :: t_DM(1:71),       t_MB(1:51),       t_MLcosmol(1:71) &
                     , t_MLwc(1:71),     t_MLsolar1(1:71), t_SPEX(1:110)    &
                     , t_JCcorona(1:45), t_cl_ism(1:151),  t_cl_solar(1:151)&
-                    , t_DM_2(1:76)
+                    , t_DM_2(1:76), t_DM_x1em1(1:76), t_DM_x1em2(1:76)&
+                    , t_DM_x1em4(1:76)
 
   real(kind=dp)    :: l_DM(1:71),       l_MB(1:51),       l_MLcosmol(1:71) &
                     , l_MLwc(1:71),     l_MLsolar1(1:71), l_SPEX(1:110)    &
                     , l_JCcorona(1:45), l_cl_ism(1:151),  l_cl_solar(1:151)&
-                    , l_DM_2(1:76)
+                    , l_DM_2(1:76),  l_DM_x1em1(1:76), l_DM_x1em2(1:76)&
+                    , l_DM_x1em4(1:76)
 
   real(kind=dp)    :: nenh_SPEX(1:110)
 
@@ -433,44 +435,164 @@ module mod_radiative_cooling
           , 1.2090,    1.2090    &
           , 1.2090,    1.2090,    1.2090    &
           , 1.2090,    1.2090    /
-  !
-  ! To be used together with the SPEX table for the SPEX_DM option
-  ! Assuming an ionization fraction of 10^-3
-  !
-  data    n_DM_2 / 76 /
 
-  data    t_DM_2 / 1.00, 1.04, 1.08, 1.12, 1.16, 1.20 &
-                 , 1.24, 1.28, 1.32, 1.36, 1.40 &
-                 , 1.44, 1.48, 1.52, 1.56, 1.60 &
-                 , 1.64, 1.68, 1.72, 1.76, 1.80 &
-                 , 1.84, 1.88, 1.92, 1.96, 2.00 &
-                 , 2.04, 2.08, 2.12, 2.16, 2.20 &
-                 , 2.24, 2.28, 2.32, 2.36, 2.40 &
-                 , 2.44, 2.48, 2.52, 2.56, 2.60 &
-                 , 2.64, 2.68, 2.72, 2.76, 2.80 &
-                 , 2.84, 2.88, 2.92, 2.96, 3.00 &
-                 , 3.04, 3.08, 3.12, 3.16, 3.20 &
-                 , 3.24, 3.28, 3.32, 3.36, 3.40 &
-                 , 3.44, 3.48, 3.52, 3.56, 3.60 &
-                 , 3.64, 3.68, 3.72, 3.76, 3.80 &
-                 , 3.84, 3.88, 3.92, 3.96, 4.00 /
+   !
+   ! To be used together with the SPEX table for the SPEX_DM_x1em1 option
+   ! Assuming an ionization fraction of 10^-1
+   !
+   data    n_DM_x1em1 / 76 /
+
+   data    t_DM_x1em1 / 1.00, 1.04, 1.08, 1.12, 1.16, 1.20 &
+                  , 1.24, 1.28, 1.32, 1.36, 1.40 &
+                  , 1.44, 1.48, 1.52, 1.56, 1.60 &
+                  , 1.64, 1.68, 1.72, 1.76, 1.80 &
+                  , 1.84, 1.88, 1.92, 1.96, 2.00 &
+                  , 2.04, 2.08, 2.12, 2.16, 2.20 &
+                  , 2.24, 2.28, 2.32, 2.36, 2.40 &
+                  , 2.44, 2.48, 2.52, 2.56, 2.60 &
+                  , 2.64, 2.68, 2.72, 2.76, 2.80 &
+                  , 2.84, 2.88, 2.92, 2.96, 3.00 &
+                  , 3.04, 3.08, 3.12, 3.16, 3.20 &
+                  , 3.24, 3.28, 3.32, 3.36, 3.40 &
+                  , 3.44, 3.48, 3.52, 3.56, 3.60 &
+                  , 3.64, 3.68, 3.72, 3.76, 3.80 &
+                  , 3.84, 3.88, 3.92, 3.96, 4.00 /
 
 
-  data    l_DM_2 / -30.0377, -29.7062, -29.4055, -29.1331, -28.8864, -28.6631 &
-                 , -28.4614, -28.2791, -28.1146, -27.9662, -27.8330 &
-                 , -27.7129, -27.6052, -27.5088, -27.4225, -27.3454 &
-                 , -27.2767, -27.2153, -27.1605, -27.1111, -27.0664 &
-                 , -27.0251, -26.9863, -26.9488, -26.9119, -26.8742 &
-                 , -26.8353, -26.7948, -26.7523, -26.7080, -26.6619 &
-                 , -26.6146, -26.5666, -26.5183, -26.4702, -26.4229 &
-                 , -26.3765, -26.3317, -26.2886, -26.2473, -26.2078 &
-                 , -26.1704, -26.1348, -26.1012, -26.0692, -26.0389 &
-                 , -26.0101, -25.9825, -25.9566, -25.9318, -25.9083 &
-                 , -25.8857, -25.8645, -25.8447, -25.8259, -25.8085 &
-                 , -25.7926, -25.7778, -25.7642, -25.7520, -25.7409 &
-                 , -25.7310, -25.7222, -25.7142, -25.7071, -25.7005 &
-                 , -25.6942, -25.6878, -25.6811, -25.6733, -25.6641 &
-                 , -25.6525, -25.6325, -25.6080, -25.5367, -25.4806  /
+   data    l_DM_x1em1 / -28.0377,-27.7062,-27.4055,-27.1331,-26.8864,-26.6631 &
+                        ,-26.4614,-26.2791,-26.1146,-25.9662,-25.8330 &
+                        ,-25.7129,-25.6052,-25.5088,-25.4225,-25.3455 &
+                        ,-25.2769,-25.2157,-25.1612,-25.1124,-25.0686 &
+                        ,-25.0290,-24.9927,-24.9586,-24.9263,-24.8948 &
+                        ,-24.8642,-24.8336,-24.8030,-24.7724,-24.7416 &
+                        ,-24.7109,-24.6807,-24.6509,-24.6220,-24.5941 &
+                        ,-24.5677,-24.5426,-24.5190,-24.4970,-24.4765 &
+                        ,-24.4574,-24.4395,-24.4226,-24.4063,-24.3903 &
+                        ,-24.3744,-24.3582,-24.3418,-24.3249,-24.3076 &
+                        ,-24.2901,-24.2724,-24.2549,-24.2378,-24.2215 &
+                        ,-24.2061,-24.1918,-24.1787,-24.1672,-24.1570 &
+                        ,-24.1482,-24.1407,-24.1342,-24.1287,-24.1234 &
+                        ,-24.1178,-24.1112,-24.1025,-24.0907,-24.0741 &
+                        ,-24.0514,-24.0081,-23.9566,-23.8139,-23.7151 /
+ !
+ ! To be used together with the SPEX table for the SPEX_DM_x1em2 option
+ ! Assuming an ionization fraction of 10^-2
+ !
+ data    n_DM_x1em2 / 76 /
+
+ data    t_DM_x1em2 / 1.00, 1.04, 1.08, 1.12, 1.16, 1.20 &
+                , 1.24, 1.28, 1.32, 1.36, 1.40 &
+                , 1.44, 1.48, 1.52, 1.56, 1.60 &
+                , 1.64, 1.68, 1.72, 1.76, 1.80 &
+                , 1.84, 1.88, 1.92, 1.96, 2.00 &
+                , 2.04, 2.08, 2.12, 2.16, 2.20 &
+                , 2.24, 2.28, 2.32, 2.36, 2.40 &
+                , 2.44, 2.48, 2.52, 2.56, 2.60 &
+                , 2.64, 2.68, 2.72, 2.76, 2.80 &
+                , 2.84, 2.88, 2.92, 2.96, 3.00 &
+                , 3.04, 3.08, 3.12, 3.16, 3.20 &
+                , 3.24, 3.28, 3.32, 3.36, 3.40 &
+                , 3.44, 3.48, 3.52, 3.56, 3.60 &
+                , 3.64, 3.68, 3.72, 3.76, 3.80 &
+                , 3.84, 3.88, 3.92, 3.96, 4.00 /
+
+
+ data    l_DM_x1em2 / -29.0377,-28.7062,-28.4055,-28.1331,-27.8864 &
+               ,-27.6631,-27.4614,-27.2791,-27.1146,-26.9662 &
+               ,-26.8330,-26.7129,-26.6052,-26.5088,-26.4225 &
+               ,-26.3455,-26.2769,-26.2157,-26.1611,-26.1123 &
+               ,-26.0684,-26.0286,-25.9918,-25.9578,-25.9248 &
+               ,-25.8931,-25.8614,-25.8300,-25.7983,-25.7660 &
+               ,-25.7338,-25.7011,-25.6690,-25.6370,-25.6057 &
+               ,-25.5754,-25.5464,-25.5186,-25.4923,-25.4674 &
+               ,-25.4439,-25.4219,-25.4011,-25.3813,-25.3623 &
+               ,-25.3437,-25.3254,-25.3071,-25.2888,-25.2703 &
+               ,-25.2517,-25.2332,-25.2149,-25.1969,-25.1795 &
+               ,-25.1630,-25.1474,-25.1330,-25.1199,-25.1081 &
+               ,-25.0977,-25.0887,-25.0809,-25.0742,-25.0683 &
+               ,-25.0627,-25.0570,-25.0505,-25.0422,-25.0312 &
+               ,-25.0161,-24.9957,-24.9570,-24.9104,-24.7799 &
+               ,-24.6878 /
+
+
+ !
+ ! To be used together with the SPEX table for the SPEX_DM option
+ ! Assuming an ionization fraction of 10^-3
+ !
+ data    n_DM_2 / 76 /
+
+ data    t_DM_2 / 1.00, 1.04, 1.08, 1.12, 1.16, 1.20 &
+                , 1.24, 1.28, 1.32, 1.36, 1.40 &
+                , 1.44, 1.48, 1.52, 1.56, 1.60 &
+                , 1.64, 1.68, 1.72, 1.76, 1.80 &
+                , 1.84, 1.88, 1.92, 1.96, 2.00 &
+                , 2.04, 2.08, 2.12, 2.16, 2.20 &
+                , 2.24, 2.28, 2.32, 2.36, 2.40 &
+                , 2.44, 2.48, 2.52, 2.56, 2.60 &
+                , 2.64, 2.68, 2.72, 2.76, 2.80 &
+                , 2.84, 2.88, 2.92, 2.96, 3.00 &
+                , 3.04, 3.08, 3.12, 3.16, 3.20 &
+                , 3.24, 3.28, 3.32, 3.36, 3.40 &
+                , 3.44, 3.48, 3.52, 3.56, 3.60 &
+                , 3.64, 3.68, 3.72, 3.76, 3.80 &
+                , 3.84, 3.88, 3.92, 3.96, 4.00 /
+
+
+ data    l_DM_2 / -30.0377, -29.7062, -29.4055, -29.1331, -28.8864, -28.6631 &
+                , -28.4614, -28.2791, -28.1146, -27.9662, -27.8330 &
+                , -27.7129, -27.6052, -27.5088, -27.4225, -27.3454 &
+                , -27.2767, -27.2153, -27.1605, -27.1111, -27.0664 &
+                , -27.0251, -26.9863, -26.9488, -26.9119, -26.8742 &
+                , -26.8353, -26.7948, -26.7523, -26.7080, -26.6619 &
+                , -26.6146, -26.5666, -26.5183, -26.4702, -26.4229 &
+                , -26.3765, -26.3317, -26.2886, -26.2473, -26.2078 &
+                , -26.1704, -26.1348, -26.1012, -26.0692, -26.0389 &
+                , -26.0101, -25.9825, -25.9566, -25.9318, -25.9083 &
+                , -25.8857, -25.8645, -25.8447, -25.8259, -25.8085 &
+                , -25.7926, -25.7778, -25.7642, -25.7520, -25.7409 &
+                , -25.7310, -25.7222, -25.7142, -25.7071, -25.7005 &
+                , -25.6942, -25.6878, -25.6811, -25.6733, -25.6641 &
+                , -25.6525, -25.6325, -25.6080, -25.5367, -25.4806  /
+
+
+ !
+ ! To be used together with the SPEX table for the SPEX_DM_x1em4 option
+ ! Assuming an ionization fraction of 10^-4
+ !
+ data    n_DM_x1em4 / 76 /
+
+ data    t_DM_x1em4 / 1.00, 1.04, 1.08, 1.12, 1.16, 1.20 &
+                , 1.24, 1.28, 1.32, 1.36, 1.40 &
+                , 1.44, 1.48, 1.52, 1.56, 1.60 &
+                , 1.64, 1.68, 1.72, 1.76, 1.80 &
+                , 1.84, 1.88, 1.92, 1.96, 2.00 &
+                , 2.04, 2.08, 2.12, 2.16, 2.20 &
+                , 2.24, 2.28, 2.32, 2.36, 2.40 &
+                , 2.44, 2.48, 2.52, 2.56, 2.60 &
+                , 2.64, 2.68, 2.72, 2.76, 2.80 &
+                , 2.84, 2.88, 2.92, 2.96, 3.00 &
+                , 3.04, 3.08, 3.12, 3.16, 3.20 &
+                , 3.24, 3.28, 3.32, 3.36, 3.40 &
+                , 3.44, 3.48, 3.52, 3.56, 3.60 &
+                , 3.64, 3.68, 3.72, 3.76, 3.80 &
+                , 3.84, 3.88, 3.92, 3.96, 4.00 /
+
+
+ data    l_DM_x1em4 / -31.0377,-30.7062,-30.4055,-30.1331,-29.8864,-29.6631 &
+                ,-29.4614,-29.2791,-29.1146,-28.9662,-28.8330 &
+                ,-28.7129,-28.6052,-28.5086,-28.4222,-28.3447 &
+                ,-28.2751,-28.2120,-28.1541,-28.0995,-28.0460 &
+                ,-27.9914,-27.9333,-27.8697,-27.7989,-27.7206 &
+                ,-27.6353,-27.5447,-27.4506,-27.3551,-27.2597 &
+                ,-27.1661,-27.0751,-26.9876,-26.9041,-26.8245 &
+                ,-26.7496,-26.6788,-26.6124,-26.5504,-26.4924 &
+                ,-26.4383,-26.3880,-26.3412,-26.2978,-26.2576 &
+                ,-26.2203,-26.1859,-26.1540,-26.1246,-26.0975 &
+                ,-26.0724,-26.0493,-26.0281,-26.0085,-25.9905 &
+                ,-25.9743,-25.9590,-25.9454,-25.9326,-25.9212 &
+                ,-25.9104,-25.9010,-25.8925,-25.8844,-25.8771 &
+                ,-25.8703,-25.8642,-25.8586,-25.8529,-25.8474 &
+                ,-25.8422,-25.8356,-25.8286,-25.8133,-25.7997 /
 
   data n_cl_solar / 151 /
 
@@ -973,6 +1095,43 @@ module mod_radiative_cooling
          t_table(1:ntable) = t_DM(1:n_DM)
          L_table(1:ntable) = l_DM(1:n_DM)
 
+
+       case('MB_x1em1')
+          if(mype ==0) &
+          write(*,'(3a)') 'Use MacDonald & Bailey (1981) cooling curve '&
+               ,'as implemented in ZEUS-3D for log(T)>=4.0 K, with the values '&
+               ,'from Dalgarno & McCRay (1972) for low temperatures as'&
+               ,'tabulated from Schure et al. (2006) at f_i=1e-1 between'&
+               ,'log(T)=1.0 and 4.0 K (4.0 K excluded).'
+
+          ntable = n_DM_x1em1 + n_MB - 1
+
+          allocate(t_table(1:ntable))
+          allocate(L_table(1:ntable))
+
+          t_table(1:ntable) = t_DM_x1em1(1:n_DM_x1em1-1)
+          L_table(1:ntable) = l_DM_x1em1(1:n_DM_x1em1-1)
+          t_table(n_DM_x1em1:ntable) = t_MB(1:n_MB)
+          L_table(n_DM_x1em1:ntable) = l_MB(1:n_MB)
+
+       case('MB_x1em2')
+          if(mype ==0) &
+          write(*,'(3a)') 'Use MacDonald & Bailey (1981) cooling curve '&
+               ,'as implemented in ZEUS-3D for log(T)>=4.0 K, with the values '&
+               ,'from Dalgarno & McCRay (1972) for low temperatures as'&
+               ,'tabulated from Schure et al. (2006) at f_i=1e-2 between'&
+               ,'log(T)=1.0 and 4.0 K (4.0 K excluded).'
+
+          ntable = n_DM_x1em2 + n_MB - 1
+
+          allocate(t_table(1:ntable))
+          allocate(L_table(1:ntable))
+
+          t_table(1:ntable) = t_DM_x1em2(1:n_DM_x1em2-1)
+          L_table(1:ntable) = l_DM_x1em2(1:n_DM_x1em2-1)
+          t_table(n_DM_x1em2:ntable) = t_MB(1:n_MB)
+          L_table(n_DM_x1em2:ntable) = l_MB(1:n_MB)
+
       case('MB')
          if(mype ==0) &
          write(*,'(3a)') 'Use MacDonald & Bailey (1981) cooling curve '&
@@ -999,6 +1158,24 @@ module mod_radiative_cooling
          L_table(1:ntable) = l_DM_2(1:n_DM_2-1)
          t_table(n_DM_2:ntable) = t_MB(1:n_MB)
          L_table(n_DM_2:ntable) = l_MB(1:n_MB)
+
+        case('MB_x1em4')
+           if(mype ==0) &
+           write(*,'(3a)') 'Use MacDonald & Bailey (1981) cooling curve '&
+                ,'as implemented in ZEUS-3D for log(T)>=4.0 K, with the values '&
+                ,'from Dalgarno & McCRay (1972) for low temperatures as'&
+                ,'tabulated from Schure et al. (2006) at f_i=1e-4 between'&
+                ,'log(T)=1.0 and 4.0 K (4.0 K excluded).'
+
+           ntable = n_DM_x1em4 + n_MB - 1
+
+           allocate(t_table(1:ntable))
+           allocate(L_table(1:ntable))
+
+           t_table(1:ntable) = t_DM_x1em4(1:n_DM_x1em4-1)
+           L_table(1:ntable) = l_DM_x1em4(1:n_DM_x1em4-1)
+           t_table(n_DM_x1em4:ntable) = t_MB(1:n_MB)
+           L_table(n_DM_x1em4:ntable) = l_MB(1:n_MB)
 
          case('MB_original')
             if(mype ==0) &
@@ -1089,22 +1266,75 @@ module mod_radiative_cooling
          t_table(1:ntable) = t_SPEX(1:n_SPEX)
          L_table(1:ntable) = l_SPEX(1:n_SPEX) + log10(nenh_SPEX(1:n_SPEX))
 
-      case('SPEX_DM')
-         if(mype ==0) then
-            print *, 'Use SPEX cooling curve for solar metallicity above 10^4 K. '
-            print *, 'At lower temperatures,use Dalgarno & McCray (1972), '
-            print *, 'with a pre-set ionization fraction of 10^-3. '
-            print *, 'as described by Schure et al. (2009). '
-         endif
+     case('SPEX_DM_x1em1')
+        if(mype ==0) then
+           print *, 'Use SPEX cooling curve for solar metallicity above 10^4 K. '
+           print *, 'At lower temperatures,use Dalgarno & McCray (1972), '
+           print *, 'with a pre-set ionization fraction of 10^-1. '
+           print *, 'as described by Schure et al. (2009). '
+        endif
 
-         ntable = n_SPEX + n_DM_2 - 6
+        ntable = n_SPEX + n_DM_x1em1 - 6
 
-         allocate(t_table(1:ntable))
-         allocate(L_table(1:ntable))
-         t_table(1:n_DM_2-1) = t_DM_2(1:n_DM_2-1)
-         L_table(1:n_DM_2-1) = L_DM_2(1:n_DM_2-1)
-         t_table(n_DM_2:ntable) = t_SPEX(6:n_SPEX)
-         L_table(n_DM_2:ntable) = l_SPEX(6:n_SPEX) + log10(nenh_SPEX(6:n_SPEX))
+        allocate(t_table(1:ntable))
+        allocate(L_table(1:ntable))
+        t_table(1:n_DM_x1em1-1) = t_DM_x1em1(1:n_DM_x1em1-1)
+        L_table(1:n_DM_x1em1-1) = L_DM_x1em1(1:n_DM_x1em1-1)
+        t_table(n_DM_x1em1-1:ntable) = t_SPEX(6:n_SPEX)
+        L_table(n_DM_x1em1-1:ntable) = l_SPEX(6:n_SPEX) + log10(nenh_SPEX(6:n_SPEX))
+
+
+     case('SPEX_DM_x1em2')
+        if(mype ==0) then
+           print *, 'Use SPEX cooling curve for solar metallicity above 10^4 K. '
+           print *, 'At lower temperatures,use Dalgarno & McCray (1972), '
+           print *, 'with a pre-set ionization fraction of 10^-2. '
+           print *, 'as described by Schure et al. (2009). '
+        endif
+
+        ntable = n_SPEX + n_DM_x1em2 - 6
+
+        allocate(t_table(1:ntable))
+        allocate(L_table(1:ntable))
+        t_table(1:n_DM_x1em2-1) = t_DM_x1em2(1:n_DM_x1em2-1)
+        L_table(1:n_DM_x1em2-1) = L_DM_x1em2(1:n_DM_x1em2-1)
+        t_table(n_DM_x1em2-1:ntable) = t_SPEX(6:n_SPEX)
+        L_table(n_DM_x1em2-1:ntable) = l_SPEX(6:n_SPEX) + log10(nenh_SPEX(6:n_SPEX))
+
+    case('SPEX_DM')
+       if(mype ==0) then
+          print *, 'Use SPEX cooling curve for solar metallicity above 10^4 K. '
+          print *, 'At lower temperatures,use Dalgarno & McCray (1972), '
+          print *, 'with a pre-set ionization fraction of 10^-3. '
+          print *, 'as described by Schure et al. (2009). '
+       endif
+
+       ntable = n_SPEX + n_DM_2 - 6
+
+       allocate(t_table(1:ntable))
+       allocate(L_table(1:ntable))
+       t_table(1:n_DM_2-1) = t_DM_2(1:n_DM_2-1)
+       L_table(1:n_DM_2-1) = L_DM_2(1:n_DM_2-1)
+       t_table(n_DM_2:ntable) = t_SPEX(6:n_SPEX)
+       L_table(n_DM_2:ntable) = l_SPEX(6:n_SPEX) + log10(nenh_SPEX(6:n_SPEX))
+
+
+      case('SPEX_DM_x1em4')
+           if(mype ==0) then
+              print *, 'Use SPEX cooling curve for solar metallicity above 10^4 K. '
+              print *, 'At lower temperatures,use Dalgarno & McCray (1972), '
+              print *, 'with a pre-set ionization fraction of 10^-4. '
+              print *, 'as described by Schure et al. (2009). '
+           endif
+
+           ntable = n_SPEX + n_DM_x1em4 - 6
+
+           allocate(t_table(1:ntable))
+           allocate(L_table(1:ntable))
+           t_table(1:n_DM_x1em4-1) = t_DM_x1em4(1:n_DM_x1em4-1)
+           L_table(1:n_DM_x1em4-1) = L_DM_x1em4(1:n_DM_x1em4-1)
+           t_table(n_DM_x1em4-1:ntable) = t_SPEX(6:n_SPEX)
+           L_table(n_DM_x1em4-1:ntable) = l_SPEX(6:n_SPEX) + log10(nenh_SPEX(6:n_SPEX))
 
       !  if(phys_config%chemical_on)L_table(1:n_DM_2-1)=L_table(1:n_DM_2-1)/coolconfig%fn
       case default
@@ -1546,10 +1776,6 @@ module mod_radiative_cooling
       real(kind=dp)    :: ptherm(ixI^S),pnew(ixI^S),ndensity_electron(ixO^S)
       integer :: ix^D
 
-
-
-
-
       call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew )
       if(phys_config%chemical_on) then
@@ -1618,13 +1844,10 @@ module mod_radiative_cooling
 
       real(kind=dp)    :: plocal, rholocal, elocal
       real(kind=dp)    :: emin, Lmax, eold, enew, estep
-
       integer, parameter :: maxiter = 100
       real(kind=dp)   , parameter :: e_error = 1.0D-6
 
       integer :: ix^D, j
-
-
 
       call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew )
@@ -1700,28 +1923,17 @@ module mod_radiative_cooling
       real(kind=dp)    :: Y1, tc, Y2
       real(kind=dp)    :: L1,Tlocal1,  Tlocal2
       real(kind=dp), dimension(ixI^S) :: ptherm,pnew,temperature
-      real(kind=dp)    :: nlocal,nHlocal
+      real(kind=dp)    :: nlocal
       real(kind=dp)    :: emin, Lmax, fact
-
       real(kind=dp)    :: ndensity_electron(ixO^S)
 
       integer :: ix^D
       integer :: icool
       !------------------------------------------
-
-
-
-
     !  call phys_get_pthermal(wCT,x,ixI^L,ixO^L,ptherm)
       call phys_get_pthermal(w,x,ixI^L,ixO^L,pnew )
       call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
       fact = Lref*qdt/Tref
-
-      !write(*,*) coolconfig%He_abundance,&
-      !              coolconfig%rc_chemical_gas_type,coolconfig%mean_nall_to_nH, &
-      !                                      coolconfig%mean_mass,coolconfig%mean_mup,&
-      !                                      coolconfig%mean_ne_to_nH
-
 
       !invgam=1.0_dp/(rc_gammamin1)
       ! if(phys_config%chemical_on) then
@@ -1731,20 +1943,10 @@ module mod_radiative_cooling
       ! end if
       {do ix^DB = ixO^LIM^DB\}
         ! plocal   = ptherm(ix^D)
-         !v<== it's noted rho_ but in fact the passed array wCT is equalt to nH
-         nHlocal = wCT(ix^D,rho_)
-         ! ntot = <m>/mu*nH
          nlocal = wCT(ix^D,rho_)
-         !*(coolconfig%mean_mass/coolconfig%mean_mup)*wCT(ix^D,rho_)! in this module,
-         ! plocal \propto nlocal is already normalised so that here nlocal=ntot=nHlocal=nH
-         ! so there is no need for a pre-factor (coolconfig%mean_mass/coolconfig%mean_mup)
-         ! input from mod_source.t that will call this subroutine
-         ! is not the total mass rho but the hydrogen number density nH
 
-
-
-         emin     = nlocal*tlow/(rc_gammamin1) ! =P/(gamma-1)
-         Lmax     = max(zero,(pnew(ix^D)/(rc_gammamin1)-emin)/qdt)!dimension of Lambda_Hd*nH*nH
+         emin     = nlocal*tlow/(rc_gammamin1)
+         Lmax     = max(zero,(pnew(ix^D)/(rc_gammamin1)-emin)/qdt)
 
          !  Tlocal = P/rho
          Tlocal1   = max(temperature(ix^D),smalldouble)
@@ -1763,27 +1965,20 @@ module mod_radiative_cooling
             L1         = min(L1,Lmax)
             w(ix^D,e_) = w(ix^D,e_)-L1*qdt
          else
-            call findL(Tlocal1,nlocal,L1) !get Lambda_HD
-            call findY(Tlocal1,nlocal,Y1) !get Y(T)
-            !tc         = Tlocal1/(rc_gammamin1)/(nlocal*L1) !=t_cool in Townsend 2009
-            !Y2         = Y1+(Tlocal1*fact)/(L1*tc)
-            ! tc=t_cool in Townsend 2009
-            ! tc = n_all * T / ((gamma-1)*nH*nH*Lambda_HD)
-            tc         = nlocal*Tlocal1/(rc_gammamin1)/(nHlocal*nHlocal*L1)
-            Y2         = Y1+(Tlocal1*fact)/(L1*tc) ! must be dimensionless
+            call findL(Tlocal1,nlocal,L1)
+            call findY(Tlocal1,nlocal,Y1)
+            tc         = Tlocal1/(rc_gammamin1)/(nlocal*L1)
+            Y2         = Y1+(Tlocal1*fact)/(L1*tc)
             call findT(Tlocal2,Y2)
 
             if(Tlocal2<=tcoolmin) then
-              L1 = Lmax/(nHlocal*nHlocal) !since L1 will be multipled by (nHlocal*nHlocal)
+              L1 = Lmax/(nlocal*nlocal)
             else
-            ! Zakaria told this, below, is an interpolation of the L1 value from
-            ! Tlocal1=T^(n) and Tlocal2=T^(n+1)
-              L1 = ((Tlocal1-Tlocal2)*nlocal)/(rc_gammamin1)/(nHlocal*nHlocal*qdt) !missed some terms
+              L1 = (Tlocal1-Tlocal2)/(rc_gammamin1)/(nlocal*qdt)
             endif
 
-            L1          = L1*(nHlocal*nHlocal)!transform L1 from Lambda_HD to S=Lambda_HD*nH*nH
+            L1          = L1*(nlocal*nlocal)
             L1          = min(L1,Lmax)
-            !if(it==1) write(*,*) w(ix^D,e_), w_convert_factor(e_), w(ix^D,e_)*w_convert_factor(e_)
             w(ix^D,e_)  = w(ix^D,e_)-L1*qdt
          endif
          if(coolsavedT)w(ix^D,dtcool1_) = cfrac*(pnew(ix^D)/rc_gammamin1/max(L1,smalldouble))

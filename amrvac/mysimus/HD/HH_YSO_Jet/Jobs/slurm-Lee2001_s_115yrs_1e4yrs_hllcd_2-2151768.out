@@ -1,0 +1,1621 @@
+/bin/cp: cannot stat '/obs/mrabenanahary/MPI-AMRVAC/amrvac/mysimus/HD/HH_YSO_Jet/Parfiles/Article/Lee2001_s_115yrs_1e4yrs_hllcd_2.par': No such file or directory
+srun: error: tycho67: task 0: Exited with exit code 1
+2151768
+tycho67
+/scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2
+more: stat of Lee2001_s_115yrs_1e4yrs_hllcd_2.par failed: No such file or directory
+ ---------------------------------------------------------------------------
+ ---------------------------------------------------------------------------
+ |         __  __ ____ ___        _    __  __ ______     ___    ____       |
+ |        |  \/  |  _ \_ _|      / \  |  \/  |  _ \ \   / / \  / ___|      |
+ |        | |\/| | |_) | |_____ / _ \ | |\/| | |_) \ \ / / _ \| |          |
+ |        | |  | |  __/| |_____/ ___ \| |  | |  _ < \ V / ___ \ |___       |
+ |        |_|  |_|_|  |___|   /_/   \_\_|  |_|_| \_\ \_/_/   \_\____|      |
+ --------------------------------------------------------------------------
+ ---------------------------------------------------------------------------
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+forrtl: No such file or directory
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+forrtl: No such file or directory
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+ Reading usr_list
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_physical_unit_set_default                                           
+  mod_obj_usr_unit.t--> usr_physical_unit_set_default
+ self: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup 
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_ism_set_default                                                     
+  mod_obj_usr_unit.t--> unit_chemical_ionisation
+  function private: chemical_composition | xHe | mean_nall_to_nH |
+  mean_mass | mean_ne_to_nH | mean_mup | sub_name
+ fullyionised                    0.100000000000000        1.20000000000000     
+   1.40000000000000        1.20000000000000       0.608695652173913      
+ usr_cla_jet_set_default                                                 
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F433179B2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FA99F4702E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F4FF7D3F2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F5C048102E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F37EFBA92E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F2A433542E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F725607A2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F597CA872E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F0B873042E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007EFCEAAD52E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FB08CE9B2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F3B981B02E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FA201E802E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F974D7E92E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FD94A2DE2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FB43C0CD2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F6DE5D0E2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FB97E2BA2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FE1EEF1D2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F3A708312E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FB7398BE2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F35E06272E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FF1880042E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FF61751B2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F50B980E2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F35404B42E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F087063D2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FFBA8F462E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F97908212E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FEDB07E42E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FECAC0992E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F1BBD3642E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F54413CB2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F3B6A7692E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F9754A872E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FD75BB7A2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FD9904A72E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FA269F7C2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FBAFB6FF2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FC1A1D912E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F24A3F942E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F0E42D4C2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007F14B49D92E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+-------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+-------------------------------------------------------
+forrtl: severe (29): file not found, unit 9, file /scratch/mrabenanahary/run.2151768.Lee2001_s_115yrs_1e4yrs_hllcd_2/Lee2001_s_115yrs_1e4yrs_hllcd_2.par
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D1DFA8  for__io_return        Unknown  Unknown
+amrvac             0000000000D370C4  for_open              Unknown  Unknown
+amrvac             00000000005C3E6D  Unknown               Unknown  Unknown
+amrvac             00000000005DBA1C  Unknown               Unknown  Unknown
+amrvac             000000000040E6D0  Unknown               Unknown  Unknown
+amrvac             000000000040C4DE  Unknown               Unknown  Unknown
+libc-2.24.so       00007FB2BBEAA2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040C3AA  Unknown               Unknown  Unknown
+--------------------------------------------------------------------------
+mpiexec detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[29181,1],15]
+  Exit code:    29
+--------------------------------------------------------------------------
+/bin/mv: cannot stat 'Output/Lee2001_s_115yrs_1e4yrs_hllcd_2/*'srun: error: tycho67: task 0: Exited with exit code 1
+: No such file or directory

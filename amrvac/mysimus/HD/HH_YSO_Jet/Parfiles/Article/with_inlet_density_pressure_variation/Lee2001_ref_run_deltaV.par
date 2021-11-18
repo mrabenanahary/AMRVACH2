@@ -13,7 +13,7 @@
 !==============================================================
 
  &filelist
-        base_filename='Output/Lee2001_ref_run_deltaV/Jet_CC_Shang06_'
+        base_filename='Output/Lee2001_ref_run_deltaV/Jet_CC_'
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
@@ -57,7 +57,7 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  3.15576d10! 1000 yrs
+        time_max=  2.209032d10! 700 yrs !3.15576d10! 1000 yrs
 
 
 /
@@ -110,20 +110,20 @@
  &meshlist
         ! grid at level 1
         xprobmin1 =  0.0d0    ! cm
-        xprobmax1 =  1.9d17! dr=83.56 AU at lvl 1
+        xprobmax1 =  7.0d16! <--- r_max=7e16cm
         xprobmin2 =  0.0d0    ! cm
-        xprobmax2 =  1.9d17! dz=83.56 AU at lvl 1
+        xprobmax2 =  1.9d17! <--- z_max=1.9e17cm
 
         ! total cell at level 1
-        domain_nx1= 152! dr=83.56 AU at lvl 1
-        domain_nx2= 152! dr=83.56 AU at lvl 1
+        domain_nx1= 336! <---dr=2.08e14 cm at lvl 1
+        domain_nx2= 912! <---dr=2.08e14 cm at lvl 1
         ! number of cell by block
         block_nx1 = 8!8!
         block_nx2 = 8!8!
 
         ! AMR configuration
         refine_criterion=3
-        refine_max_level=3 !>>HH4647 !  dr=dz=20.89 AU at lvl 3! dr=dz=2.61 AU at lvl 6
+        refine_max_level=4 !<--- mais sans trop raffiner pour que la simu ne tourne pas trop longtemps (résolution suffisante selon moi pour ainsi montrer ce que l'on veut montrer) ==> dans ma proposition, on aura ainsi une résolution spatiale, au lvl max = 4 de raffinement, égale à (3e17/(1440*2^3))=2.604e13 cm
         refine_threshold=20*0.01d0
         derefine_ratio=20*1d-3
       !  w_refine_weight(1)=0.25d0
@@ -181,7 +181,7 @@
          coolmethod       = 'exact'
          cfrac            = 1.d0
          Tfix             = .false.
-         tlow             = 110 !>>HH4647
+         tlow             = 280 !<--- T_low = 280 K comme limite inférieure de la table de cooling afin d'éviter que le jet à 270 K ne se mette à refroidir par radiative cooling, ce qui serait non-physique
          coolsaveL        = .true.
          coolsavedT       = .true.
          He_abundance = 0.1d0
@@ -216,8 +216,6 @@
         usrconfig%phys_inuse          = 'hd' !'mhd' ! set physique want to be used
 
         usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
-        !usrconfig%phys_temperature_isotherm     = 100 ! Le 2001
-        !usrconfig%temperature_max  = 1d7
         usrconfig%reset_flux_scheme_on          = .true.
         usrconfig%reset_flux_scheme_diffuse     = 'hllcd'
         usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
@@ -251,11 +249,11 @@
   ism_config%velocity(2)        = 0.0!5.d8     ! ism  speed components (cm/s) Z : 0.0 = milieu statique
   ism_config%velocity(3)        = 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
   ism_config%Mach_number_tomov_obj= 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
-  ism_config%temperature        = 100.0d0  !>>HH4647   ! Zheng19 = 50 K ! ism temperature (K) : influence la valeur de pression et de force de gravité contrebalaçant mais pas le gradient de pression
+  ism_config%temperature        = 30.0d0  !<---T_a = 30 K comme Lee 2001
   ism_config%pressure           = 0.0d0     !1.3806485199999997d-12! ism pressure if is set to 0 it will use temperature : äraview trouve a T=100 K et rho_j=100 cm-3 >>> p_j = 2.71055e-12 Ba
   ism_config%tracer_on          = .true.    ! ism tracer
   ism_config%tracer_init_density= 1.0d9!1.0d3     ! ism tracer density
-  ism_config%tracer_small_density  =  1.0d-9!1.0d-5
+  ism_config%tracer_small_density  =  1.0d-12!1.0d-5
 
   ism_config%reset_on           = .false.    ! ism reset
   ism_config%reset_coef         = 0.0! 0.0     ! ism reset  coefficient : 19-03-2021 --> don't use it ! it creates bugs when >0.0d0
@@ -303,12 +301,12 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%time_cla_jet_on       =  0.0d0 !> initial time the cla_jet is set in the simulation box
 
     cla_jet_config%myindice              =  0       !> cla_jet associated indice
-    cla_jet_config%density               =  1.603462022965539d-19!Fm=5e-7 Msun/yr!1.6d-20 !> cla_jet density  (g/cm^3) densite totale en particules H+H^++H2+He
+    cla_jet_config%density               =  3.5919268841666055d-19!<-------Fm=1.2e-7 Msun/yr
 
     cla_jet_config%number_density        =  0.0d0 !1.3704d4 !7.6d5 !1.0d5 !7.65e5  ! = ntot = nH * 1.4 : densite en H+H^++H2+He,
                                             ! et où nH = densite retournee par Paraview est la densite en H+H^++H2
                                             ! Zhang19 = 0.3-5 e-7 Msun/yr >>> n0= 42864.27- 1.072d6 cm-3 on impose le flux de masse 1.0d5 !> cla_jet number density (1/cm^3)  Reference  Whittle, J. D. Silverman, et al. 2004 : on doit désactiver le flux de masse pour pouvoir utiliser cette densité
-    cla_jet_config%temperature           =  100.0d0  !>>HH4647 !> cla_jet temperature  (K)
+    cla_jet_config%temperature           =  270.0d0  !<---T_jet = 270 K comme Lee 2001
     cla_jet_config%pressure              =  0.0d0   !> cla_jet pressure
     cla_jet_config%pressure_toism        =  0.0d0   !> cla_jet pressure relative to ism pressure
     cla_jet_config%magnetic(1)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
@@ -320,9 +318,9 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%Mach_number           =  0.0!250.0d0   !> cla_jet  Mach number : Par défaut : Ma = 20
     cla_jet_config%c_sound               =  0.0d0   !> cla_jet  sound speed (cm/s)
     cla_jet_config%velocity(1)           =  0.0d0   !> cla_jet  velocity (radial speed)(cm/s)
-    cla_jet_config%velocity(2)           =  1.0d7 !>>HH46471.5d7 !0.0d0 !1.0d7   !1.0d7!> cla_jet  velocity (longitudinal speed)(cm/s) ! Reference  Whittle, J. D. Silverman, et al. 2004 ! Projet n°1 de Sylvie (Cabrit et Raga 1997) => Vjet = 150 km/s = 1.5d7 cm/s (sans tenir compte de la variabilité temporelle du jet) !cla_jet_config%velocity_poloidal     =  0.0d0 !1.0d7 ! Zhang19 = 100 km/s
+    cla_jet_config%velocity(2)           =  1.2d7 !
     cla_jet_config%velocity(3)           =  0.0d0   !> cla_jet  velocity (rotation speed)(cm/s)
-    cla_jet_config%velocity_poloidal     =  1.0d7
+    cla_jet_config%velocity_poloidal     =  1.2d7 !<--- norme du vecteur vitesse au niveau de l'inlet du jet
     cla_jet_config%power                 =  0.0d0   !> wind power flux
     cla_jet_config%mass_flux             =  0.0d0   ! 3.15e19 ! flux en H+H^++H2 1.13d21 !1.89d18 ! grammes/s>>>Zhang19 = 0.3e-7 Msun/yr  0.0!9.8525563d16!1.9705112501213315d17!1.3136741667475542d17!!   !> wind mass flux : cabrit1997 = 1.3136741d17 à Vjet = 100 km/s et 1.9705111e+17 à Vjet = 150 km/s (Vjet = 150 km/s ne marche qu a basse resolution de maillage)
                                             ! c'est par l'imposition de cla_jet_config%mass_flux et de cla_jet_config%velocity(2) que la densité est alors imposée à l'intérieur du jet
@@ -333,38 +331,38 @@ ism_config%He_abundance      = 0.1
 
     cla_jet_config%open_angle            = 3.0d0 !>>HH4647 !>  cla_jet initial open angle  (degre): 0.0d0 = jet droit cylindrique
     cla_jet_config%z_in                  =  -46.275d18 !> cla_jet inner boundary position
-    cla_jet_config%z_impos               =  1.644d15 !>>HH4647 !3.50d14  ! 1d15!6.52128d14!3.26128d15!1.495978707d13!1.495978707d14!> cla_jet initial jet-wind region height : 1.495978707e15 cm = 100 au
-    cla_jet_config%z_out_init            =  1.66d15 !>>HH4647 !3.52d14 ! 2d15!9.52128d14!3.26128d15!1.495978707d13!1.495978707d14!0.5d15!0.5d14!> cla_jet  impose z height : 1.495978707e15 cm = 100 au
-    cla_jet_config%r_out_init            =  2.5d15!7.47d14 !=50 UA>>HH4647 3.0d15!1.611031692203301d15!> cla_jet inner boundary wind position : zhang19 = 7.48d14 cm = 50 au
-    cla_jet_config%r_out_impos           =  2.5d15!7.47d14 !=50 UA>>HH4647 !1.611031692203301d15!> cla_jet  impose radius : Rjet (Cabrit1997) = 0.5d16 cm; zhang19 = 7.48d14 , necessary to impose density or mass flux on the inner boundary
+    cla_jet_config%variation_n_cells     = 2
+    cla_jet_config%z_impos               =  8.22d14 !
+    cla_jet_config%z_out_init            =  8.30d14 !
+    cla_jet_config%r_out_init            =  7.47d14! <--- 50 UA
+    cla_jet_config%r_out_impos           =  7.47d14! <--- 50 UA
 
     cla_jet_config%r_in_init             =  0.0 !-7.48d14 !> cla_jet inner jet  region : position de la limite gauche du jet en coordonnées cylindriques : à tenir compte dans le calcul de la surface d'éjection du jet et donc du calcul du flux de masse ejectée
 
     cla_jet_config%tracer_on             =  .true. !> cla_jet logical to set tracer
-    cla_jet_config%tracer_init_density   =  1.0d9!1.0d3  !> cla_jet tracer density
-    cla_jet_config%tracer_small_density  =  1.0d-9!1.0d-5    !> cla_jet tracer small density
+    cla_jet_config%tracer_init_density   =  1.0d9!> cla_jet tracer density
+    cla_jet_config%tracer_small_density  =  1.0d-12!> cla_jet tracer small density
     cla_jet_config%shape                 =  'cartesian'  !> cla_jet shape
-    cla_jet_config%head_shape            =  'cartesian'  !> cla_jet shape
     cla_jet_config%profile               =  'none'  !> cla_jet profile
 
 
     cla_jet_config%variation_on          =  .true. ! Zhang19 .false. !.true.! to set on  or off the jet-injection in-real-time velocity variability
-    cla_jet_config%density_variation_on  =  .true. ! cla_jet density variation switch
-    cla_jet_config%pressure_variation_on =  .true. ! cla_jet pressure variation switch : enables constant temperature in the jet inlet
+    cla_jet_config%density_variation_on  =  .true. !<----- keep constant mass-loss rate !> cla_jet density variation switch
+    cla_jet_config%pressure_variation_on =  .true. !<----- keep constant jet temperature !> cla_jet pressure variation switch : enables constant temperature in the jet inlet
     cla_jet_config%variation_start_time  =  0.0d0 !time (in s in cgs) at which to begin the time variability : 0.0 to begin at the start of the simulation
     cla_jet_config%variation_end_time    =  4d15
-    cla_jet_config%variation_velocity_amplitude =  1.0d7
-    cla_jet_config%variation_velocity_poloidal =  9.0d6
+    cla_jet_config%variation_velocity_amplitude =  1.2d7 !<--- norme du vecteur vitesse au niveau de l'inlet du jet (aux yeux du code, c'est une autre variable qu'on a oublié, surtout moi, de retirer quand on a rajouté   le paramètre cla_jet_config%velocity_poloidal en ouvrant le jet, donc par sécurité, comme je ne sais pas si on l'utilise toujours ailleurs, fixons la même valeur qu'au-dessus)
+    cla_jet_config%variation_velocity_poloidal =  9.0d6 !<------ variation de la norme du vecteur vitesse du jet
     cla_jet_config%variation_velocity(1) =  0.0d0
-    cla_jet_config%variation_velocity(2) =  9.0d6
+    cla_jet_config%variation_velocity(2) =  9.0d6 !<------ variation de la norme du vecteur vitesse du jet
     cla_jet_config%variation_velocity(3) =  0.0d0
-    cla_jet_config%variation_time        =  3.629124d9! 115yrs 9.782856d9!=310 yrs
-    cla_jet_config%variation_position    =  0.0d0,1.644d15 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
-    cla_jet_config%variation_type        =  'sin' !>>HH4647 !Zheng19='sawtooth' ? (d ares Sylvie) >> vérifier avec 'sin' ! 'sin'!'sin' !'door'! type of the velocity variation induced in the velocity profile, see subroutine usr_mat_profile_scalar in mod_obj_mat.t to see which possibilities are avalaible
+    cla_jet_config%variation_time        =  3.629124d9!<---- 115 ans
+    cla_jet_config%variation_position    =  0.0d0,8.22d14 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
+    cla_jet_config%variation_type        =  'sin' !
     cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation
     cla_jet_config%variation_phys_variable(1) =  3 ! 3 mean the velocity in Z direction
 
-    cla_jet_config%refine_min_level      = 3
+    cla_jet_config%refine_min_level      = 4
     cla_jet_config%chemical_gas_type     = 'fullyatomic' !>>HH4647
 
 

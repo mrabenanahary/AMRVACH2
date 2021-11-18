@@ -628,7 +628,7 @@ contains
        !put for each time step at any boundary
        !set to 'fix'
        !----------------------------------------------------
-        w(ixO^S,phys_ind%mom(idir)) =  self%myconfig%velocity(idir)
+        w(ixO^S,phys_ind%mom(idir)) = self%myconfig%velocity(idir)
        end where
       end do Loop_idir
 

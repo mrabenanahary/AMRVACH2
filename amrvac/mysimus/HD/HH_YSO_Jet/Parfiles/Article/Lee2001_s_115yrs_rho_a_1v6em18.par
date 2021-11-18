@@ -355,7 +355,6 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%tracer_init_density   =  1.0d7!1.0d3  !> cla_jet tracer density
     cla_jet_config%tracer_small_density  =  0.0d0!1.0d-5    !> cla_jet tracer small density
     cla_jet_config%shape                 =  'cylindrical'  !> cla_jet shape
-    cla_jet_config%head_shape            =  'cartesian'  !> cla_jet shape
     cla_jet_config%profile               =  'none'  !> cla_jet profile
 
 
