@@ -36,6 +36,9 @@ module mod_radiative_cooling
   !> Helium abundance over Hydrogen
   real(kind=dp)   , private    :: He_abundance
 
+  !> H2 cooling power rate
+  real(kind=dp)   , private    :: lH2
+
   !> Chemical_gas_type
   character(len=std_len), private :: rc_chemical_gas_type
 
@@ -98,6 +101,9 @@ module mod_radiative_cooling
 
       !> Chemical_gas_type
       character(len=std_len) :: rc_chemical_gas_type
+
+      !> H2 cooling power rate
+      real(kind=dp)    :: lH2
 
       real(kind=dp)                   :: mean_mass
       real(kind=dp)                   :: mean_mup
@@ -781,7 +787,7 @@ module mod_radiative_cooling
       namelist /rc_list/ coolcurve, coolmethod, ncool, cfrac, tlow, Tfix,&
                          coolsaveL,coolsavedT,coolsavemu,&
                          He_abundance,rc_chemical_gas_type,mean_mass,&
-                         mean_mup,mean_ne_to_nH,mean_nall_to_nH
+                         mean_mup,mean_ne_to_nH,mean_nall_to_nH,lH2
     error_message = 'At '//' mod_radiative_cooling.t'//'  in the procedure : rc_read_params'
     Loop_iparfile : do i_file = 1, size(files)
       open(unitpar, file=trim(files(i_file)), status="old")
@@ -823,6 +829,8 @@ module mod_radiative_cooling
       coolconfig%mean_nall_to_nH     = mean_nall_to_nH
       coolconfig%He_abundance     = He_abundance
       coolconfig%rc_chemical_gas_type     = rc_chemical_gas_type
+      coolconfig%lH2     = lH2
+
 
       call rc_fill_chemical_ionisation(coolconfig%He_abundance,&
                     coolconfig%rc_chemical_gas_type,coolconfig%mean_nall_to_nH, &
@@ -856,6 +864,7 @@ module mod_radiative_cooling
       mean_ne_to_nH     = (1.0_dp+He_abundance)
       mean_nall_to_nH     = (1.0_dp+2.0_dp*He_abundance)
       rc_chemical_gas_type = 'fullyionised'
+      lH2 = -24.0_dp
 
 
       rc_gammamin1 = rc_gamma -1.0_dp
@@ -877,6 +886,7 @@ module mod_radiative_cooling
       coolconfig%mean_ne_to_nH     = (1.0_dp+coolconfig%He_abundance)
       coolconfig%mean_nall_to_nH     = (1.0_dp+2.0_dp*coolconfig%He_abundance)
       coolconfig%rc_chemical_gas_type = 'fullyionised'
+      coolconfig%lH2 = -24.0_dp
 
       call rc_fill_chemical_ionisation(coolconfig%He_abundance,&
                     coolconfig%rc_chemical_gas_type,coolconfig%mean_nall_to_nH, &
@@ -1318,6 +1328,26 @@ module mod_radiative_cooling
        t_table(n_DM_2:ntable) = t_SPEX(6:n_SPEX)
        L_table(n_DM_2:ntable) = l_SPEX(6:n_SPEX) + log10(nenh_SPEX(6:n_SPEX))
 
+       case('SPEX_DM_H2')
+          if(mype ==0) then
+             print *, 'Use SPEX cooling curve for solar metallicity above 10^4 K. '
+             print *, 'At lower temperatures,use Dalgarno & McCray (1972), '
+             print *, 'with a pre-set ionization fraction of 10^-3. '
+             print *, 'as described by Schure et al. (2009) + H2 cooling of intensity '
+             print *, '1e-24 erg.s-1.cm-3 '
+          endif
+
+          ntable = n_SPEX + n_DM_2 - 6
+
+          allocate(t_table(1:ntable))
+          allocate(L_table(1:ntable))
+          t_table(1:n_DM_2-1) = t_DM_2(1:n_DM_2-1)
+          L_table(1:n_DM_2-1) = log10(10.0_dp**L_DM_2(1:n_DM_2-1)+ &
+                                10.0_dp**coolconfig%lH2)
+          t_table(n_DM_2:ntable) = t_SPEX(6:n_SPEX)
+          L_table(n_DM_2:ntable) = log10(10.0_dp**(l_SPEX(6:n_SPEX)+ &
+                                   log10(nenh_SPEX(6:n_SPEX)))+ &
+                                   10.0_dp**coolconfig%lH2)
 
       case('SPEX_DM_x1em4')
            if(mype ==0) then

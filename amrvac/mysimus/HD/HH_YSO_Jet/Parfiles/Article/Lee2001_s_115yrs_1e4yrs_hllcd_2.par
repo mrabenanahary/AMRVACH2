@@ -13,19 +13,20 @@
 !==============================================================
 
  &filelist
-   base_filename='Output/Lee2001_s_115yrs_1e4yrs_hllcd_2/Jet_CC_'
-   saveprim=.true.
-   autoconvert=.true.
-   convert_type='vtuBCCmpi'
-   nwauxio = 4
-   /
-   restart_from_file='Jet_Shang06_0118.dat'
-   /
-   convert = .true.
+        base_filename='Output/Lee2001_s_115yrs_1e4yrs_hllcd_2/Jet_CC_'
+        saveprim=.true.
+        autoconvert=.true.
+        convert_type='vtuBCCmpi'
+        restart_from_file='Jet_CC_0100.dat'        
+        nwauxio = 4
+        /
+        restart_from_file='Jet_Shang06_0118.dat'
+        /
+        convert = .true.
 
 
 
-   snapshotnext =0326
+        snapshotnext =0326
 /
 
 
@@ -57,7 +58,7 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !it_max=10
 
 
@@ -73,8 +74,8 @@
 
  &methodlist
         time_integrator          =  'twostep'
-        typepred1                =  20*'hllcd'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
-        flux_scheme              =  20*'hllcd'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        typepred1                =  20*'hllcd'!>>HH4647 !'tvdlf'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        flux_scheme              =  20*'hllcd'!,18*'tvdlf'!>>HH4647 !'tvdlf'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
         limiter                  =  20*'minmod'!>>HH4647 !'koren'!'cada3'
         small_pressure           = 1.0d-9
         small_density            = 1.0d-8
@@ -187,6 +188,7 @@
          coolsavedT       = .true.
          He_abundance = 0.1d0
          rc_chemical_gas_type = 'fullyatomic'
+         lH2 = -24.0d0
    /
 
 
@@ -218,7 +220,7 @@
 
         usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
         usrconfig%reset_flux_scheme_on          = .true.
-        usrconfig%reset_flux_scheme_diffuse     = 'hllcd'
+        usrconfig%reset_flux_scheme_diffuse     = 'tvdlf'
         usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
         usrconfig%reset_flux_scheme_thresholdL1_max = 1.0d20
 
@@ -257,7 +259,7 @@
   ism_config%tracer_small_density  =  1.0d-15!1.0d-5
 
   ism_config%reset_on           = .false.    ! ism reset
-  ism_config%reset_coef         = 0.0     ! ism reset  coefficient : 19-03-2021 --> don't use it ! it creates bugs when >0.0d0
+  ism_config%reset_coef         = 0.0! 0.0     ! ism reset  coefficient : 19-03-2021 --> don't use it ! it creates bugs when >0.0d0
   ism_config%reset_dtemperature = 1.0d-6    !> set the pressure variation
   ism_config%reset_distance(2)  =  1.01d18  ! ism rest distance
   ism_config%reset_scale(2)     =  5d16     ! ism reset scalling distance
@@ -280,7 +282,7 @@ ism_config%profile_force_on   = .true. ! Zheng=True  !.true.!.false.!.true. ! .f
 ism_config%profile_force_gradP_on = .true.
 
 ism_config%profile_zc    = 1.0d16!4.49d14 ! 1.0d16 !4.49d14 ! Zheng19 = 30 au = 4.49d14 cm :  grandeur de normalisation dans le profil de pression/densite (en cm)
-ism_config%profile_rw    = 7.47d14 !> ISM reference radius for Lee 2001 profile (in cm)
+ism_config%profile_rw    = 2.5d15 !> ISM reference radius for Lee 2001 profile (in cm)
 ism_config%profile_kappa    = 2.0d0 ! Zheng19 = 2 ! indice kappa pour la loi de densité et de pression : 'cabrit1997' <=> kappa=2
 ism_config%profile_shiftstart = 0.00d0 !>>HH4647 3.33d14 ! 3.33d14 ! 1.0d15 ! the distance from which the ISM profile is set
 
@@ -355,7 +357,7 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%variation_velocity(1) =  0.0d0
     cla_jet_config%variation_velocity(2) =  6.0d6 !<------ variation de la norme du vecteur vitesse du jet
     cla_jet_config%variation_velocity(3) =  0.0d0
-    cla_jet_config%variation_time        =  9.782856d8!<---31 yrs!6.31152d8!<-----20 yrs !9.46728d9!<---- 300 ans
+    cla_jet_config%variation_time        =  9.46728d9!<---- 300 ans
     cla_jet_config%variation_position    =  0.0d0,8.22d14 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
     cla_jet_config%variation_type        =  'sawtooth2' !
     cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation

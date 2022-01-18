@@ -178,7 +178,7 @@
  !'SPEX_DM'  : 'Use SPEX cooling curve for solar metallicity above 10^4 K. At lower temperatures,use Dalgarno & McCray (1972), with a pre-set ionization fraction of 10^-3 as described by Schure et al. (2009). '
    &rc_list
          ncool            = 4000
-         coolcurve        = 'MB'!'MB_original'!'SPEX_DM'!'MLcosmol' !
+         coolcurve        = 'MB_x1em4'!'MB_original'!'SPEX_DM'!'MLcosmol' !
         !AMRVAC:
         !case('MB')
         !   'Use MacDonald & Bailey (1981) cooling curve '&

@@ -19,11 +19,11 @@ cd /data/$USER/Output
 mkdir ${SLURM_JOB_NAME}
 
 cd $SCRATCH
-srun --ntasks=$SLURM_JOB_NUM_NODES mkdir -p Output
-srun --ntasks=$SLURM_JOB_NUM_NODES mkdir -p Output/${SLURM_JOB_NAME}
+#srun --ntasks=$SLURM_JOB_NUM_NODES mkdir -p Output
+#srun --ntasks=$SLURM_JOB_NUM_NODES mkdir -p Output/${SLURM_JOB_NAME}
 srun --ntasks=$SLURM_JOB_NUM_NODES mkdir -p uniform
 srun --ntasks=$SLURM_JOB_NUM_NODES mkdir -p uniform/${SLURM_JOB_NAME}
-srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Parfiles/Article/${SLURM_JOB_NAME}.par .
+#srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Parfiles/Article/${SLURM_JOB_NAME}.par .
 srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Parfiles/Article/uniform/${SLURM_JOB_NAME}.par uniform/${SLURM_JOB_NAME}/.
 srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/amrvac .
 srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jet_CC_0050.dat .
@@ -40,7 +40,7 @@ pwd
 #mpiexec amrvac -i ${SLURM_JOB_NAME}.par
 #srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jobs/slurm-${SLURM_JOB_NAME}-${SLURM_JOBID}.out /data/$USER/Output/${SLURM_JOB_NAME}/.
 
-#srun --ntasks=$SLURM_JOB_NUM_NODES cp Output/${SLURM_JOB_NAME}/Jet_CC_0050.dat .
+#srun --ntasks=$SLURM_JOB_NUM_NODES cp Output/${SLURM_JOB_NAME}/Jet_CC_0010.dat .
 srun --ntasks=$SLURM_JOB_NUM_NODES more uniform/${SLURM_JOB_NAME}/${SLURM_JOB_NAME}.par
 mpiexec amrvac -i uniform/${SLURM_JOB_NAME}/${SLURM_JOB_NAME}.par
 
