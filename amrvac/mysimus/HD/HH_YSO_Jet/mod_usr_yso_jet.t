@@ -95,6 +95,7 @@ contains
     usr_get_dt          => special_get_dt
     usr_internal_bc     => usr_special_internal_bc
     usr_reset_solver    => special_reset_solver
+    usr_gravity         => special_pointmass_gravity
     call usr_set_default_parameters
 
 
@@ -1227,6 +1228,89 @@ return
   end subroutine specialbound_usr
 
   !-----------------------------------------------------------
+  !> Calculate gravitational acceleration in each dimension
+  subroutine special_pointmass_gravity(ixI^L,ixO^L,wCT,x,gravity_field)
+    use mod_global_parameters
+    integer, intent(in)             :: ixI^L, ixO^L
+    real(dp), intent(in)    :: x(ixI^S,1:ndim)
+    real(dp), intent(in)    :: wCT(ixI^S,1:nw)
+    real(dp), intent(out)   :: gravity_field(ixI^S,ndim)
+    real(dp)                        :: Ggrav, Mpoint
+    real(kind=dp), dimension(ixI^S) :: r_distance
+    real(kind=dp), dimension(ixI^S) :: theta_profile
+    real(kind=dp), dimension(1:ndim) :: zero_dim
+    integer                      :: i_ism,idim
+    !-----------------------------------
+
+
+
+    Ggrav = constusr%G
+
+    gravity_field(ixO^S,1:ndim)=0.0_dp
+    zero_dim(1)=-dx(1,1)
+    if(ndim==2)then
+     zero_dim(2)=-dx(2,1)
+    end if
+    if(ndim==3)then
+     zero_dim(3)=-dx(3,1)
+    end if
+    
+
+    ! Here we set the graviationnal acceleration inside the whole domain
+    ! from the state vector wCT
+    ! here the called wCT contains conservative variables
+      if(usrconfig%ism_on)then
+        i_ism =0
+        call usr_distance(ixI^L,ixO^L,typeaxial,&
+                          zero_dim,x,r_distance)
+        call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+        Mpoint = ism_surround(i_ism)%myconfig%profile_Mstar
+
+        select case(typeaxial)
+          case('spherical')
+
+            gravity_field(ixO^S,r_)=-Ggrav*Mpoint/(r_distance(ixO^S)*r_distance(ixO^S))
+
+          case('cylindrical')
+
+            gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
+            (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+            gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
+            (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+
+
+
+
+          case('slab','slabstretch')
+
+            if(ndim<3)then
+              gravity_field(ixO^S,x_)=(-Ggrav*Mpoint/&
+              (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+              gravity_field(ixO^S,y_)=(-Ggrav*Mpoint/&
+              (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+              if(ndir>2)then
+                gravity_field(ixO^S,z_) = 0.0_dp
+              end if
+            else
+              gravity_field(ixO^S,x_)= 0.0_dp ! TO DO
+              gravity_field(ixO^S,y_)= 0.0_dp ! TO DO
+              if(ndir>2)then
+                 gravity_field(ixO^S,z_) = 0.0_dp ! TO DO
+              end if
+            end if
+
+          case default
+             call mpistop('Unknown typeaxial')
+        end select
+        !gravity_field(ixO^S,1:ndim)=gravity_field(ixO^S,1:ndim)/&
+        !((usr_physunit%myconfig%length**3.0_dp)/(usr_physunit%myconfig%mass*usr_physunit%myconfig%time**2.0_dp))
+      end if
+
+
+
+  end subroutine special_pointmass_gravity
+
+  !-----------------------------------------------------------
   !> subroutine to check w
   subroutine usr_check_w(ixI^L,ixO^L,patch_check,is_conserved,subname,qt,x,w)
    !use mod_radiative_cooling, only : coolconfig
@@ -1253,6 +1337,9 @@ return
      write(*,*) 'The pressure set at usr procedure is smaller than small_pressure'
      write(*,*) 'is called from the subroutine : ', subname
      write(*,*) 'is conserved value'
+     write(*,*) 'The minimum of pressure set is : ', minval(pressure(ixO^S))
+     write(*,*) 'The small_pressure is : ', phys_config%small_pressure
+
      call mpistop ('The code stops at usr_check_w in mod_usr_yso_jet.t')
     end if
     if(any(w(ixO^S,phys_ind%rho_)<phys_config%small_density&
@@ -1260,16 +1347,20 @@ return
      write(*,*) 'The density set at usr procedure is smaller than small_densitiy'
      write(*,*) 'is called from the subroutine : ', subname
      write(*,*) 'is conserved value'
+     write(*,*) 'The minimum of density set is : ', minval(w(ixO^S,phys_ind%rho_))
+     write(*,*) 'The small_density is : ', phys_config%small_density
      call mpistop ('The code stops at usr_check_w in mod_usr_yso_jet.t')
     end if
     if(phys_config%radiative_cooling) then
       if(any(Temperature(ixO^S)>phys_config%cool_tlow&
             .and. patch_check(ixO^S))) then
        write(*,*) 'The temperature set at usr procedure is bigger than cooling temperature'
+       write(*,*) 'The minimum of temperature set is : ', maxval(Temperature(ixO^S))
+       write(*,*) 'The cool_tlow is : ', phys_config%cool_tlow
        write(*,*) 'is called from the subroutine : ', subname
-       write(*,*) 'is Tlow = ',phys_config%cool_tlow*unit_temperature, ' K ', &
-        ' and the cells The temperature ', &
-         Temperature(ixO^S)*unit_temperature, ' K'
+       !write(*,*) 'is Tlow = ',phys_config%cool_tlow*unit_temperature, ' K ', &
+         !' and the cells The temperature ', &
+         !Temperature(ixO^S)*unit_temperature, ' K'
        write(*,*) 'is conserved value'
        !call mpistop ('The code stops at usr_check_w in mod_usr_yso_jet.t')
       end if
@@ -1280,14 +1371,17 @@ return
             .and. patch_check(ixO^S))) then
         write(*,*) 'The pressure set at usr procedure is smaller than small_pressure'
         write(*,*) 'is called from the subroutine : ', subname
+        write(*,*) 'The minimum of pressure set is : ', minval(w(ixO^S,phys_ind%pressure_))
+        write(*,*) 'The small_pressure is : ', phys_config%small_pressure
         call mpistop ('The code stops at usr_check_w in mod_usr_yso_jet.t')
       end if
     end if
     if(any(w(ixO^S,phys_ind%rho_)<phys_config%small_density&
           .and. patch_check(ixO^S))) then
      write(*,*) 'The density set at usr procedure is smaller than small_density'
-
      write(*,*) 'is called from the subroutine : ', subname
+     write(*,*) 'The minimum of density set is : ', minval(w(ixO^S,phys_ind%rho_))
+     write(*,*) 'The small_density is : ', phys_config%small_density
      call mpistop ('The code stops at usr_check_w in mod_usr_yso_jet.t')
     end if
 
@@ -1479,17 +1573,22 @@ return
     integer, parameter         :: itemperature_      = 2
     integer, parameter         :: ilevel_            = 3
     integer, parameter         :: indensity_         = 4
-    integer, parameter         :: ierror_lohner_rho_ = 5
-    integer, parameter         :: ierror_lohner_p_   = 6
-    integer, parameter         :: ideltav_dust11_    = 7
-    integer, parameter         :: ideltav_dust12_    = 8
-    integer, parameter         :: ipos_rCC_           = 9
-    integer, parameter         :: ipos_zCC_           = 10
+    integer, parameter         :: igravfield1         = 5
+    integer, parameter         :: igravfield2         = 6
+    integer, parameter         :: igravfield3         = 7
+    integer, parameter         :: ierror_lohner_rho_ = 8
+    integer, parameter         :: ierror_lohner_p_   = 9
+    integer, parameter         :: ideltav_dust11_    = 10
+    integer, parameter         :: ideltav_dust12_    = 11
+    integer, parameter         :: ipos_rCC_           = 12
+    integer, parameter         :: ipos_zCC_           = 13
     integer, parameter         :: irhod1torho_       = 20
 
     real(dp),dimension(ixI^S)                                  :: csound2,temperature
     real(dp),dimension(ixI^S,ndir)                             :: vgas
     real(dp),dimension(ixI^S,ndir,phys_config%dust_n_species)  :: vdust
+    double precision :: gravity_field(ixI^S,ndim)
+
 
     !----------------------------------------------------
     w(ixI^S,1:nw) = win(ixI^S,1:nw)
@@ -1514,6 +1613,32 @@ return
       case(indensity_)
         normconv(nw+indensity_)     = 1.0_dp
         win(ixO^S,nw+indensity_)    = w(ixO^S,phys_ind%rho_)*unit_density/(phys_config%mean_mass*mp_cgs)
+      case(igravfield1,igravfield2,igravfield3)
+        if (.not. associated(usr_gravity)) then
+          write(*,*) "mod_usr.t: please point usr_gravity to a subroutine"
+          write(*,*) "like the phys_gravity in mod_usr_methods.t"
+          call mpistop("gravity_add_source: usr_gravity not defined")
+        else
+          call usr_gravity(ixI^L,ixO^L,w,x,gravity_field)
+        end if
+        normconv(nw+igravfield1)     = 1.0_dp
+        win(ixO^S,nw+igravfield1)    = 0.0_dp
+        win(ixO^S,nw+igravfield1)    = gravity_field(ixO^S,1)*&
+        usr_physunit%myconfig%mass/&
+        (unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
+        (usr_physunit%myconfig%length*usr_physunit%myconfig%length))
+        normconv(nw+igravfield2)     = 1.0_dp
+        win(ixO^S,nw+igravfield2)    = 0.0_dp
+        win(ixO^S,nw+igravfield2)    = gravity_field(ixO^S,2)*&
+        usr_physunit%myconfig%mass/&
+        (unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
+        (usr_physunit%myconfig%length*usr_physunit%myconfig%length))
+        normconv(nw+igravfield3)     = 1.0_dp
+        win(ixO^S,nw+igravfield3)    = 0.0_dp
+        win(ixO^S,nw+igravfield3)    = gravity_field(ixO^S,3)*&
+        usr_physunit%myconfig%mass/&
+        (unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
+        (usr_physunit%myconfig%length*usr_physunit%myconfig%length))
       case(ipos_rCC_)
         normconv(nw+ipos_rCC_)     = 1.0_dp
         win(ixO^S,nw+ipos_rCC_)    = x(ixO^S,r_)*unit_length
@@ -1597,12 +1722,15 @@ return
     integer, parameter         :: itemperature_      = 2
     integer, parameter         :: ilevel_            = 3
     integer, parameter         :: indensity_         = 4
-    integer, parameter         :: ierror_lohner_rho_ = 5
-    integer, parameter         :: ierror_lohner_p_   = 6
-    integer, parameter         :: ideltav_dust11_    = 7
-    integer, parameter         :: ideltav_dust12_    = 8
-    integer, parameter         :: ipos_rCC_          = 9
-    integer, parameter         :: ipos_zCC_          = 10
+    integer, parameter         :: igravfield1         = 5
+    integer, parameter         :: igravfield2         = 6
+    integer, parameter         :: igravfield3         = 7
+    integer, parameter         :: ierror_lohner_rho_ = 8
+    integer, parameter         :: ierror_lohner_p_   = 9
+    integer, parameter         :: ideltav_dust11_    = 10
+    integer, parameter         :: ideltav_dust12_    = 11
+    integer, parameter         :: ipos_rCC_           = 12
+    integer, parameter         :: ipos_zCC_           = 13
     integer, parameter         :: irhod1torho_       = 20
     !----------------------------------------------------
     Loop_iw : do  iw = 1,nwauxio
@@ -1615,6 +1743,10 @@ return
         varnames(ilevel_)              = 'level'
       case(indensity_)
         varnames(indensity_)           = 'number density'
+      case(igravfield1,igravfield2,igravfield3)
+        varnames(igravfield1)           = 'gravfield1'
+        varnames(igravfield2)           = 'gravfield2'
+        varnames(igravfield3)           = 'gravfield3'
       case(ierror_lohner_rho_)
         varnames(ierror_lohner_rho_)   = 'erroramrrho'
       case(ierror_lohner_p_)

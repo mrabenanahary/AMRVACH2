@@ -168,15 +168,15 @@ module mod_obj_usr_unit
                                , self%myconfig%mean_ne_to_nH, &
                                'usr_physical_unit_set_default')
 
-  write(*,*) ' mod_obj_usr_unit.t--> usr_physical_unit_set_default'
-  write(*,*) 'self: chemical_composition | xHe | mean_nall_to_nH |',&
-  ' mean_mass | mean_ne_to_nH | mean_mup '
-  write(*,*) self%myconfig%chemical_gas_type,&
-  self%myconfig%chemical_He_abundance,&
-  self%myconfig%mean_nall_to_nH,&
-  self%myconfig%mean_mass,&
-  self%myconfig%mean_ne_to_nH,&
-  self%myconfig%mean_mup
+  !write(*,*) ' mod_obj_usr_unit.t--> usr_physical_unit_set_default'
+  !write(*,*) 'self: chemical_composition | xHe | mean_nall_to_nH |',&
+  !' mean_mass | mean_ne_to_nH | mean_mup '
+  !write(*,*) self%myconfig%chemical_gas_type,&
+  !self%myconfig%chemical_He_abundance,&
+  !self%myconfig%mean_nall_to_nH,&
+  !self%myconfig%mean_mass,&
+  !self%myconfig%mean_ne_to_nH,&
+  !self%myconfig%mean_mup
  end subroutine usr_physical_unit_set_default
 !> subroutine unit to code unit
  subroutine usr_physical_unit_set_to_one(self)
@@ -288,15 +288,15 @@ end subroutine usr_physical_unit_set_unit
         self%myconfig%mean_mup          = 1.0_dp
       end if
 
-   write(*,*) ' mod_obj_usr_unit.t-->usr_physical_unit_complet'
-   write(*,*) 'self: chemical_composition | xHe | mean_nall_to_nH |',&
-   ' mean_mass | mean_ne_to_nH | mean_mup '
-   write(*,*) self%myconfig%chemical_gas_type,&
-   self%myconfig%chemical_He_abundance,&
-   self%myconfig%mean_nall_to_nH,&
-   self%myconfig%mean_mass,&
-   self%myconfig%mean_ne_to_nH,&
-   self%myconfig%mean_mup
+   !write(*,*) ' mod_obj_usr_unit.t-->usr_physical_unit_complet'
+   !write(*,*) 'self: chemical_composition | xHe | mean_nall_to_nH |',&
+   !' mean_mass | mean_ne_to_nH | mean_mup '
+   !write(*,*) self%myconfig%chemical_gas_type,&
+   !self%myconfig%chemical_He_abundance,&
+   !self%myconfig%mean_nall_to_nH,&
+   !self%myconfig%mean_mass,&
+   !self%myconfig%mean_ne_to_nH,&
+   !self%myconfig%mean_mup
 
    phys_array = [character(len=20):: 'srmhd','srhd','grmhd','grhd']
    n_phys=size(phys_array)
@@ -401,31 +401,31 @@ end subroutine usr_physical_unit_set_unit
       end if
    end if
 
-   write(*,*) ' mod_obj_usr_unit.t--> usr_physical_unit_fillphysunit'
-   write(*,*) 'phys_config (before change): chemical_composition | ',&
-   'xHe | mean_nall_to_nH |',&
-   ' mean_mass | mean_ne_to_nH | mean_mup '
-   write(*,*) phys_config%chemical_gas_type,&
-   phys_config%He_abundance,&
-   phys_config%mean_nall_to_nH,&
-   phys_config%mean_mass,&
-   phys_config%mean_ne_to_nH,&
-   phys_config%mean_mup
+   !write(*,*) ' mod_obj_usr_unit.t--> usr_physical_unit_fillphysunit'
+   !write(*,*) 'phys_config (before change): chemical_composition | ',&
+   !'xHe | mean_nall_to_nH |',&
+   !' mean_mass | mean_ne_to_nH | mean_mup '
+   !write(*,*) phys_config%chemical_gas_type,&
+   !phys_config%He_abundance,&
+   !phys_config%mean_nall_to_nH,&
+   !phys_config%mean_mass,&
+   !phys_config%mean_ne_to_nH,&
+   !phys_config%mean_mup
 
    phys_config%He_abundance = self%myconfig%chemical_He_abundance
    phys_config%mean_mass    = self%myconfig%mean_mass
    phys_config%mean_mup     = self%myconfig%mean_mup
 
-   write(*,*) ' mod_obj_usr_unit.t--> usr_physical_unit_fillphysunit'
-   write(*,*) 'phys_config (after change): chemical_composition | ',&
-   'xHe | mean_nall_to_nH |',&
-   ' mean_mass | mean_ne_to_nH | mean_mup '
-   write(*,*) phys_config%chemical_gas_type,&
-   phys_config%He_abundance,&
-   phys_config%mean_nall_to_nH,&
-   phys_config%mean_mass,&
-   phys_config%mean_ne_to_nH,&
-   phys_config%mean_mup
+   !write(*,*) ' mod_obj_usr_unit.t--> usr_physical_unit_fillphysunit'
+   !write(*,*) 'phys_config (after change): chemical_composition | ',&
+   !'xHe | mean_nall_to_nH |',&
+   !' mean_mass | mean_ne_to_nH | mean_mup '
+   !write(*,*) phys_config%chemical_gas_type,&
+   !phys_config%He_abundance,&
+   !phys_config%mean_nall_to_nH,&
+   !phys_config%mean_mass,&
+   !phys_config%mean_ne_to_nH,&
+   !phys_config%mean_mup
 
    if (phys_config%radiative_cooling) then
 
@@ -514,17 +514,17 @@ end subroutine usr_physical_unit_set_unit
       mean_ne_to_nH     = 1.0_dp
     end if
 
-    write(*,*) ' mod_obj_usr_unit.t--> unit_chemical_ionisation'
-    write(*,*) ' function private: chemical_composition |',&
-    ' xHe | mean_nall_to_nH |',&
-    ' mean_mass | mean_ne_to_nH | mean_mup | sub_name'
-    write(*,*) chemical_gas_type,&
-    He_abundance_sub,&
-    mean_nall_to_nH,&
-    mean_mass,&
-    mean_ne_to_nH,&
-    mean_mup,&
-    subroutine_name_
+    !write(*,*) ' mod_obj_usr_unit.t--> unit_chemical_ionisation'
+    !write(*,*) ' function private: chemical_composition |',&
+    !' xHe | mean_nall_to_nH |',&
+    !' mean_mass | mean_ne_to_nH | mean_mup | sub_name'
+    !write(*,*) chemical_gas_type,&
+    !He_abundance_sub,&
+    !mean_nall_to_nH,&
+    !mean_mass,&
+    !mean_ne_to_nH,&
+    !mean_mup,&
+    !subroutine_name_
 
   end   subroutine unit_chemical_ionisation
 end module mod_obj_usr_unit

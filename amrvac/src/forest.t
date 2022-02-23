@@ -54,7 +54,7 @@ integer, allocatable :: gsq_sfc(:^D&)
 integer :: ig^D, ngsq^D, Morton_no
 integer(kind=8), external :: mortonEncode
 !-----------------------------------------------------------------------------
-! use the smallest square/cube to cover the full domain 
+! use the smallest square/cube to cover the full domain
 ngsq^D=2**ceiling(log(real(ng^D(1)))/log(2.0));
 {^NOONED
 {ngsq^D=max(ngsq^DD) \}
@@ -80,7 +80,7 @@ allocate(sfc_iglevel1(ndim,nglev1))
    {sfc_iglevel1(^D,iglevel1_sfc(ig^DD))=ig^D \}
 {end do\}
 !do Morton_no=1,nglev1
-!   ig^D=sfc_iglevel1(^D,Morton_no)\ 
+!   ig^D=sfc_iglevel1(^D,Morton_no)\
 !   print*,'Morton',Morton_no,'ig',ig^D
 !end do
 !stop
@@ -96,12 +96,14 @@ answer = 0
 do i=0,64/ndim
   {^IFONED answer=ig1}
   {^IFTWOD
-   answer=ior(answer,ior(ishft(iand(ig1,ishft(1_int64,i)),i),&
-          ishft(iand(ig2,ishft(1_int64,i)),i+1)))
+   answer=ior(answer,ior(ishft(iand(int(ig1,kind=8),ishft(1_int64,int(i,kind=8))),int(i,kind=8)),&
+          ishft(iand(int(ig2,kind=8),ishft(1_int64,int(i,kind=8))),int(i,kind=8)+1)))
   \}
   {^IFTHREED
-   answer=ior(answer,ior(ishft(iand(ig1,ishft(1_int64,i)),2*i),ior(ishft(&
-   iand(ig2,ishft(1_int64,i)),2*i+1),ishft(iand(ig3,ishft(1_int64,i)),2*i+2))))
+   answer=ior(answer,ior(ishft(iand(int(ig1,kind=8),ishft(1_int64,int(i,kind=8))),2*int(i,kind=8)),ior(ishft(&
+   iand(int(ig2,kind=8),&
+   ishft(1_int64,int(i,kind=8))),2*int(i,kind=8)+1),&
+   ishft(iand(int(ig3,kind=8),ishft(1_int64,int(i,kind=8))),2*int(i,kind=8)+2))))
   \}
 end do
 mortonEncode=answer
@@ -192,8 +194,8 @@ igrid_to_node(igrid,ipe)%node => tree%node
 
 !  Count the vote and set active/passive state:
 
-if (vote /= 2**^ND) then 
-!if (vote == 0) then 
+if (vote /= 2**^ND) then
+!if (vote == 0) then
    tree%node%active = .false.
    nleafs_active = nleafs_active - vote
 else

@@ -18,7 +18,7 @@ module mod_obj_global_parameters
    logical,public   :: use1Dfile
    ! physical constantes:
    type const_expand
-   real(dp)  :: G       = 6.67259D-8      ! cm^3 g^-1 s^-2
+   real(dp)  :: G       = 6.6743d-8 !OLD : 6.67259D-8, cm^3 g^-1 s^-2
    real(dp)  :: clight  = 2.99792458d10   ! cm s^-1
    real(dp)  :: z_solar = 0.012_dp
    end type const_expand

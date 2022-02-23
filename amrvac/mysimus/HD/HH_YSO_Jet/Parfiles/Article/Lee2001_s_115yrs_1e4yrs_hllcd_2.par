@@ -17,7 +17,6 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        restart_from_file='Jet_CC_0100.dat'        
         nwauxio = 4
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -58,7 +57,7 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !it_max=10
 
 
@@ -74,8 +73,8 @@
 
  &methodlist
         time_integrator          =  'twostep'
-        typepred1                =  20*'hllcd'!>>HH4647 !'tvdlf'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
-        flux_scheme              =  20*'hllcd'!,18*'tvdlf'!>>HH4647 !'tvdlf'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        typepred1                =  20*'hllcd'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        flux_scheme              =  20*'hllcd'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
         limiter                  =  20*'minmod'!>>HH4647 !'koren'!'cada3'
         small_pressure           = 1.0d-9
         small_density            = 1.0d-8
@@ -188,7 +187,6 @@
          coolsavedT       = .true.
          He_abundance = 0.1d0
          rc_chemical_gas_type = 'fullyatomic'
-         lH2 = -24.0d0
    /
 
 
@@ -279,7 +277,14 @@ ism_config%theta_floored      = 0.0d0
 
 ism_config%profile_density    = 'Lee2001'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
 ism_config%profile_force_on   = .true. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
-ism_config%profile_force_gradP_on = .true.
+ism_config%profile_force_gradP_on = .false.
+ism_config%weight_mean = 'arithmetic'
+ism_config%weight_analy = 1.0d0
+ism_config%weight_num = 3.0d0
+ism_config%weight_mean_variable = 'minus_density_grad'
+ism_config%profile_rw_force = 2.5d16
+ism_config%weight_num_index = 20.0d0
+ism_config%weight_analy_index = 20.0d0
 
 ism_config%profile_zc    = 1.0d16!4.49d14 ! 1.0d16 !4.49d14 ! Zheng19 = 30 au = 4.49d14 cm :  grandeur de normalisation dans le profil de pression/densite (en cm)
 ism_config%profile_rw    = 2.5d15 !> ISM reference radius for Lee 2001 profile (in cm)
@@ -304,7 +309,7 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%time_cla_jet_on       =  0.0d0 !> initial time the cla_jet is set in the simulation box
 
     cla_jet_config%myindice              =  0       !> cla_jet associated indice
-    cla_jet_config%density               =  1.795963442083303d-19!<-------Fm=0.6e-7 Msun/yr
+    cla_jet_config%density               =  1.795963442083303d-17!<-------Fm=0.6e-7 Msun/yr
 
     cla_jet_config%number_density        =  0.0d0
     cla_jet_config%temperature           =  100.0d0  !>>HH4647 !> cla_jet temperature  (K)
@@ -348,8 +353,9 @@ ism_config%He_abundance      = 0.1
 
 
     cla_jet_config%variation_on          =  .true. ! Zhang19 .false. !.true.! to set on  or off the jet-injection in-real-time velocity variability
-    cla_jet_config%density_variation_on  =  .true. !<----- keep constant mass-loss rate !> cla_jet density variation switch
-    cla_jet_config%pressure_variation_on =  .true. !<----- keep constant jet temperature !> cla_jet pressure variation switch : enables constant temperature in the jet inlet
+    cla_jet_config%density_variation_on  =  .true. !<----- vary mass-loss rate !> cla_jet density variation switch
+    cla_jet_config%pressure_variation_on =  .true. !<----- vary constant jet temperature !> cla_jet pressure variation switch : enables constant temperature in the jet inlet
+    cla_jet_config%density_variation_profile =  'conserved_mflux' !<----- which variability apply to pressure and/or pressure 
     cla_jet_config%variation_start_time  =  0.0d0 !time (in s in cgs) at which to begin the time variability : 0.0 to begin at the start of the simulation
     cla_jet_config%variation_end_time    =  4d15
     cla_jet_config%variation_velocity_amplitude =  1.2d7 !<--- norme du vecteur vitesse au niveau de l'inlet du jet (aux yeux du code, c'est une autre variable qu'on a oublié, surtout moi, de retirer quand on a rajouté   le paramètre cla_jet_config%velocity_poloidal en ouvrant le jet, donc par sécurité, comme je ne sais pas si on l'utilise toujours ailleurs, fixons la même valeur qu'au-dessus)

@@ -17,6 +17,7 @@ module mod_obj_ism
       real(dp)             :: number_density !> ISM number density (1/cm^3)
       real(dp)             :: temperature    !> ISM temperature  (K)
       real(dp)             :: pressure       !> ISM pressure
+      real(dp)             :: pressure_Ulrich !> ISM pressure in case of Ulrich model
       real(dp)             :: Mach_number    !> ISM mach number
       real(dp)             :: Mach_number_tomov_obj    !> ISM mach number associate with moving object in it
       real(dp)             :: velocity_ofmov_obj(3)  !> ISM velocity of the moving object
@@ -26,6 +27,7 @@ module mod_obj_ism
 
       real(dp)             :: profile_kappa  !> ISM index power in pressure
       real(dp)             :: profile_rw  !> ISM reference radius for Lee 2001 profile
+      real(dp)             :: profile_rw_force  !> ISM reference radius for balancing force amplification
       real(dp)             :: profile_zc     !> ISM typical value of height  (cm)
       real(dp)             :: profile_shiftstart !> ISM typical value of height  (cm)
       real(dp)             :: profile_shift_density(3,2) !> ISM profile shift in density
@@ -45,6 +47,14 @@ module mod_obj_ism
       logical              :: profile_density_on  !> ISM density profile on
       logical              :: profile_density_keep_pressure !> ISM density profile but keep pressure
       real(dp)             :: theta_floored
+      !> Ulrich model ambient medium parameters
+      real(dp)             :: profile_jspec !> ISM envelope specific angular momentum
+      real(dp)             :: profile_Minf  !> ISM envelope infalling mass-loss rate on the protostar
+      real(dp)             :: profile_Mstar !> central objet or protostar mass
+      real(dp)             :: profile_rd    !> ISM envelope lower ﬁducial radius
+      real(dp)             :: profile_vd    !> ISM envelope kepler velocity at r=profile_rd
+      real(dp)             :: profile_rho_0 !> ISM envelope fiducial density
+
 
       logical              :: ism_display_parameters     !> ISM display of parameters at the end of the set_profile subroutine
       logical              :: profile_on        !> ISM profile set
@@ -60,6 +70,12 @@ module mod_obj_ism
       real(dp)             :: tracer_small_density   !> ISM tracer small density cut
       logical              :: reset_on       !> ISM reset
       real(dp)             :: reset_coef     !> ISM relaxation coefficient
+      character(len=30)    :: weight_mean !> ISM weighting mean type
+      character(len=30)    :: weight_mean_variable !> ISM weighting mean type
+      real(dp)             :: weight_analy     !> ISM analytical force weight
+      real(dp)             :: weight_num     !> ISM numerical force weight
+      real(dp)             :: weight_analy_index !> ISM power law index for amplification
+      real(dp)             :: weight_num_index !> ISM power law index for amplification
       real(dp)             :: reset_dTemperature
       real(dp)             :: reset_distance(3)
       real(dp)             :: reset_scale(3)
@@ -101,6 +117,7 @@ module mod_obj_ism
      PROCEDURE, PASS(self) :: get_pforce_profile   => usr_ism_get_pforce_profile
      PROCEDURE, PASS(self) :: get_fgravity_profile  => usr_ism_get_fgravity_profile
      PROCEDURE, PASS(self) :: set_profile_distance => usr_ism_set_profile_distance
+     PROCEDURE, PASS(self) :: set_profile_costheta_zero => usr_ism_ulrich_costheta_zero
      PROCEDURE, PASS(self) :: add_source           => usr_ism_add_source
 
     end type
@@ -206,6 +223,7 @@ contains
      self%myconfig%number_density        = 0.0_dp
      self%myconfig%temperature           = 0.0_dp
      self%myconfig%pressure              = 0.0_dp
+     self%myconfig%pressure_Ulrich       = 0.0_dp
      self%myconfig%Mach_number_tomov_obj = 0.0_dp
      self%myconfig%velocity_ofmov_obj    = 0.0_dp
      self%myconfig%Mach_number           = 0.0_dp
@@ -219,6 +237,7 @@ contains
 
      self%myconfig%profile_kappa         = 0.0_dp
      self%myconfig%profile_rw            = 2.5d15  !from Lee 2001 profile
+     self%myconfig%profile_rw_force      = 2.5d16  !from Lee 2001 profile
      self%myconfig%profile_zc            = 0.0_dp
      self%myconfig%profile_shiftstart    = 0.0_dp
 
@@ -244,9 +263,21 @@ contains
      self%myconfig%profile_typeaxial     = 'slab'
      self%myconfig%profile_center(3)     = 0.0_dp
      self%myconfig%profile_density_keep_pressure =.false.
-
+     !Ulrich model ambient medium parameters
+     self%myconfig%profile_jspec = 0.0_dp       !> ISM envelope specific angular momentum
+     self%myconfig%profile_Minf  = 0.0_dp !> ISM envelope infalling mass-loss rate on the protostar
+     self%myconfig%profile_Mstar = 0.0_dp   !> central objet or protostar mass
+     self%myconfig%profile_rd    = 0.0_dp !> ISM envelope lower ﬁducial radius
+     self%myconfig%profile_vd    = 0.0_dp   !> ISM envelope kepler velocity at r=profile_rd
+     self%myconfig%profile_rho_0 = 0.0_dp  !> ISM envelope fiducial density
 
      self%myconfig%reset_coef            = 0.0_dp
+     self%myconfig%weight_mean           = 'arithmetic'
+     self%myconfig%weight_mean_variable  = 'none'
+     self%myconfig%weight_analy          = 0.0_dp
+     self%myconfig%weight_num            = 1.0_dp
+     self%myconfig%weight_analy_index    = 1.0_dp
+     self%myconfig%weight_num_index      = 1.0_dp
      self%myconfig%reset_dtemperature    = 0.0_dp
      self%myconfig%reset_distance        = 0.0_dp
      self%myconfig%reset_scale           = 0.0_dp
@@ -292,7 +323,7 @@ contains
     class(ism)                                :: self
     ! .. local ..
     logical                  :: dust_is_frac
-    real(dp)                 :: mp,kb
+    real(dp)                 :: mp,kb,Ggrav,r_normalized,costhetazero
     integer                  :: idim,iside
     !-----------------------------------
 
@@ -303,6 +334,9 @@ contains
       mp=mp_cgs
       kB=kB_cgs
     end if
+    Ggrav = constusr%G
+
+
     !----------------------------------------------------
     ! set the parameters :
     !   - mean_nall_to_nH = n_e/n_i
@@ -311,41 +345,80 @@ contains
     ! from calling the mod_hd_phys/mod_mhd_phys module
     !----------------------------------------------------
 
-    write(*,*) ' mod_obj_ism.t--> usr_ism_set_complet'
-    write(*,*) 'self (before change): chemical_composition | ',&
-    'xHe | mean_nall_to_nH |',&
-    ' mean_mass | mean_ne_to_nH | mean_mup '
-    write(*,*) self%myconfig%chemical_gas_type,&
-    self%myconfig%He_abundance,&
-    self%myconfig%mean_nall_to_nH,&
-    self%myconfig%mean_mass,&
-    self%myconfig%mean_ne_to_nH,&
-    self%myconfig%mean_mup
+    !write(*,*) ' mod_obj_ism.t--> usr_ism_set_complet'
+    !write(*,*) 'self (before change): chemical_composition | ',&
+    !'xHe | mean_nall_to_nH |',&
+    !' mean_mass | mean_ne_to_nH | mean_mup '
+    !write(*,*) self%myconfig%chemical_gas_type,&
+    !self%myconfig%He_abundance,&
+    !self%myconfig%mean_nall_to_nH,&
+    !self%myconfig%mean_mass,&
+    !self%myconfig%mean_ne_to_nH,&
+    !self%myconfig%mean_mup
 
     call phys_fill_chemical_ionisation(self%myconfig%He_abundance,  &
        self%myconfig%chemical_gas_type,                             &
        self%myconfig%mean_nall_to_nH,self%myconfig%mean_mass,       &
        self%myconfig%mean_mup,self%myconfig%mean_ne_to_nH)
 
-     write(*,*) ' mod_obj_ism.t--> usr_ism_set_complet'
-     write(*,*) 'self (after change): chemical_composition | ',&
-     'xHe | mean_nall_to_nH |',&
-     ' mean_mass | mean_ne_to_nH | mean_mup '
-     write(*,*) self%myconfig%chemical_gas_type,&
-     self%myconfig%He_abundance,&
-     self%myconfig%mean_nall_to_nH,&
-     self%myconfig%mean_mass,&
-     self%myconfig%mean_ne_to_nH,&
-     self%myconfig%mean_mup
+     !write(*,*) ' mod_obj_ism.t--> usr_ism_set_complet'
+     !write(*,*) 'self (after change): chemical_composition | ',&
+     !'xHe | mean_nall_to_nH |',&
+     !' mean_mass | mean_ne_to_nH | mean_mup '
+     !write(*,*) self%myconfig%chemical_gas_type,&
+     !self%myconfig%He_abundance,&
+     !self%myconfig%mean_nall_to_nH,&
+     !self%myconfig%mean_mass,&
+     !self%myconfig%mean_ne_to_nH,&
+     !self%myconfig%mean_mup
 
    !----------------------------------------------------
    ! set the density and/or number density parameters accordingly
    ! (provided density takes priority)
+   ! 31-01-22 : density successfully implemented
    !----------------------------------------------------
-    if (dabs( self%myconfig%density)<smalldouble*mp)then
-         self%myconfig%density= self%myconfig%number_density*mp*self%myconfig%mean_mass
-    elseif(dabs( self%myconfig%number_density)<smalldouble)then
-         self%myconfig%number_density= self%myconfig%density/(mp*self%myconfig%mean_mass)
+
+    !if we do Ulrich model
+    if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+      ! rd
+      self%myconfig%profile_rd = (self%myconfig%profile_jspec**2.0_dp)/&
+      (Ggrav*self%myconfig%profile_Mstar)
+      write(*,*) 'rW = ', self%myconfig%profile_rw, ' cm'
+      write(*,*) 'rD = ', self%myconfig%profile_rd, ' cm'
+      ! v_Kepler
+      self%myconfig%profile_vd = dsqrt((Ggrav*self%myconfig%profile_Mstar)/&
+      self%myconfig%profile_rd)
+      write(*,*) 'vK = ', self%myconfig%profile_vd, ' cm/s'
+      ! rho_0
+      self%myconfig%profile_rho_0 = self%myconfig%profile_Minf/(4.0_dp*&
+      dpi*(self%myconfig%profile_rd**2.0_dp)*self%myconfig%profile_vd)
+      write(*,*) 'rho_0 = ', self%myconfig%profile_rho_0, ' g/cm3'
+      r_normalized = (self%myconfig%profile_rw/self%myconfig%profile_rd)
+      write(*,*) 'r = (rD/rw) = ', r_normalized
+      if(dabs(r_normalized-1.0_dp)<smalldouble)then
+        costhetazero = 0.0_dp
+      else if (r_normalized>1.0_dp)then
+        costhetazero = 0.0_dp
+      else if (r_normalized<1.0_dp&
+      .and.(-((1.0_dp-r_normalized)/3.0_dp)**3.0_dp)>0.0_dp)then
+        costhetazero = dsqrt(1.0_dp-r_normalized)
+      else if (r_normalized<1.0_dp&
+      .and.(-((1.0_dp-r_normalized)/3.0_dp)**3.0_dp)<0.0_dp)then
+        costhetazero = dsqrt(1.0_dp-r_normalized)
+      end if
+      ! rho_amb(r=rw,theta=0.5*pi)=rho_a0
+      self%myconfig%density = self%myconfig%profile_rho_0*&
+      (r_normalized**(-1.5_dp))*(1.0_dp+(2.0_dp/r_normalized)*&
+      0.5_dp*(3*costhetazero*costhetazero-1.0_dp))**(-1.0_dp)
+      write(*,*) 'rho_a0 = ', self%myconfig%density, ' g/cm3'
+      self%myconfig%number_density= self%myconfig%density/(mp*self%myconfig%mean_mass)
+      write(*,*) 'nH_a0 = ', self%myconfig%number_density, ' cm-3'
+    else
+      if (dabs( self%myconfig%density)<smalldouble*mp)then
+           self%myconfig%density= self%myconfig%number_density*mp*self%myconfig%mean_mass
+      elseif(dabs( self%myconfig%number_density)<smalldouble)then
+           self%myconfig%number_density= self%myconfig%density/(mp*self%myconfig%mean_mass)
+      end if
     end if
 
 
@@ -376,6 +449,10 @@ contains
     cond_csound_set : if(self%myconfig%c_sound>0.0_dp) then
        self%myconfig%pressure = self%myconfig%c_sound**2.0_dp * self%myconfig%density /&
                                 phys_config%gamma
+       if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+         self%myconfig%pressure_Ulrich = self%myconfig%c_sound**2.0_dp *&
+                        self%myconfig%profile_rho_0 / phys_config%gamma
+       end if
        self%myconfig%temperature = self%myconfig%c_sound**2.0_dp*mp*&
                                 self%myconfig%mean_mup/(kB*phys_config%gamma)
     !----------------------------------------------------
@@ -384,18 +461,27 @@ contains
     ! *or the ism temperature.
     ! *At the end, we can
     ! *assign the sound speed accordingly if not yet set
-    ! *19-03-21 : made sure that temperature isn't changed if provided
+    ! *19-03-21 : made sure that temperature isn t changed if provided
     ! * and takes priority over pressure, which can be changed
     !----------------------------------------------------
     else  cond_csound_set
      if(self%myconfig%temperature>0.0_dp) then
       self%myconfig%pressure = self%myconfig%density*&
                             kB* self%myconfig%temperature/(self%myconfig%mean_mup*mp)
+      if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+        self%myconfig%pressure_Ulrich = self%myconfig%profile_rho_0*&
+                              kB* self%myconfig%temperature/(self%myconfig%mean_mup*mp)
+      end if
      else if(dabs(self%myconfig%pressure)>0.0_dp) then
       self%myconfig%temperature = self%myconfig%mean_mup*mp*self%myconfig%pressure&
                             /(kB*self%myconfig%density)
      end if
-     self%myconfig%c_sound = sqrt(phys_config%gamma*self%myconfig%pressure/self%myconfig%density)
+     if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+       self%myconfig%c_sound = sqrt(phys_config%gamma*self%myconfig%pressure/&
+            self%myconfig%profile_rho_0)
+     else
+        self%myconfig%c_sound = sqrt(phys_config%gamma*self%myconfig%pressure/self%myconfig%density)
+     end if
     end if cond_csound_set
 
     !----------------------------------------------------
@@ -419,6 +505,8 @@ contains
      end if
     end select
 
+
+
     select case(self%myconfig%profile_density)
     case('none')
      self%myconfig%profile_density_on = .false.
@@ -434,7 +522,12 @@ contains
       Loop_iside_shift :  do iside = 1,2
         if (dabs( self%myconfig%profile_shift_density(idim,iside))<smalldouble*mp.and. &
          dabs( self%myconfig%profile_shift_number_density(idim,iside))<smalldouble)then
-          self%myconfig%profile_shift_density(idim,iside) = self%myconfig%density
+         if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+           self%myconfig%profile_shift_density(idim,iside) = self%myconfig%profile_rho_0
+         else
+           self%myconfig%profile_shift_density(idim,iside) = self%myconfig%density
+         end if
+
           self%myconfig%profile_shift_number_density(idim,iside) = self%myconfig%number_density
         else
           if(dabs( self%myconfig%profile_shift_density(idim,iside))<smalldouble*mp)then
@@ -496,6 +589,9 @@ contains
       print*, 'ism density', self%myconfig%density
       print*, 'ism nH', self%myconfig%number_density
     end if
+
+
+
   end subroutine usr_ism_set_complet
   !--------------------------------------------------------------------
   !> subroutine normalize setting for ISM
@@ -507,16 +603,16 @@ contains
     !----------------------------------
     self%myphysunit =>physunit_inuse
 
-    write(*,*) ' mod_obj_ism.t--> usr_ism_normalize'
-    write(*,*) 'self (before normalization) : chemical_composition | ',&
-    'xHe | mean_nall_to_nH |',&
-    ' mean_mass | mean_ne_to_nH | mean_mup '
-    write(*,*) self%myconfig%chemical_gas_type,&
-    self%myconfig%He_abundance,&
-    self%myconfig%mean_nall_to_nH,&
-    self%myconfig%mean_mass,&
-    self%myconfig%mean_ne_to_nH,&
-    self%myconfig%mean_mup
+    !write(*,*) ' mod_obj_ism.t--> usr_ism_normalize'
+    !write(*,*) 'self (before normalization) : chemical_composition | ',&
+    !'xHe | mean_nall_to_nH |',&
+    !' mean_mass | mean_ne_to_nH | mean_mup '
+    !write(*,*) self%myconfig%chemical_gas_type,&
+    !self%myconfig%He_abundance,&
+    !self%myconfig%mean_nall_to_nH,&
+    !self%myconfig%mean_mass,&
+    !self%myconfig%mean_ne_to_nH,&
+    !self%myconfig%mean_mup
 
     if(trim(self%myconfig%unit)=='code'.or.self%myconfig%normalize_done)then
        if(self%myconfig%normalize_done)then
@@ -530,6 +626,7 @@ contains
      self%myconfig%number_density     =  self%myconfig%number_density/physunit_inuse%myconfig%number_density
      self%myconfig%temperature        =  self%myconfig%temperature   /physunit_inuse%myconfig%temperature
      self%myconfig%pressure           =  self%myconfig%pressure      /physunit_inuse%myconfig%pressure
+     self%myconfig%pressure_Ulrich    =  self%myconfig%pressure_Ulrich /physunit_inuse%myconfig%pressure
      self%myconfig%velocity           =  self%myconfig%velocity      /physunit_inuse%myconfig%velocity
      self%myconfig%velocity_ofmov_obj =  self%myconfig%velocity_ofmov_obj  /physunit_inuse%myconfig%velocity
      self%myconfig%extend             =  self%myconfig%extend        /physunit_inuse%myconfig%length
@@ -538,8 +635,17 @@ contains
 
      self%myconfig%theta_floored = self%myconfig%theta_floored *(dpi/180._dp)
      self%myconfig%profile_rw            = self%myconfig%profile_rw/physunit_inuse%myconfig%length
+     self%myconfig%profile_rw_force      = self%myconfig%profile_rw_force/physunit_inuse%myconfig%length
      self%myconfig%profile_zc              =  self%myconfig%profile_zc           /physunit_inuse%myconfig%length
      self%myconfig%profile_center              =  self%myconfig%profile_center           /physunit_inuse%myconfig%length
+     !> Ulrich model ambient medium parameters
+     self%myconfig%profile_jspec = self%myconfig%profile_jspec / (physunit_inuse%myconfig%velocity*physunit_inuse%myconfig%length)
+     self%myconfig%profile_Minf  = self%myconfig%profile_Minf  / (physunit_inuse%myconfig%mass/physunit_inuse%myconfig%time)
+     self%myconfig%profile_Mstar = self%myconfig%profile_Mstar / physunit_inuse%myconfig%mass
+     self%myconfig%profile_rd    = self%myconfig%profile_rd    / physunit_inuse%myconfig%length
+     self%myconfig%profile_vd    = self%myconfig%profile_vd    / physunit_inuse%myconfig%velocity
+     self%myconfig%profile_rho_0 = self%myconfig%profile_rho_0 / physunit_inuse%myconfig%density
+
      self%myconfig%profile_shiftstart      =  self%myconfig%profile_shiftstart   /physunit_inuse%myconfig%length
      self%myconfig%profile_shift_density          =  self%myconfig%profile_shift_density        /physunit_inuse%myconfig%density
      self%myconfig%profile_shift_number_density   =  self%myconfig%profile_shift_number_density /physunit_inuse%myconfig%number_density
@@ -551,16 +657,16 @@ contains
     end if
     self%myconfig%normalize_done =.true.
 
-    write(*,*) ' mod_obj_ism.t--> usr_ism_normalize'
-    write(*,*) 'self (after normalization): chemical_composition | ',&
-    'xHe | mean_nall_to_nH |',&
-    ' mean_mass | mean_ne_to_nH | mean_mup '
-    write(*,*) self%myconfig%chemical_gas_type,&
-    self%myconfig%He_abundance,&
-    self%myconfig%mean_nall_to_nH,&
-    self%myconfig%mean_mass,&
-    self%myconfig%mean_ne_to_nH,&
-    self%myconfig%mean_mup
+    !write(*,*) ' mod_obj_ism.t--> usr_ism_normalize'
+    !write(*,*) 'self (after normalization): chemical_composition | ',&
+    !'xHe | mean_nall_to_nH |',&
+    !' mean_mass | mean_ne_to_nH | mean_mup '
+    !write(*,*) self%myconfig%chemical_gas_type,&
+    !self%myconfig%He_abundance,&
+    !self%myconfig%mean_nall_to_nH,&
+    !self%myconfig%mean_mass,&
+    !self%myconfig%mean_ne_to_nH,&
+    !self%myconfig%mean_mup
 
    end subroutine usr_ism_normalize
   !--------------------------------------------------------------------
@@ -611,26 +717,56 @@ contains
     boundary_cond : if(.not.isboundary.or.&
                        trim(myboundary_cond)=='fix') then
 
-
-      where(self%patch(ixO^S))
-        w(ixO^S,phys_ind%rho_)        =  self%myconfig%density
-      end where
-      if(phys_config%energy)then
+      if(trim(self%myconfig%profile_density)=='Ulrich1976')then
         where(self%patch(ixO^S))
-          w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure
+            w(ixO^S,phys_ind%rho_)        =  self%myconfig%profile_rho_0
+        end where
+      else
+        where(self%patch(ixO^S))
+            w(ixO^S,phys_ind%rho_)        =  self%myconfig%density
         end where
       end if
+      if(phys_config%energy)then
+        if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+          where(self%patch(ixO^S))
+              w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure_Ulrich
+          end where
+        else
+          where(self%patch(ixO^S))
+              w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure
+          end where
+        end if
+      end if
 
-      Loop_idir : do idir=1,ndir
-       where(  self%patch(ixO^S))
-       !----------------------------------------------------
-       !line to modify if we want to change the velocity
-       !put for each time step at any boundary
-       !set to 'fix'
-       !----------------------------------------------------
-        w(ixO^S,phys_ind%mom(idir)) = self%myconfig%velocity(idir)
-       end where
-      end do Loop_idir
+
+      if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+         !----------------------------------------------------
+         !line to modify if we want to change the velocity
+         !put for each time step at any boundary
+         !set to 'fix'
+         !----------------------------------------------------
+         do idir=1,ndir
+           where(  self%patch(ixO^S))
+             !----------------------------------------------------
+             !line to modify if we want to change the velocity
+             !put for each time step at any boundary
+             !set to 'fix'
+             !----------------------------------------------------
+              w(ixO^S,phys_ind%mom(idir)) = self%myconfig%profile_vd
+           end where
+         end do
+      else
+        Loop_idir : do idir=1,ndir
+         where(  self%patch(ixO^S))
+         !----------------------------------------------------
+         !line to modify if we want to change the velocity
+         !put for each time step at any boundary
+         !set to 'fix'
+         !----------------------------------------------------
+          w(ixO^S,phys_ind%mom(idir)) = self%myconfig%velocity(idir)
+         end where
+        end do Loop_idir
+      end if
 
 
       ! add profile to ISM density and pressure
@@ -678,6 +814,8 @@ contains
 
    end subroutine usr_ism_set_w
 
+
+
    !--------------------------------------------------------------------
   subroutine usr_ism_set_profile_distance(ixI^L,ixO^L,x,d_profile,self)
     implicit none
@@ -699,6 +837,89 @@ contains
     end select
   end subroutine usr_ism_set_profile_distance
 
+
+
+
+  function usr_Legendre_two(ixI^L,ixO^L,x) result(y)
+    integer, intent(in)             :: ixI^L,ixO^L
+    real(kind=dp), intent(in)       :: x(ixI^S)
+    real(kind=dp)                   :: y(ixI^S)
+
+    y = 0.5_dp * (3.0_dp * x(ixO^S) * x(ixO^S) - 1.0_dp)
+
+  end function usr_Legendre_two
+
+  !--------------------------------------------------------------------
+  subroutine usr_ism_ulrich_costheta_zero(ixI^L, ixO^L,x,cos_theta_zero,theta_zero,cos_or_sin,self)
+   implicit none
+   integer, intent(in)             :: ixI^L,ixO^L
+   real(kind=dp), intent(in)       :: x(ixI^S,1:ndim)
+   character(len=30), intent(in)   :: cos_or_sin
+   real(kind=dp), intent(inout)    :: cos_theta_zero(ixI^S),theta_zero(ixI^S)
+   real(kind=dp), dimension(ixI^S) :: r_normalized,d_profile,theta_profile
+   class(ism)                      :: self
+   !----------------------------------------------------
+
+   cos_theta_zero(ixO^S) = 1.0_dp
+   r_normalized(ixO^S) = 1.0_dp
+
+   call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+!   select case(trim(cos_or_sin))
+!    case('sin')
+!      theta_profile(ixO^S) = 0.5_dp * dpi - theta_profile(ixO^S)
+!    case('cos')
+!      theta_profile(ixO^S) = theta_profile(ixO^S)
+!    case default
+!      call mpistop('Unknown cos_or_sin in usr_ism_ulrich_costheta_zero ')
+!   end select
+
+   call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
+
+   where(self%patch(ixO^S))
+     r_normalized(ixO^S) = (d_profile(ixO^S)/self%myconfig%profile_rd)
+
+     where(dabs(r_normalized(ixO^S)-1.0_dp) < smalldouble)
+
+       cos_theta_zero(ixO^S) = (DCOS(theta_profile(ixO^S)))**(1.0_dp/3.0_dp)
+
+     elsewhere (r_normalized(ixO^S) > 1.0_dp)
+
+       cos_theta_zero(ixO^S) = 2.0_dp * ( ( ( r_normalized(ixO^S) - 1.0_dp ) / &
+       3.0_dp ) ** ( 0.5_dp ) ) * DSINH( ( 1.0_dp / 3.0_dp ) * &
+       DASINH( ( r_normalized(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+       ( 2.0_dp * ( ( ( r_normalized(ixO^S) - 1.0_dp ) / &
+       3.0_dp ) ** ( 1.5_dp ) ) ) ) )
+
+     elsewhere (r_normalized(ixO^S) < 1.0_dp)
+       where ((((r_normalized(ixO^S)*DCOS(theta_profile(ixO^S)))/2.0_dp)**2.0_dp)-&
+       (((1.0_dp-r_normalized(ixO^S))/3.0_dp)**3.0_dp)>0.0_dp)
+
+         cos_theta_zero(ixO^S) = 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
+         3.0_dp ) ** ( 0.5_dp ) ) * DCOSH( ( 1.0_dp / 3.0_dp ) * &
+         DACOSH( ( r_normalized(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+         ( 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
+         3.0_dp ) ** ( 1.5_dp ) ) ) ) )
+
+       elsewhere ((((r_normalized(ixO^S)*DCOS(theta_profile(ixO^S)))/2.0_dp)**2.0_dp)-&
+       (((1.0_dp-r_normalized(ixO^S))/3.0_dp)**3.0_dp)<0.0_dp)
+
+         cos_theta_zero(ixO^S) = 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
+         3.0_dp ) ** ( 0.5_dp ) ) * DCOS( ( 1.0_dp / 3.0_dp ) * &
+         DACOS( ( r_normalized(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+         ( 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
+         3.0_dp ) ** ( 1.5_dp ) ) ) ) )
+       elsewhere(dabs(r_normalized(ixO^S)-1.0_dp) < smalldouble)
+
+         cos_theta_zero(ixO^S) = (DCOS(theta_profile(ixO^S)))**(1.0_dp/3.0_dp)         
+       end where
+     end where
+
+     theta_zero(ixO^S) =  ACOS(cos_theta_zero(ixO^S))
+
+   end where
+  end subroutine usr_ism_ulrich_costheta_zero
+
+   !--------------------------------------------------------------------
    subroutine usr_ism_set_profile(ixI^L, ixO^L,x,w,self)
     implicit none
     integer, intent(in)             :: ixI^L,ixO^L
@@ -707,29 +928,15 @@ contains
     class(ism)                      :: self
     ! ..local ..
     real(kind=dp), dimension(ixI^S) :: p_profile,d_profile,theta_profile
+    real(kind=dp), dimension(ixI^S) :: vr_profile,vt_profile,vp_profile
+    real(kind=dp), dimension(ixI^S) :: cos_theta_zero,sin_theta_zero,r_normalized
+    real(kind=dp), dimension(ixI^S) :: theta_zero
+    real(kind=dp), dimension(ixI^S,1:ndir) ::project_speed
+    character(len=30)               :: cos_or_sin
+    integer                         :: idir
     !----------------------------------------------------
 
     call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
-    cond_pressure_profile : if(self%myconfig%profile_pressure_on) then
-     select case(trim(self%myconfig%profile_pressure))
-      case('king')
-        if(dabs(self%myconfig%profile_kappa)>smalldouble.and.self%myconfig%profile_zc>smalldouble)then
-          p_profile(ixO^S) = 1.0_dp/(1.0_dp+(d_profile(ixO^S)&
-                            /self%myconfig%profile_zc)**(-self%myconfig%profile_kappa) ) !/
-        else
-          p_profile(ixO^S) = 1.0_dp
-        end if
-      case('komissarov')
-        if(dabs(self%myconfig%profile_kappa)>smalldouble.and.self%myconfig%profile_zc>smalldouble)then
-          p_profile(ixO^S) = (d_profile(ixO^S)&
-                              /self%myconfig%profile_zc)**(-self%myconfig%profile_kappa) !/
-        else
-          p_profile(ixO^S) = 1.0_dp
-        end if
-      case default
-        p_profile(ixO^S) = 1.0_dp
-      end select
-    end if   cond_pressure_profile
 
     cond_density_profile : if(self%myconfig%profile_density_on) then
      select case(trim(self%myconfig%profile_density))
@@ -758,19 +965,9 @@ contains
           p_profile(ixO^S) = 1.0_dp
         end if
         case('Lee2001','Lee2001_floored')
-          select case(typeaxial)
-            case('spherical')
-              theta_profile(ixO^S)          = x(ixO^S,theta_)
-            case('slab','cylindrical')
-              if(ndim>1)then
-                theta_profile(ixO^S)        = datan(x(ixO^S,r_)/x(ixO^S,z_))
-              else
-                theta_profile(ixO^S)        = 0.0_dp
-              end if
-           end select
-              !p_profile(ixO^S) = d_profile(ixO^S)*self%myphysunit%myconfig%length!1.0_dp/(d_profile(ixO^S)**(2.0_dp)) !((dsin(theta_profile(ixO^S)))**2.0_dp)
-              ! 18-10-20 : les tests montrent qu'ici d_profile(ixO^S) est normalisé alors que
-              ! il ne devrait pas l'être, la normalisation des grandeurs intervenant bien plus en avant
+
+              call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+
               p_profile(ixO^S) = ((dsin(theta_profile(ixO^S)))**2.0_dp)/&
                                  ((d_profile(ixO^S)/self%myconfig%profile_rw)**2.0_dp)
               !print*,p_profile(ixO^S)
@@ -780,9 +977,118 @@ contains
                                ((d_profile(ixO^S)/self%myconfig%profile_rw)**2.0_dp)
             end where
           end if
-      case default
-        p_profile(ixO^S) = 1.0_dp
-      end select
+
+        case('Ulrich1976')
+              !31-01-22 : density successfully implemented
+              p_profile(ixO^S) = 1.0_dp
+              vr_profile(ixO^S) = 1.0_dp
+              vt_profile(ixO^S) = 1.0_dp
+              vp_profile(ixO^S) = 1.0_dp
+
+              call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+              cos_or_sin = 'cos'
+              call self%set_profile_costheta_zero(ixI^L, ixO^L,x,cos_theta_zero,theta_zero,cos_or_sin)
+              !cos_or_sin = 'sin'
+              !call self%set_profile_costheta_zero(ixI^L, ixO^L,x,sin_theta_zero,cos_or_sin)
+              r_normalized(ixO^S) = (d_profile(ixO^S)/self%myconfig%profile_rd)
+
+              p_profile(ixO^S) = (r_normalized(ixO^S)**(-1.5_dp))*&
+              ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(-0.5_dp))*&
+              ((1.0_dp+(2.0_dp/r_normalized(ixO^S))*&
+              usr_Legendre_two(ixI^L,ixO^L,cos_theta_zero))**(-1.0_dp))
+
+              vr_profile(ixO^S) = -(r_normalized(ixO^S)**(-0.5_dp))*&
+              ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))
+
+              vt_profile(ixO^S) = (r_normalized(ixO^S)**(-0.5_dp))*&
+              ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))*&
+              ((cos_theta_zero(ixO^S)-DCOS(theta_profile(ixO^S)))/DSIN(theta_profile(ixO^S)))
+
+              vp_profile(ixO^S) = (r_normalized(ixO^S)**(-0.5_dp))*&
+              ((1.0_dp - (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))*&
+              ((DSIN(theta_zero(ixO^S)))/DSIN(theta_profile(ixO^S)))
+
+              select case(typeaxial)
+                case('spherical')
+                   where(self%patch(ixO^S))
+                     project_speed(ixO^S,r_) = vr_profile(ixO^S)
+                   end where
+                   if(ndir>1)then
+                     where(self%patch(ixO^S))
+                       project_speed(ixO^S,theta_) = vt_profile(ixO^S)
+                     end where
+                   end if
+                   if(ndir>2)then
+                     where(self%patch(ixO^S))
+                       project_speed(ixO^S,phi_) = vp_profile(ixO^S)
+                     end where
+                   end if
+                case('cylindrical')
+                   if(ndim<3)then
+                     where(self%patch(ixO^S))
+                       project_speed(ixO^S,r_) = (vr_profile(ixO^S)*&
+                       DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
+                       DCOS(theta_profile(ixO^S)))
+                       project_speed(ixO^S,z_) = (vr_profile(ixO^S)*&
+                       DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
+                       DSIN(theta_profile(ixO^S)))
+                     end where
+                   else
+                     where(self%patch(ixO^S))
+                       project_speed(ixO^S,r_) = 1.0_dp ! TO DO
+                       project_speed(ixO^S,z_) = 1.0_dp ! TO DO
+                     end where
+                   end if
+                   if(ndir>2)then
+                      where(self%patch(ixO^S))
+                        project_speed(ixO^S,phi_) = vp_profile(ixO^S)
+                      end where
+                   end if
+                case('slab','slabstretch')
+                   if(ndim<3)then
+                     where(self%patch(ixO^S))
+                       project_speed(ixO^S,x_) = (vr_profile(ixO^S)*&
+                       DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
+                       DCOS(theta_profile(ixO^S)))
+                       project_speed(ixO^S,y_) = (vr_profile(ixO^S)*&
+                       DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
+                       DSIN(theta_profile(ixO^S)))
+                     end where
+                     if(ndir>2)then
+                        where(self%patch(ixO^S))
+                          project_speed(ixO^S,z_) = vp_profile(ixO^S)
+                        end where
+                     end if
+                   else
+                     where(self%patch(ixO^S))
+                       project_speed(ixO^S,x_) = 1.0_dp ! TO DO
+                       project_speed(ixO^S,y_) = 1.0_dp ! TO DO
+                     end where
+                     if(ndir>2)then
+                        where(self%patch(ixO^S))
+                          project_speed(ixO^S,z_) = 1.0_dp ! TO DO
+                        end where
+                     end if
+                   end if
+                case default
+                   call mpistop('Unknown typeaxial')
+              end select
+
+              Loop_idir_profile : do idir=1,ndir
+               where(  self%patch(ixO^S))
+               !----------------------------------------------------
+               !line to modify if Ulrich model and we want to change the velocity
+               !put for each time step at any boundary
+               !set to 'fix'
+               !----------------------------------------------------
+                w(ixO^S,phys_ind%mom(idir)) = w(ixO^S,phys_ind%mom(idir)) * &
+                project_speed(ixO^S,idir)
+               end where
+              end do Loop_idir_profile
+
+        case default
+          p_profile(ixO^S) = 1.0_dp
+        end select
     end if   cond_density_profile
 
     if(self%myconfig%profile_pressure_on) then
@@ -821,20 +1127,12 @@ contains
           elsewhere
             w(ixO^S,phys_ind%pressure_) = &
                self%myconfig%profile_shift_pressure(1,1)
-
           end where
         end where
       end if
     end if
 
-if(self%myconfig%ism_display_parameters) then
-   print*, 'in mod_obj_ism.t : '
-   print*, 'ism density', self%myconfig%density*self%myphysunit%myconfig%density
-   print*, 'ism ndensity', self%myconfig%number_density*self%myphysunit%myconfig%number_density
-   print*, 'ism pressure', self%myconfig%pressure*self%myphysunit%myconfig%pressure
-   print*, 'ism temperature', self%myconfig%temperature*self%myphysunit%myconfig%temperature
-   print*, 'ism velocity', self%myconfig%velocity*self%myphysunit%myconfig%velocity
-end if
+
    end subroutine usr_ism_set_profile
 
 
@@ -845,127 +1143,222 @@ end if
     implicit none
     integer, intent(in)                  :: ixI^L,ixO^L
     real(kind=dp), intent(in)            :: qt,qdt
+    real(kind=dp)                        :: maxv,minv
     real(kind=dp), intent(in)            :: x(ixI^S,1:ndim)
     real(kind=dp), intent(in)            :: w(ixI^S,1:nw)
     class(ism)                           :: self
     real(kind=dp), intent(inout)         :: f_profile(ixI^S,1:ndim)
+    real(kind=dp)                        :: f_profile1(ixI^S,1:ndim)
+    real(kind=dp)                        :: f_profile2(ixI^S,1:ndim)
     real(kind=dp), intent(inout)         :: divpv(ixI^S)
     ! ..local ..
     integer                              :: idims
     real(kind=dp), dimension(ixI^S,1:ndir) :: pv
     real(kind=dp), dimension(ixI^S,1:nw) :: w_init, w_tmp
-    real(kind=dp), dimension(ixI^S)      :: ptherm,gradp,f_projection,d_profile
+    real(kind=dp), dimension(ixI^S,1:nw) :: w_init2, w_tmp2
+    real(kind=dp), dimension(ixI^S)      :: ptherm,gradp,d_profile,theta_profile
+    real(kind=dp), dimension(ixI^S)      :: alpha_analy,alpha_num,fsign
     logical                              :: tmp_active,src_active
     logical, dimension(ixI^S)            :: patch_tosave
     !----------------------------------------------------
     f_profile(ixO^S,:) = 0.0
-    call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
-    cond_pressure_fprofile : if(self%myconfig%profile_pressure_on) then
-      select case(trim(self%myconfig%profile_pressure))
-      case('komissarov')
-       cond_force1: if(dabs(self%myconfig%profile_kappa)&
-            >smalldouble.and.self%myconfig%profile_zc>smalldouble)then
-        where(self%patch(ixO^S))
-         f_projection(ixO^S) =&
-            - self%myconfig%profile_kappa/self%myconfig%profile_zc*&
-           (d_profile(ixO^S)/self%myconfig%profile_zc)**(-(self%myconfig%profile_kappa+1))
-        end  where
-       else cond_force1
-        where(self%patch(ixO^S))
-         f_projection(ixO^S) = 0.0_dp
-        end where
-       end if cond_force1
-      case default
-       where(self%patch(ixO^S))
-        f_projection(ixO^S) = 0.0_dp
-       end where
-      end select
-    end if cond_pressure_fprofile
+    cond_fprofile : if(self%myconfig%profile_force_gradP_on)then
+      cond_density_fprofile : if(self%myconfig%profile_density_on) then
 
-    cond_density_fprofile : if(self%myconfig%profile_density_on) then
+         !1> Compute analytical force
+         call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
+         !initiate the ism positions at current time step
+         !and the primitive state vector w_init, all previously to
+         !radiative cooling treatment
+
+         patch_tosave(ixI^S)=self%patch(ixI^S)
+         ! allow the following lines to be applied to the whole input
+         ! part of the grid in self%patch
+         self%patch(ixI^S)  =.true.
+         call self%set_w(ixI^L, ixI^L,qt,x,w_init)
 
 
-     cond_fprofile_numerical : if(self%myconfig%profile_force_gradP_on)then
-      patch_tosave(ixI^S)=self%patch(ixI^S)
-      self%patch(ixI^S)  =.true.
-      call self%set_w(ixI^L, ixI^L,qt,x,w_init)
-      self%patch(ixI^S)=patch_tosave(ixI^S)
-
-      call phys_to_conserved(ixI^L,ixI^L,w_init,x)
-
-      w_tmp(ixI^S,1:nw) = w_init(ixI^S,1:nw)
-!
-
-      if(phys_config%radiative_cooling)then
-        tmp_active=.false.
-        src_active=.false.
-        call radiative_cooling_add_source(qdt,ixI^L,ixI^L,w_init,w_tmp,x,&
-                                           src_active,tmp_active)
-      end if
-      call phys_get_pthermal(w_tmp,x,ixI^L,ixI^L,ptherm)
-      Loop_idir_force : do idims=1,ndim
-        call gradient(ptherm,ixI^L,ixO^L,idims,gradp)
-
-        where(self%patch(ixO^S))
-          f_profile(ixO^S,idims) = gradp(ixO^S)
-        end where
-        pv(ixI^S,idims) =  ptherm(ixI^S)*w(ixI^S,phys_ind%mom(idims))/w(ixI^S,phys_ind%rho_)
-      end do  Loop_idir_force
-      if(ndir>ndim)pv(ixI^S,ndim+1:ndir)=0.0_dp
-      call  divvector(pv,ixI^L,ixO^L,divpv)
+         w_tmp(ixI^S,1:nw) = w_init(ixI^S,1:nw)
 
 
-     else cond_fprofile_numerical
 
 
-      select case(trim(self%myconfig%profile_density))
-      case('cabrit1997')
-       cond_force_rho1: if(self%myconfig%profile_zc>smalldouble)then
+         if(ndim>1)then
 
-        where(self%patch(ixO^S))
-          where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
+           select case(trim(self%myconfig%profile_density))
+               case('Lee2001','Lee2001_floored')
+                  call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
 
-            f_projection(ixO^S) = -phys_config%gamma/&
-                   self%myconfig%profile_zc*self%myconfig%profile_kappa*&
-              (1.0_dp+(d_profile(ixO^S)&
-              -self%myconfig%profile_shiftstart)&
-              /self%myconfig%profile_zc)**(-phys_config%gamma*&
-                                              self%myconfig%profile_kappa-1)
+                  select case(typeaxial)
+                   case('spherical')
+                     where(self%patch(ixO^S))
+                       where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
+                        f_profile1(ixO^S,r_) = -w(ixO^S,phys_ind%pressure_)/&
+                        d_profile(ixO^S)
+                        f_profile1(ixO^S,theta_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                        (d_profile(ixO^S)*dtan(theta_profile(ixO^S)))
+                       end where
+                     end where
+                   case('cylindrical')
+                     where(self%patch(ixO^S))
+                       where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
+                         f_profile1(ixO^S,r_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
+                         x(ixO^S,r_)/(x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)
+                         f_profile1(ixO^S,z_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                         x(ixO^S,z_)
+                       end where
+                     end where
+                   case('slab','slabstretch')
+                     where(self%patch(ixO^S))
+                       where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
+                         f_profile1(ixO^S,x_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
+                         x(ixO^S,x_)/(x(ixO^S,x_)**2.0_dp+x(ixO^S,y_)**2.0_dp)
+                         f_profile1(ixO^S,y_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                         x(ixO^S,y_)
+                       end where
+                     end where
+                   case default
+                    call mpistop('Unknown geometry')
+                  end select
 
-          else where
-            f_projection(ixO^S) = 0.0_dp
-          end where
-        end  where
+                   if(trim(self%myconfig%profile_density)=='Lee2001_floored')then
+                    select case(typeaxial)
+                     case('spherical')
+                      where(self%patch(ixO^S))
+                       where(theta_profile(ixO^S)<=self%myconfig%theta_floored)
+                         f_profile1(ixO^S,theta_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                         (d_profile(ixO^S)*dtan(self%myconfig%theta_floored))
+                       end where
+                      end where
+                     case('cylindrical')
+                      where(self%patch(ixO^S))
+                        where(theta_profile(ixO^S)<=self%myconfig%theta_floored)
+                          f_profile1(ixO^S,r_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
+                          dcos(self%myconfig%theta_floored)/d_profile(ixO^S)
+                          f_profile1(ixO^S,z_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                          (d_profile(ixO^S)*dsin(self%myconfig%theta_floored))
+                        end where
+                      end where
+                     case('slab','slabstretch')
+                       where(self%patch(ixO^S))
+                         where(theta_profile(ixO^S)<=self%myconfig%theta_floored)
+                           f_profile1(ixO^S,x_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
+                           dcos(self%myconfig%theta_floored)/d_profile(ixO^S)
+                           f_profile1(ixO^S,y_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                           (d_profile(ixO^S)*dsin(self%myconfig%theta_floored))
+                         end where
+                        end where
+                     case default
+                      call mpistop('Unknown geometry')
+                    end select
+                   end if
 
-        divpv(ixO^S) = 0.0_dp ! A REMPLIR !
-       else cond_force_rho1
-        where(self%patch(ixO^S))
-         f_projection(ixO^S) = 0.0_dp
-        end where
-      end if cond_force_rho1
-      case default
-       where(self%patch(ixO^S))
-        f_projection(ixO^S) = 0.0_dp
-       end where
-      end select
-      select case(self%myconfig%profile_typeaxial)
-      case('projection_direction')
-        Loop_idim0 : do idims=1,ndim
-          where(self%patch(ixO^S))
-            f_profile(ixO^S,idims) = f_projection(ixO^S)*self%myconfig%profile_idir(idims)
-          end where
-        end do Loop_idim0
-      case default
-        Loop_idim : do idims=1,ndim
-          where(self%patch(ixO^S))
-            f_profile(ixO^S,idims) = f_projection(ixO^S) &
-                          *(x(ixO^S,idims)-self%myconfig%profile_center(idims))/d_profile(ixO^S)
-          end where
-        end do Loop_idim
+               case default
+                 Loop_idim_default : do idims=1,ndim
+                  where(self%patch(ixO^S))
+                    where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
+                     f_profile1(ixO^S,idims) = 0.0_dp
+                    end where
+                  end where
+                 end do Loop_idim_default
+           end select
 
-      end select
-     end if cond_fprofile_numerical
-    end if cond_density_fprofile
+           !if ndim==1:
+           !else
+           !TO DO
+         end if
+         ! restore the self%patch to its state before the call of this subroutine
+         self%patch(ixI^S)=patch_tosave(ixI^S)
+
+         !2> Compute numerical force separately
+         patch_tosave(ixI^S)=self%patch(ixI^S)
+         self%patch(ixI^S)  =.true.
+         call self%set_w(ixI^L, ixI^L,qt,x,w_init2)
+         self%patch(ixI^S)=patch_tosave(ixI^S)
+         call phys_to_conserved(ixI^L,ixI^L,w_init2,x)
+
+         w_tmp2(ixI^S,1:nw) = w_init2(ixI^S,1:nw)
+
+         if(phys_config%radiative_cooling)then
+           tmp_active=.false.
+           src_active=.false.
+           call radiative_cooling_add_source(qdt,ixI^L,ixI^L,w_init2,w_tmp2,x,&
+                                              src_active,tmp_active)
+         end if
+         call phys_get_pthermal(w_tmp2,x,ixI^L,ixI^L,ptherm)
+         Loop_idir_force : do idims=1,ndim
+           call gradient(ptherm,ixI^L,ixO^L,idims,gradp)
+
+           where(self%patch(ixO^S))
+             f_profile2(ixO^S,idims) = gradp(ixO^S)
+           end where
+           pv(ixI^S,idims) =  ptherm(ixI^S)*w(ixI^S,phys_ind%mom(idims))/w(ixI^S,phys_ind%rho_)
+         end do  Loop_idir_force
+         if(ndir>ndim)pv(ixI^S,ndim+1:ndir)=0.0_dp
+         call  divvector(pv,ixI^L,ixO^L,divpv)
+
+         !3> Compute the mean
+         select case(trim(self%myconfig%weight_mean_variable))
+           case('density_grad')
+             maxv = maxval(w_tmp(ixO^S,phys_ind%rho_))
+             where(self%patch(ixO^S))
+               alpha_analy(ixO^S) = self%myconfig%weight_analy*&
+               (w_tmp(ixO^S,phys_ind%rho_)/maxv)
+               alpha_num(ixO^S) = self%myconfig%weight_num*&
+               ((maxv-w_tmp(ixO^S,phys_ind%rho_))/maxv)
+             end where
+           case('minus_density_grad')
+             maxv = maxval(w_tmp(ixO^S,phys_ind%rho_))
+             where(self%patch(ixO^S))
+               alpha_analy(ixO^S) = self%myconfig%weight_analy*&
+               (maxv/w_tmp(ixO^S,phys_ind%rho_))
+               alpha_num(ixO^S) = self%myconfig%weight_num*&
+               (maxv/(maxv-w_tmp(ixO^S,phys_ind%rho_)))
+             end where
+           case default
+             where(self%patch(ixO^S))
+               alpha_analy(ixO^S) = self%myconfig%weight_analy
+               alpha_num(ixO^S) = self%myconfig%weight_num
+             end where
+         end select
+         Loop_idir_force2 : do idims=1,ndim
+           select case(trim(self%myconfig%weight_mean))
+             case('arithmetic')
+                 Where_amplify_force : where(self%patch(ixO^S))
+                   f_profile(ixO^S,idims) = ((alpha_analy(ixO^S)**self%myconfig%weight_analy_index)*&
+                   f_profile1(ixO^S,idims)+(alpha_num(ixO^S)**self%myconfig%weight_num_index)*&
+                   f_profile2(ixO^S,idims))/&
+                   (alpha_analy(ixO^S)**self%myconfig%weight_analy_index+&
+                   alpha_num(ixO^S)**self%myconfig%weight_num_index)
+                 end where Where_amplify_force
+             !Not working:
+             !case('geometric')
+                 !where(self%patch(ixO^S))
+                   !fsign(ixO^S) = ((alpha_analy(ixO^S)**self%myconfig%weight_analy_index)*&
+                   !f_profile1(ixO^S,idims)+(alpha_num(ixO^S)**self%myconfig%weight_num_index)*&
+                   !f_profile2(ixO^S,idims))/&
+                   !(alpha_analy(ixO^S)**self%myconfig%weight_analy_index+&
+                   !alpha_num(ixO^S)**self%myconfig%weight_num_index)
+                   !where(fsign(ixO^S)<smalldouble)
+                    !fsign(ixO^S) = 0.0_dp
+                   !elsewhere
+                    !fsign(ixO^S) = fsign(ixO^S) / dabs(fsign(ixO^S))
+                   !end where
+                   !f_profile(ixO^S,idims) = fsign(ixO^S)*&
+                   !((dabs(f_profile1(ixO^S,idims))**(alpha_analy(ixO^S)**&
+                   !self%myconfig%weight_analy_index))*&
+                   !(dabs(f_profile2(ixO^S,idims))**(alpha_num(ixO^S)**&
+                   !self%myconfig%weight_num_index)))**(1.0_dp/&
+                   !((alpha_analy(ixO^S)**self%myconfig%weight_analy_index)+&
+                   !(alpha_num(ixO^S)**self%myconfig%weight_num_index)))
+                 !end where
+             case default
+              call mpistop('Unknown weighting mean type')
+           end select
+         end do  Loop_idir_force2
+      end if cond_density_fprofile
+    end if cond_fprofile
+
 
 
 
@@ -1037,7 +1430,7 @@ end if
           end where
         end do Loop_idim_force_m
           if(phys_config%energy) then
-            coef_eos = phys_config%gamma/(phys_config%gamma-1.0_dp)
+            coef_eos = 1.0_dp!phys_config%gamma/(phys_config%gamma-1.0_dp)
 
             where(self%patch(ixO^S))
             ! This subroutine implicitly uses conservative variables

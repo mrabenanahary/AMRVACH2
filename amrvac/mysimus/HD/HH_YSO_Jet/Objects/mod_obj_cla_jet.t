@@ -68,6 +68,7 @@ module mod_obj_cla_jet
     logical              :: variation_on           !>  jet variation  condition
     character(len=40)    :: variation_type         !> jet type of the power variation
     logical              :: density_variation_on   !>  jet density variation switch
+    character(len=40)    :: density_variation_profile !> jet density variation switch
     logical              :: pressure_variation_on  !>  jet pressure variation switch
     integer              :: variation_n_cells      !> jet ejecta variation cell number width
     real(dp)             :: variation_time         !> jet variation characteristic time
@@ -286,6 +287,7 @@ contains
 
   self%myconfig%variation_on           = .false.
   self%myconfig%density_variation_on   = .false.
+  self%myconfig%density_variation_profile = 'conserved_mflux'
   self%myconfig%pressure_variation_on  = .false.
   self%myconfig%variation_n_cells      = 2
   self%myconfig%variation_type         = 'none'
@@ -1202,7 +1204,7 @@ end subroutine usr_cla_add_source
    class(cla_jet)                 :: self
    ! .. local ..
    integer                        :: iw,n_cells
-   real(kind=dp)                  :: Vprofile,z0,amplitude_profile
+   real(kind=dp)                  :: Vprofile,z0,amplitude_profile,h_time
   ! logical, dimension(ixI^S)      :: patch_ejecta_surface
    real(kind=dp), dimension(ixI^S)       :: angle_theta,jet_radius
    real(kind=dp), dimension(ixI^S,1:ndim)::project_speed
@@ -1272,9 +1274,16 @@ end subroutine usr_cla_add_source
            cond_density_variation_on : if(self%myconfig%density_variation_on)then
             amplitude_profile =  self%myconfig%variation_velocity_poloidal/&
                                  self%myconfig%velocity_poloidal
+            select case(trim(self%myconfig%density_variation_profile))
+             case('conserved_mflux')
+              h_time            =  1.0_dp/(1.0_dp+amplitude_profile*Vprofile)
+             case('same_as_velocity')
+              h_time            =  1.0_dp+amplitude_profile*Vprofile
+             case default
+              h_time            =  1.0_dp
+             end select
             where(self%ejecta_patch(ixO^S))
-             w(ixO^S,phys_ind%rho_) =  self%myconfig%density/&
-                                      (1.0_dp+amplitude_profile*Vprofile)
+             w(ixO^S,phys_ind%rho_) =  self%myconfig%density*h_time
             end where
             !----------------------------------------------------
             ! If switched on, enabling constant temperature in the jet inlet by changing the pressure
@@ -1282,8 +1291,7 @@ end subroutine usr_cla_add_source
             !----------------------------------------------------
             cond_pressure_variation_on : if(self%myconfig%pressure_variation_on)then
               where(self%ejecta_patch(ixO^S))
-               w(ixO^S,phys_ind%pressure_) =  self%myconfig%pressure/&
-                                        (1.0_dp+amplitude_profile*Vprofile)
+               w(ixO^S,phys_ind%pressure_) =  self%myconfig%pressure*h_time
               end where
             end if cond_pressure_variation_on
            end if cond_density_variation_on

@@ -426,7 +426,8 @@ subroutine usr_mat_profile_scalar(pos_t,standart_deviation,variation_type,Vprofi
         ! celle qui va de Vmax=150 à Vmin=100=Vmax-DeltaV sur [n*standart_deviation;(n+1)*standart_deviation]
         ! Vprofile = 1.0_dp -2.0_dp*local_pos_t/standart_deviation ! version de Zakaria
        case('sawtooth2')
-        Vprofile = 1.0_dp-2.0_dp*modulo(pos_t/standart_deviation,1.0_dp)
+        local_pos_t = pos_t-0.5_dp*standart_deviation
+        Vprofile = 1.0_dp-2.0_dp*modulo(local_pos_t/standart_deviation,1.0_dp)
        case('sawtooth3')
          local_pos_t = pos_t-0.5_dp*standart_deviation
          Vprofile = -1.0_dp+2.0_dp*modulo(local_pos_t/standart_deviation,1.0_dp)
@@ -642,6 +643,33 @@ end subroutine usr_mat_profile_dist
     case default
     end select
   end subroutine usr_distance
+
+  !--------------------------------------------------------------------
+  subroutine usr_get_theta(ixI^L, ixO^L,x,theta_profile)
+   implicit none
+   integer, intent(in)             :: ixI^L,ixO^L
+   real(kind=dp), intent(in)       :: x(ixI^S,1:ndim)
+   real(kind=dp), intent(inout)    :: theta_profile(ixI^S)
+   !----------------------------------------------------
+
+   select case(typeaxial)
+   case('spherical')
+        theta_profile(ixO^S)          = x(ixO^S,theta_)
+   case('cylindrical')
+      if(ndim>1)then
+          theta_profile(ixO^S)        = datan(x(ixO^S,r_)/x(ixO^S,z_))
+      else
+          theta_profile(ixO^S)        = 0.0_dp
+      end if
+   case('slab','slabstretch')
+        theta_profile(ixO^S)        = datan(x(ixO^S,x_)/x(ixO^S,y_))
+   case default
+      call mpistop('Unknown typeaxial')
+   end select
+
+  end subroutine usr_get_theta
+
+
   !------------------------------------------------------------------------
   subroutine usr_get_spherical(ixI^L,ixO^L,typeaxial_loc,center,x,x_sphere)
     use mod_global_parameters, only : z_in,phi_in

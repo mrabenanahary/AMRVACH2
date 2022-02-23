@@ -190,7 +190,7 @@
          coolsavedT       = .true.
          He_abundance = 0.1d0
          rc_chemical_gas_type = 'fullymolecular'
-         lH2 = -19.0d0
+         lH2 = -21.0d0
    /
 
 
@@ -222,7 +222,7 @@
 
         usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
         usrconfig%reset_flux_scheme_on          = .true.
-        usrconfig%reset_flux_scheme_diffuse     = 'tvdlf'
+        usrconfig%reset_flux_scheme_diffuse     = 'hllcd'
         usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
         usrconfig%reset_flux_scheme_thresholdL1_max = 1.0d20
 
