@@ -73,8 +73,8 @@
 
  &methodlist
         time_integrator          =  'twostep'
-        typepred1                =  20*'hllcd'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
-        flux_scheme              =  20*'hllcd'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        typepred1                =  20*'hllc'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        flux_scheme              =  20*'hllc'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
         limiter                  =  20*'minmod'!>>HH4647 !'koren'!'cada3'
         small_pressure           = 1.0d-9
         small_density            = 1.0d-8
@@ -97,22 +97,28 @@
  &boundlist
         internalboundary  = .true.
         nghostcells       = 4
-        !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
+        !                     RHO,   Vr,     Vz,   Vphi,   traceur1,traceur2
+        typeboundary_min1 =  'symm','asymm','symm','asymm',2*'symm'!, ! C.L. gauche <=> rmin
+        typeboundary_max1 =  6*'cont'                                    ! C.L. droite <=> rmax
+        typeboundary_min2 =  'symm','symm','asymm','symm',2*'symm' !7*'special'!                                     ! C.L. inférieure <=> zmin
+        typeboundary_max2 =  6*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
+
+/
+        typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max
+        typeboundary_min3 = 8*'cont'                                         ! C.L. avant <=> phi/profondeur min
         typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
         typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
         typeboundary_min2 =  'symm','symm','asymm','symm','symm',2*'symm' !7*'special'!                                     ! C.L. inférieure <=> zmin
         typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
 
-/
-        typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max
-        typeboundary_min3 = 8*'cont'                                         ! C.L. avant <=> phi/profondeur min
+
  /
 
  &meshlist
         ! grid at level 1
-        xprobmin1 =  0.0d0    ! cm
+        xprobmin1 =  1.0d10 !0.0d0    ! cm
         xprobmax1 =  3.0d17! <--- r_max=3.0d17
-        xprobmin2 =  0.0d0    ! cm
+        xprobmin2 =  1.0d10 !0.0d0    ! cm
         xprobmax2 =  3.0d17! <--- z_max=3.0d17
 
         ! total cell at level 1
@@ -160,8 +166,9 @@
  /
 
   &hd_list
-         hd_energy            = .true. !non-adiabatic: enables energy solving
-         hd_gamma             = 1.666666667
+         hd_energy            = .false. !non-adiabatic: enables energy solving
+         hd_gamma             = 1.0!hd_gamma=1.666666667 if hd_energy=.true or hd_gamma=1.0 if isotherm
+         hd_temperature_isotherm = 100!only if hd_gamma=1.0 (isotherm)
          SI_unit              = .false.  ! use cgs
          He_abundance         = 0.1d0                     !
 
@@ -223,7 +230,7 @@
         usrconfig%phys_isotherm_on              = .true. ! use isotherme
         usrconfig%phys_temperature_isotherm     = 100 ! Le 2001
         usrconfig%reset_flux_scheme_on          = .true.
-        usrconfig%reset_flux_scheme_diffuse     = 'hllcd'
+        usrconfig%reset_flux_scheme_diffuse     = 'hllc'
         usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
         usrconfig%reset_flux_scheme_thresholdL1_max = 1.0d20
 

@@ -121,7 +121,7 @@ module mod_physics
 
     logical                   :: tracer_on
     integer                   :: n_tracer
-
+    real(dp)                  :: unit_velocity
     real(dp)                  :: small_density
     real(dp)                  :: small_pressure
     real(dp)                  :: small_energy
@@ -434,6 +434,7 @@ contains
         phys_config%cool_fn              = 1.0d-3
         phys_config%tracer_on            = .false.
         phys_config%n_tracer             = 0
+        phys_config%unit_velocity        = 1.0_dp
 
         phys_config%small_density        = 0.0_dp
         phys_config%small_pressure       = 0.0_dp

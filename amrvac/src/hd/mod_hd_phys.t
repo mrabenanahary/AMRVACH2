@@ -33,6 +33,8 @@ module mod_hd_phys
   !> Number of tracer species
   integer, public, protected              :: hd_n_tracer = 0
 
+  real(dp), public                        :: hd_unit_velocity = 1.0_dp
+
   !> Index of the density (in the w array)
   integer, public, protected              :: rho_
 
@@ -96,7 +98,7 @@ contains
     integer                      :: i_file,i_reason
     character(len=70)            :: error_message
 
-    namelist /hd_list/ hd_energy, hd_n_tracer, hd_gamma, hd_adiab, &
+    namelist /hd_list/ hd_energy, hd_n_tracer, hd_unit_velocity, hd_gamma, hd_adiab, &
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
     hd_gravity, He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure,&
     hd_chemical,hd_chemical_gas_type,hd_mean_mup_on,hd_temperature_isotherm
@@ -215,6 +217,7 @@ contains
   hd_config%ismhd                = .false.
   hd_config%isrel                = .false.
   hd_config%n_tracer             = hd_n_tracer
+  hd_config%unit_velocity        = hd_unit_velocity
   hd_config%gamma                = hd_gamma
   hd_config%adiab                = hd_adiab
   hd_config%temperature_isotherm = hd_temperature_isotherm
@@ -279,6 +282,7 @@ contains
     use mod_physics
 
     integer :: itr, idir
+    real(kind=dp)  :: mp,kB
     !------------------------------------------------------
     physics_type = "hd"
     call hd_read_params(par_files)
@@ -297,16 +301,40 @@ contains
 
     ! derive units from basic units
     call hd_physical_units
-    ! the adiab value set from temperature is gamma==1
-    if(hd_config%temperature_isotherm>0)then
-      hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
-      if(dabs(gamma_1)<smalldouble)then
-        ! normalise value for adiab
-        hd_config%adiab  = hd_config%temperature_isotherm*phys_config%mean_mass
+    !isotherm case
+    if(dabs(gamma_1)<smalldouble)then
+      if(SI_unit) then
+          mp=mp_SI
+          kB=kB_SI
+      else
+          mp=mp_cgs
+          kB=kB_cgs
+      end if
+
+      ! the adiab value set from temperature is gamma==1
+      if(hd_config%adiab<0)then
+        write(*,*) " mod_usr.t : non-physical hd_adiab < 0 set "
+        call mpistop(" .par parameter file : hd_list parameters uncorrect")
+      end if
+       if(hd_config%temperature_isotherm>0)then
+            ! normalise value for isotherm temperature
+            hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
+            ! isotherm case : need to compute adiab = csound**2
+            hd_config%adiab = kB/(hd_config%mean_mup*mp)*hd_config%temperature_isotherm
+            ! normalise value for adiab
+            hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
+        elseif(hd_config%adiab>=0)then
+          ! normalise value for adiab
+          hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
+          ! isotherm case : need to compute isotherm temperature T
+          hd_config%temperature_isotherm = (hd_config%adiab/kB)*hd_config%mean_mup*mp
+          ! normalise value for isotherm temperature
+          hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
+        end if
+
         ! save in local hd paramteres
         hd_adiab= hd_config%adiab
         hd_temperature_isotherm = hd_config%temperature_isotherm
-      end if
     end if
 
     if (hd_config%dust_on) call dust_init(hd_ind,hd_config,rho_, mom(:), e_)
@@ -512,6 +540,8 @@ contains
       unit_temperature=phys_config%mean_mup*mp*unit_pressure/(unit_density*kB)
       unit_time=unit_length/unit_velocity
     end if
+
+    hd_config%unit_velocity = unit_velocity
 
 
 

@@ -399,10 +399,13 @@ contains
       usrconfig%phys_temperature_isotherm = usrconfig%phys_temperature_isotherm &
          / usr_physunit%myconfig%temperature
      PRINT*,' is the same ',phys_config%adiab,usrconfig%phys_adiab
-      if(phys_config%adiab/=usrconfig%phys_adiab)then
+      if(dabs(phys_config%adiab*phys_config%unit_velocity**2.0_dp-&
+      usrconfig%phys_adiab*unit_velocity**2.0_dp)>smalldouble)then
         write(*,*) 'the constant adiab is not well set in phys or at user site:'
-        write(*,*) 'phys_config%adiab = ', phys_config%adiab
-        write(*,*) 'usr_config%adiab = ', usrconfig%phys_adiab
+        write(*,*) 'phys_config%adiab = ', phys_config%adiab*&
+        usr_physunit%myconfig%velocity**2.0_dp
+        write(*,*) 'usr_config%adiab = ', usrconfig%phys_adiab*&
+        unit_velocity**2.0_dp
       end if
       phys_config%adiab = usrconfig%phys_adiab
    end if cond_iso
@@ -1247,14 +1250,14 @@ return
     Ggrav = constusr%G
 
     gravity_field(ixO^S,1:ndim)=0.0_dp
-    zero_dim(1)=-dx(1,1)
+    zero_dim(1)=0.0_dp!-dx(1,1)
     if(ndim==2)then
-     zero_dim(2)=-dx(2,1)
+     zero_dim(2)=0.0_dp!-dx(2,1)
     end if
     if(ndim==3)then
-     zero_dim(3)=-dx(3,1)
+     zero_dim(3)=0.0_dp!-dx(3,1)
     end if
-    
+
 
     ! Here we set the graviationnal acceleration inside the whole domain
     ! from the state vector wCT

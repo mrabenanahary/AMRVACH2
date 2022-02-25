@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=Ulrich1976
-#SBATCH --nodes=1 --ntasks-per-node=24
-#SBATCH --time=1440
-#SBATCH --partition=medium
+#SBATCH --nodes=1 --ntasks-per-node=48
+#SBATCH --time=60
+#SBATCH --partition=short
 #SBATCH --mail-user=mialy.rabenanahary@gmail.com
 #SBATCH --output=slurm-Ulrich1976-%j.out
 #SBATCH --mail-type=ALL
