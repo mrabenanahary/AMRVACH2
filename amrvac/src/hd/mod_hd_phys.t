@@ -34,6 +34,7 @@ module mod_hd_phys
   integer, public, protected              :: hd_n_tracer = 0
 
   real(dp), public                        :: hd_unit_velocity = 1.0_dp
+  real(dp), public                        :: hd_unit_temperature = 1.0_dp
 
   !> Index of the density (in the w array)
   integer, public, protected              :: rho_
@@ -98,7 +99,8 @@ contains
     integer                      :: i_file,i_reason
     character(len=70)            :: error_message
 
-    namelist /hd_list/ hd_energy, hd_n_tracer, hd_unit_velocity, hd_gamma, hd_adiab, &
+    namelist /hd_list/ hd_energy, hd_n_tracer, hd_unit_velocity, hd_unit_temperature, &
+    hd_gamma, hd_adiab, &
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
     hd_gravity, He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure,&
     hd_chemical,hd_chemical_gas_type,hd_mean_mup_on,hd_temperature_isotherm
@@ -218,6 +220,7 @@ contains
   hd_config%isrel                = .false.
   hd_config%n_tracer             = hd_n_tracer
   hd_config%unit_velocity        = hd_unit_velocity
+  hd_config%unit_temperature     = hd_unit_temperature
   hd_config%gamma                = hd_gamma
   hd_config%adiab                = hd_adiab
   hd_config%temperature_isotherm = hd_temperature_isotherm
@@ -317,19 +320,20 @@ contains
         call mpistop(" .par parameter file : hd_list parameters uncorrect")
       end if
        if(hd_config%temperature_isotherm>0)then
-            ! normalise value for isotherm temperature
-            hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
             ! isotherm case : need to compute adiab = csound**2
             hd_config%adiab = kB/(hd_config%mean_mup*mp)*hd_config%temperature_isotherm
             ! normalise value for adiab
             hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
+            ! normalise value for isotherm temperature
+            hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
+
         elseif(hd_config%adiab>=0)then
-          ! normalise value for adiab
-          hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
           ! isotherm case : need to compute isotherm temperature T
           hd_config%temperature_isotherm = (hd_config%adiab/kB)*hd_config%mean_mup*mp
           ! normalise value for isotherm temperature
           hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
+          ! normalise value for adiab
+          hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
         end if
 
         ! save in local hd paramteres
@@ -542,6 +546,7 @@ contains
     end if
 
     hd_config%unit_velocity = unit_velocity
+    hd_config%unit_temperature = unit_temperature
 
 
 

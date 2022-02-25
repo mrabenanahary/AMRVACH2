@@ -405,7 +405,12 @@ contains
         write(*,*) 'phys_config%adiab = ', phys_config%adiab*&
         usr_physunit%myconfig%velocity**2.0_dp
         write(*,*) 'usr_config%adiab = ', usrconfig%phys_adiab*&
-        unit_velocity**2.0_dp
+        phys_config%unit_velocity**2.0_dp
+        write(*,*) 'phys_config%temperature_isotherm = ', phys_config%temperature_isotherm*&
+        phys_config%unit_temperature
+        write(*,*) 'usrconfig%phys_temperature_isotherm = ', usrconfig%phys_temperature_isotherm*&
+        usr_physunit%myconfig%temperature
+        write(*,*) ' mod_usr.t : mean_mup = ', phys_config%mean_mup
       end if
       phys_config%adiab = usrconfig%phys_adiab
    end if cond_iso
