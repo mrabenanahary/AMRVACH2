@@ -128,7 +128,7 @@ subroutine usr_boundaries_set_complet(self)
      case('disc')
        self%variable_typebound(idims,iside,:)='symm'
        self%variable_typebound(idims,iside,phys_ind%mom(r_))='symm'
-       self%variable_typebound(idims,iside,phys_ind%mom(phi_))='asymm'
+       self%variable_typebound(idims,iside,phys_ind%mom(phi_))='symm'
        self%variable_typebound(idims,iside,phys_ind%mom(z_))='asymm'
      case('axis')
       self%variable_typebound(idims,iside,:)='symm'
@@ -643,6 +643,68 @@ end subroutine usr_mat_profile_dist
     case default
     end select
   end subroutine usr_distance
+
+
+
+
+
+  !--------------------------------------------------------------------
+  subroutine usr_ulrich1976_costheta_zero(ixI^L, ixO^L,x,r_normalized,theta_profile,cos_theta_zero)
+   implicit none
+   integer, intent(in)             :: ixI^L,ixO^L
+   real(kind=dp), intent(in)       :: x(ixI^S,1:ndim),r_normalized(ixI^S)
+   real(kind=dp), intent(in)       :: theta_profile(ixI^S)
+   real(kind=dp), intent(inout)    :: cos_theta_zero(ixI^S)
+   real(kind=dp), dimension(1:ndim) :: zero_dim
+   !----------------------------------------------------
+
+   zero_dim(1)=0.0_dp!-dx(1,1)
+   if(ndim==2)then
+    zero_dim(2)=0.0_dp!-dx(2,1)
+   end if
+   if(ndim==3)then
+    zero_dim(3)=0.0_dp!-dx(3,1)
+   end if
+
+   cos_theta_zero(ixO^S) = 0.0_dp
+
+     where(dabs(r_normalized(ixO^S)-1.0_dp) < smalldouble)
+
+       cos_theta_zero(ixO^S) = (DCOS(theta_profile(ixO^S)))**(1.0_dp/3.0_dp)
+
+     elsewhere (r_normalized(ixO^S) > 1.0_dp)
+
+       cos_theta_zero(ixO^S) = 2.0_dp * ( ( ( r_normalized(ixO^S) - 1.0_dp ) / &
+       3.0_dp ) ** ( 0.5_dp ) ) * DSINH( ( 1.0_dp / 3.0_dp ) * &
+       DASINH( ( r_normalized(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+       ( 2.0_dp * ( ( ( r_normalized(ixO^S) - 1.0_dp ) / &
+       3.0_dp ) ** ( 1.5_dp ) ) ) ) )
+
+     elsewhere (r_normalized(ixO^S) < 1.0_dp)
+       where ((((r_normalized(ixO^S)*DCOS(theta_profile(ixO^S)))/2.0_dp)**2.0_dp)-&
+       (((1.0_dp-r_normalized(ixO^S))/3.0_dp)**3.0_dp)>0.0_dp)
+
+         cos_theta_zero(ixO^S) = 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
+         3.0_dp ) ** ( 0.5_dp ) ) * DCOSH( ( 1.0_dp / 3.0_dp ) * &
+         DACOSH( ( r_normalized(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+         ( 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
+         3.0_dp ) ** ( 1.5_dp ) ) ) ) )
+
+       elsewhere ((((r_normalized(ixO^S)*DCOS(theta_profile(ixO^S)))/2.0_dp)**2.0_dp)-&
+       (((1.0_dp-r_normalized(ixO^S))/3.0_dp)**3.0_dp)<0.0_dp)
+
+         cos_theta_zero(ixO^S) = 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
+         3.0_dp ) ** ( 0.5_dp ) ) * DCOS( ( 1.0_dp / 3.0_dp ) * &
+         DACOS( ( r_normalized(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+         ( 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
+         3.0_dp ) ** ( 1.5_dp ) ) ) ) )
+       elsewhere(dabs(r_normalized(ixO^S)-1.0_dp) < smalldouble)
+
+         cos_theta_zero(ixO^S) = (DCOS(theta_profile(ixO^S)))**(1.0_dp/3.0_dp)
+       end where
+     end where
+
+  end subroutine usr_ulrich1976_costheta_zero
 
   !--------------------------------------------------------------------
   subroutine usr_get_theta(ixI^L, ixO^L,x,theta_profile)

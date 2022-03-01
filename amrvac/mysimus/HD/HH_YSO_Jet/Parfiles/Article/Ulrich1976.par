@@ -45,7 +45,7 @@
         itsave(1,2)=0
         dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	!ditsave_log =50
-        dtsave_dat=  3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  3.1557600d8! 10 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !ditsave_dat =1
  /
 
@@ -97,29 +97,23 @@
  &boundlist
         internalboundary  = .true.
         nghostcells       = 4
-        !                     RHO,   Vr,     Vz,   Vphi,   traceur1,traceur2
-        typeboundary_min1 =  'symm','asymm','symm','asymm',2*'symm'!, ! C.L. gauche <=> rmin
-        typeboundary_max1 =  6*'cont'                                    ! C.L. droite <=> rmax
-        typeboundary_min2 =  'symm','symm','asymm','symm',2*'symm' !7*'special'!                                     ! C.L. inférieure <=> zmin
-        typeboundary_max2 =  6*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
+        !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
+        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
+        typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
+        typeboundary_min2 =  7*'special'!'symm','symm','asymm','symm','symm',2*'symm'!'symm','symm','asymm','symm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
+        typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
 
 /
         typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max
         typeboundary_min3 = 8*'cont'                                         ! C.L. avant <=> phi/profondeur min
-        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
-        typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
-        typeboundary_min2 =  'symm','symm','asymm','symm','symm',2*'symm' !7*'special'!                                     ! C.L. inférieure <=> zmin
-        typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
-
-
  /
 
  &meshlist
         ! grid at level 1
-        xprobmin1 =  1.0d10 !0.0d0    ! cm
-        xprobmax1 =  3.0d17! <--- r_max=3.0d17
-        xprobmin2 =  1.0d10 !0.0d0    ! cm
-        xprobmax2 =  3.0d17! <--- z_max=3.0d17
+        xprobmin1 =  0.0d0    ! cm
+        xprobmax1 =  3.0d17! <--- r_max=7e16cm
+        xprobmin2 =  0.0d0    ! cm
+        xprobmax2 =  3.0d17! <--- z_max=1.9e17cm
 
         ! total cell at level 1
         domain_nx1= 960!240! <---dr=1.25e15 cm at lvl 1
@@ -139,7 +133,7 @@
         w_refine_weight(4)=0.17d0
       !  w_refine_weight(9)=1.0d0
 
-        max_blocks = 200000
+        max_blocks = 20000
         ! can be added when is needed
         prolongprimitive= .false.
         coarsenprimitive= .false.
@@ -166,9 +160,8 @@
  /
 
   &hd_list
-         hd_energy            = .false. !non-adiabatic: enables energy solving
-         hd_gamma             = 1.0!hd_gamma=1.666666667 if hd_energy=.true or hd_gamma=1.0 if isotherm
-         hd_temperature_isotherm = 100!only if hd_gamma=1.0 (isotherm)
+         hd_energy            = .true. !non-adiabatic: enables energy solving
+         hd_gamma             = 1.666666667         
          SI_unit              = .false.  ! use cgs
          He_abundance         = 0.1d0                     !
 
@@ -227,8 +220,7 @@
         usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
         usrconfig%phys_inuse          = 'hd' !'mhd' ! set physique want to be used
 
-        usrconfig%phys_isotherm_on              = .true. ! use isotherme
-        usrconfig%phys_temperature_isotherm     = 100 ! Le 2001
+        usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
         usrconfig%reset_flux_scheme_on          = .true.
         usrconfig%reset_flux_scheme_diffuse     = 'hllc'
         usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
@@ -275,7 +267,7 @@
   ism_config%reset_scale(2)     =  5d16     ! ism reset scalling distance
 
   ism_config%boundary_cond(2,2) = 'open'
-  !ism_config%boundary_cond(1,2) = 'fix'
+  ism_config%boundary_cond(1,2) = 'limitoutflow'!'limitoutflow'
   ism_config%boundary_on        = .true.
 
 ism_config%profile_typeaxial  = 'spherical'!'projection_direction'
@@ -299,15 +291,6 @@ ism_config%profile_density    = 'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'c
 ism_config%profile_jspec = 8.0782850178d20       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
-!Ulrich default parameters
-!self%myconfig%profile_jspec = 8.0782850178d20       !> ISM envelope specific angular momentum
-!self%myconfig%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
-!self%myconfig%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
-!self%myconfig%profile_rd    = 1.0927333451820418d16 !> ISM envelope lower ﬁducial radius
-!self%myconfig%profile_vd    = 7.392732228240198d4   !> ISM envelope kepler velocity at r=profile_rd
-!self%myconfig%profile_rho_0 = 2.27205428100406d-18  !> ISM envelope fiducial density
-
-
 
 ism_config%profile_zc    = 1.0d16!4.49d14 ! 1.0d16 !4.49d14 ! Zheng19 = 30 au = 4.49d14 cm :  grandeur de normalisation dans le profil de pression/densite (en cm)
 ism_config%profile_rw    = 2.5d16 !> ISM reference radius for Lee 2001 profile (in cm)
@@ -319,14 +302,12 @@ ism_config%He_abundance      = 0.1
 /
 
 &usr_usrboundary_ism_list
-  !usrboundary_config%boundary_type(1,2) = 'fix'!'disc'
+  usrboundary_config%boundary_type(1,2) = 'limitoutflow'!'limitoutflow'!'disc'
   usrboundary_config%boundary_type(2,2) = 'open'
   usrboundary_config%useprimitive       = .true.
-  usrboundary_config%flux_frac          = 9.0d-1
+  usrboundary_config%flux_frac          = 1.0d-1
 /
 
-!11/12/19 : pour le jet et le projet n°1 de Sylvie Cabrit sur son article de 1997, les paramètres ci-dessous pour le jet ont été testés
-!et fixées aux valeurs recommandées et correspondant le mieux à la simulation de l'article
 &usr_cla_jet_list
     cla_jet_config%unit                  =  'cgs' !> physical unit at parameter file
     cla_jet_config%time_cla_jet_on       =  0.0d0 !> initial time the cla_jet is set in the simulation box

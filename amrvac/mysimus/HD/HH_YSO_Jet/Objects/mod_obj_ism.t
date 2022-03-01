@@ -117,7 +117,6 @@ module mod_obj_ism
      PROCEDURE, PASS(self) :: get_pforce_profile   => usr_ism_get_pforce_profile
      PROCEDURE, PASS(self) :: get_fgravity_profile  => usr_ism_get_fgravity_profile
      PROCEDURE, PASS(self) :: set_profile_distance => usr_ism_set_profile_distance
-     PROCEDURE, PASS(self) :: set_profile_costheta_zero => usr_ism_ulrich_costheta_zero
      PROCEDURE, PASS(self) :: add_source           => usr_ism_add_source
 
     end type
@@ -840,84 +839,8 @@ contains
 
 
 
-  function usr_Legendre_two(ixI^L,ixO^L,x) result(y)
-    integer, intent(in)             :: ixI^L,ixO^L
-    real(kind=dp), intent(in)       :: x(ixI^S)
-    real(kind=dp)                   :: y(ixI^S)
 
-    y = 0.5_dp * (3.0_dp * x(ixO^S) * x(ixO^S) - 1.0_dp)
 
-  end function usr_Legendre_two
-
-  !--------------------------------------------------------------------
-  subroutine usr_ism_ulrich_costheta_zero(ixI^L, ixO^L,x,cos_theta_zero,theta_zero,cos_or_sin,self)
-   implicit none
-   integer, intent(in)             :: ixI^L,ixO^L
-   real(kind=dp), intent(in)       :: x(ixI^S,1:ndim)
-   character(len=30), intent(in)   :: cos_or_sin
-   real(kind=dp), intent(inout)    :: cos_theta_zero(ixI^S),theta_zero(ixI^S)
-   real(kind=dp), dimension(ixI^S) :: r_normalized,d_profile,theta_profile
-   class(ism)                      :: self
-   !----------------------------------------------------
-
-   cos_theta_zero(ixO^S) = 1.0_dp
-   r_normalized(ixO^S) = 1.0_dp
-
-   call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
-!   select case(trim(cos_or_sin))
-!    case('sin')
-!      theta_profile(ixO^S) = 0.5_dp * dpi - theta_profile(ixO^S)
-!    case('cos')
-!      theta_profile(ixO^S) = theta_profile(ixO^S)
-!    case default
-!      call mpistop('Unknown cos_or_sin in usr_ism_ulrich_costheta_zero ')
-!   end select
-
-   call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
-
-   where(self%patch(ixO^S))
-     r_normalized(ixO^S) = (d_profile(ixO^S)/self%myconfig%profile_rd)
-
-     where(dabs(r_normalized(ixO^S)-1.0_dp) < smalldouble)
-
-       cos_theta_zero(ixO^S) = (DCOS(theta_profile(ixO^S)))**(1.0_dp/3.0_dp)
-
-     elsewhere (r_normalized(ixO^S) > 1.0_dp)
-
-       cos_theta_zero(ixO^S) = 2.0_dp * ( ( ( r_normalized(ixO^S) - 1.0_dp ) / &
-       3.0_dp ) ** ( 0.5_dp ) ) * DSINH( ( 1.0_dp / 3.0_dp ) * &
-       DASINH( ( r_normalized(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
-       ( 2.0_dp * ( ( ( r_normalized(ixO^S) - 1.0_dp ) / &
-       3.0_dp ) ** ( 1.5_dp ) ) ) ) )
-
-     elsewhere (r_normalized(ixO^S) < 1.0_dp)
-       where ((((r_normalized(ixO^S)*DCOS(theta_profile(ixO^S)))/2.0_dp)**2.0_dp)-&
-       (((1.0_dp-r_normalized(ixO^S))/3.0_dp)**3.0_dp)>0.0_dp)
-
-         cos_theta_zero(ixO^S) = 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
-         3.0_dp ) ** ( 0.5_dp ) ) * DCOSH( ( 1.0_dp / 3.0_dp ) * &
-         DACOSH( ( r_normalized(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
-         ( 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
-         3.0_dp ) ** ( 1.5_dp ) ) ) ) )
-
-       elsewhere ((((r_normalized(ixO^S)*DCOS(theta_profile(ixO^S)))/2.0_dp)**2.0_dp)-&
-       (((1.0_dp-r_normalized(ixO^S))/3.0_dp)**3.0_dp)<0.0_dp)
-
-         cos_theta_zero(ixO^S) = 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
-         3.0_dp ) ** ( 0.5_dp ) ) * DCOS( ( 1.0_dp / 3.0_dp ) * &
-         DACOS( ( r_normalized(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
-         ( 2.0_dp * ( ( ( 1.0_dp - r_normalized(ixO^S) ) / &
-         3.0_dp ) ** ( 1.5_dp ) ) ) ) )
-       elsewhere(dabs(r_normalized(ixO^S)-1.0_dp) < smalldouble)
-
-         cos_theta_zero(ixO^S) = (DCOS(theta_profile(ixO^S)))**(1.0_dp/3.0_dp)         
-       end where
-     end where
-
-     theta_zero(ixO^S) =  ACOS(cos_theta_zero(ixO^S))
-
-   end where
-  end subroutine usr_ism_ulrich_costheta_zero
 
    !--------------------------------------------------------------------
    subroutine usr_ism_set_profile(ixI^L, ixO^L,x,w,self)
@@ -931,7 +854,7 @@ contains
     real(kind=dp), dimension(ixI^S) :: vr_profile,vt_profile,vp_profile
     real(kind=dp), dimension(ixI^S) :: cos_theta_zero,sin_theta_zero,r_normalized
     real(kind=dp), dimension(ixI^S) :: theta_zero
-    real(kind=dp), dimension(ixI^S,1:ndir) ::project_speed
+    real(kind=dp), dimension(ixI^S,1:ndir) :: project_speed
     character(len=30)               :: cos_or_sin
     integer                         :: idir
     !----------------------------------------------------
@@ -980,22 +903,24 @@ contains
 
         case('Ulrich1976')
               !31-01-22 : density successfully implemented
+              !25-02-22 : this is to be debugged to make it work on local machine
               p_profile(ixO^S) = 1.0_dp
               vr_profile(ixO^S) = 1.0_dp
               vt_profile(ixO^S) = 1.0_dp
               vp_profile(ixO^S) = 1.0_dp
 
               call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
-              cos_or_sin = 'cos'
-              call self%set_profile_costheta_zero(ixI^L, ixO^L,x,cos_theta_zero,theta_zero,cos_or_sin)
-              !cos_or_sin = 'sin'
-              !call self%set_profile_costheta_zero(ixI^L, ixO^L,x,sin_theta_zero,cos_or_sin)
               r_normalized(ixO^S) = (d_profile(ixO^S)/self%myconfig%profile_rd)
+              call usr_ulrich1976_costheta_zero(ixI^L, ixO^L,x,r_normalized,&
+              theta_profile,cos_theta_zero)
+
+              theta_zero(ixO^S) = DACOS(cos_theta_zero(ixO^S))
 
               p_profile(ixO^S) = (r_normalized(ixO^S)**(-1.5_dp))*&
-              ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(-0.5_dp))*&
-              ((1.0_dp+(2.0_dp/r_normalized(ixO^S))*&
-              usr_Legendre_two(ixI^L,ixO^L,cos_theta_zero))**(-1.0_dp))
+              ((1.0_dp + (DCOS(theta_profile(ixO^S))/&
+              cos_theta_zero(ixO^S)))**(-0.5_dp))/&
+              ((1.0_dp + (3.0_dp * cos_theta_zero(ixO^S) * &
+              cos_theta_zero(ixO^S) - 1.0_dp)/r_normalized(ixO^S)))
 
               vr_profile(ixO^S) = -(r_normalized(ixO^S)**(-0.5_dp))*&
               ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))
@@ -1007,6 +932,7 @@ contains
               vp_profile(ixO^S) = (r_normalized(ixO^S)**(-0.5_dp))*&
               ((1.0_dp - (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))*&
               ((DSIN(theta_zero(ixO^S)))/DSIN(theta_profile(ixO^S)))
+
 
               select case(typeaxial)
                 case('spherical')
@@ -1074,17 +1000,22 @@ contains
                    call mpistop('Unknown typeaxial')
               end select
 
-              Loop_idir_profile : do idir=1,ndir
-               where(  self%patch(ixO^S))
-               !----------------------------------------------------
-               !line to modify if Ulrich model and we want to change the velocity
-               !put for each time step at any boundary
-               !set to 'fix'
-               !----------------------------------------------------
-                w(ixO^S,phys_ind%mom(idir)) = w(ixO^S,phys_ind%mom(idir)) * &
-                project_speed(ixO^S,idir)
-               end where
-              end do Loop_idir_profile
+
+
+                  Loop_idir_profile : do idir=1,ndir
+                   where(  self%patch(ixO^S))
+                   !----------------------------------------------------
+                   !line to modify if Ulrich model and we want to change the velocity
+                   !put for each time step at any boundary
+                   !set to 'fix'
+                   !----------------------------------------------------
+                    w(ixO^S,phys_ind%mom(idir)) = w(ixO^S,phys_ind%mom(idir)) * &
+                    project_speed(ixO^S,idir)
+                   end where
+                  end do Loop_idir_profile
+
+
+
 
         case default
           p_profile(ixO^S) = 1.0_dp
