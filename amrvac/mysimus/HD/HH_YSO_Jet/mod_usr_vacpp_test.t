@@ -131,7 +131,6 @@ contains
       integer                      :: idim,nvecdim,i1,i2,i3
       !-----------------------------------
 
-
       !Determine nvecdim
       select case(coord)
         case('x','y','z','R','r','phi','theta')
@@ -144,6 +143,7 @@ contains
           write(*,*) 'Coordinate system in input is', csI
           call mpistop("Unknown coord specified in input")
       end select
+
 
       if(allocated(tmatrix))deallocate(tmatrix)
       allocate(tmatrix(ixO^S,nvecdim,nvecdim))
@@ -161,8 +161,125 @@ contains
       else !nvecdim==ndim
       end if
 
+  end subroutine transform_matrix
 
 
 
-  end subroutine test_vacpp
+  subroutine cs_get_indexes(csI,coord,indexes)
+    use mod_global_parameters
+    character(len=std_len), intent(in)  :: csI,coord
+    integer, intent(out)               :: indexes(1:3)
+
+    ! .. local ..
+    real(kind=dp), dimension(ixI^S) :: xr,xtheta,xphi
+    real(kind=dp), dimension(1:ndim) :: zero_dim
+    integer                      :: idim,nvecdim,i1,i2,i3
+    !-----------------------------------
+
+    indexes(1:3)=-1
+
+
+    select case(csI)
+    case('cartesian')
+      select case(coord)
+        case('x')
+          indexes(1)=1
+        case('y')
+          indexes(1)=2
+        case('z')
+          indexes(1)=3
+        case('xy')
+          indexes(1)=1
+          indexes(2)=2
+        case('xz')
+          indexes(1)=1
+          indexes(2)=3
+        case('yz')
+          indexes(1)=2
+          indexes(2)=3
+        case default
+          write(*,*) 'Coordinates system are', csI
+          write(*,*) 'Coordinates input are', coord
+          call mpistop("Unknown coordinates specified in input")
+      end select
+    case('cylindrical')
+      select case(coord)
+        case('R')
+          indexes(1)=1
+        case('z')
+          indexes(1)=2
+        case('phi')
+          indexes(1)=3
+        case('Rz')
+          indexes(1)=1
+          indexes(2)=2
+        case('Rphi')
+          indexes(1)=1
+          indexes(2)=3
+        case('zphi')
+          indexes(1)=2
+          indexes(2)=3
+        case default
+          write(*,*) 'Coordinates system are', csI
+          write(*,*) 'Coordinates input are', coord
+          call mpistop("Unknown coordinates specified in input")
+        end select
+    case('polar')
+      case('R')
+        indexes(1)=1
+      case('phi')
+        indexes(1)=2
+      case('z')
+        indexes(1)=3
+      case('Rz')
+        indexes(1)=1
+        indexes(2)=3
+      case('Rphi')
+        indexes(1)=1
+        indexes(2)=2
+      case('phiz')
+        indexes(1)=2
+        indexes(2)=3
+      case default
+        write(*,*) 'Coordinates system are', csI
+        write(*,*) 'Coordinates input are', coord
+        call mpistop("Unknown coordinates specified in input")
+      end select
+    case('spherical')
+      case('r')
+        indexes(1)=1
+      case('phi')
+        indexes(1)=2
+      case('theta')
+        indexes(1)=3
+      case('rtheta')
+        indexes(1)=1
+        indexes(2)=3
+      case('rphi')
+        indexes(1)=1
+        indexes(2)=2
+      case('thetaphi')
+        indexes(1)=2
+        indexes(2)=3
+      case default
+        write(*,*) 'Coordinates system are', csI
+        write(*,*) 'Coordinates input are', coord
+        call mpistop("Unknown coordinates specified in input")
+      end select
+    end select
+
+end subroutine cs_get_indexes
+
+subroutine cs_get_nvecdim(csI,indexes,nvecdim)
+  use mod_global_parameters
+  character(len=std_len), intent(in)  :: csI
+  integer, intent(in)               :: indexes(1:3)
+  integer, intent(out)                 :: nvecdim
+  !-----------------------------------
+
+  nvecdim=0
+
+end subroutine cs_get_nvecdim
+
+
 end module mod_usr

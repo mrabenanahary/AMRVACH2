@@ -1108,7 +1108,7 @@ return
     integer                 :: flag(ixI^S)
     integer                 :: i_cloud,i_ism,i_jet_yso
     integer                 :: i_object_w_dust
-    integer                 :: idims,iside
+    integer                 :: idims,iside,idims2,iside2
     integer                 :: i_start,i_end,i_dust
     logical                 :: patch_all(ixI^S),patch_inuse(ixI^S)
     real(dp)                :: cloud_profile(ixI^S,1:nw)
@@ -1116,19 +1116,49 @@ return
 
     patch_all(ixO^S) = .true.
     i_object_w_dust = 1
-    idims = ceiling(real(iB,kind=dp)/2.0_dp)
-    iside = iB-2*(idims-1)
+    !write(*,*) 'iB=', iB
+    if (MOD(iB,2) .eq. 0) then
+      !odd iB
+      idims=iB/2 ! iB=4==> idims=4/2=2 , iB=2==> idims=2/2=1
+      !iB=6==> idims=6/2=3
+      iside=2
+    else
+      !even iB
+      idims=(iB+1)/2! iB=3==> idims=(3+1)/2=2 , iB=1==> idims=(1+1)/2=1
+      !iB=5==> idims=(5+1)/2=3
+      iside=1
+    end if
+    !iB=1,3,5==> iside = 1 : min
+    !iB=2,4,6==> iside = 2 : min
 
+
+    !if(mype==0)then
+    !  write(*,*) '==========User-defined special boundary conditions initialized=============='
+    !end if
   ! set the ism
     cond_ism_on: if(usrconfig%ism_on)then
      Loop_isms : do i_ism=0,usrconfig%ism_number-1
       ism_surround(i_ism)%subname='specialbound_usr'
+      !write(*,*) 'call it here !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+      !write(*,*) '>>present boundary_cond='
+      !do idims2=1,ndim
+        !do iside2=1,2
+          !write(*,*) '>idims=', idims2
+          !write(*,*) '>iside=', iside2
+          !write(*,*) '>boundary_cond(idims,iside)=', ism_surround(i_ism)%myconfig%boundary_cond(idims2,iside2)
+        !end do
+      !end do
+      !write(*,*) '> treating boundary_cond for (idims,iside)=',idims,iside
       call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,isboundary_iB=(/idims,iside/))
+
       patch_all(ixO^S) =  patch_all(ixO^S) .and.(.not.ism_surround(i_ism)%patch(ixO^S))
       if(ism_surround(i_ism)%myconfig%dust_on)the_dust_inuse(i_object_w_dust)=ism_surround(i_ism)%mydust
       i_object_w_dust = i_object_w_dust +1
      end do Loop_isms
    end if cond_ism_on
+   !if(mype==0)then
+   !   write(*,*) '=================================='
+   !end if
 
   ! set one cloud
     cond_cloud_on : if(usrconfig%cloud_on)then
@@ -1255,13 +1285,8 @@ return
     Ggrav = constusr%G
 
     gravity_field(ixO^S,1:ndim)=0.0_dp
-    zero_dim(1)=0.0_dp!-dx(1,1)
-    if(ndim==2)then
-     zero_dim(2)=0.0_dp!-dx(2,1)
-    end if
-    if(ndim==3)then
-     zero_dim(3)=0.0_dp!-dx(3,1)
-    end if
+    {zero_dim(^D)=0.0_dp\}!-dx(1,1)
+
 
 
     ! Here we set the graviationnal acceleration inside the whole domain

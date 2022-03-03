@@ -13,7 +13,7 @@
 !==============================================================
 
  &filelist
-        base_filename='Output/Ulrich1976_limitoutflowdisc/Jet_CC_'
+        base_filename='Output/Ulrich1976_limitoutdisc/Jet_CC_'
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'

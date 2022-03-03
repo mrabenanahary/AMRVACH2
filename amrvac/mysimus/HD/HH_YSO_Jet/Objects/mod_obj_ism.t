@@ -58,6 +58,7 @@ module mod_obj_ism
 
       logical              :: ism_display_parameters     !> ISM display of parameters at the end of the set_profile subroutine
       logical              :: profile_on        !> ISM profile set
+      logical              :: bc_profile_on        !> ISM profile set
       real(dp)             :: profile_idir(3)   !> IMS profile direction
       character(len=30)    :: profile_typeaxial !> ISM profile axial type
       real(dp)             :: velocity(3)    !> ISM velocity (cm/s)
@@ -80,7 +81,10 @@ module mod_obj_ism
       real(dp)             :: reset_distance(3)
       real(dp)             :: reset_scale(3)
       logical              :: boundary_on   !> ISM logical to check if it will use implimented boundary
+      logical              :: debug
       character(len=30)    :: boundary_cond(3,2)!> ism boundary condition
+      real(dp)             :: flux_frac
+      logical              :: mixed_fixed_bound(3,2,7) !> ism 'fix' flux variables
       logical              :: dust_on        !> logical to set dust
       real(dp)             :: dust_frac      !> dust fraction
 
@@ -112,10 +116,9 @@ module mod_obj_ism
      PROCEDURE, PASS(self) :: alloc_set_patch      => usr_ism_alloc_set_patch
      PROCEDURE, PASS(self) :: clean_memory         => usr_ism_clean_memory
      PROCEDURE, PASS(self) :: get_patch_escape     => usr_ism_get_patch_escape
-
+     PROCEDURE, PASS(self) :: set_ulrich_profile   => usr_set_ulrich_profile
      PROCEDURE, PASS(self) :: set_profile          => usr_ism_set_profile
      PROCEDURE, PASS(self) :: get_pforce_profile   => usr_ism_get_pforce_profile
-     PROCEDURE, PASS(self) :: get_fgravity_profile  => usr_ism_get_fgravity_profile
      PROCEDURE, PASS(self) :: set_profile_distance => usr_ism_set_profile_distance
      PROCEDURE, PASS(self) :: add_source           => usr_ism_add_source
 
@@ -142,6 +145,7 @@ contains
       namelist /usr_ism2_list/ ism_config
       namelist /usr_ism3_list/ ism_config
 
+
       if(mype==0)write(*,*)'Reading usr_ism_list'
       do i_file = 1, size(files)
          open(unitpar, file=trim(files(i_file)), status="old")
@@ -162,6 +166,7 @@ contains
 
 
 
+
       if(ism_config%boundary_on)then
         self%myboundaries%myconfig%myindice =1
         call self%myboundaries%read_parameters(self%myboundaries%myconfig,files)
@@ -178,6 +183,9 @@ contains
      implicit none
      class(ism)                          :: self
      integer,intent(in)                  :: unit_config
+     integer                             :: idims2,iside2
+     real(kind=dp)                       :: rto_print
+     character(len=64)                   :: sto_print
      ! .. local ..
 
      !-----------------------------------
@@ -186,9 +194,18 @@ contains
      write(unit_config,*)'************ISM setting ************'
      write(unit_config,*)'************************************'
      write(unit_config,*)'      ****** Code Unit *******      '
-     write(unit_config,*) 'Density     = ',  self%myconfig%density, '  code unit'
+     write(unit_config,*) 'Density  at (R,z)=(R_j,0) = ',  self%myconfig%density, '  code unit'
      write(unit_config,*) 'Pressure    = ',  self%myconfig%pressure, '  code unit'
      write(unit_config,*) 'Temperature = ',  self%myconfig%temperature, '  code unit'
+     if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+      write(unit_config,*) 'Ulrich1976 model used !'
+      write(unit_config,*) 'jspec = ',  self%myconfig%profile_jspec, '  code unit'
+      write(unit_config,*) 'Mstar = ',  self%myconfig%profile_Mstar, '  code unit'
+      write(unit_config,*) 'Mdot_inf = ',  self%myconfig%profile_Minf, '  code unit'
+      write(unit_config,*) 'rD = jspec^2/(G*Mstar) = ',  self%myconfig%profile_rd, '  code unit'
+      write(unit_config,*) 'vK = sqrt((G*Mstar)/rD) = ',  self%myconfig%profile_vd, '  code unit'
+      write(unit_config,*) 'Density rho_0 ',  self%myconfig%profile_rho_0, '  code unit'
+     end if
      write(unit_config,*) 'Speed       = ',  self%myconfig%velocity, '  code unit'
      write(unit_config,*) 'Sound speed =' ,  self%myconfig%c_sound, '  code unit'
      write(unit_config,*)'      ****** Physical Unit *******   '
@@ -198,6 +215,36 @@ contains
                                              '  ',self%myphysunit%myunit%pressure
      write(unit_config,*) 'Temperature = ',  self%myconfig%temperature*self%myphysunit%myconfig%temperature,&
                                              '  ',self%myphysunit%myunit%temperature
+     if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+
+      write(unit_config,*) 'Ulrich1976 model used !'
+
+      rto_print = self%myconfig%profile_jspec*self%myphysunit%myconfig%velocity
+      rto_print = rto_print*self%myphysunit%myconfig%length
+      sto_print = (self%myphysunit%myunit%velocity // ' ') // self%myphysunit%myunit%length
+      write(unit_config,*) 'jspec = ', rto_print, ' ', sto_print
+
+      rto_print = self%myconfig%profile_Mstar*self%myphysunit%myconfig%mass
+      sto_print = self%myphysunit%myunit%mass
+      write(unit_config,*) 'Mstar = ', rto_print, ' ', sto_print
+
+      rto_print = self%myconfig%profile_Minf*self%myphysunit%myconfig%mass
+      rto_print = rto_print/self%myphysunit%myconfig%time
+      sto_print = (self%myphysunit%myunit%mass // '/') // self%myphysunit%myunit%time
+      write(unit_config,*) 'Mdot_inf = ', rto_print, ' ', sto_print
+
+      rto_print = self%myconfig%profile_rd*self%myphysunit%myconfig%length
+      sto_print = self%myphysunit%myunit%length
+      write(unit_config,*) 'rD = jspec^2/(G*Mstar) = ', rto_print, ' ', sto_print
+
+      rto_print = self%myconfig%profile_vd*self%myphysunit%myconfig%velocity
+      sto_print = self%myphysunit%myunit%velocity
+      write(unit_config,*) 'vK = sqrt((G*Mstar)/rD) = ', rto_print, ' ', sto_print
+
+      rto_print = self%myconfig%profile_rho_0*self%myphysunit%myconfig%density
+      sto_print = self%myphysunit%myunit%density
+      write(unit_config,*) 'Density rho_0 ', rto_print, ' ', sto_print
+     end if
      write(unit_config,*) 'Speed       = ',  self%myconfig%velocity*self%myphysunit%myconfig%velocity,&
                                              '  ',self%myphysunit%myunit%velocity
      write(unit_config,*) 'Sound speed =' ,  self%myconfig%c_sound*self%myphysunit%myconfig%velocity,&
@@ -205,6 +252,26 @@ contains
      if(self%myconfig%dust_on) then
       call self%mydust%write_setting(unit_config)
      end if
+
+     write(unit_config,*)'** Boundary conditions'
+
+     do idims2=1,ndim
+      do iside2=1,2
+        write(unit_config,*)' *** (idims,iside)=', idims2,iside2
+        write(unit_config,*)' **** BC = ', self%myconfig%boundary_cond(idims2,iside2)
+        write(unit_config,*) ' **** ... is this BC fixed ? : '
+        write(unit_config,*) '--------------------------------'
+        if(phys_config%energy)then
+          write(unit_config,*) ' rho v1 v2 v3 p(or e) tracer1 tracer2'
+          write(unit_config,*) self%myconfig%mixed_fixed_bound(idims2,iside2,1:7)
+        else
+          write(unit_config,*) ' rho v1 v2 v3 tracer1 tracer2'
+          write(unit_config,*) self%myconfig%mixed_fixed_bound(idims2,iside2,1:6)
+        end if
+        write(unit_config,*) '--------------------------------'
+
+      end do
+     end do
      write(unit_config,*)'************************************'
      write(unit_config,*)'******** END ISM setting **********'
      write(unit_config,*)'************************************'
@@ -254,6 +321,8 @@ contains
 
      self%myconfig%ism_display_parameters    = .false.
      self%myconfig%profile_on            = .false.
+     self%myconfig%bc_profile_on            = .true. !< when profile_on = .true.,
+     !bc_profile_on should be true by default by convenience
      self%myconfig%profile_idir          = 0
 
      self%myconfig%profile_density       = 'none'
@@ -281,8 +350,11 @@ contains
      self%myconfig%reset_distance        = 0.0_dp
      self%myconfig%reset_scale           = 0.0_dp
      self%myconfig%reset_on              = .false.
-     self%myconfig%boundary_on          = .false.
-     self%myconfig%boundary_cond         = 'fix'
+     self%myconfig%boundary_on           = .false.
+     self%myconfig%boundary_cond         = 'open'
+     self%myconfig%flux_frac             = 1.0d-2
+     self%myconfig%debug                 = .false.
+     self%myconfig%mixed_fixed_bound     = .false.
      self%myconfig%c_sound               = 0.0_dp
 
 
@@ -379,21 +451,31 @@ contains
 
     !if we do Ulrich model
     if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+      if(mype==0)then
+        write(*,*) '====================Ulrich1976s model===================='
+        write(*,*) '-Setting completely all parameters:'
+      end if
       ! rd
       self%myconfig%profile_rd = (self%myconfig%profile_jspec**2.0_dp)/&
       (Ggrav*self%myconfig%profile_Mstar)
-      write(*,*) 'rW = ', self%myconfig%profile_rw, ' cm'
-      write(*,*) 'rD = ', self%myconfig%profile_rd, ' cm'
+      if(mype==0)then
+        write(*,*) '* rW = ', self%myconfig%profile_rw, ' cm'
+        write(*,*) '* rD = ', self%myconfig%profile_rd, ' cm'
+      end if
       ! v_Kepler
       self%myconfig%profile_vd = dsqrt((Ggrav*self%myconfig%profile_Mstar)/&
       self%myconfig%profile_rd)
-      write(*,*) 'vK = ', self%myconfig%profile_vd, ' cm/s'
+      if(mype==0)then
+        write(*,*) '* vK = ', self%myconfig%profile_vd, ' cm/s'
+      end if
       ! rho_0
       self%myconfig%profile_rho_0 = self%myconfig%profile_Minf/(4.0_dp*&
       dpi*(self%myconfig%profile_rd**2.0_dp)*self%myconfig%profile_vd)
-      write(*,*) 'rho_0 = ', self%myconfig%profile_rho_0, ' g/cm3'
-      r_normalized = (self%myconfig%profile_rw/self%myconfig%profile_rd)
-      write(*,*) 'r = (rD/rw) = ', r_normalized
+      if(mype==0)then
+        write(*,*) '* rho_0 = ', self%myconfig%profile_rho_0, ' g/cm3'
+        r_normalized = (self%myconfig%profile_rw/self%myconfig%profile_rd)
+        write(*,*) '* r = (rD/rw) = ', r_normalized
+      end if
       if(dabs(r_normalized-1.0_dp)<smalldouble)then
         costhetazero = 0.0_dp
       else if (r_normalized>1.0_dp)then
@@ -409,9 +491,15 @@ contains
       self%myconfig%density = self%myconfig%profile_rho_0*&
       (r_normalized**(-1.5_dp))*(1.0_dp+(2.0_dp/r_normalized)*&
       0.5_dp*(3*costhetazero*costhetazero-1.0_dp))**(-1.0_dp)
-      write(*,*) 'rho_a0 = ', self%myconfig%density, ' g/cm3'
+
+      if(mype==0)then
+        write(*,*) '* rho_a0 = ', self%myconfig%density, ' g/cm3'
+      end if
       self%myconfig%number_density= self%myconfig%density/(mp*self%myconfig%mean_mass)
-      write(*,*) 'nH_a0 = ', self%myconfig%number_density, ' cm-3'
+      if(mype==0)then
+        write(*,*) '* nH_a0 = ', self%myconfig%number_density, ' cm-3'
+        write(*,*) '========================================================='
+      end if
     else
       if (dabs( self%myconfig%density)<smalldouble*mp)then
            self%myconfig%density= self%myconfig%number_density*mp*self%myconfig%mean_mass
@@ -579,14 +667,38 @@ contains
    if(self%myconfig%profile_density_on.or.self%myconfig%profile_pressure_on)then
      self%myconfig%profile_on   = .true.
    end if
-    if(.not.self%myconfig%boundary_on)                                       &
+    ! original :
+    ! if(.not.self%myconfig%boundary_on)                                       &
+    !    self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
+
+
+    ! Here the boundary conditions input from ism_config takes priority from what is
+    ! input from usrboundary_config
+    if(self%myconfig%boundary_on)then
+        !write(*,*) 'self%myconfig%boundary_on is .true.'
+        !write(*,*) '- Before the prioritization of boundary conditions :'
+        !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
+        !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
         self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
+        self%myboundaries%myconfig%flux_frac=self%myconfig%flux_frac
+        !write(*,*) '- After the prioritization of boundary conditions :'
+        !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
+        !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
+    else
+      !write(*,*) 'self%myconfig%boundary_on is .false.'
+      !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
+      !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
+    end if
+
     call self%myboundaries%set_complet
 
     if(mype==0)then
-      print*,'the ism temperature = ',self%myconfig%temperature
-      print*, 'ism density', self%myconfig%density
-      print*, 'ism nH', self%myconfig%number_density
+      write(*,*) '======================ISM settings======================='
+      print*, '* at (R,z) = (r_j,0) : '
+      print*, '** The ism base temperature is = ',self%myconfig%temperature
+      print*, '** The ism base density is =', self%myconfig%density
+      print*, '** The ism base number density nH is ', self%myconfig%number_density
+      write(*,*) '========================================================='
     end if
 
 
@@ -676,25 +788,38 @@ contains
     real(kind=dp), intent(in)     :: qt
     real(kind=dp), intent(in)     :: x(ixI^S,1:ndim)
     real(kind=dp)                 :: w(ixI^S,1:nw)
+    real(kind=dp),allocatable     :: w_tmp(:^D&,:)
     integer,             optional :: isboundary_iB(2)
     class(ism)                    :: self
     ! .. local..
-    integer                    :: idir,IB,idims,idims_bound,iw
+    integer                    :: idir,IB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
     real(kind=dp)              :: fprofile(ixI^S)
-    logical                    :: isboundary
+    logical                    :: isboundary,to_fix,bc_to_fix,some_unfixed
     character(len=30)          :: myboundary_cond
+    character(len=64)          :: aString
     !----------------------------------
+
+
 
     if(.not.allocated(self%patch)) then
      allocate(self%patch(ixI^S))
      self%patch              = .true.
     end if
     cond_B_present : if(present(isboundary_iB))then
+    !write(*,*) '>1)isiB1= isib2=', isboundary_iB(1),' ', isboundary_iB(2)
+    !write(*,*) '>boundary_cond = ', self%myconfig%boundary_cond(isboundary_iB(1),isboundary_iB(2))
+
+
+
       {^D&
         idims=^D
         if(isboundary_iB(1)==idims.and.isboundary_iB(2)==1) then
          if(all(x(ixO^S,idims)<=xprobmin^D))then
            isboundary=.true.
+           ! original : IB = 2*(idims-1)+1
+           ! 03-03-2022 : we defined idims=(iB+1)/2 in mod_usr_yso_jet.t
+           ! ==> 2*idims = iB +1 ==> iB = 2*idims-1= 2*idims - 2 +1
+           ! ==> iB = 2*(idims-1)+1 which is identical to the original
            IB = 2*(idims-1)+1
            idims_bound = idims
          end if
@@ -702,20 +827,41 @@ contains
         if(isboundary_iB(1)==idims.and.isboundary_iB(2)==2) then
          if(all(x(ixO^S,idims)>=xprobmax^D))then
            isboundary=.true.
+           ! original : IB = 2*idims
+           ! 03-03-2022 : we defined idims=iB/2 in mod_usr_yso_jet.t
+           ! ==> iB = 2*idims which is identical to the original
            IB = 2*idims
            idims_bound = idims
          end if
         end if
       \}
+
+      !if(mype==0)then
+      !  write(*,*) '*****Conditions for boundary number iB=', iB,'*****'
+      !  write(*,*) '* ...corresponding to (idims,iside)=', isboundary_iB(1),isboundary_iB(2)
+      !end if
+
       myboundary_cond = self%myconfig%boundary_cond(isboundary_iB(1),isboundary_iB(2))
+
+      !if(mype==0)then
+      !  write(*,*) '* ...and which boundary condition is =', myboundary_cond
+      !  write(*,*) '************************************************************'
+        !write(*,*) 'present myboundary_cond=', myboundary_cond
+      !end if
     else cond_B_present
       isboundary=.false.
-      myboundary_cond = 'fix'
+      myboundary_cond = 'notbc_but_fix'
+      !write(*,*) 'not present myboundary_cond=', myboundary_cond
     end if cond_B_present
 
-    boundary_cond : if(.not.isboundary.or.&
+
+
+    debug_mode : if(.not.self%myconfig%debug)then
+    !write(*,*) 'Not debug mode'
+    if(.not.isboundary.or.&
                        trim(myboundary_cond)=='fix') then
 
+      !write(*,*) 'call it toooo here !!!!!!!!!!!!!!!!!!!!!!!!'
       if(trim(self%myconfig%profile_density)=='Ulrich1976')then
         where(self%patch(ixO^S))
             w(ixO^S,phys_ind%rho_)        =  self%myconfig%profile_rho_0
@@ -755,7 +901,7 @@ contains
            end where
          end do
       else
-        Loop_idir : do idir=1,ndir
+         do idir=1,ndir
          where(  self%patch(ixO^S))
          !----------------------------------------------------
          !line to modify if we want to change the velocity
@@ -764,7 +910,7 @@ contains
          !----------------------------------------------------
           w(ixO^S,phys_ind%mom(idir)) = self%myconfig%velocity(idir)
          end where
-        end do Loop_idir
+        end do
       end if
 
 
@@ -782,7 +928,7 @@ contains
         end where
       end if
 
-      cond_tracer_on :if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
+      if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
                          .and.self%myconfig%itr<=phys_config%n_tracer)then
         if(self%myconfig%tracer_init_density>0.0_dp) then
         where(self%patch(ixO^S))
@@ -794,23 +940,249 @@ contains
         end where
         end if
         itr=itr+1
-      end if cond_tracer_on
+      end if
 
 
 
-      cond_dust_on : if( self%myconfig%dust_on)then
+      if( self%myconfig%dust_on)then
         call self%mydust%set_patch(ixI^L,ixO^L,self%patch)
         self%mydust%myconfig%velocity= self%myconfig%velocity
         fprofile = 1.0_dp
         call   self%mydust%set_w(ixI^L,ixO^L,qt,.false., self%myconfig%dust_frac,fprofile,x,w)
-      end if cond_dust_on
-    else boundary_cond
+      end if
+    else
      if(any(self%patch(ixO^S))) then
        call self%myboundaries%set_w(ixI^L,ixO^L,iB,isboundary_iB(1),isboundary_iB(2),&
                                 self%patch,x,w)
      end if
+    end if
+
+    else debug_mode
+    ! write(*,*) 'Debug mode'
+    ! Start of the conditional loop when we treat the domain without the boundaries
+    ! or when my_boundary=='fix' : to modify in order
+    ! to change what 'fix' do
+    ! + Start of  the loop for any my_boundary is other than 'fix' and
+    ! mixed_fixed_bound comport a flux variable which is set to true : similar to what
+    ! my_boundary=='fix' does but only along one flux index (e.g. v_phi)
+
+
+    if(isboundary.and.(trim(myboundary_cond)=='fix')) then
+      self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)=.true.
+    end if
+    !if(present(isboundary_iB))then
+    !write(*,*) '>2)isiB1= isib2=', isboundary_iB(1),' ', isboundary_iB(2)
+    !write(*,*) '>mixed_fixed_bound = ', self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)
+    !end if
+
+    !if we want to fix the inner domain or if we need to fix all variables in the boundaries...
+    to_fix = ((.not.isboundary).or.(trim(myboundary_cond)=='fix'))
+
+    if(isboundary) then
+      !...or if we have boundary conditions such that one variable must be fixed in those boundaries
+      !write(*,*) '>mixed_fixed_bound = ', self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)
+      !write(*,*) 'any(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7))'
+      !write(*,*) '=', any(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7))
+      to_fix = to_fix.or.((isboundary).and.any(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)))
+      !write(*,*) '>mixed_fixed_bound = ', self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)
+      !write(*,*) 'any(.not.self%myconfig%mixed_fixed_bound(isboundary_iB(1),'
+      !write(*,*) 'isboundary_iB(2),1:7))'
+      !write(*,*) '=', any(.not.self%myconfig%mixed_fixed_bound(isboundary_iB(1),&
+      !isboundary_iB(2),1:7))
+      some_unfixed = any(.not.self%myconfig%mixed_fixed_bound(isboundary_iB(1),&
+      isboundary_iB(2),1:7))
+    end if
+
+
+
+    boundary_cond : if(to_fix) then
+
+      !1) First, set all boundary conditions related to
+      ! (isboundary_iB(1),isboundary_iB(2))
+      ! = (/idims,iside/) according to what
+      ! my_boundary = self%myconfig%boundary_cond(isboundary_iB(1),isboundary_iB(2))
+      ! tells
+      ! <=> If some boundary conditions are not 'fixed'
+      if(isboundary.and.some_unfixed)then
+        !write(*,*) '>>some bc are unfixed'
+        !write(*,*) '> mixed_fixed_bound = ', self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)
+        do idims2=1,ndim
+          do iside2=1,2
+            !write(*,*) '>idims=', idims2
+            !write(*,*) '>iside=', iside2
+            !write(*,*) 'self%myconfig%boundary_cond = ',self%myconfig%boundary_cond(idims2,iside2)
+            !write(*,*) 'self%myboundaries%myconfig%boundary_type = ',self%myboundaries%myconfig%boundary_type(idims2,iside2)
+          end do
+        end do
+        if(any(self%patch(ixO^S))) then
+          call self%myboundaries%set_w(ixI^L,ixO^L,iB,isboundary_iB(1),isboundary_iB(2),&
+                                  self%patch,x,w)
+        end if
+      end if
+
+      bc_to_fix = .false.
+
+      !2) Then, in any cases,
+      ! make sure that the variable w(ixO^S,1:7) are fixed accordingly:
+
+      if(isboundary)bc_to_fix = self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),phys_ind%rho_)
+      ! initialize uniform inner grid or fix density in boundaries
+      update_rho : if((.not.isboundary).or.bc_to_fix)then
+        if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+          where(self%patch(ixO^S))
+              w(ixO^S,phys_ind%rho_)        =  self%myconfig%profile_rho_0
+          end where
+        else
+          where(self%patch(ixO^S))
+              w(ixO^S,phys_ind%rho_)        =  self%myconfig%density
+          end where
+        end if
+      end if update_rho
+
+      if(isboundary)bc_to_fix = self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),phys_ind%pressure_)
+      ! if energy is evolved: initialize uniform inner grid or fix pressure in boundaries
+      if(phys_config%energy)then
+        update_p : if((.not.isboundary).or.bc_to_fix)then
+          if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+            where(self%patch(ixO^S))
+                w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure_Ulrich
+            end where
+          else
+            where(self%patch(ixO^S))
+                w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure
+            end where
+          end if
+        end if update_p
+      end if
+
+      ! initialize uniform inner grid or fix velocities in boundaries
+      Loop_idir : do idir=1,ndir
+        if(isboundary)bc_to_fix = self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),phys_ind%mom(idir))
+        update_mom : if((.not.isboundary).or.bc_to_fix)then
+          if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+
+               where(  self%patch(ixO^S))
+                 !----------------------------------------------------
+                 !lines to modify if we want to change the velocity
+                 !put for each time step at any boundary
+                 !set to 'fix' with Ulrich1976 model
+                 !----------------------------------------------------
+                  w(ixO^S,phys_ind%mom(idir)) = self%myconfig%profile_vd
+               end where
+
+          else
+
+             where(  self%patch(ixO^S))
+               !----------------------------------------------------
+               !lines to modify if we want to change the velocity
+               !put for each time step at any boundary
+               !set to 'fix'
+               !----------------------------------------------------
+                w(ixO^S,phys_ind%mom(idir)) = self%myconfig%velocity(idir)
+             end where
+
+          end if
+        end if update_mom
+      end do Loop_idir
+
+
+      ! add profile to ISM density, pressure and eventually velocity
+      ! in the inner grid or to boundaries
+      if(isboundary)bc_to_fix = any(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7))
+      treat_profile: if((.not.isboundary).or.bc_to_fix)then
+        add_profile : if(self%myconfig%profile_on) then
+          !when treating the inner domain
+          !or in case 'fix' conditions is called at every bc flux variables
+          cond_fix : if((.not.isboundary).or.trim(myboundary_cond)=='fix')then
+            !apply the profile to rho,p and mom(:)
+            call self%set_profile(ixI^L,ixO^L,x,w)
+
+            ! when treating the boundaries of the domain
+            ! in case any other bc conditions is called and that one of the
+            ! nwfluxbc flux bc variables must be fixed
+          else if(isboundary.and.&
+          any(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)))then cond_fix
+
+            !make sure to work with a fresh untouched wtmp version
+            if(.not.allocated(w_tmp)) then
+              allocate(w_tmp(ixI^S,1:nw))
+            else
+              deallocate(w_tmp)
+              allocate(w_tmp(ixI^S,1:nw))
+            end if
+
+            !store the uniformly initialized w into a separate w_tmp
+            w_tmp(ixO^S,1:nw) = w(ixO^S,1:nw)
+            !apply the profile on w_tmp only
+            call self%set_profile(ixI^L,ixO^L,x,w_tmp)
+
+            ! modify only the flux variable to be fixed in w
+
+            do iwfluxbc=1,nwfluxbc
+              if(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),iwfluxbc))then
+                where(self%patch(ixO^S))
+                  w(ixO^S,iwfluxbc)=w_tmp(ixO^S,iwfluxbc)
+                end where
+              end if
+            end do
+
+            !don t forget to free memory :
+            deallocate(w_tmp)
+          else cond_fix
+            !write(*,*) 'Unknown case of bc conditions or inner domain ...'
+            call mpistop(' ... initialization at cond_fix')
+          end if cond_fix
+        end if add_profile
+      end if treat_profile
+
+      ! End of the conditional loop for initialization of the inner domaine
+      ! or when my_boundary=='fix' or when mixed 'fix' boundary conditions are input
+      ! Start of  the loop for any other my_boundary : call to set_w which
+      ! set the conditions in the boundaries from mod_obj_mat.t
+      else if(isboundary.and.(trim(myboundary_cond)/='fix'))then boundary_cond
+        !write(*,*) '>> here is the boundary (idims,iside) = ',isboundary_iB(1),isboundary_iB(2),'...'
+        !write(*,*) '>> ...where no bc are fixed but we get the condition : ', myboundary_cond
+        if(any(self%patch(ixO^S))) then
+          call self%myboundaries%set_w(ixI^L,ixO^L,iB,isboundary_iB(1),isboundary_iB(2),&
+                                  self%patch,x,w)
+        end if
+      else boundary_cond
+        write(*,*) 'Unknown case of bc conditions or inner domain...'
+        call mpistop('...initialization at boundary_cond')
     end if boundary_cond
 
+
+    !Treat mean_mup the same way everywhere :
+    if(phys_config%mean_mup_on) then
+      where(self%patch(ixO^S))
+       w(ixO^S,phys_ind%mup_) = self%myconfig%mean_mup
+      end where
+    end if
+
+    !Treat tracers the same way everywhere:
+    cond_tracer_on :if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
+                     .and.self%myconfig%itr<=phys_config%n_tracer)then
+      if(self%myconfig%tracer_init_density>0.0_dp) then
+        where(self%patch(ixO^S))
+         w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = self%myconfig%tracer_init_density
+        end where
+      else
+        where(self%patch(ixO^S))
+         w(ixO^S,phys_ind%tracer(self%myconfig%itr)) =  w(ixO^S,phys_ind%rho_)
+        end where
+      end if
+      itr=itr+1
+    end if cond_tracer_on
+
+    !Treat dust the same way  everywhere
+    cond_dust_on : if( self%myconfig%dust_on)then
+      call self%mydust%set_patch(ixI^L,ixO^L,self%patch)
+      self%mydust%myconfig%velocity= self%myconfig%velocity
+      fprofile = 1.0_dp
+      call   self%mydust%set_w(ixI^L,ixO^L,qt,.false., self%myconfig%dust_frac,fprofile,x,w)
+    end if cond_dust_on
+
+    end if debug_mode
    end subroutine usr_ism_set_w
 
 
@@ -902,120 +1274,8 @@ contains
           end if
 
         case('Ulrich1976')
-              !31-01-22 : density successfully implemented
-              !25-02-22 : this is to be debugged to make it work on local machine
-              p_profile(ixO^S) = 1.0_dp
-              vr_profile(ixO^S) = 1.0_dp
-              vt_profile(ixO^S) = 1.0_dp
-              vp_profile(ixO^S) = 1.0_dp
 
-              call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
-              r_normalized(ixO^S) = (d_profile(ixO^S)/self%myconfig%profile_rd)
-              call usr_ulrich1976_costheta_zero(ixI^L, ixO^L,x,r_normalized,&
-              theta_profile,cos_theta_zero)
-
-              theta_zero(ixO^S) = DACOS(cos_theta_zero(ixO^S))
-
-              p_profile(ixO^S) = (r_normalized(ixO^S)**(-1.5_dp))*&
-              ((1.0_dp + (DCOS(theta_profile(ixO^S))/&
-              cos_theta_zero(ixO^S)))**(-0.5_dp))/&
-              ((1.0_dp + (3.0_dp * cos_theta_zero(ixO^S) * &
-              cos_theta_zero(ixO^S) - 1.0_dp)/r_normalized(ixO^S)))
-
-              vr_profile(ixO^S) = -(r_normalized(ixO^S)**(-0.5_dp))*&
-              ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))
-
-              vt_profile(ixO^S) = (r_normalized(ixO^S)**(-0.5_dp))*&
-              ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))*&
-              ((cos_theta_zero(ixO^S)-DCOS(theta_profile(ixO^S)))/DSIN(theta_profile(ixO^S)))
-
-              vp_profile(ixO^S) = (r_normalized(ixO^S)**(-0.5_dp))*&
-              ((1.0_dp - (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))*&
-              ((DSIN(theta_zero(ixO^S)))/DSIN(theta_profile(ixO^S)))
-
-
-              select case(typeaxial)
-                case('spherical')
-                   where(self%patch(ixO^S))
-                     project_speed(ixO^S,r_) = vr_profile(ixO^S)
-                   end where
-                   if(ndir>1)then
-                     where(self%patch(ixO^S))
-                       project_speed(ixO^S,theta_) = vt_profile(ixO^S)
-                     end where
-                   end if
-                   if(ndir>2)then
-                     where(self%patch(ixO^S))
-                       project_speed(ixO^S,phi_) = vp_profile(ixO^S)
-                     end where
-                   end if
-                case('cylindrical')
-                   if(ndim<3)then
-                     where(self%patch(ixO^S))
-                       project_speed(ixO^S,r_) = (vr_profile(ixO^S)*&
-                       DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
-                       DCOS(theta_profile(ixO^S)))
-                       project_speed(ixO^S,z_) = (vr_profile(ixO^S)*&
-                       DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
-                       DSIN(theta_profile(ixO^S)))
-                     end where
-                   else
-                     where(self%patch(ixO^S))
-                       project_speed(ixO^S,r_) = 1.0_dp ! TO DO
-                       project_speed(ixO^S,z_) = 1.0_dp ! TO DO
-                     end where
-                   end if
-                   if(ndir>2)then
-                      where(self%patch(ixO^S))
-                        project_speed(ixO^S,phi_) = vp_profile(ixO^S)
-                      end where
-                   end if
-                case('slab','slabstretch')
-                   if(ndim<3)then
-                     where(self%patch(ixO^S))
-                       project_speed(ixO^S,x_) = (vr_profile(ixO^S)*&
-                       DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
-                       DCOS(theta_profile(ixO^S)))
-                       project_speed(ixO^S,y_) = (vr_profile(ixO^S)*&
-                       DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
-                       DSIN(theta_profile(ixO^S)))
-                     end where
-                     if(ndir>2)then
-                        where(self%patch(ixO^S))
-                          project_speed(ixO^S,z_) = vp_profile(ixO^S)
-                        end where
-                     end if
-                   else
-                     where(self%patch(ixO^S))
-                       project_speed(ixO^S,x_) = 1.0_dp ! TO DO
-                       project_speed(ixO^S,y_) = 1.0_dp ! TO DO
-                     end where
-                     if(ndir>2)then
-                        where(self%patch(ixO^S))
-                          project_speed(ixO^S,z_) = 1.0_dp ! TO DO
-                        end where
-                     end if
-                   end if
-                case default
-                   call mpistop('Unknown typeaxial')
-              end select
-
-
-
-                  Loop_idir_profile : do idir=1,ndir
-                   where(  self%patch(ixO^S))
-                   !----------------------------------------------------
-                   !line to modify if Ulrich model and we want to change the velocity
-                   !put for each time step at any boundary
-                   !set to 'fix'
-                   !----------------------------------------------------
-                    w(ixO^S,phys_ind%mom(idir)) = w(ixO^S,phys_ind%mom(idir)) * &
-                    project_speed(ixO^S,idir)
-                   end where
-                  end do Loop_idir_profile
-
-
-
+          call self%set_ulrich_profile(ixI^L, ixO^L,x,w,p_profile)
 
         case default
           p_profile(ixO^S) = 1.0_dp
@@ -1065,6 +1325,143 @@ contains
 
 
    end subroutine usr_ism_set_profile
+
+   !--------------------------------------------------------------------
+   subroutine usr_set_ulrich_profile(ixI^L, ixO^L,x,w,p_profile,self)
+   implicit none
+   integer, intent(in)             :: ixI^L,ixO^L
+   real(kind=dp), intent(in)       :: x(ixI^S,1:ndim)
+   real(kind=dp), intent(inout)    :: w(ixI^S,1:nw)
+   real(kind=dp), intent(inout)    :: p_profile(ixI^S)
+   class(ism)                      :: self
+   ! ..local ..
+   real(kind=dp), dimension(ixI^S) :: d_profile,theta_profile
+   real(kind=dp), dimension(ixI^S) :: vr_profile,vt_profile,vp_profile
+   real(kind=dp), dimension(ixI^S) :: cos_theta_zero,sin_theta_zero,r_normalized
+   real(kind=dp), dimension(ixI^S) :: theta_zero
+   real(kind=dp), dimension(ixI^S,1:ndir) :: project_speed
+   integer                         :: idir
+   real(kind=dp), dimension(1:ndim) :: zero_dim
+   !--------------------------------------------------------------------
+
+
+   {zero_dim(^D)=0.0_dp\}!-dx(1,1)
+
+   p_profile(ixO^S) = 1.0_dp
+   vr_profile(ixO^S) = 1.0_dp
+   vt_profile(ixO^S) = 1.0_dp
+   vp_profile(ixO^S) = 1.0_dp
+
+   call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
+
+   call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+
+   r_normalized(ixI^S) = (d_profile(ixI^S)/self%myconfig%profile_rd)
+
+   call usr_ulrich1976_costheta_zero(ixI^L, ixO^L,x,r_normalized,&
+   theta_profile,cos_theta_zero)
+
+   theta_zero(ixI^S) = DACOS(cos_theta_zero(ixI^S))
+
+   p_profile(ixO^S) = (r_normalized(ixO^S)**(-1.5_dp))*&
+   ((1.0_dp + (DCOS(theta_profile(ixO^S))/&
+   cos_theta_zero(ixO^S)))**(-0.5_dp))/&
+   ((1.0_dp + (3.0_dp * cos_theta_zero(ixO^S) * &
+   cos_theta_zero(ixO^S) - 1.0_dp)/r_normalized(ixO^S)))
+
+   vr_profile(ixO^S) = -(r_normalized(ixO^S)**(-0.5_dp))*&
+   ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))
+
+   vt_profile(ixO^S) = (r_normalized(ixO^S)**(-0.5_dp))*&
+   ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))*&
+   ((cos_theta_zero(ixO^S)-DCOS(theta_profile(ixO^S)))/DSIN(theta_profile(ixO^S)))
+
+   vp_profile(ixO^S) = (r_normalized(ixO^S)**(-0.5_dp))*&
+   ((1.0_dp - (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))*&
+   ((DSIN(theta_zero(ixO^S)))/DSIN(theta_profile(ixO^S)))
+
+
+   select case(typeaxial)
+     case('spherical')
+        where(self%patch(ixO^S))
+          project_speed(ixO^S,r_) = vr_profile(ixO^S)
+        end where
+        if(ndir>1)then
+          where(self%patch(ixO^S))
+            project_speed(ixO^S,theta_) = vt_profile(ixO^S)
+          end where
+        end if
+        if(ndir>2)then
+          where(self%patch(ixO^S))
+            project_speed(ixO^S,phi_) = vp_profile(ixO^S)
+          end where
+        end if
+     case('cylindrical')
+        if(ndim<3)then
+          where(self%patch(ixO^S))
+            project_speed(ixO^S,r_) = (vr_profile(ixO^S)*&
+            DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
+            DCOS(theta_profile(ixO^S)))
+            project_speed(ixO^S,z_) = (vr_profile(ixO^S)*&
+            DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
+            DSIN(theta_profile(ixO^S)))
+          end where
+        else
+          where(self%patch(ixO^S))
+            project_speed(ixO^S,r_) = 1.0_dp ! TO DO
+            project_speed(ixO^S,z_) = 1.0_dp ! TO DO
+          end where
+        end if
+        if(ndir>2)then
+           where(self%patch(ixO^S))
+             project_speed(ixO^S,phi_) = vp_profile(ixO^S)
+           end where
+        end if
+     case('slab','slabstretch')
+        if(ndim<3)then
+          where(self%patch(ixO^S))
+            project_speed(ixO^S,x_) = (vr_profile(ixO^S)*&
+            DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
+            DCOS(theta_profile(ixO^S)))
+            project_speed(ixO^S,y_) = (vr_profile(ixO^S)*&
+            DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
+            DSIN(theta_profile(ixO^S)))
+          end where
+          if(ndir>2)then
+             where(self%patch(ixO^S))
+               project_speed(ixO^S,z_) = vp_profile(ixO^S)
+             end where
+          end if
+        else
+          where(self%patch(ixO^S))
+            project_speed(ixO^S,x_) = 1.0_dp ! TO DO
+            project_speed(ixO^S,y_) = 1.0_dp ! TO DO
+          end where
+          if(ndir>2)then
+             where(self%patch(ixO^S))
+               project_speed(ixO^S,z_) = 1.0_dp ! TO DO
+             end where
+          end if
+        end if
+     case default
+        call mpistop('Unknown typeaxial')
+   end select
+
+
+
+       Loop_idir_profile : do idir=1,ndir
+        where(self%patch(ixO^S))
+        !----------------------------------------------------
+        !line to modify if Ulrich model and we want to change the velocity
+        !put for each time step at any boundary
+        !set to 'fix'
+        !----------------------------------------------------
+         w(ixO^S,phys_ind%mom(idir)) = w(ixO^S,phys_ind%mom(idir)) * &
+         project_speed(ixO^S,idir)
+        end where
+       end do Loop_idir_profile
+
+       end  subroutine usr_set_ulrich_profile
 
 
    !--------------------------------------------------------------------
@@ -1295,29 +1692,7 @@ contains
 
    end subroutine usr_ism_get_pforce_profile
 
-   !--------------------------------------------------------------------
-   ! This subroutine adds gravity potential gradient
-   subroutine usr_ism_get_fgravity_profile(ixI^L,ixO^L,qt,qdt,x,w,f_profile,divpv,self)
-    use mod_radiative_cooling
-    implicit none
-    integer, intent(in)                  :: ixI^L,ixO^L
-    real(kind=dp), intent(in)            :: qt,qdt
-    real(kind=dp), intent(in)            :: x(ixI^S,1:ndim)
-    real(kind=dp), intent(in)            :: w(ixI^S,1:nw)
-    class(ism)                           :: self
-    real(kind=dp), intent(inout)         :: f_profile(ixI^S,1:ndim)
-    real(kind=dp), intent(inout)         :: divpv(ixI^S)
-    ! ..local ..
-    integer                              :: idims
-    real(kind=dp), dimension(ixI^S,1:ndir) :: pv
-    real(kind=dp), dimension(ixI^S,1:nw) :: w_init, w_tmp
-    real(kind=dp), dimension(ixI^S)      :: ptherm,gradp,f_projection,d_profile
-    logical                              :: tmp_active,src_active
-    logical, dimension(ixI^S)            :: patch_tosave
-    !----------------------------------------------------
-    !TODO
 
-   end subroutine usr_ism_get_fgravity_profile
 
    !--------------------------------------------------------------------
    subroutine usr_ism_add_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w,self,&

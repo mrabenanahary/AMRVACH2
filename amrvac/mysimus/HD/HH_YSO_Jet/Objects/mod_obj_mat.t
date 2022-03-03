@@ -114,12 +114,22 @@ subroutine usr_boundaries_set_complet(self)
      case('limitinflow')
       self%variable_typebound(idims,iside,:)='cont'
       self%variable_typebound(idims,iside,phys_ind%mom(idims))='limitinflow'
+     case('limitinflowdisc')
+      self%variable_typebound(idims,iside,:)='symm'
+      self%variable_typebound(idims,iside,phys_ind%mom(r_))='symm'
+      self%variable_typebound(idims,iside,phys_ind%mom(phi_))='symm'
+      self%variable_typebound(idims,iside,phys_ind%mom(z_))='limitinflow'
      case('nooutflux')
       self%variable_typebound(idims,iside,:)='cont'
       self%variable_typebound(idims,iside,phys_ind%mom(idims))='nooutflux'
      case('limitoutflow')
       self%variable_typebound(idims,iside,:)='cont'
       self%variable_typebound(idims,iside,phys_ind%mom(idims))='limitoutflow'
+     case('limitoutflowdisc')
+      self%variable_typebound(idims,iside,:)='symm'
+      self%variable_typebound(idims,iside,phys_ind%mom(r_))='symm'
+      self%variable_typebound(idims,iside,phys_ind%mom(phi_))='symm'
+      self%variable_typebound(idims,iside,phys_ind%mom(z_))='limitoutflow'
     case('grad')
        self%variable_typebound(idims,iside,:)='cont'
        self%variable_typebound(idims,iside,phys_ind%mom(idims))='grad'
@@ -658,13 +668,7 @@ end subroutine usr_mat_profile_dist
    real(kind=dp), dimension(1:ndim) :: zero_dim
    !----------------------------------------------------
 
-   zero_dim(1)=0.0_dp!-dx(1,1)
-   if(ndim==2)then
-    zero_dim(2)=0.0_dp!-dx(2,1)
-   end if
-   if(ndim==3)then
-    zero_dim(3)=0.0_dp!-dx(3,1)
-   end if
+   {zero_dim(^D)=0.0_dp\}!-dx(1,1)
 
    cos_theta_zero(ixO^S) = 0.0_dp
 
@@ -730,6 +734,9 @@ end subroutine usr_mat_profile_dist
    end select
 
   end subroutine usr_get_theta
+
+
+
 
 
   !------------------------------------------------------------------------
