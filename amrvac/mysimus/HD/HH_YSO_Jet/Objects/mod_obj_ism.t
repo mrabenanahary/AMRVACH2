@@ -84,6 +84,8 @@ module mod_obj_ism
       logical              :: debug
       character(len=30)    :: boundary_cond(3,2)!> ism boundary condition
       real(dp)             :: flux_frac
+      logical              :: useprimitive
+      integer              :: nghostcells
       logical              :: mixed_fixed_bound(3,2,7) !> ism 'fix' flux variables
       logical              :: dust_on        !> logical to set dust
       real(dp)             :: dust_frac      !> dust fraction
@@ -139,6 +141,8 @@ contains
       type(ism_parameters), intent(out)  :: ism_config
       ! .. local ..
       integer                            :: i_file,i_error_read
+      integer                  :: idim,iside
+      logical                  :: ism_and_usr_boundary
 
       namelist /usr_ism_list/  ism_config
       namelist /usr_ism1_list/ ism_config
@@ -165,6 +169,9 @@ contains
       end do
 
 
+      ! original :
+      ! if(.not.self%myconfig%boundary_on)                                       &
+      !    self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
 
 
       if(ism_config%boundary_on)then
@@ -176,6 +183,20 @@ contains
         call self%mydust%read_parameters(self%mydust%myconfig,files)
       end if
 
+      ! Here the boundary conditions input from ism_config takes priority from what is
+      ! input from usrboundary_config
+      if(ism_config%boundary_on)then
+          do idim=1,ndim
+            do iside=1,2
+              ism_and_usr_boundary = (trim(ism_config%boundary_cond(idim,iside))/=&
+              trim(self%myboundaries%myconfig%boundary_type(idim,iside)))
+              if(ism_and_usr_boundary) then
+                 self%myboundaries%myconfig%boundary_type(idim,iside)=&
+                 ism_config%boundary_cond(idim,iside)
+              end if
+            end do
+          end do
+        end if
 
     end subroutine usr_ism_read_p
    !------------------------------------------------------------------------
@@ -353,6 +374,8 @@ contains
      self%myconfig%boundary_on           = .false.
      self%myconfig%boundary_cond         = 'open'
      self%myconfig%flux_frac             = 1.0d-2
+     self%myconfig%nghostcells           = 2
+     self%myconfig%useprimitive         = .false.
      self%myconfig%debug                 = .false.
      self%myconfig%mixed_fixed_bound     = .false.
      self%myconfig%c_sound               = 0.0_dp
@@ -397,6 +420,42 @@ contains
     real(dp)                 :: mp,kb,Ggrav,r_normalized,costhetazero
     integer                  :: idim,iside
     !-----------------------------------
+
+
+
+
+    ! original :
+    ! if(.not.self%myconfig%boundary_on)                                       &
+    !    self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
+
+
+    ! Here the boundary conditions input from ism_config takes priority from what is
+    ! input from usrboundary_config
+    if(self%myconfig%boundary_on)then
+        !write(*,*) 'self%myconfig%boundary_on is .true.'
+        !write(*,*) '- Before the prioritization of boundary conditions :'
+        !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
+        !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
+        self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
+        self%myboundaries%myconfig%flux_frac=self%myconfig%flux_frac
+        self%myboundaries%myconfig%useprimitive=self%myconfig%useprimitive
+        self%myboundaries%myconfig%nghostcells=self%myconfig%nghostcells
+        do idim=1,ndim
+          do iside=1,2
+            if(trim(self%myconfig%boundary_cond(idim,iside))=='fix') then
+               self%myconfig%mixed_fixed_bound(idim,iside,1:7)=.true.
+            end if
+          end do
+        end do
+        !write(*,*) '- After the prioritization of boundary conditions :'
+        !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
+        !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
+    else
+      !write(*,*) 'self%myconfig%boundary_on is .false.'
+      !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
+      !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
+    end if
+
 
     if(SI_unit) then
       mp=mp_SI
@@ -667,28 +726,7 @@ contains
    if(self%myconfig%profile_density_on.or.self%myconfig%profile_pressure_on)then
      self%myconfig%profile_on   = .true.
    end if
-    ! original :
-    ! if(.not.self%myconfig%boundary_on)                                       &
-    !    self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
 
-
-    ! Here the boundary conditions input from ism_config takes priority from what is
-    ! input from usrboundary_config
-    if(self%myconfig%boundary_on)then
-        !write(*,*) 'self%myconfig%boundary_on is .true.'
-        !write(*,*) '- Before the prioritization of boundary conditions :'
-        !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
-        !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
-        self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
-        self%myboundaries%myconfig%flux_frac=self%myconfig%flux_frac
-        !write(*,*) '- After the prioritization of boundary conditions :'
-        !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
-        !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
-    else
-      !write(*,*) 'self%myconfig%boundary_on is .false.'
-      !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
-      !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
-    end if
 
     call self%myboundaries%set_complet
 
@@ -783,6 +821,34 @@ contains
   !--------------------------------------------------------------------
    !> subroutine setting for ISM
    subroutine usr_ism_set_w(ixI^L,ixO^L,qt,x,w,self,isboundary_iB)
+   ! * According to subroutine initonegrid_usr in which it is called once in mod_obj_usr_yso_jet.t :
+   ! in the src code amrini.t, ixI^L = ixG^LL = ixGlo1,ixGlo2,ixGhi1,ixGhi2
+   ! = range delimiting the whole domain (including boundary ghost cells), i.e. between integers
+   ! 1 and the highest possible indices for the coordinates for the grid for each dimension
+   ! and ixO^L = ixM^LL = ixMlo1,ixMlo2,ixMhi1,ixMhi2 =
+   ! = range delimiting the mesh (i.e. the grid without boundary layers)
+   ! * According to subroutine bc_phys in which it is also called once from
+   ! usr_special_bc ==> specialbound_usr by mod_ghostcells_update.t twice:
+   ! in this case, the integers are
+   ! ixG^L = ixGmin1,ixGmin2,ixGmax1,ixGmax2 (or ixCoGmin1,ixCoGmin2,ixCoGmax1,ixCoGmax2
+   ! when working with a coarsened grid)
+   ! = the range delimiting the whole domain (including boundary ghost cells), i.e. between integers
+   ! 1 and the highest possible indices for the coordinates for the grid for each dimension
+   ! ,ixB^L = ixBmin1,ixBmin2,ixBmax1,ixBmax2 =
+   ! the range delimiting the boundary
+   ! As for the input integers, they are ixI^L=ixG^L
+   ! and ixO^L=ixI^L defined from ixB^L as :
+   ! > idims = 1, iside==2 (maximal boundary)
+   ! ==> ixImin1=ixBmax1+1-nghostcells;ixImin2=ixBmin2;ixImax1=ixBmax1;ixImax2=ixBmax2;
+   ! > idims = 1, iside==1 (minimal boundary)
+   ! ==> ixImin1=ixBmin1;ixImin2=ixBmin2;ixImax1=ixBmin1-1+nghostcells;ixImax2=ixBmax2;
+   ! > idims = 2, iside==2 (maximal boundary)
+   ! ==> ixImin1=ixBmin1;ixImin2=ixBmax2+1-nghostcells;ixImax1=ixBmax1;ixImax2=ixBmax2;
+   ! > idims = 2, iside==1 (minimal boundary)
+   ! ==> ixImin1=ixBmin1;ixImin2=ixBmin2;ixImax1=ixBmax1;ixImax2=ixBmin2-1+nghostcells;
+   ! to sum up, the range delimiting each boundary individually
+
+
     implicit none
     integer, intent(in)           :: ixI^L,ixO^L
     real(kind=dp), intent(in)     :: qt
@@ -792,7 +858,7 @@ contains
     integer,             optional :: isboundary_iB(2)
     class(ism)                    :: self
     ! .. local..
-    integer                    :: idir,IB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
+    integer                    :: idir,iB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
     real(kind=dp)              :: fprofile(ixI^S)
     logical                    :: isboundary,to_fix,bc_to_fix,some_unfixed
     character(len=30)          :: myboundary_cond
@@ -820,7 +886,7 @@ contains
            ! 03-03-2022 : we defined idims=(iB+1)/2 in mod_usr_yso_jet.t
            ! ==> 2*idims = iB +1 ==> iB = 2*idims-1= 2*idims - 2 +1
            ! ==> iB = 2*(idims-1)+1 which is identical to the original
-           IB = 2*(idims-1)+1
+           iB = 2*(idims-1)+1
            idims_bound = idims
          end if
         end if
@@ -830,22 +896,22 @@ contains
            ! original : IB = 2*idims
            ! 03-03-2022 : we defined idims=iB/2 in mod_usr_yso_jet.t
            ! ==> iB = 2*idims which is identical to the original
-           IB = 2*idims
+           iB = 2*idims
            idims_bound = idims
          end if
         end if
       \}
 
       !if(mype==0)then
-      !  write(*,*) '*****Conditions for boundary number iB=', iB,'*****'
-      !  write(*,*) '* ...corresponding to (idims,iside)=', isboundary_iB(1),isboundary_iB(2)
+        !write(*,*) '*****Conditions for boundary number iB=', iB,'*****'
+        !write(*,*) '* ...corresponding to (idims,iside)=', isboundary_iB(1),isboundary_iB(2)
       !end if
 
       myboundary_cond = self%myconfig%boundary_cond(isboundary_iB(1),isboundary_iB(2))
 
       !if(mype==0)then
-      !  write(*,*) '* ...and which boundary condition is =', myboundary_cond
-      !  write(*,*) '************************************************************'
+        !write(*,*) '* ...and which boundary condition is =', myboundary_cond
+        !write(*,*) '************************************************************'
         !write(*,*) 'present myboundary_cond=', myboundary_cond
       !end if
     else cond_B_present
@@ -856,108 +922,7 @@ contains
 
 
 
-    debug_mode : if(.not.self%myconfig%debug)then
-    !write(*,*) 'Not debug mode'
-    if(.not.isboundary.or.&
-                       trim(myboundary_cond)=='fix') then
 
-      !write(*,*) 'call it toooo here !!!!!!!!!!!!!!!!!!!!!!!!'
-      if(trim(self%myconfig%profile_density)=='Ulrich1976')then
-        where(self%patch(ixO^S))
-            w(ixO^S,phys_ind%rho_)        =  self%myconfig%profile_rho_0
-        end where
-      else
-        where(self%patch(ixO^S))
-            w(ixO^S,phys_ind%rho_)        =  self%myconfig%density
-        end where
-      end if
-      if(phys_config%energy)then
-        if(trim(self%myconfig%profile_density)=='Ulrich1976')then
-          where(self%patch(ixO^S))
-              w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure_Ulrich
-          end where
-        else
-          where(self%patch(ixO^S))
-              w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure
-          end where
-        end if
-      end if
-
-
-      if(trim(self%myconfig%profile_density)=='Ulrich1976')then
-         !----------------------------------------------------
-         !line to modify if we want to change the velocity
-         !put for each time step at any boundary
-         !set to 'fix'
-         !----------------------------------------------------
-         do idir=1,ndir
-           where(  self%patch(ixO^S))
-             !----------------------------------------------------
-             !line to modify if we want to change the velocity
-             !put for each time step at any boundary
-             !set to 'fix'
-             !----------------------------------------------------
-              w(ixO^S,phys_ind%mom(idir)) = self%myconfig%profile_vd
-           end where
-         end do
-      else
-         do idir=1,ndir
-         where(  self%patch(ixO^S))
-         !----------------------------------------------------
-         !line to modify if we want to change the velocity
-         !put for each time step at any boundary
-         !set to 'fix'
-         !----------------------------------------------------
-          w(ixO^S,phys_ind%mom(idir)) = self%myconfig%velocity(idir)
-         end where
-        end do
-      end if
-
-
-      ! add profile to ISM density and pressure
-      if(self%myconfig%profile_on) then
-         call self%set_profile(ixI^L,ixO^L,x,w)
-      end if
-
-
-
-
-      if(phys_config%mean_mup_on) then
-        where(self%patch(ixO^S))
-         w(ixO^S,phys_ind%mup_) = self%myconfig%mean_mup
-        end where
-      end if
-
-      if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
-                         .and.self%myconfig%itr<=phys_config%n_tracer)then
-        if(self%myconfig%tracer_init_density>0.0_dp) then
-        where(self%patch(ixO^S))
-         w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = self%myconfig%tracer_init_density
-        end where
-        else
-        where(self%patch(ixO^S))
-         w(ixO^S,phys_ind%tracer(self%myconfig%itr)) =  w(ixO^S,phys_ind%rho_)
-        end where
-        end if
-        itr=itr+1
-      end if
-
-
-
-      if( self%myconfig%dust_on)then
-        call self%mydust%set_patch(ixI^L,ixO^L,self%patch)
-        self%mydust%myconfig%velocity= self%myconfig%velocity
-        fprofile = 1.0_dp
-        call   self%mydust%set_w(ixI^L,ixO^L,qt,.false., self%myconfig%dust_frac,fprofile,x,w)
-      end if
-    else
-     if(any(self%patch(ixO^S))) then
-       call self%myboundaries%set_w(ixI^L,ixO^L,iB,isboundary_iB(1),isboundary_iB(2),&
-                                self%patch,x,w)
-     end if
-    end if
-
-    else debug_mode
     ! write(*,*) 'Debug mode'
     ! Start of the conditional loop when we treat the domain without the boundaries
     ! or when my_boundary=='fix' : to modify in order
@@ -967,9 +932,7 @@ contains
     ! my_boundary=='fix' does but only along one flux index (e.g. v_phi)
 
 
-    if(isboundary.and.(trim(myboundary_cond)=='fix')) then
-      self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)=.true.
-    end if
+
     !if(present(isboundary_iB))then
     !write(*,*) '>2)isiB1= isib2=', isboundary_iB(1),' ', isboundary_iB(2)
     !write(*,*) '>mixed_fixed_bound = ', self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)
@@ -1135,23 +1098,6 @@ contains
         end if add_profile
       end if treat_profile
 
-      ! End of the conditional loop for initialization of the inner domaine
-      ! or when my_boundary=='fix' or when mixed 'fix' boundary conditions are input
-      ! Start of  the loop for any other my_boundary : call to set_w which
-      ! set the conditions in the boundaries from mod_obj_mat.t
-      else if(isboundary.and.(trim(myboundary_cond)/='fix'))then boundary_cond
-        !write(*,*) '>> here is the boundary (idims,iside) = ',isboundary_iB(1),isboundary_iB(2),'...'
-        !write(*,*) '>> ...where no bc are fixed but we get the condition : ', myboundary_cond
-        if(any(self%patch(ixO^S))) then
-          call self%myboundaries%set_w(ixI^L,ixO^L,iB,isboundary_iB(1),isboundary_iB(2),&
-                                  self%patch,x,w)
-        end if
-      else boundary_cond
-        write(*,*) 'Unknown case of bc conditions or inner domain...'
-        call mpistop('...initialization at boundary_cond')
-    end if boundary_cond
-
-
     !Treat mean_mup the same way everywhere :
     if(phys_config%mean_mup_on) then
       where(self%patch(ixO^S))
@@ -1182,7 +1128,26 @@ contains
       call   self%mydust%set_w(ixI^L,ixO^L,qt,.false., self%myconfig%dust_frac,fprofile,x,w)
     end if cond_dust_on
 
-    end if debug_mode
+      ! End of the conditional loop for initialization of the inner domaine
+      ! or when my_boundary=='fix' or when mixed 'fix' boundary conditions are input
+      ! Start of  the loop for any other my_boundary : call to set_w which
+      ! set the conditions in the boundaries from mod_obj_mat.t
+      else if(isboundary.and.(trim(myboundary_cond)/='fix'))then boundary_cond
+        !write(*,*) '>> here is the boundary (idims,iside) = ',isboundary_iB(1),isboundary_iB(2),'...'
+        !write(*,*) '>> ...where no bc are fixed but we get the condition : ', myboundary_cond
+        if(any(self%patch(ixO^S))) then
+          call self%myboundaries%set_w(ixI^L,ixO^L,iB,isboundary_iB(1),isboundary_iB(2),&
+                                  self%patch,x,w)
+        end if
+      else boundary_cond
+        write(*,*) 'Unknown case of bc conditions or inner domain...'
+        call mpistop('...initialization at boundary_cond')
+    end if boundary_cond
+
+
+
+
+
    end subroutine usr_ism_set_w
 
 

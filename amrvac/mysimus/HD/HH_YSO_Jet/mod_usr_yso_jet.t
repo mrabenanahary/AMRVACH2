@@ -562,7 +562,11 @@ contains
   !> The initial conditions
   subroutine initonegrid_usr(ixI^L,ixO^L,w,x)
     ! initialize one grid
-
+    ! in the src code amrini.t, ixI^L = ixG^LL = ixGlo1,ixGlo2,ixGhi1,ixGhi2
+    ! = range delimiting the whole domain (including boundary ghost cells), i.e. between integers
+    ! 1 and the highest possible indices for the coordinates for the grid for each dimension
+    ! and ixO^L = ixM^LL = ixMlo1,ixMlo2,ixMhi1,ixMhi2 =
+    ! = range delimiting the mesh (i.e. the grid without boundary layers)
     implicit none
 
     integer, intent(in)     :: ixI^L,ixO^L
@@ -1117,19 +1121,35 @@ return
     patch_all(ixO^S) = .true.
     i_object_w_dust = 1
     !write(*,*) 'iB=', iB
-    if (MOD(iB,2) .eq. 0) then
+    !if (MOD(iB,2) .eq. 0) then
       !odd iB
-      idims=iB/2 ! iB=4==> idims=4/2=2 , iB=2==> idims=2/2=1
+      !idims=iB/2 ! iB=4==> idims=4/2=2 , iB=2==> idims=2/2=1
       !iB=6==> idims=6/2=3
-      iside=2
-    else
+      !iside=2
+    !else
       !even iB
-      idims=(iB+1)/2! iB=3==> idims=(3+1)/2=2 , iB=1==> idims=(1+1)/2=1
+      !idims=(iB+1)/2! iB=3==> idims=(3+1)/2=2 , iB=1==> idims=(1+1)/2=1
       !iB=5==> idims=(5+1)/2=3
       iside=1
-    end if
+    !end if
     !iB=1,3,5==> iside = 1 : min
     !iB=2,4,6==> iside = 2 : min
+    ! original code :
+    idims = ceiling(real(iB,kind=dp)/2.0_dp)
+    iside = iB-2*(idims-1)
+    ! * iB=1=> idims = ceiling(real(1,dp)/2.0_dp) = ceiling(1.0/2.0) = ceiling(0.5)
+    ! => idims = 1,iside = 1 - 2*(1-1) = 1
+    ! * iB=2=> idims = ceiling(2.0/2.0) = ceiling(1.0)
+    ! => idims = 1,iside = 2 - 2*(1-1) = 2
+    ! * iB=3=> idims = ceiling(3.0/2.0) = ceiling(1.5)
+    ! => idims = 2,iside = 3 - 2*(2-1) = 3 - 2 = 1
+    ! * iB=4=> idims = ceiling(4.0/2.0) = ceiling(2.0)
+    ! => idims = 2,iside = 4 - 2*(2-1) = 4 - 2 = 2
+    ! * iB=5=> idims = ceiling(5.0/2.0) = ceiling(2.5)
+    ! => idims = 3,iside = 5 - 2*(3-1) = 5 - 4 = 1
+    ! * iB=6=> idims = ceiling(6.0/2.0) = ceiling(3.0)
+    ! => idims = 3,iside = 6 - 2*(3-1) = 6 - 4 = 2
+
 
 
     !if(mype==0)then

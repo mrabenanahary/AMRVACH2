@@ -4,6 +4,15 @@ use mod_usr_methods, only: usr_special_bc
 use mod_bc_data, only: bc_data_set
 use mod_global_parameters
 
+! This subroutine is called by mod_ghostcells_update.t twice
+! in this case, the input integers are
+! ixG^L = ixGmin1,ixGmin2,ixGmax1,ixGmax2 (or ixCoGmin1,ixCoGmin2,ixCoGmax1,ixCoGmax2
+! when working with a coarsened grid)
+! = the range delimiting the whole domain (including boundary ghost cells), i.e. between integers
+! 1 and the highest possible indices for the coordinates for the grid for each dimension
+! and ixB^L = ixBmin1,ixBmin2,ixBmax1,ixBmax2 =
+! the range delimiting the boundary
+
 integer, intent(in) :: iside, idims, ixG^L,ixB^L
 double precision, intent(in) :: time,qdt
 double precision, intent(inout) :: w(ixG^S,1:nw)
@@ -65,8 +74,18 @@ select case (idims)
          select case (typeboundary(iw,iB))
          case ("symm")
             w(ixI^S,iw) = w(ixImax^D+nghostcells:ixImax^D+1:-1^D%ixI^S,iw)
+            !if(idims==2.and.iside==1)then
+            !print*,'ixImin^D=',ixImin^DD
+            !print*,'ixImax^D=',ixImax^DD
+            !end if
+            !ixImin^D=           3           1
+            !ixImax^D=          10           2            
          case ("asymm")
             w(ixI^S,iw) =-w(ixImax^D+nghostcells:ixImax^D+1:-1^D%ixI^S,iw)
+            !if(idims==2.and.iside==1)then
+            !print*,'ixImin^D=',ixImin^DD
+            !print*,'ixImax^D=',ixImax^DD
+            !end if
          case ("cont")
             do ix^D=ixImin^D,ixImax^D
                w(ix^D^D%ixI^S,iw) = w(ixImax^D+1^D%ixI^S,iw)
@@ -156,16 +175,16 @@ if (any(typeboundary(1:nwflux,iB)=="character")) then
      end if \}
   end select
   if(ixGmax1==ixGhi1) then
-    call identifyphysbound(saveigrid,isphysbound,iib^D)   
+    call identifyphysbound(saveigrid,isphysbound,iib^D)
     if(iib1==-1.and.iib2==-1) then
-      do ix2=nghostcells,1,-1 
-        do ix1=nghostcells,1,-1 
+      do ix2=nghostcells,1,-1
+        do ix1=nghostcells,1,-1
           w(ix^D,1:nwflux)=(w(ix1+1,ix2+1,1:nwflux)+w(ix1+1,ix2,1:nwflux)+w(ix1,ix2+1,1:nwflux))/3.d0
         end do
       end do
     end if
     if(iib1== 1.and.iib2==-1) then
-      do ix2=nghostcells,1,-1 
+      do ix2=nghostcells,1,-1
         do ix1=ixMmax1+1,ixGmax1
           w(ix^D,1:nwflux)=(w(ix1-1,ix2+1,1:nwflux)+w(ix1-1,ix2,1:nwflux)+w(ix1,ix2+1,1:nwflux))/3.d0
         end do
@@ -173,7 +192,7 @@ if (any(typeboundary(1:nwflux,iB)=="character")) then
     end if
     if(iib1==-1.and.iib2== 1) then
       do ix2=ixMmax2+1,ixGmax2
-        do ix1=nghostcells,1,-1 
+        do ix1=nghostcells,1,-1
           w(ix^D,1:nwflux)=(w(ix1+1,ix2-1,1:nwflux)+w(ix1+1,ix2,1:nwflux)+w(ix1,ix2-1,1:nwflux))/3.d0
         end do
       end do
