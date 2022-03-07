@@ -77,6 +77,8 @@ module mod_usr
 
 contains
   subroutine usr_init
+    ! order of call : 1,
+    ! amrvac.t:read_arguments() ->  amrvac.t:usr_init() (THIS PROCEDURE)
     use mod_hd, only : hd_activate
     use mod_mhd, only : mhd_activate
     ! .. local ..
@@ -84,6 +86,14 @@ contains
     !-------------------------------------------
     ! configuration of procedures to be used in this project
     usr_set_parameters  => initglobaldata_usr
+    ! order of call : 2,
+    ! amrvac.t:read_arguments() ->  amrvac.t:usr_init()
+    ! -> amrvac.t:initialize_amrvac():
+    ! phys_check() --> read_par_files() (in mod_initialize.t:initialize_amrvac)
+    ! (read parameters from filelist,savelist,stoplist,methodlist,boundlist,meshlist,paramlist,emissionlist)
+    ! --> initialize_vars() (Initialize (and allocate) simulation and grid variables)
+    ! --> bc_data_init()+read_data_init() (Possibly load boundary condition data or initial data)
+    ! --> usr_set_parameters (THIS PROCEDURE)
     usr_init_one_grid   => initonegrid_usr
     usr_special_bc      => specialbound_usr
     usr_aux_output      => specialvar_output
@@ -96,26 +106,40 @@ contains
     usr_internal_bc     => usr_special_internal_bc
     usr_reset_solver    => special_reset_solver
     usr_gravity         => special_pointmass_gravity
-    call usr_set_default_parameters
+    call usr_set_default_parameters ! >mod_obj_usr_yso_jet.t
 
 
 
-    call usr_physunit%set_default
+    call usr_physunit%set_default ! >mod_obj_usr_unit.t
 
 
 
     ! set default values for ISMs configuration
-    call ism_default%set_default
+    ! this also set ism_default%myboundaries%myconfig with their default values
+    call ism_default%set_default ! >mod_obj_ism.t
 
 
     ! set default values for clouds configuration
-    call cloud_default%set_default
+    ! this also set cloud_default%myboundaries%myconfig with their default values
+    call cloud_default%set_default !>mod_obj_cloud.t
 
-    ! set default values for clouds configuration
-    call jet_yso_default%set_default
+    ! set default values for jets configuration
+    ! since jet_yso has no bc, no need here to
+    ! also set jet_yso_default%myboundaries%myconfig which does not exist
+    call jet_yso_default%set_default !>mod_obj_cla_jet.t
 
-    call usr_params_read(par_files)
-
+    ! read .par parameters for ISMs, then, clouds, then jets
+    call usr_params_read(par_files) ! >mod_obj_usr_yso_jet.t
+    ! WHAT usr_params_read DOES:
+    !0) Read user-defined user configuration usrconfig from &usr_list in .par
+    !1) Read user-defined physical units in .par
+    !2) If ism on, set all usr ISMs parameters to their default values
+    ! and then read their user-defined parameters in .par
+    ! and sets their boundary conditions types with the user-defined ism_config
+    !3) If cloud on, set all usr clouds parameters to their default values
+    ! and then read their user-defined parameters in .par
+    !4) If jet on, set all usr jets parameters to their default values
+    ! and then read their user-defined parameters in .par
 
 
     ! complet all physical unit in use
@@ -124,6 +148,7 @@ contains
     end if
     call usr_physical_unit
 
+    ! set the code global coordinates system in use
     call set_coordinate_system(trim(usrconfig%coordinate_system))
     select case(trim(usrconfig%phys_inuse))
     case('hd')
@@ -218,7 +243,7 @@ contains
 
 
 
-
+    !1) Read user-defined physical units
     if(usrconfig%physunit_on)then
       call usr_physunit%read_parameters(usr_physunit%myconfig,files)
     else
@@ -227,7 +252,8 @@ contains
     end if
 
 
-
+    !2) If ism on, set all usr ISMs parameters to their default values
+    ! and then read their user-defined parameters
     if(usrconfig%ism_on)then
       allocate(ism_surround(0:usrconfig%ism_number-1))
       Loop_allism : do i_ism =0,usrconfig%ism_number-1
@@ -239,6 +265,8 @@ contains
       end do Loop_allism
     end if
 
+    !3) If cloud on, set all usr clouds parameters to their default values
+    ! and then read their user-defined parameters
     if(usrconfig%cloud_on)then
       allocate(cloud_medium(0:usrconfig%cloud_number-1))
       Loop_allcloud : do i_cloud =0,usrconfig%cloud_number-1
@@ -250,6 +278,8 @@ contains
       end do Loop_allcloud
     end if
 
+    !4) If jet on, set all usr jets parameters to their default values
+    ! and then read their user-defined parameters
     if(usrconfig%jet_yso_on)then
       allocate(jet_yso(0:usrconfig%jet_yso_number-1))
       Loop_alljetagn : do i_jet_yso =0,usrconfig%jet_yso_number-1
@@ -439,29 +469,7 @@ contains
         kB=kB_cgs
       end if
 
-      write(*,*) ' mod_obj_usr_yso_jet.t--> initglobaldata_usr'
-      write(*,*) 'phys_config (before): chemical_composition | xHe | mean_nall_to_nH |',&
-      ' mean_mass | mean_ne_to_nH | %mean_mup '
-      write(*,*) phys_config%chemical_gas_type,&
-      phys_config%He_abundance,&
-      phys_config%mean_nall_to_nH,&
-      phys_config%mean_mass,&
-      phys_config%mean_ne_to_nH,&
-      phys_config%mean_mup
 
-      !call phys_fill_chemical_ionisation(phys_config%He_abundance,phys_config%chemical_gas_type, &
-      !   phys_config%mean_nall_to_nH,phys_config%mean_mass,&
-      !  phys_config%mean_mup,phys_config%mean_ne_to_nH)
-
-      !write(*,*) ' mod_obj_usr_yso_jet.t--> initglobaldata_usr'
-      !write(*,*) 'phys_config (after): chemical_composition | xHe | mean_nall_to_nH |',&
-      !' mean_mass | mean_ne_to_nH | %mean_mup '
-      !write(*,*) phys_config%chemical_gas_type,&
-      !phys_config%He_abundance,&
-      !phys_config%mean_nall_to_nH,&
-      !phys_config%mean_mass,&
-      !phys_config%mean_ne_to_nH,&
-      !phys_config%mean_mup
 
       cond_gamma_1 : if(dabs(phys_config%gamma-1.0_dp)<smalldouble) then
         if(usrconfig%phys_temperature_isotherm>0.0_dp) then
@@ -1116,9 +1124,29 @@ return
     integer                 :: i_start,i_end,i_dust
     logical                 :: patch_all(ixI^S),patch_inuse(ixI^S)
     real(dp)                :: cloud_profile(ixI^S,1:nw)
+    real(dp),allocatable    :: wp(:^D&,:)
+    logical                    :: isboundary,to_fix,bc_to_fix,some_unfixed
+    character(len=30)          :: myboundary_cond
     !-------------------------------------
+    ! * According to subroutine bc_phys in which it is called by mod_ghostcells_update.t twice:
+    ! The input integers are ixI^L=ixG^L=ixG^LL=ixGlo1,ixGlo2,ixGhi1,ixGhi2
+    ! and ixO^L=ixI^L defined from ixB^L in bc_phys as :
+    ! > idims = 1, iside==2 (maximal boundary)
+    ! ==> ixImin1=ixBmax1+1-nghostcells;ixImin2=ixBmin2;ixImax1=ixBmax1;ixImax2=ixBmax2;
+    ! > idims = 1, iside==1 (minimal boundary)
+    ! ==> ixImin1=ixBmin1;ixImin2=ixBmin2;ixImax1=ixBmin1-1+nghostcells;ixImax2=ixBmax2;
+    ! > idims = 2, iside==2 (maximal boundary)
+    ! ==> ixImin1=ixBmin1;ixImin2=ixBmax2+1-nghostcells;ixImax1=ixBmax1;ixImax2=ixBmax2;
+    ! > idims = 2, iside==1 (minimal boundary)
+    ! ==> ixImin1=ixBmin1;ixImin2=ixBmin2;ixImax1=ixBmax1;ixImax2=ixBmin2-1+nghostcells;
+    ! to sum up, the range delimiting each boundary individually
+    !TO MODIFY
 
-    patch_all(ixO^S) = .true.
+
+    allocate(wp(ixI^S,1:nw))
+    wp(ixI^S,1:nw)=w(ixI^S,1:nw)
+
+    patch_all(ixI^S) = .true.
     i_object_w_dust = 1
     !write(*,*) 'iB=', iB
     !if (MOD(iB,2) .eq. 0) then
@@ -1159,17 +1187,34 @@ return
     cond_ism_on: if(usrconfig%ism_on)then
      Loop_isms : do i_ism=0,usrconfig%ism_number-1
       ism_surround(i_ism)%subname='specialbound_usr'
-      !write(*,*) 'call it here !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-      !write(*,*) '>>present boundary_cond='
-      !do idims2=1,ndim
-        !do iside2=1,2
-          !write(*,*) '>idims=', idims2
-          !write(*,*) '>iside=', iside2
-          !write(*,*) '>boundary_cond(idims,iside)=', ism_surround(i_ism)%myconfig%boundary_cond(idims2,iside2)
-        !end do
-      !end do
-      !write(*,*) '> treating boundary_cond for (idims,iside)=',idims,iside
-      call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,isboundary_iB=(/idims,iside/))
+
+
+
+        !Here we set the user-defined boundary conditions already read from .par parameters files
+        !call ism_surround(i_ism)%myboundaries%set_w(ixI^L,ixO^L,iB,idims,iside,&
+        !                              ism_surround(i_ism)%patch,x,w)
+        ! if does not work, maybe try with replacingism_surround(i_ism)%patch by .true. array everywhere
+        !print*,'all(x(ixO^S,idims)<=xprobmin2)=',all(x(ixO^S,idims)<=xprobmin2)
+        !print*,'boundary conditions: (idims,iside,iB)=',idims,iside,iB
+        !print*, ism_surround(i_ism)%myboundaries%myconfig%boundary_type(idims,iside)
+
+
+
+        if(.not.allocated(ism_surround(i_ism)%patch)) then
+         allocate(ism_surround(i_ism)%patch(ixI^S))
+         ism_surround(i_ism)%patch              = .true.
+        end if
+
+        myboundary_cond = ism_surround(i_ism)%myboundaries%myconfig%boundary_type(idims,iside)
+
+
+        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,wp,isboundary_iB=(/idims,iside/))
+        if(trim(myboundary_cond)/='fix')then
+          call ism_surround(i_ism)%myboundaries%set_w(ixI^L,ixO^L,iB,idims,iside,&
+                                    ism_surround(i_ism)%patch,x,wp)
+        end if
+        w(ixO^S,1:nw)=wp(ixO^S,1:nw)
+        deallocate(wp)
 
       patch_all(ixO^S) =  patch_all(ixO^S) .and.(.not.ism_surround(i_ism)%patch(ixO^S))
       if(ism_surround(i_ism)%myconfig%dust_on)the_dust_inuse(i_object_w_dust)=ism_surround(i_ism)%mydust

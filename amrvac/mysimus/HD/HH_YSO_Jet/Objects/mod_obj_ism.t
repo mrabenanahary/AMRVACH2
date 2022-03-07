@@ -57,6 +57,7 @@ module mod_obj_ism
 
 
       logical              :: ism_display_parameters     !> ISM display of parameters at the end of the set_profile subroutine
+      logical              :: w_already_initialized
       logical              :: profile_on        !> ISM profile set
       logical              :: bc_profile_on        !> ISM profile set
       real(dp)             :: profile_idir(3)   !> IMS profile direction
@@ -341,6 +342,7 @@ contains
      self%myconfig%profile_force_gradP_on = .false.
 
      self%myconfig%ism_display_parameters    = .false.
+     self%myconfig%w_already_initialized   = .false.
      self%myconfig%profile_on            = .false.
      self%myconfig%bc_profile_on            = .true. !< when profile_on = .true.,
      !bc_profile_on should be true by default by convenience
@@ -372,7 +374,7 @@ contains
      self%myconfig%reset_scale           = 0.0_dp
      self%myconfig%reset_on              = .false.
      self%myconfig%boundary_on           = .false.
-     self%myconfig%boundary_cond         = 'open'
+     self%myconfig%boundary_cond         = 'fix'!'open'
      self%myconfig%flux_frac             = 1.0d-2
      self%myconfig%nghostcells           = 2
      self%myconfig%useprimitive         = .false.
@@ -855,8 +857,8 @@ contains
     real(kind=dp), intent(in)     :: x(ixI^S,1:ndim)
     real(kind=dp)                 :: w(ixI^S,1:nw)
     real(kind=dp),allocatable     :: w_tmp(:^D&,:)
-    integer,             optional :: isboundary_iB(2)
     class(ism)                    :: self
+    integer,             optional :: isboundary_iB(2)
     ! .. local..
     integer                    :: idir,iB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
     real(kind=dp)              :: fprofile(ixI^S)
@@ -865,284 +867,145 @@ contains
     character(len=64)          :: aString
     !----------------------------------
 
+    if(.not.self%myconfig%w_already_initialized)self%myconfig%w_already_initialized=.true.
 
 
     if(.not.allocated(self%patch)) then
      allocate(self%patch(ixI^S))
      self%patch              = .true.
     end if
-    cond_B_present : if(present(isboundary_iB))then
-    !write(*,*) '>1)isiB1= isib2=', isboundary_iB(1),' ', isboundary_iB(2)
-    !write(*,*) '>boundary_cond = ', self%myconfig%boundary_cond(isboundary_iB(1),isboundary_iB(2))
-
-
-
-      {^D&
-        idims=^D
-        if(isboundary_iB(1)==idims.and.isboundary_iB(2)==1) then
-         if(all(x(ixO^S,idims)<=xprobmin^D))then
-           isboundary=.true.
-           ! original : IB = 2*(idims-1)+1
-           ! 03-03-2022 : we defined idims=(iB+1)/2 in mod_usr_yso_jet.t
-           ! ==> 2*idims = iB +1 ==> iB = 2*idims-1= 2*idims - 2 +1
-           ! ==> iB = 2*(idims-1)+1 which is identical to the original
-           iB = 2*(idims-1)+1
-           idims_bound = idims
-         end if
-        end if
-        if(isboundary_iB(1)==idims.and.isboundary_iB(2)==2) then
-         if(all(x(ixO^S,idims)>=xprobmax^D))then
-           isboundary=.true.
-           ! original : IB = 2*idims
-           ! 03-03-2022 : we defined idims=iB/2 in mod_usr_yso_jet.t
-           ! ==> iB = 2*idims which is identical to the original
-           iB = 2*idims
-           idims_bound = idims
-         end if
-        end if
-      \}
-
-      !if(mype==0)then
-        !write(*,*) '*****Conditions for boundary number iB=', iB,'*****'
-        !write(*,*) '* ...corresponding to (idims,iside)=', isboundary_iB(1),isboundary_iB(2)
-      !end if
-
-      myboundary_cond = self%myconfig%boundary_cond(isboundary_iB(1),isboundary_iB(2))
-
-      !if(mype==0)then
-        !write(*,*) '* ...and which boundary condition is =', myboundary_cond
-        !write(*,*) '************************************************************'
-        !write(*,*) 'present myboundary_cond=', myboundary_cond
-      !end if
-    else cond_B_present
-      isboundary=.false.
-      myboundary_cond = 'notbc_but_fix'
-      !write(*,*) 'not present myboundary_cond=', myboundary_cond
-    end if cond_B_present
 
 
 
 
-    ! write(*,*) 'Debug mode'
-    ! Start of the conditional loop when we treat the domain without the boundaries
-    ! or when my_boundary=='fix' : to modify in order
-    ! to change what 'fix' do
-    ! + Start of  the loop for any my_boundary is other than 'fix' and
-    ! mixed_fixed_bound comport a flux variable which is set to true : similar to what
-    ! my_boundary=='fix' does but only along one flux index (e.g. v_phi)
-
-
-
-    !if(present(isboundary_iB))then
-    !write(*,*) '>2)isiB1= isib2=', isboundary_iB(1),' ', isboundary_iB(2)
-    !write(*,*) '>mixed_fixed_bound = ', self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)
-    !end if
-
-    !if we want to fix the inner domain or if we need to fix all variables in the boundaries...
-    to_fix = ((.not.isboundary).or.(trim(myboundary_cond)=='fix'))
-
-    if(isboundary) then
-      !...or if we have boundary conditions such that one variable must be fixed in those boundaries
-      !write(*,*) '>mixed_fixed_bound = ', self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)
-      !write(*,*) 'any(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7))'
-      !write(*,*) '=', any(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7))
-      to_fix = to_fix.or.((isboundary).and.any(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)))
-      !write(*,*) '>mixed_fixed_bound = ', self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)
-      !write(*,*) 'any(.not.self%myconfig%mixed_fixed_bound(isboundary_iB(1),'
-      !write(*,*) 'isboundary_iB(2),1:7))'
-      !write(*,*) '=', any(.not.self%myconfig%mixed_fixed_bound(isboundary_iB(1),&
-      !isboundary_iB(2),1:7))
-      some_unfixed = any(.not.self%myconfig%mixed_fixed_bound(isboundary_iB(1),&
-      isboundary_iB(2),1:7))
-    end if
-
-
-
-    boundary_cond : if(to_fix) then
-
-      !1) First, set all boundary conditions related to
-      ! (isboundary_iB(1),isboundary_iB(2))
-      ! = (/idims,iside/) according to what
-      ! my_boundary = self%myconfig%boundary_cond(isboundary_iB(1),isboundary_iB(2))
-      ! tells
-      ! <=> If some boundary conditions are not 'fixed'
-      if(isboundary.and.some_unfixed)then
-        !write(*,*) '>>some bc are unfixed'
-        !write(*,*) '> mixed_fixed_bound = ', self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)
-        do idims2=1,ndim
-          do iside2=1,2
-            !write(*,*) '>idims=', idims2
-            !write(*,*) '>iside=', iside2
-            !write(*,*) 'self%myconfig%boundary_cond = ',self%myconfig%boundary_cond(idims2,iside2)
-            !write(*,*) 'self%myboundaries%myconfig%boundary_type = ',self%myboundaries%myconfig%boundary_type(idims2,iside2)
-          end do
-        end do
-        if(any(self%patch(ixO^S))) then
-          call self%myboundaries%set_w(ixI^L,ixO^L,iB,isboundary_iB(1),isboundary_iB(2),&
-                                  self%patch,x,w)
-        end if
-      end if
-
-      bc_to_fix = .false.
-
-      !2) Then, in any cases,
-      ! make sure that the variable w(ixO^S,1:7) are fixed accordingly:
-
-      if(isboundary)bc_to_fix = self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),phys_ind%rho_)
-      ! initialize uniform inner grid or fix density in boundaries
-      update_rho : if((.not.isboundary).or.bc_to_fix)then
-        if(trim(self%myconfig%profile_density)=='Ulrich1976')then
-          where(self%patch(ixO^S))
-              w(ixO^S,phys_ind%rho_)        =  self%myconfig%profile_rho_0
-          end where
-        else
-          where(self%patch(ixO^S))
-              w(ixO^S,phys_ind%rho_)        =  self%myconfig%density
-          end where
-        end if
-      end if update_rho
-
-      if(isboundary)bc_to_fix = self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),phys_ind%pressure_)
-      ! if energy is evolved: initialize uniform inner grid or fix pressure in boundaries
-      if(phys_config%energy)then
-        update_p : if((.not.isboundary).or.bc_to_fix)then
-          if(trim(self%myconfig%profile_density)=='Ulrich1976')then
-            where(self%patch(ixO^S))
-                w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure_Ulrich
-            end where
-          else
-            where(self%patch(ixO^S))
-                w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure
-            end where
+      cond_B_present : if(present(isboundary_iB))then
+        {^D&
+          idims=^D
+          if(isboundary_iB(1)==idims.and.isboundary_iB(2)==1) then
+           if(all(x(ixO^S,idims)<=xprobmin^D))then
+             isboundary=.true.
+             IB = 2*(idims-1)+1
+             idims_bound = idims
+           end if
           end if
-        end if update_p
-      end if
+          if(isboundary_iB(1)==idims.and.isboundary_iB(2)==2) then
+           if(all(x(ixO^S,idims)>=xprobmax^D))then
+             isboundary=.true.
+             IB = 2*idims
+             idims_bound = idims
+           end if
+          end if
+        \}
+        myboundary_cond = self%myconfig%boundary_cond(isboundary_iB(1),isboundary_iB(2))
+      else cond_B_present
+        isboundary=.false.
+        myboundary_cond = 'fix'
+      end if cond_B_present
 
-      ! initialize uniform inner grid or fix velocities in boundaries
-      Loop_idir : do idir=1,ndir
-        if(isboundary)bc_to_fix = self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),phys_ind%mom(idir))
-        update_mom : if((.not.isboundary).or.bc_to_fix)then
-          if(trim(self%myconfig%profile_density)=='Ulrich1976')then
 
-               where(  self%patch(ixO^S))
-                 !----------------------------------------------------
-                 !lines to modify if we want to change the velocity
-                 !put for each time step at any boundary
-                 !set to 'fix' with Ulrich1976 model
-                 !----------------------------------------------------
-                  w(ixO^S,phys_ind%mom(idir)) = self%myconfig%profile_vd
-               end where
+      !boundary_cond : if(.not.isboundary.or.&
+      !                      trim(myboundary_cond)=='fix') then
 
-          else
-
-             where(  self%patch(ixO^S))
-               !----------------------------------------------------
-               !lines to modify if we want to change the velocity
-               !put for each time step at any boundary
-               !set to 'fix'
-               !----------------------------------------------------
-                w(ixO^S,phys_ind%mom(idir)) = self%myconfig%velocity(idir)
+           if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+             where(self%patch(ixO^S))
+                 w(ixO^S,phys_ind%rho_)        =  self%myconfig%profile_rho_0
              end where
+           else
+             where(self%patch(ixO^S))
+                 w(ixO^S,phys_ind%rho_)        =  self%myconfig%density
+             end where
+           end if
+           if(phys_config%energy)then
+             if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+               where(self%patch(ixO^S))
+                   w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure_Ulrich
+               end where
+             else
+               where(self%patch(ixO^S))
+                   w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure
+               end where
+             end if
+           end if
 
-          end if
-        end if update_mom
-      end do Loop_idir
 
-
-      ! add profile to ISM density, pressure and eventually velocity
-      ! in the inner grid or to boundaries
-      if(isboundary)bc_to_fix = any(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7))
-      treat_profile: if((.not.isboundary).or.bc_to_fix)then
-        add_profile : if(self%myconfig%profile_on) then
-          !when treating the inner domain
-          !or in case 'fix' conditions is called at every bc flux variables
-          cond_fix : if((.not.isboundary).or.trim(myboundary_cond)=='fix')then
-            !apply the profile to rho,p and mom(:)
-            call self%set_profile(ixI^L,ixO^L,x,w)
-
-            ! when treating the boundaries of the domain
-            ! in case any other bc conditions is called and that one of the
-            ! nwfluxbc flux bc variables must be fixed
-          else if(isboundary.and.&
-          any(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),1:7)))then cond_fix
-
-            !make sure to work with a fresh untouched wtmp version
-            if(.not.allocated(w_tmp)) then
-              allocate(w_tmp(ixI^S,1:nw))
-            else
-              deallocate(w_tmp)
-              allocate(w_tmp(ixI^S,1:nw))
-            end if
-
-            !store the uniformly initialized w into a separate w_tmp
-            w_tmp(ixO^S,1:nw) = w(ixO^S,1:nw)
-            !apply the profile on w_tmp only
-            call self%set_profile(ixI^L,ixO^L,x,w_tmp)
-
-            ! modify only the flux variable to be fixed in w
-
-            do iwfluxbc=1,nwfluxbc
-              if(self%myconfig%mixed_fixed_bound(isboundary_iB(1),isboundary_iB(2),iwfluxbc))then
-                where(self%patch(ixO^S))
-                  w(ixO^S,iwfluxbc)=w_tmp(ixO^S,iwfluxbc)
+           if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+              !----------------------------------------------------
+              !line to modify if we want to change the velocity
+              !put for each time step at any boundary
+              !set to 'fix'
+              !----------------------------------------------------
+              do idir=1,ndir
+                where(  self%patch(ixO^S))
+                    !----------------------------------------------------
+                    !line to modify if we want to change the velocity
+                    !put for each time step at any boundary
+                    !set to 'fix'
+                    !----------------------------------------------------
+                     w(ixO^S,phys_ind%mom(idir)) = self%myconfig%profile_vd
+                  end where
+              end do
+             else
+               do idir=1,ndir
+                where(  self%patch(ixO^S))
+                !----------------------------------------------------
+                !line to modify if we want to change the velocity
+                !put for each time step at any boundary
+                !set to 'fix'
+                !----------------------------------------------------
+                 w(ixO^S,phys_ind%mom(idir)) = self%myconfig%velocity(idir)
                 end where
-              end if
-            end do
+               end do
+             end if
 
-            !don t forget to free memory :
-            deallocate(w_tmp)
-          else cond_fix
-            !write(*,*) 'Unknown case of bc conditions or inner domain ...'
-            call mpistop(' ... initialization at cond_fix')
-          end if cond_fix
-        end if add_profile
-      end if treat_profile
 
-    !Treat mean_mup the same way everywhere :
-    if(phys_config%mean_mup_on) then
-      where(self%patch(ixO^S))
-       w(ixO^S,phys_ind%mup_) = self%myconfig%mean_mup
-      end where
-    end if
+             ! add profile to ISM density and pressure
+             if(self%myconfig%profile_on) then
+                call self%set_profile(ixI^L,ixO^L,x,w)
+             end if
 
-    !Treat tracers the same way everywhere:
-    cond_tracer_on :if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
-                     .and.self%myconfig%itr<=phys_config%n_tracer)then
-      if(self%myconfig%tracer_init_density>0.0_dp) then
-        where(self%patch(ixO^S))
-         w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = self%myconfig%tracer_init_density
-        end where
-      else
-        where(self%patch(ixO^S))
-         w(ixO^S,phys_ind%tracer(self%myconfig%itr)) =  w(ixO^S,phys_ind%rho_)
-        end where
-      end if
-      itr=itr+1
-    end if cond_tracer_on
 
-    !Treat dust the same way  everywhere
-    cond_dust_on : if( self%myconfig%dust_on)then
-      call self%mydust%set_patch(ixI^L,ixO^L,self%patch)
-      self%mydust%myconfig%velocity= self%myconfig%velocity
-      fprofile = 1.0_dp
-      call   self%mydust%set_w(ixI^L,ixO^L,qt,.false., self%myconfig%dust_frac,fprofile,x,w)
-    end if cond_dust_on
 
-      ! End of the conditional loop for initialization of the inner domaine
-      ! or when my_boundary=='fix' or when mixed 'fix' boundary conditions are input
-      ! Start of  the loop for any other my_boundary : call to set_w which
-      ! set the conditions in the boundaries from mod_obj_mat.t
-      else if(isboundary.and.(trim(myboundary_cond)/='fix'))then boundary_cond
-        !write(*,*) '>> here is the boundary (idims,iside) = ',isboundary_iB(1),isboundary_iB(2),'...'
-        !write(*,*) '>> ...where no bc are fixed but we get the condition : ', myboundary_cond
-        if(any(self%patch(ixO^S))) then
-          call self%myboundaries%set_w(ixI^L,ixO^L,iB,isboundary_iB(1),isboundary_iB(2),&
-                                  self%patch,x,w)
-        end if
-      else boundary_cond
-        write(*,*) 'Unknown case of bc conditions or inner domain...'
-        call mpistop('...initialization at boundary_cond')
-    end if boundary_cond
+
+             if(phys_config%mean_mup_on) then
+               where(self%patch(ixO^S))
+                w(ixO^S,phys_ind%mup_) = self%myconfig%mean_mup
+               end where
+             end if
+
+             cond_tracer_on :if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
+                                .and.self%myconfig%itr<=phys_config%n_tracer)then
+               if(self%myconfig%tracer_init_density>0.0_dp) then
+               where(self%patch(ixO^S))
+                w(ixO^S,phys_ind%tracer(self%myconfig%itr)) = self%myconfig%tracer_init_density
+               end where
+               else
+               where(self%patch(ixO^S))
+                w(ixO^S,phys_ind%tracer(self%myconfig%itr)) =  w(ixO^S,phys_ind%rho_)
+               end where
+               end if
+               itr=itr+1
+             end if cond_tracer_on
+
+
+
+             cond_dust_on : if( self%myconfig%dust_on)then
+               call self%mydust%set_patch(ixI^L,ixO^L,self%patch)
+               self%mydust%myconfig%velocity= self%myconfig%velocity
+               fprofile = 1.0_dp
+               call   self%mydust%set_w(ixI^L,ixO^L,qt,.false., self%myconfig%dust_frac,fprofile,x,w)
+             end if cond_dust_on
+
+         !else if(isboundary) then boundary_cond
+         !    if(any(self%patch(ixO^S))) then
+         !      call self%myboundaries%set_w(ixI^L,ixO^L,iB,isboundary_iB(1),isboundary_iB(2),&
+         !                               self%patch,x,w)
+         !    end if
+         !end if boundary_cond
+
+
+
+
+
 
 
 

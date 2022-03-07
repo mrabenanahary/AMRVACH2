@@ -74,18 +74,14 @@ select case (idims)
          select case (typeboundary(iw,iB))
          case ("symm")
             w(ixI^S,iw) = w(ixImax^D+nghostcells:ixImax^D+1:-1^D%ixI^S,iw)
-            !if(idims==2.and.iside==1)then
-            !print*,'ixImin^D=',ixImin^DD
-            !print*,'ixImax^D=',ixImax^DD
-            !end if
-            !ixImin^D=           3           1
-            !ixImax^D=          10           2            
+            if(idims==2.and.iside==1)then
+            !print*,'1)ixImin^D=',ixImin^DD
+            !print*,'2)ixImax^D=',ixImax^DD
+            end if
+            !1)ixImin^D=           3           1
+            !2)ixImax^D=          12           2
          case ("asymm")
             w(ixI^S,iw) =-w(ixImax^D+nghostcells:ixImax^D+1:-1^D%ixI^S,iw)
-            !if(idims==2.and.iside==1)then
-            !print*,'ixImin^D=',ixImin^DD
-            !print*,'ixImax^D=',ixImax^DD
-            !end if
          case ("cont")
             do ix^D=ixImin^D,ixImax^D
                w(ix^D^D%ixI^S,iw) = w(ixImax^D+1^D%ixI^S,iw)

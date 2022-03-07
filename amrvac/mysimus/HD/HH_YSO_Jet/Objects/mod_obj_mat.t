@@ -93,7 +93,7 @@ subroutine usr_boundaries_set_complet(self)
   integer                               :: idims,iside,idir
    !------------------------------------
   if(allocated(self%variable_typebound))deallocate(self%variable_typebound)
-  allocate(self%variable_typebound(ndim,2,phys_config%nw))
+  allocate(self%variable_typebound(ndim,2,nwfluxbc))
 
   self%myconfig%nghostcells=nghostcells
   Loop_idims : do idims=1,ndim
@@ -137,9 +137,9 @@ subroutine usr_boundaries_set_complet(self)
        self%variable_typebound(idims,iside,:)='cont'
      case('disc')
        self%variable_typebound(idims,iside,:)='symm'
-       self%variable_typebound(idims,iside,phys_ind%mom(r_))='symm'
-       self%variable_typebound(idims,iside,phys_ind%mom(phi_))='symm'
-       self%variable_typebound(idims,iside,phys_ind%mom(z_))='asymm'
+       self%variable_typebound(idims,iside,2)='symm'
+       self%variable_typebound(idims,iside,3)='asymm'
+       self%variable_typebound(idims,iside,4)='symm'
      case('axis')
       self%variable_typebound(idims,iside,:)='symm'
       self%variable_typebound(idims,iside,phys_ind%mom(r_))='asymm'
@@ -163,7 +163,7 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
   real(kind=dp), intent(inout)           :: w(ixI^S,1:nw)
   class(usrboundary_type)                :: self
   ! ... local ...
-  integer                                :: ixG^L,ix^D,iw
+  integer                                :: ixG^L,ix^D,iw,isymm,ixBC^L
   real(kind=dp)                          :: wp(ixI^S,1:nw)
 
 
@@ -182,26 +182,34 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
   ! ==> ixImin1=ixBmin1;ixImin2=ixBmax2+1-nghostcells;ixImax1=ixBmax1;ixImax2=ixBmax2;
   ! > idims = 2, iside==1 (minimal boundary)
   ! ==> ixImin1=ixBmin1;ixImin2=ixBmin2;ixImax1=ixBmax1;ixImax2=ixBmin2-1+nghostcells;
+  ! ==> no need to redefine ixO^L (or ixI^L in bc_phys) in this subroutine usr_boundaries_set_w,
+  ! manipulate w directly !
   ! to sum up, the range delimiting each boundary individually
   ! idims = the direction along which the boundary conditions must be applied
   ! iside = side (min or max) along which the bc must be applied
 
+
   ! 04-03-22 : must be corrected to be identical to bc_phys in boundary_conditions.t
   ! * make sure that the correct operations are done on the correct part(s) of the whole grid
+
+
 
 
   select case (idims)
   {case (^D)
    if (iside==2) then
       ! maximal boundary
-      ixGmin^DD=ixOmin^DD-self%myconfig%nghostcells(^DD)*merge(1,0,^DD==^D);
-      ixGmax^DD=ixOmax^DD-self%myconfig%nghostcells(^DD)*merge(1,0,^DD==^D);
+      ! 05-03-22 : the way this subroutine is called from usr_special_bc      => specialbound_usr
+      ! in mod_obj_usr_yso_jet.t, there is no need to redefine the input/output integers:
+
+      !ixGmin^DD=ixOmin^DD-self%myconfig%nghostcells(^DD)*merge(1,0,^DD==^D);
+      !ixGmax^DD=ixOmax^DD-self%myconfig%nghostcells(^DD)*merge(1,0,^DD==^D);
       wp(ixG^S,1:nw) = w(ixG^S,1:nw)
       if(self%myconfig%useprimitive)then
        call phys_to_primitive(ixI^L,ixG^L,wp,x)
       end if
       ! cont/symm/asymm types
-      do iw=1,phys_config%nwfluxbc
+      do iw=1,nwfluxbc
          select case (self%variable_typebound(idims,iside,iw))
          case ("symm")
            where(patchw(ixG^S))
@@ -309,130 +317,177 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
       end do
    else
       ! minimal boundary
-      ixGmin^DD=ixOmin^DD+self%myconfig%nghostcells(^DD)*merge(1,0,^DD==^D);
-      ixGmax^DD=ixOmax^DD+self%myconfig%nghostcells(^DD)*merge(1,0,^DD==^D);
-      wp(ixG^S,1:nw) = w(ixG^S,1:nw)
+      ! 05-03-22 : the way this subroutine is called from usr_special_bc      => specialbound_usr
+      ! in mod_obj_usr_yso_jet.t, there is no need to redefine the input/output integers:
+      ! Legend:
+      ! * ixO^L = ixI^L of bc_phys = defined in boundary_conditions.t:getbc:bc_phys:usr_special_bc as the limits
+      ! of only the boundaries (i.e. the ghost cells only)
+      ! * ixI^L = general ixG^L = the whole domain (including the boundaries)
+      !if(iB/=ismin^D)call mpistop("iB is broken with ismin^D !!!")
+
+
+      !ixOmax^DD=ixOmax^DD^D%!ixOmax^DD=ixOmax^DD-nghostcells;
+      wp(ixI^S,1:nw) = w(ixI^S,1:nw)
       if(self%myconfig%useprimitive)then
-       call phys_to_primitive(ixI^L,ixG^L,wp,x)
+       call phys_to_primitive(ixI^L,ixO^L,wp,x)
       end if
       ! cont/symm/asymm types
-      do iw=1,phys_config%nwfluxbc
+      !print*, 'nwfluxbc = ',nwfluxbc
+      do iw=1,nwfluxbc
          select case (self%variable_typebound(idims,iside,iw))
          case ("symm")
-           where(patchw(ixG^S))
-            !w(ixO^S,iw) = wp(ixGmax^D:ixGmin^D:-1^D%ixI^S,iw)
-            !w(ixO^S,iw) = w(ixGmax^D:ixGmax^D:-1^D%ixG^S,iw)
-            w(ixG^S,iw) = w(ixGmax^D+self%myconfig%nghostcells(^D):ixGmax^D+1:-1^D%ixG^S,iw)
-           endwhere
-           !ixImin^D=           1           1
-           !ixImax^D=          12          12
-           !ixOmin^D=           3           1
-           !ixOmax^D=          10           2
-           !ixGmin^D=           3           3
-           !ixGmax^D=          10           4
-           !if(idims==2.and.iside==1)then
-           !print*,'ixImin^D=',ixImin^DD
-           !print*,'ixImax^D=',ixImax^DD
-           !print*,'ixOmin^D=',ixOmin^DD
-           !print*,'ixOmax^D=',ixOmax^DD
-           !print*,'ixGmin^D=',ixGmin^DD
-           !print*,'ixGmax^D=',ixGmax^DD
-           !end if
+               !print*, w(ixOmin1:ixOmax1,4,iw)
+               do isymm=0,nghostcells-1
+               {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+                if(patchw(ix^DD+1^D%ix^DD))then
+                  w(ix^DD-isymm^D%ix^DD,iw) = w(ix^DD+1+isymm^D%ix^DD,iw)
+                  !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+                end if
+               {^D%end do\}
+               end do
+               !print*, 'ixO^S=',ixOmin^DD,ixOmax^DD
+               !print*, '2*ixOmax^D-ixOmin^D:ixOmax^D+1 =', 2*ixOmax^D-ixOmin^D,ixOmax^D+1
+               !ixImin^D=           1           1
+               !ixImax^D=          12          12
+               !ixOmin^D=           3           1
+               !ixOmax^D=          12           2
+               !nghostcells=4:
+               !ixImin^D=           1           1
+               !ixImax^D=          16          16
+               !ixOmin^D=           5           1
+               !ixOmax^D=          16           4
+               !ixImin^D=           1           1
+               !ixImax^D=          16          16
+               !ixOmin^D=           5           1
+               !ixOmax^D=          12           4
+
+
+               !if(idims==2.and.iside==1)then
+               !print*,'ixImin^D=',ixImin^DD
+               !print*,'ixImax^D=',ixImax^DD
+               !print*,'ixOmin^D=',ixOmin^DD
+               !print*,'ixOmax^D=',ixOmax^DD
+               !print*,'ixGmin^D=',ixGmin^DD
+               !print*,'ixGmax^D=',ixGmax^DD
+               !print*,'ixBCmin^D=',ixBCmin^DD
+               !print*,'ixBCmax^D=',ixBCmax^DD
+               !end if
          case ("asymm")
-           where(patchw(ixG^S))
-            !w(ixO^S,iw) =-wp(ixGmax^D:ixGmin^D:-1^D%ixI^S,iw)
-            !w(ixO^S,iw) = -w(ixGmax^D:ixGmax^D:-1^D%ixG^S,iw)
-            w(ixG^S,iw) = -w(ixGmax^D+self%myconfig%nghostcells(^D):ixGmax^D+1:-1^D%ixG^S,iw)
-           endwhere
-           !if(idims==2.and.iside==1)then
-           !print*,'ixImin^D=',ixImin^DD
-           !print*,'ixImax^D=',ixImax^DD
-           !print*,'ixOmin^D=',ixOmin^DD
-           !print*,'ixOmax^D=',ixOmax^DD
-           !print*,'ixGmin^D=',ixGmin^DD
-           !print*,'ixGmax^D=',ixGmax^DD
-           !end if
+             !print*, w(ixOmin1:ixOmax1,4,iw)
+             do isymm=0,nghostcells-1
+             {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+              if(patchw(ix^DD+1^D%ix^DD))then
+                w(ix^DD-isymm^D%ix^DD,iw) = -w(ix^DD+1+isymm^D%ix^DD,iw)
+                !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+              end if
+             {^D%end do\}
+             end do
+             !{ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+             !w(ix^DD-2^D%ix^DD,iw) = -w(ix^DD+nghostcells+1^D%ix^DD,iw)
+             !{^D%end do\}
          case ("cont")
-            !do ix^D=ixOmin^D,ixOmax^D
-            do ix^D=ixGmin^D,ixGmax^D
-              !{^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}! original : doesn't work
-              {^NOONED where}{^IFONED if}(patchw(ix^D^D%ixG^S)){^IFONED then} ! works perfectly
-               !w(ix^D^D%ixO^S,iw) = wp(ixGmin^D^D%ixG^S,iw)  !original: doesn't work
-               w(ix^D^D%ixG^S,iw) = w(ixGmax^D+1^D%ixG^S,iw) !work perfectly, as copied from boundary_conditions.t
-               !w(ix^D^D%ixG^S,iw) = w(ixGmin^D^D%ixG^S,iw) !doesn't work
+            do ix^D=ixOmin^D,ixOmax^D
+              {^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}! original : does not work
+                w(ix^D^D%ixO^S,iw) = wp(ixGmin^D^D%ixG^S,iw)
               {^NOONED endwhere}{^IFONED end if}
             end do
          case("noinflow")
             if (iw==phys_ind%mom(idims))then
-              !do ix^D=ixOmin^D,ixOmax^D
-              do ix^D=ixGmin^D,ixGmax^D
-                !{^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}
-                {^NOONED where}{^IFONED if}(patchw(ix^D^D%ixG^S)){^IFONED then}
-                 !w(ix^D^D%ixO^S,iw) = min(wp(ixGmin^D^D%ixG^S,iw),zero)
-                 w(ix^D^D%ixG^S,iw) = min(w(ixGmax^D+1^D%ixG^S,iw),zero)
-                {^NOONED endwhere}{^IFONED end if}
+              !do ix^D=ixGmin^D,ixGmax^D
+                !{^NOONED where}{^IFONED if}((patchw(ix^D^D%ixG^S))){^IFONED then}
+                 !w(ix^D^D%ixO^S,iw) = min(w(ixGmax^D+1^D%ixG^S,iw),zero)
+                !{^NOONED endwhere}{^IFONED end if}
+               !end do
+               do isymm=0,nghostcells-1
+               {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+                if(patchw(ix^DD+1^D%ix^DD))then
+                  w(ix^DD-isymm^D%ix^DD,iw) = min(w(ix^DD+1^D%ix^DD,iw),zero)
+                  !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+                end if
+               {^D%end do\}
                end do
             else
-              !do ix^D=ixOmin^D,ixOmax^D
-              do ix^D=ixGmin^D,ixGmax^D
-                !{^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}
-                {^NOONED where}{^IFONED if}(patchw(ix^D^D%ixG^S)){^IFONED then}
-                 !w(ix^D^D%ixO^S,iw) = wp(ixGmin^D^D%ixG^S,iw)
-                 w(ix^D^D%ixG^S,iw) = w(ixGmax^D+1^D%ixG^S,iw)
-                {^NOONED endwhere} {^IFONED end if}
+              !do ix^D=ixGmin^D,ixGmax^D
+                !{^NOONED where}{^IFONED if}((patchw(ix^D^D%ixG^S))){^IFONED then}
+                 !w(ix^D^D%ixG^S,iw) = w(ixGmax^D+1^D%ixG^S,iw)
+                !{^NOONED endwhere} {^IFONED end if}
+               !end do
+               do isymm=0,nghostcells-1
+               {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+                if(patchw(ix^DD+1^D%ix^DD))then
+                  w(ix^DD-isymm^D%ix^DD,iw) = w(ix^DD+1^D%ix^DD,iw)
+                  !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+                end if
+               {^D%end do\}
                end do
             end if
          case("limitinflow")
             if (iw==phys_ind%mom(idims))then
-              !do ix^D=ixOmin^D,ixOmax^D
-              do ix^D=ixGmin^D,ixGmax^D
+              !do ix^D=ixGmin^D,ixGmax^D
                 !{^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}
-                {^NOONED where}{^IFONED if}(patchw(ix^D^D%ixG^S)){^IFONED then}
-                  !w(ix^D^D%ixO^S,iw) = min(wp(ixGmin^D-1^D%ixG^S,iw),&
-                  !                         self%myconfig%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
-                  w(ix^D^D%ixG^S,iw) = min(w(ixGmax^D+1^D%ixG^S,iw),&
-                                            self%myconfig%flux_frac*w(ixGmax^D+1^D%ixG^S,iw))
-                {^NOONED  end where}{^IFONED end if}
+                  !w(ix^D^D%ixO^S,iw) = max(wp(ixGmin^D-1^D%ixG^S,iw),&
+                  !                       self%myconfig%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
+                !{^NOONED  end where}{^IFONED end if}
+              !end do
+              do isymm=0,nghostcells-1
+              {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+               if(patchw(ix^DD+1^D%ix^DD))then
+                 w(ix^DD-isymm^D%ix^DD,iw) = min(w(ix^DD+1^D%ix^DD,iw),&
+                                          self%myconfig%flux_frac*w(ix^DD+1^D%ix^DD,iw))
+                 !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+               end if
+              {^D%end do\}
               end do
             else
-              !do ix^D=ixOmin^D,ixOmax^D
-              do ix^D=ixGmin^D,ixGmax^D
-                !{^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}
-                {^NOONED where}{^IFONED if}(patchw(ix^D^D%ixG^S)){^IFONED then}
-                  !w(ix^D^D%ixO^S,iw) = wp(ixOmin^D-1^D%ixO^S,iw)
-                  w(ix^D^D%ixG^S,iw) = w(ixGmax^D+1^D%ixG^S,iw)
-                {^NOONED  end where}{^IFONED end if}
+              !do ix^D=ixGmin^D,ixGmax^D
+                !{^NOONED where}{^IFONED if}((patchw(ix^D^D%ixG^S))){^IFONED then}
+                  !w(ix^D^D%ixG^S,iw) = w(ixGmax^D+1^D%ixG^S,iw)
+                !{^NOONED  end where}{^IFONED end if}
+              !end do
+              do isymm=0,nghostcells-1
+              {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+               if(patchw(ix^DD+1^D%ix^DD))then
+                 w(ix^DD-isymm^D%ix^DD,iw) = w(ix^DD+1^D%ix^DD,iw)
+                 !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+               end if
+              {^D%end do\}
               end do
             end if
          case("limitoutflow")
             if (iw==phys_ind%mom(idims))then
-              !do ix^D=ixOmin^D,ixOmax^D
-              do ix^D=ixGmin^D,ixGmax^D
-                !{^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}
-                {^NOONED where}{^IFONED if}(patchw(ix^D^D%ixG^S)){^IFONED then}
-                  !w(ix^D^D%ixO^S,iw) = max(wp(ixGmin^D-1^D%ixG^S,iw),&
-                  !                         self%myconfig%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
-                  w(ix^D^D%ixG^S,iw) = max(w(ixGmax^D+1^D%ixG^S,iw),&
-                                           self%myconfig%flux_frac*w(ixGmax^D+1^D%ixG^S,iw))
-                {^NOONED  end where}{^IFONED end if}
+              !do ix^D=ixGmin^D,ixGmax^D
+                !{^NOONED where}{^IFONED if}(patchw(ix^D^D%ixO^S)){^IFONED then}
+                  !w(ix^D^D%ixO^S,iw) = max(w(ixGmax^D+1^D%ixG^S,iw),&
+                  !                         self%myconfig%flux_frac*w(ixGmax^D+1^D%ixG^S,iw))
+                !{^NOONED  end where}{^IFONED end if}
+              !end do
+              do isymm=0,nghostcells-1
+              {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+               if(patchw(ix^DD+1^D%ix^DD))then
+                 w(ix^DD-isymm^D%ix^DD,iw) = max(w(ix^DD+1^D%ix^DD,iw),&
+                                          self%myconfig%flux_frac*w(ix^DD+1^D%ix^DD,iw))
+                 !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+               end if
+              {^D%end do\}
               end do
             else
-              !do ix^D=ixOmin^D,ixOmax^D
-              do ix^D=ixGmin^D,ixGmax^D
-                !{^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}
-                {^NOONED where}{^IFONED if}(patchw(ix^D^D%ixG^S)){^IFONED then}
-                  !w(ix^D^D%ixO^S,iw) = wp(ixOmin^D-1^D%ixO^S,iw)
-                  w(ix^D^D%ixG^S,iw) = w(ixGmax^D+1^D%ixG^S,iw)
-                {^NOONED  end where}{^IFONED end if}
+              !do ix^D=ixGmin^D,ixGmax^D
+                !{^NOONED where}{^IFONED if}(patchw(ix^D^D%ixO^S)){^IFONED then}
+                  !w(ix^D^D%ixO^S,iw) = w(ixGmax^D+1^D%ixG^S,iw)
+                !{^NOONED endwhere}{^IFONED end if}
+              !end do
+              do isymm=0,nghostcells-1
+              {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+               if(patchw(ix^DD+1^D%ix^DD))then
+                 w(ix^DD-isymm^D%ix^DD,iw) = w(ix^DD+1^D%ix^DD,iw)
+                 !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+               end if
+              {^D%end do\}
               end do
             end if
           case('grad')
-              !do ix^D=ixOmin^D,ixOmax^D
               do ix^D=ixGmin^D,ixGmax^D
-                !{^NOONED where}{^IFONED if}(patchw(ix^D^D%ixO^S)){^IFONED then}
-                {^NOONED where}{^IFONED if}(patchw(ix^D^D%ixG^S)){^IFONED then}
-                  !w(ix^D^D%ixO^S,iw) = 2.0_dp*wp(ixOmax^D+1^D%ixO^S,iw) &
-                  !                     -wp(ixOmax^D+2^D%ixO^S,iw)
+                {^NOONED where}{^IFONED if}((patchw(ix^D^D%ixG^S))){^IFONED then}
                   w(ix^D^D%ixG^S,iw) = 2.0_dp*w(ixGmax^D+1^D%ixG^S,iw) &
                                         -w(ixGmax^D+2^D%ixG^S,iw)
                 {^NOONED  end where}{^IFONED end if}
