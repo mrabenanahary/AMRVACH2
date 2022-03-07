@@ -323,7 +323,7 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
       ! * ixO^L = ixI^L of bc_phys = defined in boundary_conditions.t:getbc:bc_phys:usr_special_bc as the limits
       ! of only the boundaries (i.e. the ghost cells only)
       ! * ixI^L = general ixG^L = the whole domain (including the boundaries)
-      !if(iB/=ismin^D)call mpistop("iB is broken with ismin^D !!!")
+      ! if(iB/=ismin^D)call mpistop("iB is broken with ismin^D !!!")
 
 
       !ixOmax^DD=ixOmax^DD^D%!ixOmax^DD=ixOmax^DD-nghostcells;

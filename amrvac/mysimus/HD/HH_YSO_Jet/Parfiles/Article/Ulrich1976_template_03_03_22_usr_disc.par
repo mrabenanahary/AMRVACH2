@@ -272,8 +272,8 @@
   ! 1) boundary_cond = 'fix' : 03-03-22 > successfully implemented !
   ! 2) boundary_cond /= 'fix' but mixed_fixed_bound == .false. everywhere
   ! 3) boundary_cond /= 'fix' and at least one of the mixed_fixed_bound is .true.
-  ism_config%boundary_cond(2,1) = 'limitoutflow'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
-  ism_config%flux_frac          = 1.0d-2
+  ism_config%boundary_cond(2,1) = 'limitinflow'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
+  ism_config%flux_frac          = 5.0d-1
   ism_config%useprimitive       = .false. 
   
   ! Use :
@@ -334,12 +334,12 @@ ism_config%He_abundance      = 0.1
 /
 
 &usr_usrboundary_ism_list
-  usrboundary_config%boundary_type(2,1) = 'limitoutflow'!'limitinflowdisc'!'disc'
+  usrboundary_config%boundary_type(2,1) = 'limitinflow'!'limitinflowdisc'!'disc'
   usrboundary_config%boundary_type(2,2) = 'open'
   usrboundary_config%useprimitive       = .false.
   usrboundary_config%nghostcells(1)        = 2
   usrboundary_config%nghostcells(2)        = 2
-  usrboundary_config%flux_frac          = 1.0d-2
+  usrboundary_config%flux_frac          = 5.0d-1
 /
 
 &usr_cla_jet_list
