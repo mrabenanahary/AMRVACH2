@@ -19,7 +19,7 @@
         convert_type='vtuBCCmpi'
         nwauxio = 7
         /
-        restart_from_file='Jet_Shang06_0118.dat'
+        !restart_from_file='Output/Ulrich1976_limitinflow/Jet_CC_0061.dat'
         /
         convert = .true.
 
@@ -45,7 +45,7 @@
         itsave(1,2)=0
         dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	!ditsave_log =50
-        dtsave_dat=  3.1557600d9! 10 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  3.1557600d8! 10 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !ditsave_dat =1
  /
 
@@ -57,7 +57,7 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  3.15576d11 ! 10000 yrs 6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.15576d10 ! 10000 yrs 6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !it_max=100
 
 
@@ -101,7 +101,7 @@
         !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
         typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
         typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
-        typeboundary_min2 =  7*'special'!'symm','symm','asymm','symm','symm',2*'symm'!                                    ! C.L. inférieure <=> zmin
+        typeboundary_min2 =  'symm','symm','limitinflow','symm','symm',2*'symm'!7*'special'!'symm','symm','asymm','symm','symm',2*'symm'!                                    ! C.L. inférieure <=> zmin
         typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
 
 /
@@ -344,7 +344,7 @@ ism_config%He_abundance      = 0.1
   usrboundary_config%nghostcells(2)        = 2
   usrboundary_config%flux_frac          = 1.0d-2
   usrboundary_config%ngc          = 0
-  usrboundary_config%RHS          = -1
+  usrboundary_config%RHS          = 0
   usrboundary_config%LHS          = 0
 /
 
@@ -392,7 +392,7 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%tracer_on             =  .true. !> cla_jet logical to set tracer
     cla_jet_config%tracer_init_density   =  1.0d9!> cla_jet tracer density
     cla_jet_config%tracer_small_density  =  1.0d-15!> cla_jet tracer small density
-    cla_jet_config%shape                 =  'cartesian'  !> cla_jet shape
+    cla_jet_config%shape                 =  'conical'  !> cla_jet shape
     cla_jet_config%profile               =  'none'  !> cla_jet profile
 
 

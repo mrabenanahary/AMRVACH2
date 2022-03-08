@@ -263,18 +263,11 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
             end if
          case("limitinflow")
             if (iw==phys_ind%mom(idims))then
-              !do ix^D=ixOmin^D,ixOmax^D
               do ix^D=ixGmin^D,ixGmax^D
-                !{^NOONED where}{^IFONED if}(patchw(ix^D^D%ixO^S)){^IFONED then}
-                {^NOONED where}{^IFONED if}(patchw(ix^D^D%ixG^S)){^IFONED then}
-                  !w(ix^D^D%ixO^S,iw) = max(wp(ixGmin^D-1^D%ixG^S,iw),&
-                  !                         self%myconfig%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
                   w(ix^D^D%ixG^S,iw) = max(w(ixGmin^D-1^D%ixG^S,iw),&
                                           self%myconfig%flux_frac*w(ixGmin^D-1^D%ixG^S,iw))
-                {^NOONED  end where}{^IFONED end if}
               end do
             else
-              !do ix^D=ixOmin^D,ixOmax^D
               do ix^D=ixGmin^D,ixGmax^D
                 !{^NOONED where}{^IFONED if}(patchw(ix^D^D%ixO^S)){^IFONED then}
                 {^NOONED where}{^IFONED if}(patchw(ix^D^D%ixG^S)){^IFONED then}

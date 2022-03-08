@@ -1143,8 +1143,8 @@ return
     !TO MODIFY
 
 
-    allocate(wp(ixI^S,1:nw))
-    wp(ixI^S,1:nw)=w(ixI^S,1:nw)
+    !allocate(wp(ixI^S,1:nw))
+    !wp(ixI^S,1:nw)=w(ixI^S,1:nw)
 
     patch_all(ixI^S) = .true.
     i_object_w_dust = 1
@@ -1208,13 +1208,15 @@ return
         myboundary_cond = ism_surround(i_ism)%myboundaries%myconfig%boundary_type(idims,iside)
 
 
-        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,wp,isboundary_iB=(/idims,iside/))
+        !call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,wp,isboundary_iB=(/idims,iside/))
         if(trim(myboundary_cond)/='fix')then
           call ism_surround(i_ism)%myboundaries%set_w(ixI^L,ixO^L,iB,idims,iside,&
-                                    ism_surround(i_ism)%patch,x,wp)
+                                    ism_surround(i_ism)%patch,x,w)
+        else
+          call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,isboundary_iB=(/idims,iside/))
         end if
-        w(ixO^S,1:nw)=wp(ixO^S,1:nw)
-        deallocate(wp)
+        !w(ixO^S,1:nw)=wp(ixO^S,1:nw)
+        !deallocate(wp)
 
       patch_all(ixO^S) =  patch_all(ixO^S) .and.(.not.ism_surround(i_ism)%patch(ixO^S))
       if(ism_surround(i_ism)%myconfig%dust_on)the_dust_inuse(i_object_w_dust)=ism_surround(i_ism)%mydust
