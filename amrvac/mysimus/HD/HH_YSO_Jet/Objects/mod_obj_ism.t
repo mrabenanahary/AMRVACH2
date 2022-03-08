@@ -960,7 +960,7 @@ contains
 
              ! add profile to ISM density and pressure
              if(self%myconfig%profile_on) then
-                call self%set_profile(ixI^L,ixO^L,x,w)
+                call self%set_profile(ixI^L,ixO^L,x,w,isboundary)
              end if
 
 
@@ -1004,7 +1004,13 @@ contains
 
 
 
-
+         !if(isboundary.and.(trim(myboundary_cond)=='fix')) then
+         !do iw=1,nw
+         !print*,iw,') ',cons_wnames(iw),' = ',w(ixO^S,iw)*self%myphysunit%myconfig%velocity
+         !print*,'min(',cons_wnames(iw),') = ',MINVAL(w(ixO^S,iw))*self%myphysunit%myconfig%velocity
+         !print*,'max(',cons_wnames(iw),') = ',MAXVAL(w(ixO^S,iw))*self%myphysunit%myconfig%velocity
+         !end do
+         !end if
 
 
 
@@ -1043,9 +1049,10 @@ contains
 
 
    !--------------------------------------------------------------------
-   subroutine usr_ism_set_profile(ixI^L, ixO^L,x,w,self)
+   subroutine usr_ism_set_profile(ixI^L, ixO^L,x,w,self,isboundary)
     implicit none
     integer, intent(in)             :: ixI^L,ixO^L
+    logical, intent(in),optional     :: isboundary
     real(kind=dp), intent(in)       :: x(ixI^S,1:ndim)
     real(kind=dp), intent(inout)    :: w(ixI^S,1:nw)
     class(ism)                      :: self
@@ -1103,7 +1110,7 @@ contains
 
         case('Ulrich1976')
 
-          call self%set_ulrich_profile(ixI^L, ixO^L,x,w,p_profile)
+          call self%set_ulrich_profile(ixI^L, ixO^L,x,w,p_profile,isboundary)
 
         case default
           p_profile(ixO^S) = 1.0_dp
@@ -1155,9 +1162,10 @@ contains
    end subroutine usr_ism_set_profile
 
    !--------------------------------------------------------------------
-   subroutine usr_set_ulrich_profile(ixI^L, ixO^L,x,w,p_profile,self)
+   subroutine usr_set_ulrich_profile(ixI^L, ixO^L,x,w,p_profile,self,isboundary)
    implicit none
    integer, intent(in)             :: ixI^L,ixO^L
+   logical, intent(in),optional    :: isboundary
    real(kind=dp), intent(in)       :: x(ixI^S,1:ndim)
    real(kind=dp), intent(inout)    :: w(ixI^S,1:nw)
    real(kind=dp), intent(inout)    :: p_profile(ixI^S)
@@ -1182,14 +1190,38 @@ contains
 
    call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
 
-   call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+   call usr_get_theta(ixI^L,ixO^L,x,theta_profile,self%myboundaries%myconfig%special_origin_theta)
 
    r_normalized(ixI^S) = (d_profile(ixI^S)/self%myconfig%profile_rd)
 
    call usr_ulrich1976_costheta_zero(ixI^L, ixO^L,x,r_normalized,&
    theta_profile,cos_theta_zero)
 
-   theta_zero(ixI^S) = DACOS(cos_theta_zero(ixI^S))
+
+   ! considering the semi-planes z>=0 and z<0:
+   where(x(ixI^S,z_)>0.0_dp)
+    theta_zero(ixI^S) = DACOS(cos_theta_zero(ixI^S))
+   elsewhere
+    theta_zero(ixI^S) = dpi-DACOS(cos_theta_zero(ixI^S))
+   end where
+
+   ! Do not forget to recompute the cos_theta_zero after correcting theta_zero,
+   ! thus considering the semi-planes z>=0 and z<0::
+   cos_theta_zero(ixI^S) = DCOS(theta_zero(ixI^S))
+
+
+
+   !if(isboundary) then
+     !do iw=1,nw
+     !print*,'>>>>>>'
+     !print*,'theta = ',theta_profile(ixO^S)
+     !print*,'cos(theta) = ',DCOS(theta_profile(ixO^S))
+     !print*,'sin(theta) = ',DSIN(theta_profile(ixO^S))
+     !print*,'theta_zero = ',theta_zero(ixO^S)
+     !print*,'cos(theta_zero) = ',cos_theta_zero(ixO^S)
+     !print*,'sin(theta_zero) = ',DSIN(theta_zero(ixO^S))
+     !end do
+   !end if
 
    p_profile(ixO^S) = (r_normalized(ixO^S)**(-1.5_dp))*&
    ((1.0_dp + (DCOS(theta_profile(ixO^S))/&
@@ -1288,6 +1320,15 @@ contains
          project_speed(ixO^S,idir)
         end where
        end do Loop_idir_profile
+
+
+       !if(isboundary) then
+         !do iw=1,nw
+         !print*,'v_phi = ',w(ixO^S,phys_ind%mom(phi_))*self%myphysunit%myconfig%velocity
+         !print*,'>>>>'
+         !end do
+       !end if
+
 
        end  subroutine usr_set_ulrich_profile
 

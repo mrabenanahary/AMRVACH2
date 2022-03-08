@@ -10,6 +10,10 @@ type usrboundary_parameters
     logical                       :: useprimitive
     integer                       :: nghostcells(3)
     real(kind=dp)                 :: flux_frac
+    logical                       :: special_origin_theta
+    integer                       :: LHS
+    integer                       :: RHS
+    integer                       :: ngc
 end type usrboundary_parameters
 type usrboundary_type
   character(len=30), allocatable    :: variable_typebound(:,:,:)
@@ -39,6 +43,10 @@ subroutine usr_boundaries_set_default(self)
    self%myconfig%flux_frac          = 1.0d-2
    self%myconfig%obj_name           = 'boundary'
    self%myconfig%myindice           = 1
+   self%myconfig%LHS           = 0
+   self%myconfig%RHS           = 0
+   self%myconfig%ngc           = 0
+   self%myconfig%special_origin_theta = .false.
 end subroutine usr_boundaries_set_default
 
 
@@ -119,9 +127,9 @@ subroutine usr_boundaries_set_complet(self)
       self%variable_typebound(idims,iside,phys_ind%mom(r_))='symm'
       self%variable_typebound(idims,iside,phys_ind%mom(phi_))='symm'
       self%variable_typebound(idims,iside,phys_ind%mom(z_))='limitinflow'
-     case('nooutflux')
+     case('nooutflow')
       self%variable_typebound(idims,iside,:)='cont'
-      self%variable_typebound(idims,iside,phys_ind%mom(idims))='nooutflux'
+      self%variable_typebound(idims,iside,phys_ind%mom(idims))='nooutflow'
      case('limitoutflow')
       self%variable_typebound(idims,iside,:)='cont'
       self%variable_typebound(idims,iside,phys_ind%mom(idims))='limitoutflow'
@@ -337,14 +345,17 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
          select case (self%variable_typebound(idims,iside,iw))
          case ("symm")
                !print*, w(ixOmin1:ixOmax1,4,iw)
-               do isymm=0,nghostcells-1
+               do isymm=0,nghostcells-1+self%myconfig%ngc
                {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
-                if(patchw(ix^DD+1^D%ix^DD))then
-                  w(ix^DD-isymm^D%ix^DD,iw) = w(ix^DD+1+isymm^D%ix^DD,iw)
-                  !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
-                end if
+                !if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+                  w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = w(ix^DD+1+self%myconfig%RHS+isymm^D%ix^DD,iw)
+                  !w(ix^DD+1+self%myconfig%RHS+isymm^D%ix^DD,iw) = 0.0_dp!
+                !end if
                {^D%end do\}
                end do
+               !print*,cons_wnames(iw),' = ',w(ixO^S,iw)
+               !print*,'min(',cons_wnames(iw),') = ',MINVAL(w(ixO^S,iw))
+               !print*,'max(',cons_wnames(iw),') = ',MAXVAL(w(ixO^S,iw))
                !print*, 'ixO^S=',ixOmin^DD,ixOmax^DD
                !print*, '2*ixOmax^D-ixOmin^D:ixOmax^D+1 =', 2*ixOmax^D-ixOmin^D,ixOmax^D+1
                !ixImin^D=           1           1
@@ -374,23 +385,36 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
                !end if
          case ("asymm")
              !print*, w(ixOmin1:ixOmax1,4,iw)
-             do isymm=0,nghostcells-1
+             do isymm=0,nghostcells-1+self%myconfig%ngc
              {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
-              if(patchw(ix^DD+1^D%ix^DD))then
-                w(ix^DD-isymm^D%ix^DD,iw) = -w(ix^DD+1+isymm^D%ix^DD,iw)
-                !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
-              end if
+              !if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+                w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = -w(ix^DD+1+self%myconfig%RHS+isymm^D%ix^DD,iw)
+                !w(ix^DD+1+self%myconfig%RHS+isymm^D%ix^DD,iw) = 0.0_dp!
+              !end if
              {^D%end do\}
              end do
              !{ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
              !w(ix^DD-2^D%ix^DD,iw) = -w(ix^DD+nghostcells+1^D%ix^DD,iw)
              !{^D%end do\}
+             !print*,cons_wnames(iw),' = ',w(ixO^S,iw)
+             !print*,'min(',cons_wnames(iw),') = ',MINVAL(w(ixO^S,iw))
+             !print*,'max(',cons_wnames(iw),') = ',MAXVAL(w(ixO^S,iw))
          case ("cont")
-            do ix^D=ixOmin^D,ixOmax^D
-              {^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}! original : does not work
-                w(ix^D^D%ixO^S,iw) = wp(ixGmin^D^D%ixG^S,iw)
-              {^NOONED endwhere}{^IFONED end if}
+            !do ix^D=ixOmin^D,ixOmax^D
+            !  {^NOONED where}{^IFONED if}((patchw(ix^D^D%ixO^S))){^IFONED then}! original : does not work
+            !    w(ix^D^D%ixO^S,iw) = wp(ixGmin^D^D%ixG^S,iw)
+            !  {^NOONED endwhere}{^IFONED end if}
+            !end do
+            do isymm=0,nghostcells-1+self%myconfig%ngc
+            {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+             if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+               w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw)
+             end if
+            {^D%end do\}
             end do
+            !print*,cons_wnames(iw),' = ',w(ixO^S,iw)
+            !print*,'min(',cons_wnames(iw),') = ',MINVAL(w(ixO^S,iw))
+            !print*,'max(',cons_wnames(iw),') = ',MAXVAL(w(ixO^S,iw))
          case("noinflow")
             if (iw==phys_ind%mom(idims))then
               !do ix^D=ixGmin^D,ixGmax^D
@@ -398,11 +422,11 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
                  !w(ix^D^D%ixO^S,iw) = min(w(ixGmax^D+1^D%ixG^S,iw),zero)
                 !{^NOONED endwhere}{^IFONED end if}
                !end do
-               do isymm=0,nghostcells-1
+               do isymm=0,nghostcells-1+self%myconfig%ngc
                {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
-                if(patchw(ix^DD+1^D%ix^DD))then
-                  w(ix^DD-isymm^D%ix^DD,iw) = min(w(ix^DD+1^D%ix^DD,iw),zero)
-                  !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+                if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+                  w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = min(w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw),zero)
+                  !w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw) = 0.0_dp!
                 end if
                {^D%end do\}
                end do
@@ -412,15 +436,35 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
                  !w(ix^D^D%ixG^S,iw) = w(ixGmax^D+1^D%ixG^S,iw)
                 !{^NOONED endwhere} {^IFONED end if}
                !end do
-               do isymm=0,nghostcells-1
+               do isymm=0,nghostcells-1+self%myconfig%ngc
                {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
-                if(patchw(ix^DD+1^D%ix^DD))then
-                  w(ix^DD-isymm^D%ix^DD,iw) = w(ix^DD+1^D%ix^DD,iw)
-                  !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+                if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+                  w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw)
+                  !w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw) = 0.0_dp!
                 end if
                {^D%end do\}
                end do
             end if
+            case("nooutflow")
+               if (iw==phys_ind%mom(idims))then
+                  do isymm=0,nghostcells-1+self%myconfig%ngc
+                  {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+                    if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+                      w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = max(w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw),zero)
+                      !w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw) = 0.0_dp!
+                    end if
+                  {^D%end do\}
+                  end do
+               else
+                  do isymm=0,nghostcells-1+self%myconfig%ngc
+                  {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
+                    if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+                      w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw)
+                      !w(ix^DD+1+self%myconfig%RHS+isymm^D%ix^DD,iw) = 0.0_dp!
+                    end if
+                  {^D%end do\}
+                  end do
+               end if
          case("limitinflow")
             if (iw==phys_ind%mom(idims))then
               !do ix^D=ixGmin^D,ixGmax^D
@@ -429,12 +473,12 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
                   !                       self%myconfig%flux_frac*wp(ixGmin^D-1^D%ixG^S,iw))
                 !{^NOONED  end where}{^IFONED end if}
               !end do
-              do isymm=0,nghostcells-1
+              do isymm=0,nghostcells-1+self%myconfig%ngc
               {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
-               if(patchw(ix^DD+1^D%ix^DD))then
-                 w(ix^DD-isymm^D%ix^DD,iw) = min(w(ix^DD+1^D%ix^DD,iw),&
-                                          self%myconfig%flux_frac*w(ix^DD+1^D%ix^DD,iw))
-                 !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+               if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+                 w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = min(w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw),&
+                                          self%myconfig%flux_frac*w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw))
+                 !w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw) = 0.0_dp!
                end if
               {^D%end do\}
               end do
@@ -444,15 +488,18 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
                   !w(ix^D^D%ixG^S,iw) = w(ixGmax^D+1^D%ixG^S,iw)
                 !{^NOONED  end where}{^IFONED end if}
               !end do
-              do isymm=0,nghostcells-1
+              do isymm=0,nghostcells-1+self%myconfig%ngc
               {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
-               if(patchw(ix^DD+1^D%ix^DD))then
-                 w(ix^DD-isymm^D%ix^DD,iw) = w(ix^DD+1^D%ix^DD,iw)
-                 !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+               if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+                 w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw)
+                 !w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw) = 0.0_dp!
                end if
               {^D%end do\}
               end do
             end if
+            !print*,cons_wnames(iw),' = ',w(ixO^S,iw)
+            !print*,'min(',cons_wnames(iw),') = ',MINVAL(w(ixO^S,iw))
+            !print*,'max(',cons_wnames(iw),') = ',MAXVAL(w(ixO^S,iw))
          case("limitoutflow")
             if (iw==phys_ind%mom(idims))then
               !do ix^D=ixGmin^D,ixGmax^D
@@ -461,12 +508,12 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
                   !                         self%myconfig%flux_frac*w(ixGmax^D+1^D%ixG^S,iw))
                 !{^NOONED  end where}{^IFONED end if}
               !end do
-              do isymm=0,nghostcells-1
+              do isymm=0,nghostcells-1+self%myconfig%ngc
               {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
-               if(patchw(ix^DD+1^D%ix^DD))then
-                 w(ix^DD-isymm^D%ix^DD,iw) = max(w(ix^DD+1^D%ix^DD,iw),&
-                                          self%myconfig%flux_frac*w(ix^DD+1^D%ix^DD,iw))
-                 !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+               if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+                 w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = max(w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw),&
+                                          self%myconfig%flux_frac*w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw))
+                 !w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw) = 0.0_dp!
                end if
               {^D%end do\}
               end do
@@ -476,11 +523,11 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
                   !w(ix^D^D%ixO^S,iw) = w(ixGmax^D+1^D%ixG^S,iw)
                 !{^NOONED endwhere}{^IFONED end if}
               !end do
-              do isymm=0,nghostcells-1
+              do isymm=0,nghostcells-1+self%myconfig%ngc
               {ix^DD=ixOmax^DD^D%do ix^DD=ixOmin^DD,ixOmax^DD\}
-               if(patchw(ix^DD+1^D%ix^DD))then
-                 w(ix^DD-isymm^D%ix^DD,iw) = w(ix^DD+1^D%ix^DD,iw)
-                 !w(ix^DD+1^D%ix^DD,iw) = 0.0_dp!
+               if(patchw(ix^DD-isymm+self%myconfig%LHS^D%ix^DD))then
+                 w(ix^DD-isymm+self%myconfig%LHS^D%ix^DD,iw) = w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw)
+                 !w(ix^DD+1+self%myconfig%RHS^D%ix^DD,iw) = 0.0_dp!
                end if
               {^D%end do\}
               end do
@@ -873,24 +920,48 @@ end subroutine usr_mat_profile_dist
   end subroutine usr_ulrich1976_costheta_zero
 
   !--------------------------------------------------------------------
-  subroutine usr_get_theta(ixI^L, ixO^L,x,theta_profile)
+  subroutine usr_get_theta(ixI^L, ixO^L,x,theta_profile,specialorigintheta)
    implicit none
    integer, intent(in)             :: ixI^L,ixO^L
    real(kind=dp), intent(in)       :: x(ixI^S,1:ndim)
    real(kind=dp), intent(inout)    :: theta_profile(ixI^S)
+   real(kind=dp)                   :: dstce(ixI^S)
+   logical,optional                :: specialorigintheta
    !----------------------------------------------------
+
+
 
    select case(typeaxial)
    case('spherical')
         theta_profile(ixO^S)          = x(ixO^S,theta_)
    case('cylindrical')
+      !Do not use arctan approach which is tricky with z<0
+      !but use arccos instead !!
       if(ndim>1)then
-          theta_profile(ixO^S)        = datan(x(ixO^S,r_)/x(ixO^S,z_))
+            where(DABS(x(ixO^S,r_))<=smalldouble.and.DABS(x(ixO^S,z_))<=smalldouble)
+                  theta_profile(ixO^S)        = 0.0_dp
+            elsewhere
+              dstce(ixO^S)=dsqrt((x(ixO^S,r_)**2.0_dp)+(x(ixO^S,z_)**2.0_dp))
+              where(x(ixO^S,z_)>smalldouble)
+                theta_profile(ixO^S)        = DACOS(x(ixO^S,z_)/dstce(ixO^S))
+              elsewhere ! negative case
+                theta_profile(ixO^S)        = dpi-DACOS(x(ixO^S,z_)/dstce(ixO^S))
+              end where
+            end where
+
       else
           theta_profile(ixO^S)        = 0.0_dp
       end if
    case('slab','slabstretch')
-        theta_profile(ixO^S)        = datan(x(ixO^S,x_)/x(ixO^S,y_))
+     where(DABS(x(ixO^S,x_))<=smalldouble.and.DABS(x(ixO^S,y_))<=smalldouble)
+       theta_profile(ixO^S)        = 0.0_dp
+     elsewhere
+       where((x(ixO^S,x_)/x(ixO^S,y_))>smalldouble)
+         theta_profile(ixO^S)        = DATAN(DABS(x(ixO^S,x_)/x(ixO^S,y_)))
+       elsewhere ! negative case
+         theta_profile(ixO^S)        = -DATAN(DABS(x(ixO^S,x_)/x(ixO^S,y_)))
+       end where
+     end where
    case default
       call mpistop('Unknown typeaxial')
    end select

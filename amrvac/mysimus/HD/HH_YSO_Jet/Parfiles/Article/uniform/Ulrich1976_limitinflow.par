@@ -1,4 +1,4 @@
-!==============================================================
+	!==============================================================
 ! Project : YSO JET MIALY
 ! Aim     :
 ! Results :
@@ -15,8 +15,11 @@
  &filelist
         base_filename='Output/Ulrich1976_limitinflow/Jet_CC_'
         saveprim=.true.
-        autoconvert=.true.
-        convert_type='vtuBCCmpi'
+	autoconvert=.true.
+	convert_type='vtuBCCmpi'
+	restart_from_file='Jet_CC_0100.dat'
+	convert = .true.
+	level_io=5
         nwauxio = 7
         /
         restart_from_file='Jet_Shang06_0118.dat'
