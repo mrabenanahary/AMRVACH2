@@ -1120,13 +1120,14 @@ return
     integer                 :: flag(ixI^S)
     integer                 :: i_cloud,i_ism,i_jet_yso
     integer                 :: i_object_w_dust
-    integer                 :: idims,iside,idims2,iside2
+    integer                 :: idims,iside,idims2,iside2,iw2
     integer                 :: i_start,i_end,i_dust
     logical                 :: patch_all(ixI^S),patch_inuse(ixI^S)
     real(dp)                :: cloud_profile(ixI^S,1:nw)
     real(dp),allocatable    :: wp(:^D&,:)
     logical                    :: isboundary,to_fix,bc_to_fix,some_unfixed
     character(len=30)          :: myboundary_cond
+    logical,allocatable        :: mynotmixed_fixed_bound(:,:,:)
     !-------------------------------------
     ! * According to subroutine bc_phys in which it is called by mod_ghostcells_update.t twice:
     ! The input integers are ixI^L=ixG^L=ixG^LL=ixGlo1,ixGlo2,ixGhi1,ixGhi2
@@ -1142,26 +1143,13 @@ return
     ! to sum up, the range delimiting each boundary individually
     !TO MODIFY
 
+    if(.not.allocated(mynotmixed_fixed_bound))&
+     allocate(mynotmixed_fixed_bound(1:ndim,1:2,1:nwfluxbc))
 
-    !allocate(wp(ixI^S,1:nw))
-    !wp(ixI^S,1:nw)=w(ixI^S,1:nw)
 
-    patch_all(ixI^S) = .true.
+    patch_all(ixO^S) = .true.
     i_object_w_dust = 1
-    !write(*,*) 'iB=', iB
-    !if (MOD(iB,2) .eq. 0) then
-      !odd iB
-      !idims=iB/2 ! iB=4==> idims=4/2=2 , iB=2==> idims=2/2=1
-      !iB=6==> idims=6/2=3
-      !iside=2
-    !else
-      !even iB
-      !idims=(iB+1)/2! iB=3==> idims=(3+1)/2=2 , iB=1==> idims=(1+1)/2=1
-      !iB=5==> idims=(5+1)/2=3
-      iside=1
-    !end if
-    !iB=1,3,5==> iside = 1 : min
-    !iB=2,4,6==> iside = 2 : min
+
     ! original code :
     idims = ceiling(real(iB,kind=dp)/2.0_dp)
     iside = iB-2*(idims-1)
@@ -1187,8 +1175,8 @@ return
     cond_ism_on: if(usrconfig%ism_on)then
      Loop_isms : do i_ism=0,usrconfig%ism_number-1
       ism_surround(i_ism)%subname='specialbound_usr'
-
-
+        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,isboundary_iB=(/idims,iside/))
+        patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.ism_surround(i_ism)%patch(ixO^S)
 
         !Here we set the user-defined boundary conditions already read from .par parameters files
         !call ism_surround(i_ism)%myboundaries%set_w(ixI^L,ixO^L,iB,idims,iside,&
@@ -1198,28 +1186,31 @@ return
         !print*,'boundary conditions: (idims,iside,iB)=',idims,iside,iB
         !print*, ism_surround(i_ism)%myboundaries%myconfig%boundary_type(idims,iside)
 
-
-
-        if(.not.allocated(ism_surround(i_ism)%patch)) then
-         allocate(ism_surround(i_ism)%patch(ixI^S))
-         ism_surround(i_ism)%patch              = .true.
-        end if
+        !if(.not.allocated(ism_surround(i_ism)%patch)) then
+         !allocate(ism_surround(i_ism)%patch(ixI^S))
+         !ism_surround(i_ism)%patch              = .true.
+        !end if
 
         myboundary_cond = ism_surround(i_ism)%myboundaries%myconfig%boundary_type(idims,iside)
+        do idims2=1,ndim
+          do iside2=1,2
+            do iw2=1,nwfluxbc
+              mynotmixed_fixed_bound(idims2,iside2,iw2)=.not.ism_surround(i_ism)%myboundaries%myconfig%mixed_fixed_bound(idims2,iside2,iw2)
+            end do
+          end do
+        end do
 
-
-        !call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,wp,isboundary_iB=(/idims,iside/))
-        if(trim(myboundary_cond)/='fix')then
+        if(trim(myboundary_cond)/='fix'.or.any(mynotmixed_fixed_bound))then
           call ism_surround(i_ism)%myboundaries%set_w(ixI^L,ixO^L,iB,idims,iside,&
                                     ism_surround(i_ism)%patch,x,w)
-        else
-          call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,isboundary_iB=(/idims,iside/))
+        !else
+        !  call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,isboundary_iB=(/idims,iside/))
         end if
         !w(ixO^S,1:nw)=wp(ixO^S,1:nw)
         !deallocate(wp)
 
-      patch_all(ixO^S) =  patch_all(ixO^S) .and.(.not.ism_surround(i_ism)%patch(ixO^S))
-      if(ism_surround(i_ism)%myconfig%dust_on)the_dust_inuse(i_object_w_dust)=ism_surround(i_ism)%mydust
+      !patch_all(ixO^S) =  patch_all(ixO^S) .and.(.not.ism_surround(i_ism)%patch(ixO^S))
+      !if(ism_surround(i_ism)%myconfig%dust_on)the_dust_inuse(i_object_w_dust)=ism_surround(i_ism)%mydust
       i_object_w_dust = i_object_w_dust +1
      end do Loop_isms
    end if cond_ism_on
@@ -1227,106 +1218,10 @@ return
    !   write(*,*) '=================================='
    !end if
 
-  ! set one cloud
-    cond_cloud_on : if(usrconfig%cloud_on)then
-     Loop_clouds : do i_cloud=0,usrconfig%cloud_number-1
-      cloud_medium(i_cloud)%subname='specialbound_usr'
-      if(allocated(cloud_medium(i_cloud)%patch))deallocate(cloud_medium(i_cloud)%patch)
-      allocate(cloud_medium(i_cloud)%patch(ixI^S))
-      cloud_medium(i_cloud)%patch(ixO^S) = x(ixO^S,zjet_)>cloud_medium(i_cloud)%myconfig%extend(zjet_) +&
-                                dtan(cloud_medium(i_cloud)%myconfig%extend(3)*&
-                                     usr_physunit%myconfig%length*dpi/180.0_dp)*(x(ixO^S,1)-xprobmin1)
-
-       if(usrconfig%cloud_profile_on)then
-        call usr_set_profile_cloud(ixI^L,ixO^L,x,cloud_medium(i_cloud),cloud_profile)
-       else
-        cloud_profile      = 1.0_dp
-       end if
-
-       call cloud_medium(i_cloud)%set_w(ixI^L,ixO^L,global_time,x,w)!,&
-                        usr_density_profile=cloud_profile(ixI^S,phys_ind%rho_),&
-                        usr_pressure_profile=cloud_profile(ixI^S,phys_ind%pressure_),&
-                        usr_velocity_profile=cloud_profile(ixI^S,phys_ind%mom(1):phys_ind%mom(ndir)))
-
-       patch_inuse(ixO^S) = cloud_medium(i_cloud)%patch(ixO^S)
-       ism_is_oncld : if(usrconfig%ism_on)then
-        Loop_isms_cloud0 : do i_ism=0,usrconfig%ism_number-1
-          cond_ism_tracer_oncld : if(ism_surround(i_ism)%myconfig%tracer_on)then
-            where(patch_inuse(ixO^S))
-             w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))=0.0_dp
-            end where
-          end if cond_ism_tracer_oncld
-          cond_ism_dust_oncld : if(ism_surround(i_ism)%myconfig%dust_on) then
-            ism_surround(i_ism)%mydust%patch(ixO^S)=.not.patch_inuse(ixO^S)
-            i_start= ism_surround(i_ism)%mydust%myconfig%idust_first
-            i_end  = ism_surround(i_ism)%mydust%myconfig%idust_last
-            Loop_ism_idustcld:  do i_dust=i_start,i_end
-              ism_surround(i_ism)%mydust%the_ispecies(i_dust)%patch(ixO^S)=&
-                                           .not.patch_inuse(ixO^S)
-            end do Loop_ism_idustcld
-            call ism_surround(i_ism)%mydust%set_w_zero(ixI^L,ixO^L,x,w)
-          end if cond_ism_dust_oncld
-        end do Loop_isms_cloud0
-       end if ism_is_oncld
-
-       jet_is_on : if(usrconfig%jet_yso_on)then
-        Loop_jet_yso_clean : do i_jet_yso=0,usrconfig%jet_yso_number-1
-         if(jet_yso(i_jet_yso)%myconfig%tracer_on)then
-           where(patch_inuse(ixO^S))
-             w(ixO^S,phys_ind%tracer(jet_yso(i_jet_yso)%myconfig%itr))=0.0_dp
-           end where
-         end if
-        end do Loop_jet_yso_clean
-       end if jet_is_on
-     end do Loop_clouds
-   end if  cond_cloud_on
-
-  ! set jet
-    cond_agn_on : if(usrconfig%jet_yso_on)then
-     Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
-      jet_yso(i_jet_yso)%subname='specialbound_usr'
-      call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,qt,x,w)
-       patch_inuse(ixO^S) = jet_yso(i_jet_yso)%patch(ixO^S)
-       cond_ism_onjet : if(usrconfig%ism_on)then
-        Loop_ism_jet : do i_ism=0,usrconfig%ism_number-1
-          if(ism_surround(i_ism)%myconfig%tracer_on)then
-           where(patch_inuse(ixO^S))
-             w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))=0.0_dp
-           end where
-          end if
-
-
-          cond_ism_dust_onjet : if(ism_surround(i_ism)%myconfig%dust_on) then
-            ism_surround(i_ism)%mydust%patch(ixO^S)=.not.patch_inuse(ixO^S)
-            i_start= ism_surround(i_ism)%mydust%myconfig%idust_first
-            i_end  = ism_surround(i_ism)%mydust%myconfig%idust_last
-            Loop_ism_idustjet :  do i_dust=i_start,i_end
-              ism_surround(i_ism)%mydust%the_ispecies(i_dust)%patch(ixO^S)=&
-                                           .not.patch_inuse(ixO^S)
-            end do Loop_ism_idustjet
-            call ism_surround(i_ism)%mydust%set_w_zero(ixI^L,ixO^L,x,w)
-          end if cond_ism_dust_onjet
-        end do Loop_ism_jet
-       end if cond_ism_onjet
-
-       patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.patch_inuse(ixO^S)
-       if(jet_yso(i_jet_yso)%myconfig%dust_on)then
-         the_dust_inuse(i_object_w_dust)=jet_yso(i_jet_yso)%mydust
-         i_object_w_dust = i_object_w_dust +1
-       end if
-     end do Loop_jet_yso
-    end if cond_agn_on
-
-
-    if(any(patch_all(ixO^S)))then
-     call usr_fill_empty_region(ixI^L,ixO^L,qt,patch_all,x,w)
-    end if
-
-
   ! get conserved variables to be used in the code
   patch_all(ixO^S) = .true.
   call usr_check_w(ixI^L,ixO^L,patch_all,.false.,'specialbound_usr',qt,x,w)
-  call phys_to_conserved(ixI^L,ixO^L,w,x)
+  !call phys_to_conserved(ixI^L,ixO^L,w,x)
 
   call usr_clean_memory
 

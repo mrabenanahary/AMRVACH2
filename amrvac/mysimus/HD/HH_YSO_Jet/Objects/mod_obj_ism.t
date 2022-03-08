@@ -87,7 +87,9 @@ module mod_obj_ism
       real(dp)             :: flux_frac
       logical              :: useprimitive
       integer              :: nghostcells
-      logical              :: mixed_fixed_bound(3,2,7) !> ism 'fix' flux variables
+      logical              :: mixed_fixed_bound(3,2,100) !> ism 'fix' flux variables
+      !TO DO    : f95 does not allow to namelist an allocatable array, but fortran 2003+ does
+      !So, for now, take a big enough useful array and the same size as in mod_obj_mat.t
       logical              :: dust_on        !> logical to set dust
       real(dp)             :: dust_frac      !> dust fraction
 
@@ -205,9 +207,11 @@ contains
      implicit none
      class(ism)                          :: self
      integer,intent(in)                  :: unit_config
-     integer                             :: idims2,iside2
+     integer                             :: idims2,iside2,iB2
      real(kind=dp)                       :: rto_print
      character(len=64)                   :: sto_print
+     character(len=128)                   :: wto_print
+     integer                             :: idim,iside,idims,iw2
      ! .. local ..
 
      !-----------------------------------
@@ -274,26 +278,67 @@ contains
      if(self%myconfig%dust_on) then
       call self%mydust%write_setting(unit_config)
      end if
-
+     write(unit_config,*) '======================================================='
      write(unit_config,*)'** Boundary conditions'
 
      do idims2=1,ndim
       do iside2=1,2
         write(unit_config,*)' *** (idims,iside)=', idims2,iside2
-        write(unit_config,*)' **** BC = ', self%myconfig%boundary_cond(idims2,iside2)
-        write(unit_config,*) ' **** ... is this BC fixed ? : '
-        write(unit_config,*) '--------------------------------'
-        if(phys_config%energy)then
-          write(unit_config,*) ' rho v1 v2 v3 p(or e) tracer1 tracer2'
-          write(unit_config,*) self%myconfig%mixed_fixed_bound(idims2,iside2,1:7)
-        else
-          write(unit_config,*) ' rho v1 v2 v3 tracer1 tracer2'
-          write(unit_config,*) self%myconfig%mixed_fixed_bound(idims2,iside2,1:6)
-        end if
-        write(unit_config,*) '--------------------------------'
 
+        if(iside2==1) then
+           iB2 = 2*(idims2-1)+1
+        end if
+        if(iside2==2) then
+           iB2 = 2*idims2
+        end if
+
+
+        if (any(typeboundary(1:nwfluxbc,iB2)=="special")) then
+          if (.not. associated(usr_special_bc)) &
+               call mpistop("usr_special_bc not defined")
+             write(unit_config,*)' **** BC = ', self%myconfig%boundary_cond(idims2,iside2)
+             write(unit_config,*) ' **** ... is this BC fixed ? : '
+             if(phys_config%energy)then
+               write(unit_config,*) ' **** rho v1 v2 v3 p(or e) tracer1 tracer2'
+             else
+               write(unit_config,*) ' **** rho v1 v2 v3 tracer1 tracer2'
+             end if
+             write(unit_config,*) ' **** ',self%myconfig%mixed_fixed_bound(idims2,iside2,1:nwfluxbc),'(ism_config%mixed_fixed_bound)'
+             write(unit_config,*) ' **** ',self%myboundaries%myconfig%mixed_fixed_bound(idims2,iside2,1:nwfluxbc),'(ism_config%myboundaries%myconfig%mixed_fixed_bound)'
+             write(unit_config,*) ' **** ',self%myboundaries%mixed_fixed_bound(idims2,iside2,1:nwfluxbc),'(ism_config%myboundaries%mixed_fixed_bound)'
+             write(unit_config,*) ' **** BC : '
+             wto_print=''
+             do iw2=1,nwfluxbc
+                if(iw2/=1)wto_print = trim(trim(wto_print) // trim(','))
+                wto_print = trim(trim(wto_print) // trim(self%myboundaries%variable_typebound(idims2,iside2,iw2)))
+             end do
+             write(unit_config,*) ' **** ', wto_print
+             !write(unit_config,*) ' **** initial BC before eventual fix : '
+             !wto_print=trim('')
+             !do iw2=1,nwfluxbc
+                !if(iw2/=1)wto_print = trim(trim(wto_print) // trim(','))
+                !wto_print = trim(trim(wto_print) // trim(typeboundary(iw2,iB2)))
+             !end do
+             !write(unit_config,*) ' **** ', wto_print
+             write(unit_config,*) '--------------------------------'
+        else
+           wto_print=''
+           do iw2=1,nwfluxbc
+              if(iw2/=1)wto_print = trim(trim(wto_print) // trim(','))
+              wto_print = trim(trim(wto_print) // trim(typeboundary(iw2,iB2)))
+           end do
+           if(phys_config%energy)then
+             write(unit_config,*) ' **** w_BC = rho v1 v2 v3 p(or e) tracer1 tracer2'
+           else
+             write(unit_config,*) ' **** w_BC = rho v1 v2 v3 tracer1 tracer2'
+           end if
+           write(unit_config,*) ' **** BC = ', wto_print
+           write(unit_config,*) ' **** no need to be fixed '
+           write(unit_config,*) '--------------------------------'
+        end if
       end do
      end do
+     write(unit_config,*) '======================================================='
      write(unit_config,*)'************************************'
      write(unit_config,*)'******** END ISM setting **********'
      write(unit_config,*)'************************************'
@@ -379,7 +424,7 @@ contains
      self%myconfig%nghostcells           = 2
      self%myconfig%useprimitive         = .false.
      self%myconfig%debug                 = .false.
-     self%myconfig%mixed_fixed_bound     = .false.
+     self%myconfig%mixed_fixed_bound(1:3,1:2,1:nwfluxbc)     = .false.
      self%myconfig%c_sound               = 0.0_dp
 
 
@@ -420,7 +465,7 @@ contains
     ! .. local ..
     logical                  :: dust_is_frac
     real(dp)                 :: mp,kb,Ggrav,r_normalized,costhetazero
-    integer                  :: idim,iside
+    integer                  :: idim,iside,idims,iB2,iw2
     !-----------------------------------
 
 
@@ -433,22 +478,28 @@ contains
 
     ! Here the boundary conditions input from ism_config takes priority from what is
     ! input from usrboundary_config
+
+
+
+
+
     if(self%myconfig%boundary_on)then
         !write(*,*) 'self%myconfig%boundary_on is .true.'
         !write(*,*) '- Before the prioritization of boundary conditions :'
         !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
         !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
+        do idim=1,ndim
+          do iside=1,2
+            if(trim(self%myconfig%boundary_cond(idim,iside))=='fix') then
+               self%myconfig%mixed_fixed_bound(idim,iside,1:nwfluxbc)=.true.
+            end if
+          end do
+        end do
+        self%myboundaries%mixed_fixed_bound=self%myconfig%mixed_fixed_bound
         self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
         self%myboundaries%myconfig%flux_frac=self%myconfig%flux_frac
         self%myboundaries%myconfig%useprimitive=self%myconfig%useprimitive
         self%myboundaries%myconfig%nghostcells=self%myconfig%nghostcells
-        do idim=1,ndim
-          do iside=1,2
-            if(trim(self%myconfig%boundary_cond(idim,iside))=='fix') then
-               self%myconfig%mixed_fixed_bound(idim,iside,1:7)=.true.
-            end if
-          end do
-        end do
         !write(*,*) '- After the prioritization of boundary conditions :'
         !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
         !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond
