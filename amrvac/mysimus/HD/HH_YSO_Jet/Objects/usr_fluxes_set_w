@@ -1,0 +1,267 @@
+subroutine usr_fluxes_set_w(ixI^L,ixO^L,&
+                              x,w,self)
+
+  use mod_physics
+  implicit none
+
+  integer, intent(in)                    :: ixI^L,ixO^L
+  real(kind=dp), intent(in)              :: x(ixI^S,1:ndim)
+  real(kind=dp), intent(inout)           :: w(ixI^S,1:nw)
+  class(flux_type)                       :: self
+  ! ... local ...
+  integer                                :: ixG^L,ix^D,idims
+  integer                                :: iside,ixbds^D,isurface,ix^D,ixold^D,idir
+  {real(kind=dp), allocatable              :: distancetox^D(:)\}
+  real(kind=dp)                          :: xref(1:ndim)
+  real(kind=dp)                          :: xbounds(1:ndim,1:ndim)
+  real(kind=dp)                          :: maxflux
+  {^IFONED {real(kind=dp), allocatable   :: multiplecellsfluxes^D(:)\}}
+  {^IFTWOD real(kind=dp), allocatable    :: multiplecellsfluxes(:,:)}
+  {^IFTWOD {integer                      :: ix^D(1:ndim)^D&\}
+           integer                       :: ntotfluxes,ifluxes
+           integer                       :: ixprobelims(1:ndim,1:ndim),ixprobe(1:ndim)
+           logical                       :: probelast
+           real(kind=dp)                 :: normale(1:ndim),cartesienne(1:3)         }
+  logical, allocatable                   :: multiplecellsindexes^D(:,:)
+  logical, allocatable                   :: surfaceixtmp(:^D&,:)
+  integer                                :: ncellsforbounds(1:ndim),ncellsfound^D
+  logical                                :: cellfound^D
+
+  !--------------------------------------------------------------------
+
+
+  computeflux_on : if(self%myconfig%computeflux)then
+
+  !Here we must allocate surfaceix after purging any prexisting surfaceix
+  !in case AMR has been performed so that previous time step indices
+  !are changed
+  if(allocated(self%surfaceix))deallocate(self%surfaceix)
+  if(.not.allocated(self%surfaceix))&
+    allocate(self%surfaceix(1:self%myconfig%nsurface,ixO^S,1:ndim))
+
+
+
+
+  !Initialize surfaceix to .false.
+  self%surfaceix(1:self%myconfig%nsurface,ixO^S,1:ndim) =.false.
+
+
+  !Loop on each surface
+  Loop_surface_flux : do isurface=1,self%myconfig%nsurface
+
+    !Let s start with a plane
+    if(trim(self%surfacetype)=='plane'.or.(ndim==1))then
+
+
+      {^IFONED
+
+      iside=1
+      if(allocated(distancetox^D))deallocate(distancetox^D)
+      if(.not.allocated(distancetox^D))&
+        allocate(distancetox^D(ixO^S))
+      call usr_distance(ixI^L,ixO^L,typeaxial,&
+                        self%position(isurface,iside,1:ndim),&
+                        x,distancetox^D)
+      where(DABS(distancetox^D(ixO^S)-MINVAL(distancetox^D(ixO^S)))<=smalldouble)
+        self%surfaceix(isurface,ixO^S,iside)=.true.
+      end where
+
+      !count the number of cells found to be closest to  position
+      ncellsforbounds(1) = COUNT(self%surfaceix(isurface,ixO^S,iside))
+      self%surfacencells(isurface) = COUNT(self%surfaceix(isurface,ixO^S,iside))
+
+      if(allocated(surfaceixtmp))deallocate(surfaceixtmp)
+      if(.not.allocated(surfaceixtmp))&
+        allocate(surfaceixtmp(ixO^S,1:ndim))
+
+
+      surfaceixtmp(ixO^S,iside)=self%surfaceix(isurface,ixO^S,iside)
+
+
+      if(allocated(multiplecellsfluxes^D))deallocate(multiplecellsfluxes^D)
+      if(.not.allocated(multiplecellsfluxes^D))&
+        allocate(multiplecellsfluxes^D(1:ncellsforbounds(1),1:ndim))
+
+      !store the indexes of each multiple cell
+      if(allocated(multiplecellsindexes^D))deallocate(multiplecellsindexes^D)
+      if(.not.allocated(multiplecellsindexes^D))&
+        allocate(multiplecellsindexes^D(1:ncellsforbounds(1),1:ndim))
+
+      ncellsfound^D=0
+      do ixbds^D = 1,ncellsforbounds(1)
+        cellfound^D = .false.
+
+        {do ix^D=ixOmin^D,ixOmax^D\}
+          if(self%surfaceix(isurface,ix^D,iside))then
+            cellfound^D=.true.
+            ncellsfound^D=ncellsfound^D+1
+            multiplecellsindexes^D(ixbds^D,1)=ix^D
+            !1D flux is assumed through a spherical 3D surface
+            select case(self%fluxdirection(isurface))
+            case('out')
+              multiplecellsfluxes^D(ixbds^D,iside)=0.0_dp
+
+               !Just treat cylindrical coordinates
+               multiplecellsfluxes^D(ixbds^D,iside)=&
+               multiplecellsfluxes^D(ixbds^D,iside)+&
+               w(ix^D,iw_rho)*&
+              w(ix^D,iw_mom(1))*4.0_dp*DPI*&
+              (DABS(x(ix^D,1)-xprobmin1)**2.0_dp)
+            case('in')
+              multiplecellsfluxes^D(ixbds^D,iside)=0.0_dp
+
+               !Just treat cylindrical coordinates
+               multiplecellsfluxes^D(ixbds^D,iside)=&
+               multiplecellsfluxes^D(ixbds^D,iside)-&
+               w(ix^D,iw_rho)*&
+              w(ix^D,iw_mom(1))*4.0_dp*DPI*&
+              (DABS(x(ix^D,1)-xprobmin1)**2.0_dp)
+            case default
+            end select
+            if(ncellsfound^D==1)self%surfaceflux(isurface)=multiplecellsfluxes^D(ixbds^D,iside)
+            if(ncellsfound^D>1)then
+              select case(trim(self%myconfig%multiplecellsmethod))
+              case('greatest')
+                !Arbitrarilty select the cell with the greatest flux
+                if(multiplecellsfluxes^D(ixbds^D,iside)>multiplecellsfluxes^D(ixbds^D-1,iside))then
+                  surfaceixtmp(ixold^D,iside)=.false.
+                  self%surfaceflux(isurface)=multiplecellsfluxes^D(ixbds^D,iside)
+                else if(multiplecellsfluxes^D(ixbds^D,iside)<=multiplecellsfluxes^D(ixbds^D-1,iside))then
+                  surfaceixtmp(ix^D,iside)=.false.
+                end if
+              case default
+
+              end select
+
+            end if
+            {ixold^D=ix^D\}
+          end if
+         {if(cellfound^D)cycle
+          end do^D&\}
+          self%surfaceix(isurface,ixO^S,iside)=surfaceixtmp(ixO^S,iside)
+      end do
+      self%surfacencells(isurface) = COUNT(self%surfaceix(isurface,ixO^S),iside)
+
+      if(self%surfacencells(isurface)==1)then
+        write(*,*) 'Correctly found 1 cell for bound'
+      else if(self%surfacencells(isurface)<1)then
+        write(*,*) 'Problem having self%surfacencells(isurface)<1'
+        write(*,*) 'for isurface = ',isurface
+        write(*,*) 'We get self%surfacencells(isurface) = ',self%surfacencells(isurface)
+        call mpistop('The code stops from self%surfacencells(isurface)<1')
+      else if(self%surfacencells(isurface)>1)then
+      write(*,*) 'Problem having self%surfacencells(isurface)>1'
+      write(*,*) 'for isurface = ',isurface
+      write(*,*) 'We get self%surfacencells(isurface) = ',self%surfacencells(isurface)
+      call mpistop('The code stops from self%surfacencells(isurface)>1')
+      end if
+
+      }
+
+
+      {^IFTWOD
+
+
+        if(allocated(surfaceixtmp))deallocate(surfaceixtmp)
+        if(.not.allocated(surfaceixtmp))&
+          allocate(surfaceixtmp(ixO^S,1:ndim))
+
+        {iside=^D
+          if(allocated(distancetox^D))deallocate(distancetox^D)
+        if(.not.allocated(distancetox^D))&
+          allocate(distancetox^D(ixO^S))
+        call usr_distance(ixI^L,ixO^L,typeaxial,&
+                          self%position(isurface,iside,1:ndim),&
+                          x,distancetox^D)
+        where(DABS(distancetox^D(ixO^S)-MINVAL(distancetox^D(ixO^S)))<=smalldouble)
+          self%surfaceix(isurface,ixO^S,iside)=.true.
+        end where
+
+        !count the number of cells found to be closest to  position
+        ncellsforbounds(^D) = COUNT(self%surfaceix(isurface,ixO^S,iside))
+
+        surfaceixtmp(ixO^S,iside)=self%surfaceix(isurface,ixO^S,iside)
+        ^D&\}
+
+        ntotfluxes=1
+        {ntotfluxes=ntotfluxes*ncellsforbounds(^D)\}
+
+
+      {!store the indexes of each multiple cell
+      if(allocated(multiplecellsindexes^D))deallocate(multiplecellsindexes^D)
+      if(.not.allocated(multiplecellsindexes^D))&
+        allocate(multiplecellsindexes^D(1:ncellsforbounds(^D),1:ndim))
+      ^D&\}
+
+      !allocate the number of possible fluxes combinations
+      if(allocated(multiplecellsfluxes))deallocate(multiplecellsfluxes)
+      if(.not.allocated(multiplecellsfluxes))&
+        allocate(multiplecellsfluxes(1:self%myconfig%nsurface,1:ntotfluxes))
+
+
+      ncellsfound^D=0
+
+      {do ixbds^D = 1,ncellsforbounds(^D)
+        cellfound^D=.false.
+        {do ix^DD(^D)=ixOmin^DD,ixOmax^DD^DD&\}
+          if(self%surfaceix(isurface,ix^DD(^D),^D))then
+            cellfound^D=.true.
+            ncellsfound^D=ncellsfound^D+1
+            {multiplecellsindexes^D(ixbds^D,^DD)=ix^DD(^D)\}
+          ens if
+      \}
+
+      !2D flux through a 2D-line is here assumed
+      !in 3D through the line rotated around the z-axis
+
+      !Start from selecting first (1) and last (2) cells on line
+      { !points ^D cooridinates
+        {ixprobelims(^D,^DD)=multiplecellsindexes^D(ixbds^D,^DD)^DD&\}^D&\}
+
+
+        !line equation and normal unit vector
+        cartesienne(2)=-(self%position(isurface,2,1)-self%position(isurface,1,1))!b
+        cartesienne(1)=(self%position(isurface,2,2)-self%position(isurface,1,2))!a
+        ! c = - a * x_1 - b * y_1
+        cartesienne(3)= - cartesienne(1)*self%position(isurface,1,1)&
+                        - cartesienne(2)*self%position(isurface,1,2)
+        ! n = (a,b)/sqrt(a**2+b**2)
+        {normale(^D) = cartesienne(^D)\}
+        {normale(^D) = normale(^D)/sqrt(normale(1)**2.0_dp+normale(2)**2.0_dp)\}
+
+
+        {ixprobe(^D)=ixprobelims(1,^D)\}
+        ifluxes = ncellsforbounds(ndim)*(ixbds1-1)+ixbds2
+
+        !compute first cell flux
+        !>>>>>make sure that the variables here are the primitive ones
+        multiplecellsfluxes(isurface,ifluxes)=&
+        w(ixprobe(^D),iw_rho)*&
+        (w(ixprobe(^D),iw_mom(r_))*normale(r_)+&
+         w(ixprobe(^D),iw_mom(z_))*normale(z_))*&
+         x(ixprobe(^D),r_)*2
+        probelast=.true.
+        {probelast=(probelast.and.(ixprobe(^D)==xprobelims(ndim,^D)))\}
+        do while(.not.probelast)
+          !here compute the line fluxes
+
+
+
+        end do
+
+
+
+
+      {{end do^DD&\}
+      end do^D&\}
+
+
+    }
+    {^IFTHREED
+      call mpistop('3D case fluxes computation not yet implemented !!!')
+    }
+    end if
+    end do Loop_surface_flux
+  end if computeflux_on
+
+end subroutine usr_fluxes_set_w

@@ -288,7 +288,7 @@ ism_config%profile_rw_force = 2.5d16
 ism_config%weight_num_index = 20.0d0
 ism_config%weight_analy_index = 20.0d0
 ism_config%profile_density    = 'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
-ism_config%profile_jspec = 8.0782850178d20       !> ISM envelope specific angular momentum
+ism_config%profile_jspec = 2.0782850178d21       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
 

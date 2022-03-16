@@ -1243,6 +1243,8 @@ contains
 
    call usr_get_theta(ixI^L,ixO^L,x,theta_profile,self%myboundaries%myconfig%special_origin_theta)
 
+   w(ixI^S,phys_ind%mythetafield_)=theta_profile(ixI^S)
+
    r_normalized(ixI^S) = (d_profile(ixI^S)/self%myconfig%profile_rd)
 
    call usr_ulrich1976_costheta_zero(ixI^L, ixO^L,x,r_normalized,&
@@ -1250,17 +1252,20 @@ contains
 
 
    ! considering the semi-planes z>=0 and z<0:
-   where(x(ixI^S,z_)>0.0_dp)
+   !where(x(ixI^S,z_)>0.0_dp)
     theta_zero(ixI^S) = DACOS(cos_theta_zero(ixI^S))
-   elsewhere
-    theta_zero(ixI^S) = dpi-DACOS(cos_theta_zero(ixI^S))
-   end where
+    !where(x(ixI^S,z_)<0.0_dp)
+      !theta_zero(ixI^S) = dpi-theta_zero(ixI^S)
+    !end where
+   !elsewhere
+    !theta_zero(ixI^S) = DACOS(-cos_theta_zero(ixI^S))
+   !end where
 
    ! Do not forget to recompute the cos_theta_zero after correcting theta_zero,
    ! thus considering the semi-planes z>=0 and z<0::
    cos_theta_zero(ixI^S) = DCOS(theta_zero(ixI^S))
 
-
+   w(ixI^S,phys_ind%mytheta_zero_)=theta_zero(ixI^S)
 
    !if(isboundary) then
      !do iw=1,nw
@@ -1310,12 +1315,41 @@ contains
      case('cylindrical')
         if(ndim<3)then
           where(self%patch(ixO^S))
-            project_speed(ixO^S,r_) = (vr_profile(ixO^S)*&
-            DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
-            DCOS(theta_profile(ixO^S)))
-            project_speed(ixO^S,z_) = (vr_profile(ixO^S)*&
-            DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
-            DSIN(theta_profile(ixO^S)))
+            where(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
+              project_speed(ixO^S,r_) = (vr_profile(ixO^S)*&
+              DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
+              DCOS(theta_profile(ixO^S)))
+              project_speed(ixO^S,z_) = (vr_profile(ixO^S)*&
+              DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
+              DSIN(theta_profile(ixO^S)))
+            elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
+              !v_R(z<0)=v_R(z<0)
+              project_speed(ixO^S,r_) = (vr_profile(ixO^S)*&
+              DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
+              DCOS(theta_profile(ixO^S)))
+              !v_Z(z<0)=-v_Z(z>0)
+              project_speed(ixO^S,z_) = -((vr_profile(ixO^S)*&
+              DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
+              DSIN(theta_profile(ixO^S))))
+            elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)<0.0_dp)
+              !v_R(R<0)=v_R(R>0)
+              project_speed(ixO^S,r_) = (vr_profile(ixO^S)*&
+              DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
+              DCOS(theta_profile(ixO^S)))
+              !v_Z(R<0)=-v_Z(R>0)
+              project_speed(ixO^S,z_) = -((vr_profile(ixO^S)*&
+              DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
+              DSIN(theta_profile(ixO^S))))
+            elsewhere(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)<0.0_dp)
+              !v_R(R<0)=v_R(R>0)
+              project_speed(ixO^S,r_) = (vr_profile(ixO^S)*&
+              DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
+              DCOS(theta_profile(ixO^S)))
+              !v_Z(R<0)=v_Z(R>0)
+              project_speed(ixO^S,z_) = (vr_profile(ixO^S)*&
+              DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
+              DSIN(theta_profile(ixO^S)))
+            end where
           end where
         else
           where(self%patch(ixO^S))
@@ -1325,7 +1359,11 @@ contains
         end if
         if(ndir>2)then
            where(self%patch(ixO^S))
-             project_speed(ixO^S,phi_) = vp_profile(ixO^S)
+             where(x(ixO^S,r_)>=0.0_dp)
+              project_speed(ixO^S,phi_) = vp_profile(ixO^S)
+             elsewhere
+              project_speed(ixO^S,phi_) = -vp_profile(ixO^S)
+             end where
            end where
         end if
      case('slab','slabstretch')

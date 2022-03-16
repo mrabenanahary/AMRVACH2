@@ -484,9 +484,14 @@ contains
     hd_ind%xi_         =-1
     hd_ind%psi_        =-1
 
+
+
     if(hd_config%mean_mup_on)then
       hd_ind%mup_ = var_set_extravar('mup', 'mup')
     end if
+
+    hd_ind%mythetafield_ = var_set_extravar('theta', 'theta')
+    hd_ind%mytheta_zero_ = var_set_extravar('thetazero', 'thetazero')
 
     if(hd_config%n_tracer>0)then
       allocate(hd_ind%tracer(hd_config%n_tracer))

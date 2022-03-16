@@ -50,13 +50,15 @@ module mod_usr
     real(kind=dp)     :: phys_adiab
     real(kind=dp)     :: phys_temperature_isotherm
     character(len=20) :: phys_inuse
+
+
   end type usr_config
   type(usr_config)    :: usrconfig
   integer, parameter  :: n_dust_max = 20
   real(dp) :: SUM_MASS   = 0.0_dp
   real(dp) :: SUM_VOLUME = 0.0_dp
 
-
+  !add type for fluxes here
   type (ISM),allocatable,target      :: ism_surround(:)
   type (cloud),allocatable,target    :: cloud_medium(:)
   type (cla_jet),allocatable,target  :: jet_yso(:)
@@ -140,7 +142,8 @@ contains
     ! and then read their user-defined parameters in .par
     !4) If jet on, set all usr jets parameters to their default values
     ! and then read their user-defined parameters in .par
-
+    ! TO DO: 5) If computeflux is on, set all usr fluxes parameters to their default values
+    ! and then read their user-defined parameters in .par
 
     ! complet all physical unit in use
     if(usrconfig%physunit_on) then
@@ -203,6 +206,8 @@ contains
     usrconfig%cloud_profile_density_on      = .false.
     usrconfig%cloud_profile_pressure_on     = .false.
     usrconfig%cloud_profile_velocity_on     = .false.
+
+
 
 
   end subroutine usr_set_default_parameters
@@ -559,12 +564,14 @@ contains
      rjet_=r_
    end if
 
-
+   !Add here the set_complet of the fluxes !!!!<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
    if(phys_config%dust_on)allocate(the_dust_inuse(n_object_w_dust))
 
    call usr_normalise_parameters
    if(mype==0)call usr_write_setting
+
+
 
   end subroutine initglobaldata_usr
   !> The initial conditions
@@ -1267,11 +1274,34 @@ return
             gravity_field(ixO^S,r_)=-Ggrav*Mpoint/(r_distance(ixO^S)*r_distance(ixO^S))
 
           case('cylindrical')
-
+          where(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
             gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
             (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
             gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
             (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+          elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
+            !g_R(z<0)=g_R(z<0)
+            gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
+            (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+            !g_Z(z<0)=-g_Z(z>0)
+            gravity_field(ixO^S,z_)=-(-Ggrav*Mpoint/&
+            (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+          elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)<0.0_dp)
+            !g_R(R<0)=g_R(R>0)
+            gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
+            (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+            !g_Z(R<0)=-g_Z(R>0)
+            gravity_field(ixO^S,z_)=-(-Ggrav*Mpoint/&
+            (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+          elsewhere(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)<0.0_dp)
+            !g_R(R<0)=g_R(R>0)
+            gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
+            (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+            !g_Z(R<0)=g_Z(R>0)
+            gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
+            (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+          end where
+
 
 
 

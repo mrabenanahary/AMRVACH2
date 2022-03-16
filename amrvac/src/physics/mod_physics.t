@@ -59,6 +59,8 @@ module mod_physics
     integer              :: Lcool1_
     integer              :: dtcool1_
     integer              :: mup_
+    integer              :: mythetafield_
+    integer              :: mytheta_zero_
   end type phys_variables_indices
 
   type(phys_variables_indices),pointer  :: phys_ind

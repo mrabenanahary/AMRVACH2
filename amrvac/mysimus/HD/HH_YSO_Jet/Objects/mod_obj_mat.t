@@ -12,7 +12,7 @@ type usrboundary_parameters
     integer                       :: nghostcells(3)
     real(kind=dp)                 :: flux_frac
     logical                       :: special_origin_theta
-    logical                       :: mixed_fixed_bound(3,2,100) !> ism 'fix' flux variables :
+    logical                       :: mixed_fixed_bound(3,3,100) !> ism 'fix' flux variables :
     !TO DO    : f95 does not allow to namelist an allocatable array, but fortran 2003+ does
     !So, for now, take a big enough useful array and the same size as in mod_obj_ism.t
     integer                       :: LHS
@@ -27,6 +27,7 @@ type usrboundary_type
   !logical                           :: useprimitive
   !integer                           :: nghostcells(3)
   !real(kind=dp)                     :: flux_frac
+
    contains
    !PRIVATE
    PROCEDURE, PASS(self) :: read_parameters    => usr_boundaries_read_p
@@ -34,6 +35,27 @@ type usrboundary_type
    PROCEDURE, PASS(self) :: set_complet        => usr_boundaries_set_complet
    PROCEDURE, PASS(self) :: set_w              => usr_boundaries_set_w
 end type usrboundary_type
+
+type usrfluxes_parameters
+    logical                         :: computeflux
+    real(kind=dp)                   :: position(100,3,3)
+    character(len=30)               :: surfacetype(1:100)
+    character(len=30)               :: multiplecellsmethod
+    character(len=30)               :: fluxdirection(1:100)
+    integer                         :: nsurface
+
+end type usrfluxes_parameters
+type usrfluxes_type
+    type(usrfluxes_parameters)                 :: myconfig
+    real(kind=dp),allocatable             :: position(:,:,:)
+    character(len=30),allocatable         :: surfacetype(:)
+    character(len=30),allocatable         :: fluxdirection(:)
+    logical,allocatable                   :: surfaceix(:,:^D&,:)
+    logical,allocatable                   :: surfacencells(:)
+    real(kind=dp),allocatable             :: surfaceflux(:)
+
+end type usrfluxes_type
+
 contains
 
 !--------------------------------------------------------------------
@@ -58,6 +80,18 @@ subroutine usr_boundaries_set_default(self)
    self%myconfig%mixed_fixed_bound(1:ndim,1:2,:) = .false.
 end subroutine usr_boundaries_set_default
 
+
+subroutine usr_myflux_set_default(self)
+  implicit none
+  class(usrfluxes_type)              :: self
+   !------------------------------------
+   self%myconfig%computeflux     = .false.
+   self%myconfig%position(1:100,1:3,1:3) = 0
+   self%myconfig%surfacetype = 'plane'
+   self%myconfig%fluxdirection(1:100) = 'out'
+   self%myconfig%multiplecellsmethod = 'greatest'
+   self%myconfig%nsurface = 0
+end subroutine usr_myflux_set_default
 
 !--------------------------------------------------------------------
    !> Read the ism parameters  from a parfile
@@ -101,6 +135,51 @@ end subroutine usr_boundaries_set_default
 
     end subroutine usr_boundaries_read_p
    !------------------------------------------------------------------------
+   !--------------------------------------------------------------------
+    !> Read the ism parameters  from a parfile
+     subroutine usr_fluxes_read_p(self,myflux_config,files)
+
+       implicit none
+       class(usrfluxes_type)                           :: self
+       character(len=*),intent(in)                :: files(:)
+       type(usrfluxes_parameters), intent(out)         :: myflux_config
+       ! .. local ..
+       integer                            :: i_file,i_error_read,isurface,iside,idims
+       namelist / usr_flux_list /  myflux_config
+
+       do i_file = 1, size(files)
+          open(unitpar, file=trim(files(i_file)), status="old")
+          read(unitpar, usr_flux_list, iostat=i_error_read)
+
+          if(i_error_read>0)then
+            write(*,*)'In file : ', trim(files(i_file))
+            write(*,*)'At user side in mod_obj_mat.t : error at reading parfile'
+            write(*,*)'Check input.  Something was wrong, it will stop'
+            call mpistop('It stops at reading the parfile')
+          elseif(i_error_read<0)then
+            write(*,*)'In file : ', trim(files(i_file))
+            write(*,*)'At user side in in mod_obj_mat.t error at reading parfile'
+            write(*,*)'Reach the end of the file it will stop'
+            call mpistop('It stops at reading the parfile')
+          else
+            if(mype==0)write(*,*) 'End of Reading usr_flux_list'
+          end if
+
+          close(unitpar)
+
+          if(myflux_config%computeflux)then
+            if(myflux_config%nsurface>100)then
+              write(*,*) 'Too many surfaces for flux computing'
+              write(*,*) 'Actual size is : ',size(myflux_config%position,1)
+              call mpistop('It stops at reading the parfile')
+            end if
+           end if
+
+       end do
+
+
+     end subroutine usr_fluxes_read_p
+    !------------------------------------------------------------------------
 !> Subtroutine initialise the boundary conditions
 subroutine usr_boundaries_set_complet(self)
   use mod_physics
@@ -183,6 +262,59 @@ subroutine usr_boundaries_set_complet(self)
     end do Loop_iside
   end do Loop_idims
 end subroutine usr_boundaries_set_complet
+!> Subtroutine initialise the boundary conditions
+subroutine usr_fluxes_set_complet(self)
+  use mod_physics
+  implicit none
+  class(usrfluxes_type)                           :: self
+  ! .. local ..
+  integer                               :: idims,iside,idir,iw,isurface
+   !------------------------------------
+
+
+   !Allocate position array and
+   !pass it from myconfig to usrfluxes_type
+   if(allocated(self%position))deallocate(self%position)
+   allocate(self%position(1:self%myconfig%nsurface,1:ndim,1:ndim))
+
+   do isurface = 1,self%myconfig%nsurface
+    do iside=1,ndim
+      do idims=1,ndim
+        self%position(isurface,iside,idims)=self%myconfig%position(isurface,iside,idims)
+      end do
+    end do
+   end do
+
+
+  !Allocate surfacetype and
+  !pass it from myconfig to usrfluxes_type
+  if(.not.allocated(self%surfacetype))&
+  allocate(self%surfacetype(1:self%myconfig%nsurface))
+
+  do isurface = 1,self%myconfig%nsurface
+    self%surfacetype(isurface)=self%myconfig%surfacetype(isurface)
+  end do
+
+
+  !Allocate fluxdirection and
+  !pass it from myconfig to usrfluxes_type
+  if(.not.allocated(self%fluxdirection))&
+  allocate(self%fluxdirection(1:self%myconfig%nsurface))
+
+  do isurface = 1,self%myconfig%nsurface
+    self%fluxdirection(isurface)=self%myconfig%fluxdirection(isurface)
+  end do
+
+  !Allocate surfacencells
+  if(.not.allocated(self%surfacencells))&
+  allocate(self%surfacencells(1:self%myconfig%nsurface))
+
+  !Allocate surfaceflux
+  if(.not.allocated(self%surfaceflux))&
+  allocate(self%surfaceflux(1:self%myconfig%nsurface))
+
+
+end subroutine usr_fluxes_set_complet
 !--------------------------------------------------------------------
 !> Subtroutine set the boundary conditions
 subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
@@ -415,6 +547,73 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
    call phys_to_conserved(ixI^L,ixO^L,w,x)
   end if
 end  subroutine usr_boundaries_set_w
+
+subroutine usr_fluxes_set_w(ixI^L,ixO^L,&
+                              x,w,self)
+
+  use mod_physics
+  implicit none
+
+  integer, intent(in)                    :: ixI^L,ixO^L
+  real(kind=dp), intent(in)              :: x(ixI^S,1:ndim)
+  real(kind=dp), intent(inout)           :: w(ixI^S,1:nw)
+  class(usrfluxes_type)                       :: self
+  ! ... local ...
+
+  !--------------------------------------------------------------------
+
+
+end subroutine usr_fluxes_set_w
+
+subroutine usr_fluxes_set_line_field(ixI^L,ixO^L,&
+                              x,w,self,point^D,linefield)
+
+  use mod_physics
+  implicit none
+
+  integer, intent(in)                    :: ixI^L,ixO^L
+  real(kind=dp), intent(in)              :: point^D(1:ndim)
+  real(kind=dp), intent(in)              :: x(ixI^S,1:ndim)
+  real(kind=dp), intent(in)              :: w(ixI^S,1:nw)
+  real(kind=dp), intent(out)             :: linefield(ixI^S,1:nw) !a^D,b^D,r_i,
+  class(usrfluxes_type)                  :: self
+  ! ... local ...
+
+  !--------------------------------------------------------------------
+
+
+end subroutine usr_fluxes_set_line_field
+
+subroutine WHEREINDEXNDIM(MASK,ixI^L,MASKCOUNT,INDEXES)
+  implicit none
+  integer,intent(in)                     :: ixI^L
+  integer,intent(in)                     :: MASKCOUNT
+  logical,intent(in)                     :: MASK(ixI^S)
+  integer, intent(out)                   :: INDEXES(1:MASKCOUNT,1:ndim)
+  ! ... local ...
+  logical, allocatable                   :: MASKTMP(:^D&)
+  integer                                :: ix
+  !--------------------------------------------------------------------
+  IF(MASKCOUNT/=COUNT(MASK))&
+    write(*,*) 'Inconsistent COUNT(MASK) /= MASKCOUNT'
+    call mpistop('in WHEREINDEXNDIM(MASK,MASKCOUNT,INDEXES)')
+
+  IF(.NOT.allocated(MASKTMP))&
+    allocate(MASKTMP(ixI^S))
+
+  MASKTMP(ixI^S)=MASK(ixI^S)
+
+
+  INDEXES(1:MASKCOUNT,1:ndim)=1
+  DO ix=1,MASKCOUNT
+    INDEXES(ix,1:ndim)=FINDLOC(MASKTMP,.true.)
+    MASKTMP({INDEXES(ix,^D)})=.false.
+  END DO
+
+  DEALLOCATE(MASKTMP)
+end subroutine WHEREINDEXNDIM
+
+
 !--------------------------------------------------------------------
 !> Subtroutine for power law distribution,here the dust sizes are defined. Ndust bins, with all bins having equal total mass.
 
@@ -799,18 +998,18 @@ end subroutine usr_mat_profile_dist
         theta_profile(ixO^S)          = x(ixO^S,theta_)
    case('cylindrical')
       !Do not use arctan approach which is tricky with z<0
-      !but use arccos instead !!
+      !but use arcsin instead !!
       if(ndim>1)then
-            where(DABS(x(ixO^S,r_))<=smalldouble.and.DABS(x(ixO^S,z_))<=smalldouble)
-                  theta_profile(ixO^S)        = 0.0_dp
-            elsewhere
+            !where(DABS(x(ixO^S,r_))<=smalldouble.and.DABS(x(ixO^S,z_))<=smalldouble)
+                  !theta_profile(ixO^S)        = 0.0_dp
+            !elsewhere
               dstce(ixO^S)=dsqrt((x(ixO^S,r_)**2.0_dp)+(x(ixO^S,z_)**2.0_dp))
-              where(x(ixO^S,z_)>smalldouble)
-                theta_profile(ixO^S)        = DACOS(x(ixO^S,z_)/dstce(ixO^S))
-              elsewhere ! negative case
-                theta_profile(ixO^S)        = dpi-DACOS(x(ixO^S,z_)/dstce(ixO^S))
+              where(x(ixO^S,r_)>=0.0_dp)
+                theta_profile(ixO^S)        = DASIN(x(ixO^S,r_)/dstce(ixO^S))
+              elsewhere
+                theta_profile(ixO^S)        = DASIN(-x(ixO^S,r_)/dstce(ixO^S))
               end where
-            end where
+            !end where
 
       else
           theta_profile(ixO^S)        = 0.0_dp
