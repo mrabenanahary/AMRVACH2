@@ -2100,22 +2100,29 @@ contains
   !> Gives the Riemann solution on the interface
   !> for the normal B component and Psi in the GLM-MHD system.
   !> 23/04/2013 Oliver Porth
-  subroutine glmSolve(wLC,wRC,ixI^L,ixO^L,idir)
+  subroutine glmSolve(wLp, wRp,wCT,x,ixI^L,ixO^L,idir, qdt, qtC, qt, dx^D, method,&
+   wnew, wold, local_block, wLC, wRC)
     use mod_global_parameters
-    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
+    character(len=*), intent(in)                         :: method
     integer, intent(in)             :: ixI^L, ixO^L, idir
+    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
+    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
+    real(kind=dp)   , intent(inout) :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
+    type(walloc)    , intent(inout) :: local_block
+    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
+    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
     real(kind=dp)                   :: dB(ixI^S), dPsi(ixI^S)
 
-    dB(ixO^S)   = wRC(ixO^S,mag(idir)) - wLC(ixO^S,mag(idir))
-    dPsi(ixO^S) = wRC(ixO^S,psi_) - wLC(ixO^S,psi_)
+    dB(ixO^S)   = wRp(ixO^S,mag(idir)) - wLp(ixO^S,mag(idir))
+    dPsi(ixO^S) = wRp(ixO^S,psi_) - wLp(ixO^S,psi_)
 
-    wLC(ixO^S,mag(idir))   = 0.5d0 * (wRC(ixO^S,mag(idir)) + wLC(ixO^S,mag(idir))) &
+    wLp(ixO^S,mag(idir))   = 0.5d0 * (wRp(ixO^S,mag(idir)) + wLp(ixO^S,mag(idir))) &
          - 0.5d0/cmax_global * dPsi(ixO^S)
-    wLC(ixO^S,psi_)       = 0.5d0 * (wRC(ixO^S,psi_) + wLC(ixO^S,psi_)) &
+    wLp(ixO^S,psi_)       = 0.5d0 * (wRp(ixO^S,psi_) + wLp(ixO^S,psi_)) &
          - 0.5d0*cmax_global * dB(ixO^S)
 
-    wRC(ixO^S,mag(idir)) = wLC(ixO^S,mag(idir))
-    wRC(ixO^S,psi_) = wLC(ixO^S,psi_)
+    wRp(ixO^S,mag(idir)) = wLp(ixO^S,mag(idir))
+    wRp(ixO^S,psi_) = wLp(ixO^S,psi_)
 
   end subroutine glmSolve
 

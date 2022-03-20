@@ -61,6 +61,7 @@ module mod_physics
     integer              :: mup_
     integer              :: mythetafield_
     integer              :: mytheta_zero_
+    integer              :: grav_phi_
   end type phys_variables_indices
 
   type(phys_variables_indices),pointer  :: phys_ind
@@ -166,6 +167,9 @@ module mod_physics
     real(dp)                  :: maxspeed2
 
     logical                   :: gravity
+    !> Whether gravity hydrostatic equilibrum improvement is enabled whereas gravity is enabled
+    logical                   :: gravity_hse
+    character(len=30)         :: gravity_hse_scheme
     logical                   :: chemical_on
     integer                   :: chemical_n_species
     real(dp)                  :: chemical_small_density
@@ -224,10 +228,23 @@ module mod_physics
        real(kind=dp)      , intent(in)    :: x(ixI^S, 1:^ND)
      end subroutine sub_convert
 
-     subroutine sub_modify_wLR(wLC, wRC, ixI^L, ixO^L, idir)
+
+     !beware : here, input wCT called only from mod_finite_volume.t contains
+     ! conservative variables. It must be first set to primitives at the beginning
+     ! of this subroutine, and wCT must be conservative again at the end of this
+     !subroutine. Or create a local variable to set to primitives, so that wCT
+     !is not affected.
+     subroutine sub_modify_wLR(wLp, wRp, wCT, x, ixI^L, ixO^L, idir, &
+     qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
        use mod_global_parameters
+       character(len=*), intent(in)                         :: method
        integer, intent(in)             :: ixI^L, ixO^L, idir
-       real(kind=dp)      , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
+       real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
+       real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
+       real(kind=dp)      , intent(inout) :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
+       type(walloc)       , intent(inout) :: local_block
+       real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
+       real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
      end subroutine sub_modify_wLR
 
      subroutine sub_get_cmax(w, x, ixI^L, ixO^L, idim, cmax)
@@ -480,6 +497,9 @@ contains
         phys_config%chemical_small_density = 0.0_dp
 
         phys_config%gravity              = .false.
+        !> Whether gravity hydrostatic equilibrum improvement is enabled whereas gravity is enabled
+        phys_config%gravity_hse          = .false.
+        phys_config%gravity_hse_scheme   = 'zerothorder'
   end subroutine phys_default_config
 
 
@@ -568,10 +588,17 @@ contains
   subroutine dummy_check_params
   end subroutine dummy_check_params
 
-  subroutine dummy_modify_wLR(wLC, wRC, ixI^L, ixO^L, idir)
+  subroutine dummy_modify_wLR(wLp, wRp, wCT, x, ixI^L, ixO^L, idir,&
+   qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
     use mod_global_parameters
+    character(len=*), intent(in)                         :: method
     integer, intent(in)                :: ixI^L, ixO^L, idir
-    real(kind=dp)      , intent(inout)    :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
+    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
+    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
+    real(kind=dp)      , intent(inout)    :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
+    type(walloc)       , intent(inout)    :: local_block
+    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
+    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
   end subroutine dummy_modify_wLR
 
   subroutine dummy_add_source_geom(qdt, ixI^L, ixO^L, wCT, w, x)

@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        nwauxio = 12
+        nwauxio = 13
         /
         !restart_from_file='Output/Ulrich1976_limitinflow/Jet_CC_0061.dat'
         /
@@ -57,7 +57,7 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  3.1557600d11 !1.57788d12!9.46728d11!3.1557600d11 !3.15576d11 ! 10000 yrs 6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.1557600d10 !1.57788d12!9.46728d11!3.1557600d11 !3.15576d11 ! 10000 yrs 6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !it_max=100
 
 
@@ -101,7 +101,7 @@
         !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
         typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
         typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
-        typeboundary_min2 =  7*'cont'!7*'special'!'symm','symm','limitinflow','symm','symm',2*'symm'!'symm','symm','asymm','symm','symm',2*'symm'!                                    ! C.L. inférieure <=> zmin
+        typeboundary_min2 =  7*'special'!'symm','symm','limitinflow','symm','symm',2*'symm'!'symm','symm','asymm','symm','symm',2*'symm'!                                    ! C.L. inférieure <=> zmin
         typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
 
 /
@@ -111,17 +111,23 @@
 
  &meshlist
         ! grid at level 1
+        ! if  geometry in use in 2D is usrconfig%coordinate_system   = 'cylindrical_2D' or 'cylindrical_2.5D'         
+        ! always make sure that xprobmin1=R>=0 since the code treats any xprobmin<0 grid as a cartesian grid and thus
+        ! introduces non-physical behaviour since the code treats the spatial indexes as in the cartesian case, thus creating
+        ! non-physical solutions
+        ! if you wand to treat xprobmin1 <0, switch to Cartesian coordinates, with the disadvantage of not being able to simply treat rotation along phi
+        ! (need to convert from phi to z)
         xprobmin1 =  0.0d0    ! cm
-        xprobmax1 =  1.5d17!3.0d17! <--- r_max=7e16cm
-        xprobmin2 =  -1.5d17!0.0d0    ! cm
+        xprobmax1 =  3.0d17!3.0d17! <--- r_max=7e16cm
+        xprobmin2 =  -1.5d17!-1.5d17!0.0d0    ! cm
         xprobmax2 =  1.5d17!3.0d17! <--- z_max=1.9e17cm
 
         ! total cell at level 1
-        domain_nx1= 240! <---dr=1.25e15 cm at lvl 1
-        domain_nx2= 240! <---dr=1.25e15 cm at lvl 1
+        domain_nx1= 480!240! <---dr=1.25e15 cm at lvl 1
+        domain_nx2= 480!240! <---dr=1.25e15 cm at lvl 1
         ! number of cell by block
-        block_nx1 = 8!8!
-        block_nx2 = 8!8!
+        block_nx1 = 8!120!8!8!
+        block_nx2 = 8!240!8!8!
 
         ! AMR configuration
         refine_criterion=3
@@ -169,6 +175,8 @@
          hd_dust              = .false.   ! dust off
          hd_radiative_cooling = .false. !>>HH4647 .false.!.true.    ! cooling on
          hd_gravity	       = .true. !>>HH4647 .false.!.true.    ! gravity on
+         hd_gravity_hse       = .false. !>>HH4647 .false.!.true.    ! gravity on         
+         hd_gravity_hse_scheme= 'twoordernopert'!options:'zerothorder','firstorder','twoordernohse','twoordernopert'
          hd_chemical          = .false.   ! use chemical
          hd_n_tracer          = 2
          hd_mean_mup_on       = .true. !>>HH4647 .true.
@@ -273,7 +281,7 @@
   ! 2) boundary_cond /= 'fix' but mixed_fixed_bound == .false. everywhere
   ! 3) boundary_cond /= 'fix' and at least one of the mixed_fixed_bound is .true.
   
-  ism_config%boundary_cond(2,1) = 'limitinflow'!'limitinflowdisc'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
+  ism_config%boundary_cond(2,1) = 'disc'!'limitinflow'!'limitinflowdisc'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
   
   ism_config%flux_frac          = 1.0d-2
   ism_config%useprimitive       = .false. 
@@ -312,16 +320,16 @@ ism_config%profile_center     = 0,0,0
 ism_config%profile_density_on = .true. ! Zheng=True ! .false. ! .true. ! ISM set density profile
 ism_config%profile_pressure_on= .true. ! Zheng=True ! .false. !.true.
 ism_config%theta_floored      = 0.0d0
-ism_config%profile_force_on   = .false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
-ism_config%profile_force_gradP_on = .false.
+ism_config%profile_force_on   = .false.!.false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
+ism_config%profile_force_gradP_on = .false.!.false.
 ism_config%weight_mean = 'arithmetic'
 ism_config%weight_analy = 1.0d0
-ism_config%weight_num = 3.0d0
-ism_config%weight_mean_variable = 'minus_density_grad'
+ism_config%weight_num = 0.0d0
+ism_config%weight_mean_variable = 'default'!'minus_density_grad'
 ism_config%profile_rw_force = 2.5d16
-ism_config%weight_num_index = 20.0d0
-ism_config%weight_analy_index = 20.0d0
-ism_config%profile_density    = 'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%weight_num_index = 1.0d0
+ism_config%weight_analy_index = 1.0d0
+ism_config%profile_density    = 'Ulrich1976'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
 ism_config%profile_jspec = 8.0782850178d20!20       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
@@ -336,7 +344,7 @@ ism_config%He_abundance      = 0.1
 /
 
 &usr_usrboundary_ism_list
-  usrboundary_config%boundary_type(2,1) = 'limitinflow'!'limitinflowdisc'!'disc'
+  usrboundary_config%boundary_type(2,1) = 'disc'!'limitinflow'!'limitinflowdisc'!'disc'
   usrboundary_config%boundary_type(2,2) = 'open'
   usrboundary_config%useprimitive       = .false.
   !usrboundary_config%special_origin_theta       = .true.
@@ -413,7 +421,7 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation
     cla_jet_config%variation_phys_variable(1) =  3 ! 3 mean the velocity in Z direction
 
-    cla_jet_config%refine_min_level      = 1
+    cla_jet_config%refine_min_level      = 2
     cla_jet_config%chemical_gas_type     = 'fullyatomic' !>>HH4647
 
 

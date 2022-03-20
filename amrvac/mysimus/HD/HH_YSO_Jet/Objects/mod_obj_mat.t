@@ -1010,6 +1010,7 @@ end subroutine usr_mat_profile_dist
                 theta_profile(ixO^S)        = DASIN(-x(ixO^S,r_)/dstce(ixO^S))
               end where
             !end where
+            !theta_profile(ixO^S)        = DATAN(x(ixO^S,r_)/dabs(x(ixO^S,z_)))
 
       else
           theta_profile(ixO^S)        = 0.0_dp

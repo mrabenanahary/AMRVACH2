@@ -46,6 +46,7 @@ contains
     integer                         :: idim
 
     double precision :: gravity_field(ixI^S,ndim)
+    double precision :: gravity_potential(ixI^S)
 
     if(qsourcesplit .eqv. grav_split) then
       active = .true.
@@ -57,7 +58,15 @@ contains
       else
         call usr_gravity(ixI^L,ixO^L,wCT,x,gravity_field)
       end if
-  
+
+      if (.not. associated(usr_gravity_potential)) then
+        write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"
+        write(*,*) "like the phys_gravity_potential in mod_usr_methods.t"
+        call mpistop("gravity_add_source: usr_gravity_potential not defined")
+      else
+        call usr_gravity_potential(ixI^L,ixO^L,wCT,x,gravity_potential)
+      end if
+
       do idim = 1, ndim
         w(ixO^S,iw_mom(idim)) = w(ixO^S,iw_mom(idim)) &
               + qdt * gravity_field(ixO^S,idim) * wCT(ixO^S,iw_rho)
@@ -82,6 +91,7 @@ contains
     integer                         :: idim
 
     double precision :: gravity_field(ixI^S,ndim)
+    double precision :: gravity_potential(ixI^S)
 
     ^D&dxinv(^D)=one/dx^D;
 
@@ -91,6 +101,14 @@ contains
       call mpistop("gravity_get_dt: usr_gravity not defined")
     else
       call usr_gravity(ixI^L,ixO^L,w,x,gravity_field)
+    end if
+
+    if (.not. associated(usr_gravity_potential)) then
+      write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"
+      write(*,*) "like the phys_gravity_potential in mod_usr_methods.t"
+      call mpistop("gravity_add_source: usr_gravity_potential not defined")
+    else
+      call usr_gravity_potential(ixI^L,ixO^L,w,x,gravity_potential)
     end if
 
     do idim = 1, ndim

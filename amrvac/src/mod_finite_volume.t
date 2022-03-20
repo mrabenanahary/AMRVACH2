@@ -175,7 +175,8 @@ contains
        end select
 
        ! special modification of left and right status before flux evaluation
-       call phys_modify_wLR(wLp, wRp, ixI^L, ixC^L, idim)
+       call phys_modify_wLR(wLp, wRp, wCT, x, ixI^L, ixC^L,&
+        idim, qdt, qtC, qt, dx^D, method, wnew, wold, block, wLC, wRC)
 
        ! evaluate physical fluxes according to reconstructed status
        call phys_get_flux(wLC,wLp,x,ixI^L,ixC^L,idim,fLC)
