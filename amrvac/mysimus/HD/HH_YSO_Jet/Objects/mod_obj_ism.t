@@ -86,7 +86,8 @@ module mod_obj_ism
       character(len=30)    :: boundary_cond(3,2)!> ism boundary condition
       real(dp)             :: flux_frac
       logical              :: useprimitive
-      integer              :: nghostcells
+      integer              :: nghostcells(3)
+      integer              :: escapencells(3)
       logical              :: mixed_fixed_bound(3,2,100) !> ism 'fix' flux variables
       !TO DO    : f95 does not allow to namelist an allocatable array, but fortran 2003+ does
       !So, for now, take a big enough useful array and the same size as in mod_obj_mat.t
@@ -421,7 +422,8 @@ contains
      self%myconfig%boundary_on           = .false.
      self%myconfig%boundary_cond         = 'fix'!'open'
      self%myconfig%flux_frac             = 1.0d-2
-     self%myconfig%nghostcells           = 2
+     self%myconfig%nghostcells(1:3)           = 2
+     self%myconfig%escapencells(1:3)     = 4
      self%myconfig%useprimitive         = .false.
      self%myconfig%debug                 = .false.
      self%myconfig%mixed_fixed_bound(1:3,1:2,1:nwfluxbc)     = .false.
@@ -499,7 +501,8 @@ contains
         self%myboundaries%myconfig%boundary_type=self%myconfig%boundary_cond
         self%myboundaries%myconfig%flux_frac=self%myconfig%flux_frac
         self%myboundaries%myconfig%useprimitive=self%myconfig%useprimitive
-        self%myboundaries%myconfig%nghostcells=self%myconfig%nghostcells
+        self%myboundaries%myconfig%nghostcells(1:3)=self%myconfig%nghostcells(1:3)
+        self%myboundaries%myconfig%escapencells(1:3)=self%myconfig%escapencells(1:3)
         !write(*,*) '- After the prioritization of boundary conditions :'
         !write(*,*) 'we have self%myboundaries%myconfig%boundary_type = ', self%myboundaries%myconfig%boundary_type
         !write(*,*) 'we have self%myconfig%boundary_cond = ', self%myconfig%boundary_cond

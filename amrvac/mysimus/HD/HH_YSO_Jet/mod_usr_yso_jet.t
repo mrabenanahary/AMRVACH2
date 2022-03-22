@@ -109,6 +109,7 @@ contains
     usr_reset_solver    => special_reset_solver
     usr_gravity         => special_pointmass_gravity
     usr_gravity_potential => special_pointmass_gravity_potential
+    usr_gravity_fpotential => special_pointmass_gravity_fpotential
     call usr_set_default_parameters ! >mod_obj_usr_yso_jet.t
 
 
@@ -1261,10 +1262,14 @@ return
     real(dp), intent(in)    :: wCT(ixI^S,1:nw)
     real(dp), intent(out)   :: gravity_field(ixI^S,ndim)
     real(dp)                        :: Ggrav, Mpoint
-    real(kind=dp), dimension(ixI^S) :: r_distance
+    real(kind=dp), dimension(ixI^S) :: r_distance,dx^D,dx_loc
+    real(kind=dp), dimension(ixI^S) :: r_distanceR,theta_profileR
+    real(kind=dp), dimension(ixI^S) :: r_distanceL,theta_profileL
+    real(dp)                        :: xhalfR(ixI^S,1:ndim),xhalfL(ixI^S,1:ndim)
+    real(kind=dp), dimension(ixI^S) :: gravity_phiR,gravity_phiL
     real(kind=dp), dimension(ixI^S) :: theta_profile
     real(kind=dp), dimension(1:ndim) :: zero_dim
-    integer                      :: i_ism,idim
+    integer                      :: i_ism,idim,level,idim2
     !-----------------------------------
 
 
@@ -1286,65 +1291,111 @@ return
         call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
         Mpoint = ism_surround(i_ism)%myconfig%profile_Mstar
 
-        select case(typeaxial)
-          case('spherical')
 
-            gravity_field(ixO^S,r_)=-Ggrav*Mpoint/(r_distance(ixO^S)*r_distance(ixO^S))
+        if(.not.phys_config%gravity_hse)then
+          select case(typeaxial)
+            case('spherical')
 
-          case('cylindrical')
-          where(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
-            gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
-            (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-            gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
-            (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-          elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
-            !g_R(z<0)=g_R(z<0)
-            gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
-            (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-            !g_Z(z<0)=-g_Z(z>0)
-            gravity_field(ixO^S,z_)=-(-Ggrav*Mpoint/&
-            (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-          elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)<0.0_dp)
-            !g_R(R<0)=g_R(R>0)
-            gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
-            (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-            !g_Z(R<0)=-g_Z(R>0)
-            gravity_field(ixO^S,z_)=-(-Ggrav*Mpoint/&
-            (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-          elsewhere(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)<0.0_dp)
-            !g_R(R<0)=g_R(R>0)
-            gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
-            (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-            !g_Z(R<0)=g_Z(R>0)
-            gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
-            (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-          end where
+              gravity_field(ixO^S,r_)=-Ggrav*Mpoint/(r_distance(ixO^S)*r_distance(ixO^S))
 
-
-
-
-
-          case('slab','slabstretch')
-
-            if(ndim<3)then
-              gravity_field(ixO^S,x_)=(-Ggrav*Mpoint/&
+            case('cylindrical')
+            where(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
+              gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
               (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-              gravity_field(ixO^S,y_)=(-Ggrav*Mpoint/&
+              gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
               (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-              if(ndir>2)then
-                gravity_field(ixO^S,z_) = 0.0_dp
-              end if
-            else
-              gravity_field(ixO^S,x_)= 0.0_dp ! TO DO
-              gravity_field(ixO^S,y_)= 0.0_dp ! TO DO
-              if(ndir>2)then
-                 gravity_field(ixO^S,z_) = 0.0_dp ! TO DO
-              end if
-            end if
+            elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
+              !g_R(z<0)=g_R(z<0)
+              gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
+              (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+              !g_Z(z<0)=-g_Z(z>0)
+              gravity_field(ixO^S,z_)=-(-Ggrav*Mpoint/&
+              (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+            elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)<0.0_dp)
+              !g_R(R<0)=g_R(R>0)
+              gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
+              (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+              !g_Z(R<0)=-g_Z(R>0)
+              gravity_field(ixO^S,z_)=-(-Ggrav*Mpoint/&
+              (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+            elsewhere(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)<0.0_dp)
+              !g_R(R<0)=g_R(R>0)
+              gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
+              (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+              !g_Z(R<0)=g_Z(R>0)
+              gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
+              (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+            end where
 
-          case default
-             call mpistop('Unknown typeaxial')
-        end select
+
+
+
+
+            case('slab','slabstretch')
+
+              if(ndim<3)then
+                gravity_field(ixO^S,x_)=(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                gravity_field(ixO^S,y_)=(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+                if(ndir>2)then
+                  gravity_field(ixO^S,z_) = 0.0_dp
+                end if
+              else
+                gravity_field(ixO^S,x_)= 0.0_dp ! TO DO
+                gravity_field(ixO^S,y_)= 0.0_dp ! TO DO
+                if(ndir>2)then
+                   gravity_field(ixO^S,z_) = 0.0_dp ! TO DO
+                end if
+              end if
+
+            case default
+               call mpistop('Unknown typeaxial')
+          end select
+
+        else
+
+          if(phys_config%use_gravity_g)then
+            write(*,*) 'special_pointmass_gravity in mod_usr.t:'
+            write(*,*) 'use_gravity_g is true but'
+            write(*,*) 'but this part is not yet implemented'
+            call mpistop('Code part not yet implemented')
+          else
+
+            !get this block level
+            level = node(plevel_,saveigrid)
+            {dx^D(ixI^S) = abs(xprobmax^D-xprobmin^D)/(2.0_dp**level)\}
+
+
+            do idim=1,ndim
+              {
+              idim2=^D
+              if(idim2==idim)then
+                xhalfR(ixI^S,^D)=x(ixI^S,^D)+half*dx^D(ixI^S)
+                xhalfL(ixI^S,^D)=x(ixI^S,^D)-half*dx^D(ixI^S)
+                dx_loc=dx^D
+              else
+                xhalfR(ixI^S,^D)=x(ixI^S,^D)
+                xhalfL(ixI^S,^D)=x(ixI^S,^D)
+              end if
+              ^D&\}
+
+              call usr_distance(ixI^L,ixO^L,typeaxial,&
+                                zero_dim,xhalfR,r_distanceR)
+              call usr_get_theta(ixI^L,ixO^L,xhalfR,theta_profileR)
+              call usr_distance(ixI^L,ixO^L,typeaxial,&
+                                zero_dim,xhalfL,r_distanceL)
+              call usr_get_theta(ixI^L,ixO^L,xhalfL,theta_profileL)
+              gravity_phiR(ixO^S) = -Ggrav*Mpoint/r_distanceR(ixO^S)
+              gravity_phiL(ixO^S) = -Ggrav*Mpoint/r_distanceL(ixO^S)
+              gravity_field(ixO^S,idim)=-(gravity_phiR(ixO^S)-&
+              gravity_phiL(ixO^S))/dx_loc
+              !call mpistop('le code arrive ici!!!!')
+            end do
+
+          end if
+
+        end if
         !gravity_field(ixO^S,1:ndim)=gravity_field(ixO^S,1:ndim)/&
         !((usr_physunit%myconfig%length**3.0_dp)/(usr_physunit%myconfig%mass*usr_physunit%myconfig%time**2.0_dp))
       end if
@@ -1408,6 +1459,63 @@ return
       (usr_physunit%myconfig%pressure/usr_physunit%myconfig%density)
 
   end subroutine special_pointmass_gravity_potential
+
+
+  function special_pointmass_gravity_fpotential(ixI^L,ixO^L,wCT,x) result(gravity_field)
+    use mod_global_parameters
+    integer, intent(in)             :: ixI^L, ixO^L
+    real(dp), intent(in)    :: x(ixI^S,1:ndim)
+    real(dp), intent(in)    :: wCT(ixI^S,1:nw)
+    real(dp)                :: gravity_field(ixO^S)
+    real(dp)                        :: Ggrav, Mpoint
+    real(kind=dp), dimension(ixI^S) :: r_distance
+    real(kind=dp), dimension(ixI^S) :: theta_profile
+    real(kind=dp), dimension(1:ndim) :: zero_dim
+    integer                      :: i_ism,idim
+    !-----------------------------------
+
+
+
+    Ggrav = constusr%G
+
+    gravity_field(ixO^S)=0.0_dp
+    {zero_dim(^D)=0.0_dp\}!-dx(1,1)
+
+
+
+    ! Here we set the graviationnal acceleration inside the whole domain
+    ! from the state vector wCT
+    ! here the called wCT contains conservative variables
+      if(usrconfig%ism_on)then
+        i_ism =0
+        call usr_distance(ixI^L,ixO^L,typeaxial,&
+                          zero_dim,x,r_distance)
+        call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+        Mpoint = ism_surround(i_ism)%myconfig%profile_Mstar
+
+        gravity_field(ixO^S)=-Ggrav*Mpoint/r_distance(ixO^S)
+
+        !gravity_field(ixO^S,1:ndim)=gravity_field(ixO^S,1:ndim)/&
+        !((usr_physunit%myconfig%length**3.0_dp)/(usr_physunit%myconfig%mass*usr_physunit%myconfig%time**2.0_dp))
+      end if
+
+      ! [p] = [p_i,j - rho_i,j*(phi_i+1-phi_i)/2] ==> renormalise to more usefulf pressure:
+      ! [phi]= [p/rho]
+
+      ! de-normalize
+      gravity_field(ixO^S)=gravity_field(ixO^S)*&
+      usr_physunit%myconfig%length*&
+      usr_physunit%myconfig%mass/&
+      (unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
+      (usr_physunit%myconfig%length*usr_physunit%myconfig%length))
+
+      !re-normalize:
+
+      gravity_field(ixO^S)=gravity_field(ixO^S)/&
+      (usr_physunit%myconfig%pressure/usr_physunit%myconfig%density)
+
+  end function special_pointmass_gravity_fpotential
+
 
   !-----------------------------------------------------------
   !> subroutine to check w
@@ -1657,6 +1765,7 @@ return
   ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
   ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
   ! corresponding normalization values (default value 1)
+  !/
     use mod_physics
     use mod_dust
     implicit none
@@ -1665,7 +1774,7 @@ return
     real(dp)                   :: win(ixI^S,nw+nwauxio)
     real(dp)                   :: normconv(0:nw+nwauxio)
     ! .. local ..
-    real(dp)                   :: w(ixI^S,nw)
+    real(dp)                   :: w(ixI^S,nw),w_init(ixI^S,nw)
     real(dp)                   :: error_var(ixM^T)
     integer                    :: iw, level,idir,idust
     integer, parameter         :: imach_             = 1
@@ -1682,6 +1791,11 @@ return
     integer, parameter         :: ideltav_dust12_    = 12
     integer, parameter         :: ipos_rCC_           = 13
     integer, parameter         :: ipos_zCC_           = 14
+    integer, parameter         :: irelerr_rho_           = 15
+    integer, parameter         :: irelerr_p_           = 16
+    integer, parameter         :: irelerr_v1_          = 17
+    integer, parameter         :: irelerr_v2_          = 18
+    integer, parameter         :: irelerr_v3_          = 19
     integer, parameter         :: irhod1torho_       = 20
 
     real(dp),dimension(ixI^S)                                  :: csound2,temperature
@@ -1692,6 +1806,8 @@ return
 
 
     !----------------------------------------------------
+
+
     w(ixI^S,1:nw) = win(ixI^S,1:nw)
     level = node(plevel_,saveigrid)
 
@@ -1703,6 +1819,7 @@ return
       win(ixO^S,nw+imach_) = dsqrt(SUM(w(ixO^S,phys_ind%mom(1):phys_ind%mom(ndir))**2.0_dp&
                                 ,dim=ndim+1)/csound2(ixO^S))&
                                 /(w(ixO^S,phys_ind%rho_))
+      !/
       case(itemperature_)
         call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
         win(ixO^S,nw+itemperature_) = temperature(ixO^S)*unit_temperature
@@ -1789,7 +1906,7 @@ return
               win(ixI^S,nw+ideltav_dust11_) = 0.0_dp
             endwhere
         end if  dust_on_deltav11
-
+        !/
       case(ideltav_dust12_)
         normconv(nw+iw)     = 1.0_dp
         dust_on_deltav12 : if(phys_config%dust_on)then
@@ -1806,6 +1923,7 @@ return
               win(ixI^S,nw+ideltav_dust12_) = 0.0_dp
             endwhere
         end if  dust_on_deltav12
+        !/
       case(irhod1torho_)
         normconv(nw+iw)     = 1.0_dp
         idust = 1
@@ -1815,6 +1933,44 @@ return
         elsewhere
           win(ixI^S,nw+irhod1torho_) = 0.0_dp
         end where
+
+      case(irelerr_rho_,irelerr_p_,irelerr_v1_,irelerr_v2_,irelerr_v3_)
+        call initonegrid_usr(ixI^L,ixO^L,w_init,x)
+        select case(iw)
+        case(irelerr_rho_)
+          normconv(nw+irelerr_rho_)     = 1.0_dp
+          win(ixO^S,nw+irelerr_rho_)    = 100.0_dp*((w(ixO^S,phys_ind%rho_)-&
+                                          w_init(ixO^S,phys_ind%rho_))/&
+                                          w_init(ixO^S,phys_ind%rho_))
+        case(irelerr_p_)
+          normconv(nw+irelerr_p_)     = 1.0_dp
+          win(ixO^S,nw+irelerr_p_)    = 100.0_dp*((w(ixO^S,phys_ind%pressure_)-&
+                                          w_init(ixO^S,phys_ind%pressure_))/&
+                                          w_init(ixO^S,phys_ind%pressure_))
+        case(irelerr_v1_)
+          normconv(nw+irelerr_v1_)     = 1.0_dp
+          win(ixO^S,nw+irelerr_v1_)  = 100.0_dp*((w(ixO^S,phys_ind%mom(1))-&
+                                          w_init(ixO^S,phys_ind%mom(1)))/&
+                                          w_init(ixO^S,phys_ind%mom(1)))
+        case(irelerr_v2_)
+          normconv(nw+irelerr_v2_)     = 1.0_dp
+          if(ndir>=2)then
+            win(ixO^S,nw+irelerr_v2_)  = 100.0_dp*((w(ixO^S,phys_ind%mom(2))-&
+                                            w_init(ixO^S,phys_ind%mom(2)))/&
+                                            w_init(ixO^S,phys_ind%mom(2)))
+          else
+            win(ixO^S,nw+irelerr_v2_)  = 0.0_dp
+          end if
+        case(irelerr_v3_)
+          normconv(nw+irelerr_v3_)     = 1.0_dp
+          if(ndir>=3)then
+            win(ixO^S,nw+irelerr_v3_)  = 100.0_dp*((w(ixO^S,phys_ind%mom(3))-&
+                                            w_init(ixO^S,phys_ind%mom(3)))/&
+                                            w_init(ixO^S,phys_ind%mom(3)))
+          else
+            win(ixO^S,nw+irelerr_v3_)  = 0.0_dp
+          end if
+        end select
       case default
        write(*,*)'is not implimented at specialvar_output in mod_user'
     end select
@@ -1850,8 +2006,15 @@ return
     integer, parameter         :: ideltav_dust12_    = 12
     integer, parameter         :: ipos_rCC_           = 13
     integer, parameter         :: ipos_zCC_           = 14
+    integer, parameter         :: irelerr_rho_           = 15
+    integer, parameter         :: irelerr_p_           = 16
+    integer, parameter         :: irelerr_v1_          = 17
+    integer, parameter         :: irelerr_v2_          = 18
+    integer, parameter         :: irelerr_v3_          = 19
     integer, parameter         :: irhod1torho_       = 20
+    character(len=30)          :: strint
     !----------------------------------------------------
+
     Loop_iw : do  iw = 1,nwauxio
       select case(iw)
       case(imach_)
@@ -1882,6 +2045,16 @@ return
         varnames(ipos_rCC_)         = 'r_cell'
       case(ipos_zCC_)
         varnames(ipos_zCC_)         = 'z_cell'
+      case(irelerr_rho_)
+        varnames(irelerr_rho_)   = 'relerrorrho'
+      case(irelerr_p_)
+        varnames(irelerr_p_)   = 'relerrorp'
+      case(irelerr_v1_)
+        varnames(irelerr_v1_)   = 'relerrorv1'
+      case(irelerr_v2_)
+        varnames(irelerr_v2_)   = 'relerrorv2'
+      case(irelerr_v3_)
+        varnames(irelerr_v3_)   = 'relerrorv3'
       end select
     end do Loop_iw
 

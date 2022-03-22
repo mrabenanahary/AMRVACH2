@@ -170,6 +170,7 @@ module mod_physics
     !> Whether gravity hydrostatic equilibrum improvement is enabled whereas gravity is enabled
     logical                   :: gravity_hse
     character(len=30)         :: gravity_hse_scheme
+    logical                   :: use_gravity_g
     logical                   :: chemical_on
     integer                   :: chemical_n_species
     real(dp)                  :: chemical_small_density
@@ -500,6 +501,7 @@ contains
         !> Whether gravity hydrostatic equilibrum improvement is enabled whereas gravity is enabled
         phys_config%gravity_hse          = .false.
         phys_config%gravity_hse_scheme   = 'zerothorder'
+        phys_config%use_gravity_g        = .false.
   end subroutine phys_default_config
 
 

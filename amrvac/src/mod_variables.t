@@ -49,6 +49,7 @@ module mod_variables
   !> Index of the gravity potential
   integer, protected :: iw_grav_phi = -1
 
+
   !> Indices of the magnetic field components
   integer, allocatable, protected :: iw_mag(:)
 

@@ -60,6 +60,8 @@ module mod_hd_phys
   !> Index of the gravity potential (-1 if not present)
   integer, public, protected              :: grav_phi_
 
+  !> Index of the gravity potential (-1 if not present)
+  {integer, public, protected              :: grav_g^D_\}
 
   !> The adiabatic index
   real(dp), public                :: hd_gamma = 5.d0/3.0d0
@@ -512,9 +514,17 @@ contains
 
     ! Set index(es) of gravity variable(s)
     if (hd_config%gravity) then
-      grav_phi_=var_set_grav_phi('Gphi')
+      if(.not. hd_config%use_gravity_g)then
+        grav_phi_=var_set_grav_phi('Gphi')
+        {grav_g^D_=-1\}
+      else
+        {write(varstr^D,'(I5)') ^D\}
+        call var_set_grav_g({trim('Gphi' // varstr^D)},grav_g^D_)
+        grav_phi_=-1
+      end if
     else
       grav_phi_=-1
+      {grav_g^D_=-1\}
     end if
 
 
@@ -526,6 +536,7 @@ contains
     hd_ind%e_          =e_
     hd_ind%pressure_   =p_
     hd_ind%grav_phi_   =grav_phi_
+    {hd_ind%grav_g^D_   =grav_g^D_\}
     hd_ind%lfac_       =-1
     hd_ind%xi_         =-1
     hd_ind%psi_        =-1
@@ -1503,7 +1514,7 @@ contains
   subroutine improve_gravity_hse_exact(wLp, wRp, wCT, x, ixI^L, ixO^L, idir,&
   qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
     use mod_global_parameters
-    use mod_usr_methods, only: usr_reset_solver, usr_gravity_fpotential
+    use mod_usr_methods, only: usr_reset_solver
     use mod_finite_volume, only: reconstruct_LR, reconstruct_LR3
     character(len=*), intent(in)                         :: method
     integer, intent(in)             :: ixI^L, ixO^L, idir
@@ -1516,19 +1527,12 @@ contains
     ! ..........local...........
     ! primitive w at cell center
     real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim,wpert,wpertLp,wpertRp
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: wpertLC, wpertRC
-    real(kind=dp)   , dimension(ixI^S)      :: wphikR,wphikC,wphikL
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: xhalfR,xhalfL
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wpertLC, wpertRC,wphikR,wphiLR
     integer                                 :: ixOfinite^L
     real(kind=dp)   , dimension(1:ndim)     :: dxinv
     character(len=len(method))              :: method_loc
-    integer :: iw, ix^L, hxO^L, ixC^L, ixCR^L, kxL^L, kxC^L, kxR^L, myidim
+    integer :: iw, ix^L, hxO^L, ixC^L, ixCR^L, kxL^L, kxC^L, kxR^L
 
-    if (.not. associated(usr_gravity_fpotential)) then
-      write(*,*) "mod_usr.t: please point usr_gravity_fpotential to a subroutine"
-      write(*,*) "like the phys_gravity_fpotential in mod_usr_methods.t"
-      call mpistop("hd_get_aux: usr_gravity_fpotential not defined")
-    end if
 
 
     !Recompute output part of the indexes from mod_finite_volume.t:finite_volume
@@ -1539,17 +1543,6 @@ contains
 
     wprim=wCT
     call phys_to_primitive(ixI^L,ixI^L,wprim,x)
-
-    do myidim=1,ndim
-      if(myidim==idir)then
-        xhalfR(ixI^S,myidim)=x(ixI^S,myidim)+local_block%dx(ixI^S,myidim)
-        xhalfL(ixI^S,myidim)=x(ixI^S,myidim)-local_block%dx(ixI^S,myidim)
-      else
-        xhalfR(ixI^S,myidim)=x(ixI^S,myidim)
-        xhalfL(ixI^S,myidim)=x(ixI^S,myidim)
-      end if
-    end do
-
 
 
     ^D&dxinv(^D)=-qdt/dx^D;
@@ -1584,10 +1577,6 @@ contains
     ! is similar to cell-centered values, but in direction idir=finite_volume:idim they are
     ! shifted half a cell towards the 'lower' direction.
 
-    wphikR(kxC^S)=usr_gravity_fpotential(ixI^L,ixI^L,wCT,xhalfR)!at kxC=i
-    wphikC(kxC^S)=usr_gravity_fpotential(ixI^L,ixI^L,wCT,x)     !at kxC=i
-    wphikL(kxC^S)=usr_gravity_fpotential(ixI^L,ixI^L,wCT,xhalfL)!at kxC=i
-
     !first setting of the primitive left and right state variables
     !at the cell centers
     ! 20-03-22 : The methods below are only [yet]
@@ -1603,14 +1592,12 @@ contains
       wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
       wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
       !first-order scheme from Kappeli et al. (2016)
-      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-                      wprim(kxR^S,iw_rho)*&
-                      (wphikL(kxR^S)-wphikC(kxR^S))
-                      !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
+      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
+                      half*wprim(kxR^S,iw_rho)*&
+                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
       wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                      wprim(kxC^S,iw_rho)*&
-                      (wphikR(kxC^S)-wphikC(kxC^S))
-                      !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
+                      half*wprim(kxC^S,iw_rho)*&
+                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
     case('twoorderpert','twoorderpert2')
       wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
       wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
@@ -1624,15 +1611,13 @@ contains
       !p_1,i,j(R_i+1,z_j)=p_i+1,j-p_0,i,j(R_i+1,z_j)
       wpertRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
         (wprim(kxC^S,iw_e)-&
-        (wprim(kxR^S,iw_rho)*(wphikC(kxR^S)-wphikL(kxR^S))+&
-         wprim(kxC^S,iw_rho)*(wphikR(kxC^S)-wphikC(kxC^S))))
-        !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi)))
+        half*(wprim(kxC^S,iw_rho)+wprim(kxR^S,iw_rho))*&
+        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi)))
       !p_1,i,j(R_i-1,z_j)=p_i-1,j-p_0,i,j(R_i-1,z_j)
       wpertLp(kxC^S,iw_e)=wprim(kxL^S,iw_e)-&
-        (wprim(kxC^S,iw_e)-&
-        (wprim(kxL^S,iw_rho)*(wphikC(kxL^S)-wphikR(kxL^S))+&
-         wprim(kxC^S,iw_rho)*(wphikL(kxC^S)-wphikC(kxC^S))))
-        !(wprim(kxC^S,iw_grav_phi)-wprim(kxL^S,iw_grav_phi)))
+        (wprim(kxC^S,iw_e)+&
+        half*(wprim(kxL^S,iw_rho)+wprim(kxC^S,iw_rho))*&
+        (wprim(kxC^S,iw_grav_phi)-wprim(kxL^S,iw_grav_phi)))
     case default
       wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
       wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
@@ -1676,14 +1661,12 @@ contains
       ! since no perturbation part of the pressure is taken into account
       ! and this equilibrum pressure part allow to resolve spatially second-order
       ! hydrostatic equilibrum
-      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-                      wprim(kxR^S,iw_rho)*&
-                      (wphikL(kxR^S)-wphikC(kxR^S))
-                      !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
+      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
+                      half*wprim(kxR^S,iw_rho)*&
+                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
       wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                      wprim(kxC^S,iw_rho)*&
-                      (wphikR(kxC^S)-wphikC(kxC^S))
-                      !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
+                      half*wprim(kxC^S,iw_rho)*&
+                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
       wLC=wLp
       wRC=wRp
       call phys_to_conserved(ixI^L,ixI^L,wLC,x)
@@ -1706,14 +1689,12 @@ contains
       ! and then reconstruct it too, before adding the reconstructed
       ! perturbation part of the pressure
       if(trim(hd_config%gravity_hse_scheme)=='twoorderpert2')then
-        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-                        wprim(kxR^S,iw_rho)*&
-                        (wphikL(kxR^S)-wphikC(kxR^S))
-                        !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
+        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
+                        half*wprim(kxR^S,iw_rho)*&
+                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
         wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                        wprim(kxC^S,iw_rho)*&
-                        (wphikR(kxC^S)-wphikC(kxC^S))
-                        !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
+                        half*wprim(kxC^S,iw_rho)*&
+                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
       end if
 
       select case (typelimited)
@@ -1745,14 +1726,12 @@ contains
       ! 3)a] Equilibrum part of:
       ! - pressure
       if(trim(hd_config%gravity_hse_scheme)=='twoorderpert')then
-        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-                        wprim(kxR^S,iw_rho)*&
-                        (wphikL(kxR^S)-wphikC(kxR^S))
-                        !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
+        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
+                        half*wprim(kxR^S,iw_rho)*&
+                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
         wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                        wprim(kxC^S,iw_rho)*&
-                        (wphikR(kxC^S)-wphikC(kxC^S))
-                        !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
+                        half*wprim(kxC^S,iw_rho)*&
+                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
       end if
       ! 3)b] Combination with the perturbated part of :
       ! - pressure
@@ -1803,13 +1782,49 @@ contains
 
     !---local------
     double precision, allocatable :: gravity_potential(:^D&)
+    {real(kind=dp)      , allocatable    :: xhalfR^D(:^DD&,:)\}
     integer :: iw_g_dir,idim
     !---------------------------------------------------------------------------
 
 
 
     if(hd_config%use_gravity_g)then
-      w(ixO^S,grav_phi_)=0.0_dp
+      if (.not. associated(usr_gravity_potential)) then
+        write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"
+        write(*,*) "like the phys_gravity_potential in mod_usr_methods.t"
+        call mpistop("hd_get_aux: usr_gravity_potential not defined")
+      else
+        if(.not.allocated(gravity_potential))allocate(gravity_potential(ixI^S))
+        {if(.not.allocated(xhalfR^D))allocate(xhalfR^D(ixI^S,1:ndim))\}
+
+          !x_i+1/2=x_i+dx/2=(x_i+x_i+1)/2
+          {^D&!Case idim=^D
+            gravity_potential(ixI^S)=0.0_dp
+            do idim=1,ndim
+              if(idim==^D)then
+                xhalfR^D(ixI^S,idim)=x(ixI^S,idim)+half*block%dx(ixI^S,idim)
+              else
+                xhalfR^D(ixI^S,idim)=x(ixI^S,idim)
+              end if
+            end do
+          !==========================================
+          iw_g_dir=iw_grav_g^D
+          ! since the integral
+          ! int_x_i^x_i+1/2 g_x(x,...)dx = - int_x_i^x_i+1/2 dphi(x,..)/dx*dx
+          ! = -(phi(x_i+1/2)-phi(x_i))
+          ! along x=^D-th direction
+
+          !phi(x_i+1/2):
+          call usr_gravity_potential(ixI^L,ixO^L,w,xhalfR^D,gravity_potential)
+          w(ixO^S,iw_g_dir)=gravity_potential(ixO^S)
+          !-(phi(x_i+1/2)-phi(x_i)):
+          call usr_gravity_potential(ixI^L,ixO^L,w,x,gravity_potential)
+          w(ixO^S,iw_g_dir)=(w(ixO^S,iw_g_dir)-gravity_potential(ixO^S)) !=-g(x_i+1/2,...)
+          \}
+          !==========================================
+        {if(allocated(xhalfR^D))deallocate(xhalfR^D)\}
+
+      end if
     else
       if (.not. associated(usr_gravity_potential)) then
         write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"

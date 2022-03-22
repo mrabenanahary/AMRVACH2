@@ -63,8 +63,6 @@ contains
         write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"
         write(*,*) "like the phys_gravity_potential in mod_usr_methods.t"
         call mpistop("gravity_add_source: usr_gravity_potential not defined")
-      else
-        call usr_gravity_potential(ixI^L,ixO^L,wCT,x,gravity_potential)
       end if
 
       do idim = 1, ndim

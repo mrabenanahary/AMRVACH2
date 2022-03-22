@@ -10,6 +10,7 @@ type usrboundary_parameters
     character(len=30)             :: boundary_type(3,2)
     logical                       :: useprimitive
     integer                       :: nghostcells(3)
+    integer                       :: escapencells(3)
     real(kind=dp)                 :: flux_frac
     logical                       :: special_origin_theta
     logical                       :: mixed_fixed_bound(3,3,100) !> ism 'fix' flux variables :
@@ -67,6 +68,7 @@ subroutine usr_boundaries_set_default(self)
    self%myconfig%useprimitive       = .false.
    self%myconfig%boundary_type      = 'open'
    self%myconfig%nghostcells        = 2
+   self%myconfig%escapencells(1:3)  = 4
    self%myconfig%flux_frac          = 1.0d-2
    self%myconfig%obj_name           = 'boundary'
    self%myconfig%myindice           = 1
@@ -244,12 +246,21 @@ subroutine usr_boundaries_set_complet(self)
        self%variable_typebound(idims,iside,2)='symm'
        self%variable_typebound(idims,iside,3)='asymm'
        self%variable_typebound(idims,iside,4)='symm'
+     case('dischole')
+         self%variable_typebound(idims,iside,:)='symmhole'
+         self%variable_typebound(idims,iside,2)='symmhole'
+         self%variable_typebound(idims,iside,3)='asymmhole'
+         self%variable_typebound(idims,iside,4)='symmhole'
      case('axis')
       self%variable_typebound(idims,iside,:)='symm'
       self%variable_typebound(idims,iside,phys_ind%mom(r_))='asymm'
       self%variable_typebound(idims,iside,phys_ind%mom(phi_))='asymm'
       self%variable_typebound(idims,iside,phys_ind%mom(z_))='symm'
-
+    case('axishole')
+     self%variable_typebound(idims,iside,:)='symmhole'
+     self%variable_typebound(idims,iside,phys_ind%mom(r_))='asymmhole'
+     self%variable_typebound(idims,iside,phys_ind%mom(phi_))='asymmhole'
+     self%variable_typebound(idims,iside,phys_ind%mom(z_))='symmhole'
      end select
 
      !set the variables to fix
@@ -474,6 +485,22 @@ subroutine usr_boundaries_set_w(ixI^L,ixO^L,iB,idims,iside,&
              !print*,cons_wnames(iw),' = ',w(ixO^S,iw)
              !print*,'min(',cons_wnames(iw),') = ',MINVAL(w(ixO^S,iw))
              !print*,'max(',cons_wnames(iw),') = ',MAXVAL(w(ixO^S,iw))
+         case ("symmhole")
+             w(ixO^S,iw) = w(ixOmax^D+self%myconfig%nghostcells(^D):ixOmax^D+1:-1^D%ixO^S,iw)
+             {do ix^DD=ixOmin^DD,ixOmax^DD\}
+             if(DABS(x(ix^DD,r_))<=self%myconfig%escapencells(^D)*dx(1,1).or.&
+              DABS(x(ix^DD,z_))<=self%myconfig%escapencells(^D)*dx(2,1))then
+                w(ix^D^D%ix^DD,iw) = w(ixOmax^D+1^D%ix^DD,iw)
+             end if
+             {end do^DD&\}
+         case ("asymmhole")
+             w(ixO^S,iw) = -w(ixOmax^D+self%myconfig%nghostcells(^D):ixOmax^D+1:-1^D%ixO^S,iw)
+             {do ix^DD=ixOmin^DD,ixOmax^DD\}
+             if(DABS(x(ix^DD,r_))<=self%myconfig%escapencells(^D)*dx(1,1).or.&
+              DABS(x(ix^DD,z_))<=self%myconfig%escapencells(^D)*dx(2,1))then
+                w(ix^D^D%ix^DD,iw) = w(ixOmax^D+1^D%ix^DD,iw)
+             end if
+             {end do^DD&\}
          case ("cont")
              do ix^D=ixOmin^D,ixOmax^D
                 w(ix^D^D%ixO^S,iw) = w(ixOmax^D+1^D%ixO^S,iw)
