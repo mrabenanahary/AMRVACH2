@@ -1261,18 +1261,12 @@ return
     real(dp), intent(in)    :: x(ixI^S,1:ndim)
     real(dp), intent(in)    :: wCT(ixI^S,1:nw)
     real(dp), intent(out)   :: gravity_field(ixI^S,ndim)
-    real(dp)                        :: Ggrav, Mpoint
-    real(kind=dp), dimension(ixI^S) :: r_distance,dx^D,dx_loc
-    real(kind=dp), dimension(ixI^S) :: r_distanceR,theta_profileR
-    real(kind=dp), dimension(ixI^S) :: r_distanceL,theta_profileL
-    real(dp)                        :: xhalfR(ixI^S,1:ndim),xhalfL(ixI^S,1:ndim)
-    real(kind=dp), dimension(ixI^S) :: gravity_phiR,gravity_phiL
+    real(dp)                        :: Ggrav, Mpoint, alpha
+    real(kind=dp), dimension(ixI^S) :: r_distance,absr
     real(kind=dp), dimension(ixI^S) :: theta_profile
     real(kind=dp), dimension(1:ndim) :: zero_dim
-    integer                      :: i_ism,idim,level,idim2
+    integer                      :: i_ism,idim
     !-----------------------------------
-
-
 
     Ggrav = constusr%G
 
@@ -1291,116 +1285,116 @@ return
         call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
         Mpoint = ism_surround(i_ism)%myconfig%profile_Mstar
 
+        Loop_isms : do i_ism=0,usrconfig%ism_number-1
+        select case(trim(ism_surround(i_ism)%myconfig%profile_density))
+          case('Ulrich1976')
+          if(.not.phys_config%gravity_hse)then
+            select case(typeaxial)
+              case('spherical')
 
-        if(.not.phys_config%gravity_hse)then
-          select case(typeaxial)
-            case('spherical')
+                gravity_field(ixO^S,r_)=-Ggrav*Mpoint/(r_distance(ixO^S)*r_distance(ixO^S))
 
-              gravity_field(ixO^S,r_)=-Ggrav*Mpoint/(r_distance(ixO^S)*r_distance(ixO^S))
-
-            case('cylindrical')
-            where(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
-              gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
-              (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-              gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
-              (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-            elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
-              !g_R(z<0)=g_R(z<0)
-              gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
-              (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-              !g_Z(z<0)=-g_Z(z>0)
-              gravity_field(ixO^S,z_)=-(-Ggrav*Mpoint/&
-              (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-            elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)<0.0_dp)
-              !g_R(R<0)=g_R(R>0)
-              gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
-              (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-              !g_Z(R<0)=-g_Z(R>0)
-              gravity_field(ixO^S,z_)=-(-Ggrav*Mpoint/&
-              (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-            elsewhere(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)<0.0_dp)
-              !g_R(R<0)=g_R(R>0)
-              gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
-              (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-              !g_Z(R<0)=g_Z(R>0)
-              gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
-              (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-            end where
-
-
-
-
-
-            case('slab','slabstretch')
-
-              if(ndim<3)then
-                gravity_field(ixO^S,x_)=(-Ggrav*Mpoint/&
+              case('cylindrical')
+              where(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
+                gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
                 (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-                gravity_field(ixO^S,y_)=(-Ggrav*Mpoint/&
+                gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
                 (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-                if(ndir>2)then
-                  gravity_field(ixO^S,z_) = 0.0_dp
+              elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
+                !g_R(z<0)=g_R(z<0)
+                gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                !g_Z(z<0)=-g_Z(z>0)
+                gravity_field(ixO^S,z_)=-(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+              elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)<0.0_dp)
+                !g_R(R<0)=-g_R(R>0)
+                gravity_field(ixO^S,r_)=-(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                !g_Z(R<0)=g_Z(R>0)
+                gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+              elsewhere(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)<0.0_dp)
+                !g_R(R<0)=-g_R(R>0)
+                gravity_field(ixO^S,r_)=-(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                !g_Z(R<0)=g_Z(R>0)
+                gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+              end where
+
+
+
+
+
+              case('slab','slabstretch')
+
+                if(ndim<3)then
+                  gravity_field(ixO^S,x_)=(-Ggrav*Mpoint/&
+                  (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                  gravity_field(ixO^S,y_)=(-Ggrav*Mpoint/&
+                  (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+                  if(ndir>2)then
+                    gravity_field(ixO^S,z_) = 0.0_dp
+                  end if
+                else
+                  gravity_field(ixO^S,x_)= 0.0_dp ! TO DO
+                  gravity_field(ixO^S,y_)= 0.0_dp ! TO DO
+                  if(ndir>2)then
+                     gravity_field(ixO^S,z_) = 0.0_dp ! TO DO
+                  end if
                 end if
-              else
-                gravity_field(ixO^S,x_)= 0.0_dp ! TO DO
-                gravity_field(ixO^S,y_)= 0.0_dp ! TO DO
-                if(ndir>2)then
-                   gravity_field(ixO^S,z_) = 0.0_dp ! TO DO
-                end if
-              end if
 
-            case default
-               call mpistop('Unknown typeaxial')
-          end select
+              case default
+                 call mpistop('Unknown typeaxial')
+            end select
 
-        else
-
-          if(phys_config%use_gravity_g)then
-            write(*,*) 'special_pointmass_gravity in mod_usr.t:'
-            write(*,*) 'use_gravity_g is true but'
-            write(*,*) 'but this part is not yet implemented'
-            call mpistop('Code part not yet implemented')
           else
 
-            !get this block level
-            level = node(plevel_,saveigrid)
-            {dx^D(ixI^S) = abs(xprobmax^D-xprobmin^D)/(2.0_dp**level)\}
+            if(phys_config%use_gravity_g)then
+              write(*,*) 'special_pointmass_gravity in mod_usr.t:'
+              write(*,*) 'use_gravity_g is true but'
+              write(*,*) 'but this part is not yet implemented'
+              call mpistop('Code part not yet implemented')
+            else
 
-
-            do idim=1,ndim
-              {
-              idim2=^D
-              if(idim2==idim)then
-                xhalfR(ixI^S,^D)=x(ixI^S,^D)+half*dx^D(ixI^S)
-                xhalfL(ixI^S,^D)=x(ixI^S,^D)-half*dx^D(ixI^S)
-                dx_loc=dx^D
-              else
-                xhalfR(ixI^S,^D)=x(ixI^S,^D)
-                xhalfL(ixI^S,^D)=x(ixI^S,^D)
-              end if
-              ^D&\}
-
-              call usr_distance(ixI^L,ixO^L,typeaxial,&
-                                zero_dim,xhalfR,r_distanceR)
-              call usr_get_theta(ixI^L,ixO^L,xhalfR,theta_profileR)
-              call usr_distance(ixI^L,ixO^L,typeaxial,&
-                                zero_dim,xhalfL,r_distanceL)
-              call usr_get_theta(ixI^L,ixO^L,xhalfL,theta_profileL)
-              gravity_phiR(ixO^S) = -Ggrav*Mpoint/r_distanceR(ixO^S)
-              gravity_phiL(ixO^S) = -Ggrav*Mpoint/r_distanceL(ixO^S)
-              gravity_field(ixO^S,idim)=-(gravity_phiR(ixO^S)-&
-              gravity_phiL(ixO^S))/dx_loc
-              !call mpistop('le code arrive ici!!!!')
-            end do
+              write(*,*) 'special_pointmass_gravity in mod_usr.t:'
+              write(*,*) 'use_gravity_g is false but'
+              write(*,*) 'but this part is not yet implemented'
+              call mpistop('Code part not yet implemented')
+            end if
 
           end if
+          !gravity_field(ixO^S,1:ndim)=gravity_field(ixO^S,1:ndim)/&
+          !((usr_physunit%myconfig%length**3.0_dp)/(usr_physunit%myconfig%mass*&
+          !usr_physunit%myconfig%time**2.0_dp))
+          case('Lee2001')
 
+            alpha = ism_surround(i_ism)%myconfig%profile_p
+            absr(ixI^S)=DABS(x(ixI^S,r_))
+            gravity_field(ixO^S,r_) = - alpha * (x(ixO^S,r_)**2.0_dp-&
+            x(ixO^S,z_)**2.0_dp)/(absr(ixO^S)*(x(ixO^S,r_)**2.0_dp+&
+            x(ixO^S,z_)**2.0_dp))
+
+            gravity_field(ixO^S,z_) = - 2.0_dp * alpha * x(ixO^S,z_) / &
+            (x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)
+
+            !gravity_field(ixO^S,phi_) = 0.0_dp
+            !treat theta=0 where dp/dR=-rho*dPhi/dR=0
+            !where(DABS(x(ixO^S,r_))<=smalldouble)
+              !gravity_field(ixO^S,r_)=0.0_dp
+              !gravity_field(ixO^S,z_)=0.0_dp
+            !end where
+
+            !call mpistop('the code arrives here !!! ')
+
+          case default
+
+            gravity_field(ixO^S,1:ndim)=0.0_dp
+
+          end select
+          end do Loop_isms
         end if
-        !gravity_field(ixO^S,1:ndim)=gravity_field(ixO^S,1:ndim)/&
-        !((usr_physunit%myconfig%length**3.0_dp)/(usr_physunit%myconfig%mass*usr_physunit%myconfig%time**2.0_dp))
-      end if
-
-
 
   end subroutine special_pointmass_gravity
 
@@ -1411,12 +1405,14 @@ return
     real(dp), intent(in)    :: x(ixI^S,1:ndim)
     real(dp), intent(in)    :: wCT(ixI^S,1:nw)
     real(dp), intent(out)   :: gravity_field(ixI^S)
-    real(dp)                        :: Ggrav, Mpoint
+    real(dp)                        :: Ggrav, Mpoint, alpha
     real(kind=dp), dimension(ixI^S) :: r_distance
     real(kind=dp), dimension(ixI^S) :: theta_profile
     real(kind=dp), dimension(1:ndim) :: zero_dim
     integer                      :: i_ism,idim
     !-----------------------------------
+
+
 
 
 
@@ -1437,10 +1433,32 @@ return
         call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
         Mpoint = ism_surround(i_ism)%myconfig%profile_Mstar
 
-        gravity_field(ixO^S)=-Ggrav*Mpoint/r_distance(ixO^S)
+        Loop_isms : do i_ism=0,usrconfig%ism_number-1
+        select case(trim(ism_surround(i_ism)%myconfig%profile_density))
+          case('Ulrich1976')
+            gravity_field(ixO^S)=-Ggrav*Mpoint/r_distance(ixO^S)
 
-        !gravity_field(ixO^S,1:ndim)=gravity_field(ixO^S,1:ndim)/&
-        !((usr_physunit%myconfig%length**3.0_dp)/(usr_physunit%myconfig%mass*usr_physunit%myconfig%time**2.0_dp))
+            !gravity_field(ixO^S,1:ndim)=gravity_field(ixO^S,1:ndim)/&
+            !((usr_physunit%myconfig%length**3.0_dp)/(usr_physunit%myconfig%mass*usr_physunit%myconfig%time**2.0_dp))
+          case('Lee2001')
+
+            alpha = ism_surround(i_ism)%myconfig%profile_p
+            gravity_field(ixO^S) = alpha * &
+            DLOG((r_distance(ixO^S)/DSIN(theta_profile(ixO^S)))/&
+            (ism_surround(i_ism)%myconfig%profile_rw/1.0_dp)) !theta_0=pi/2
+            !gravity_field(ixO^S,phi_) = 0.0_dp
+            !treat theta=0 where dp/dR=-rho*dPhi/dR=0
+
+            !call mpistop('the code arrives here !!! ')
+
+          case default
+
+            gravity_field(ixO^S)=0.0_dp
+
+          end select
+        end do Loop_isms
+
+
       end if
 
       ! [p] = [p_i,j - rho_i,j*(phi_i+1-phi_i)/2] ==> renormalise to more usefulf pressure:

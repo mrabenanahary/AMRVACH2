@@ -27,6 +27,7 @@ module mod_obj_ism
 
       real(dp)             :: profile_kappa  !> ISM index power in pressure
       real(dp)             :: profile_rw  !> ISM reference radius for Lee 2001 profile
+      real(dp)             :: profile_p  !> ISM reference pressire for Lee2001 profile
       real(dp)             :: profile_rw_force  !> ISM reference radius for balancing force amplification
       real(dp)             :: profile_zc     !> ISM typical value of height  (cm)
       real(dp)             :: profile_shiftstart !> ISM typical value of height  (cm)
@@ -371,6 +372,7 @@ contains
 
      self%myconfig%profile_kappa         = 0.0_dp
      self%myconfig%profile_rw            = 2.5d15  !from Lee 2001 profile
+     self%myconfig%profile_p             = 0.0_dp !from Lee 2001 profile
      self%myconfig%profile_rw_force      = 2.5d16  !from Lee 2001 profile
      self%myconfig%profile_zc            = 0.0_dp
      self%myconfig%profile_shiftstart    = 0.0_dp
@@ -784,6 +786,8 @@ contains
    end if
 
 
+   self%myconfig%profile_p = 2.0_dp*kB*self%myconfig%temperature/&
+   (self%myconfig%mean_mup*mp)
     call self%myboundaries%set_complet
 
     if(mype==0)then
@@ -840,6 +844,7 @@ contains
 
      self%myconfig%theta_floored = self%myconfig%theta_floored *(dpi/180._dp)
      self%myconfig%profile_rw            = self%myconfig%profile_rw/physunit_inuse%myconfig%length
+     self%myconfig%profile_p            = self%myconfig%profile_p/(physunit_inuse%myconfig%pressure/physunit_inuse%myconfig%density)
      self%myconfig%profile_rw_force      = self%myconfig%profile_rw_force/physunit_inuse%myconfig%length
      self%myconfig%profile_zc              =  self%myconfig%profile_zc           /physunit_inuse%myconfig%length
      self%myconfig%profile_center              =  self%myconfig%profile_center           /physunit_inuse%myconfig%length

@@ -112,7 +112,7 @@ contains
     namelist /hd_list/ hd_energy, hd_n_tracer, hd_unit_velocity, hd_unit_temperature, &
     hd_gamma, hd_adiab, &
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
-    hd_gravity, hd_gravity_hse, hd_gravity_hse_scheme,hd_use_gravity_g,&
+    hd_gravity, hd_gravity_hse, hd_gravity_hse_scheme,hd_use_gravity_g, &
     He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure,&
     hd_chemical,hd_chemical_gas_type,hd_mean_mup_on,hd_temperature_isotherm
     !---------------------------------------------------------
@@ -410,19 +410,11 @@ contains
     !automatically_
     if(hd_config%gravity)then
       if(hd_config%gravity_hse)then
-        if(hd_config%energy)then
-          if(.not.hd_config%use_gravity_g)then
             phys_modify_wLR => improve_gravity_hse
-          else
-            phys_modify_wLR => improve_gravity_hse_exact
-          end if
-        else
-          write(*,*) 'Hydrostatic equilibrum well-balancing schemes'
-          write(*,*) 'not [yet] available for adiabatic HD physics'
-          call mpistop('The code stops in mod_hd_phys.t:hd_phys_init')
-        end if
       end if
     end if
+
+
     phys_iw_average => hd_iw_average
 
     hd_config%energy = hd_config%energy
@@ -434,6 +426,159 @@ contains
     call hd_fill_convert_factor
   end subroutine hd_phys_init
 
+  subroutine improve_gravity_hse(wLp, wRp, wCT, x, ixI^L, ixO^L, idir,&
+  qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
+    use mod_global_parameters
+    use mod_usr_methods, only: usr_reset_solver,usr_gravity_potential
+    use mod_finite_volume, only: reconstruct_LR, reconstruct_LR3
+    character(len=*), intent(in)                         :: method
+    integer, intent(in)             :: ixI^L, ixO^L, idir
+    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
+    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
+    real(kind=dp)      , intent(inout) :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
+    type(walloc)       , intent(inout)    :: local_block
+    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
+    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
+    ! ..........local...........
+    ! primitive w at cell center
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim,wpert,wpertLp,wpertRp
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wpertLC, wpertRC
+    integer                                 :: ixOfinite^L
+    real(kind=dp)   , dimension(1:ndim)     :: dxinv
+    character(len=len(method))              :: method_loc
+    integer :: iw, ix^L, hxO^L, ixC^L, ixCR^L, kxL^L, kxC^L, kxR^L
+    real(kind=dp)   , dimension(ixI^S,1:ndim) ::  xhalfR,xhalfL
+    real(kind=dp)   , dimension(ixI^S) ::  gravity_potential
+    real(kind=dp)   , dimension(ixI^S) ::  gravity_potentialR, gravity_potentialL
+
+    !Recompute output part of the indexes from mod_finite_volume.t:finite_volume
+    ixOfinitemax^D=ixOmax^D;
+    ixOfinitemin^D=ixOmin^D+kr(idir,^D);
+
+
+
+    wprim=wCT
+    call phys_to_primitive(ixI^L,ixI^L,wprim,x)
+
+
+    ^D&dxinv(^D)=-qdt/dx^D;
+
+    ! initialise the flux scheme
+    method_loc=trim(method)
+
+    !allow the user to change localy the numerical method
+    !Mialy : this should be at the end of the finite volume treatment
+    !after cooling source term and then L1 is being properly computed
+    !so that solver is changed for the next time step
+    call usr_reset_solver(ixI^L,ixI^L,idir,qt,wprim,x,method,&
+      type_limiter(node(plevel_,saveigrid)),method_loc,typelimiter)
+
+
+    ! use interface value of w0 at idir=finite_volume:idim
+    local_block%iw0=idir
+
+    hxO^L=ixOfinite^L-kr(idir,^D);
+    ! ixC is centered index in the idir=finite_volume:idim
+    ! direction from ixOmin-1/2 to ixOmax+1/2
+    ixCmax^D=ixOfinitemax^D; ixCmin^D=hxOmin^D;
+
+    kxCmin^D=ixImin^D; kxCmax^D=ixImax^D-kr(idir,^D);!i or j
+    kxR^L=kxC^L+kr(idir,^D);! i+1 or j+1
+    kxL^L=kxC^L-kr(idir,^D);! i-1 or j-1
+
+
+
+    ! wRp and wLp are defined at the same locations, and will correspond to
+    ! the left and right reconstructed values at a cell face. Their indexing
+    ! is similar to cell-centered values, but in direction idir=finite_volume:idim they are
+    ! shifted half a cell towards the 'lower' direction.
+    !reconstruction or not of the left and right state variables
+    !at the cell interfaces and their conservative variables
+     wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
+     wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
+     !Recompute pressure for hydrostatic equilibrum:
+     xhalfR(ixI^S,1:ndim)=x(ixI^S,1:ndim)
+     xhalfL(ixI^S,1:ndim)=x(ixI^S,1:ndim)
+     xhalfR(ixI^S,idir)=x(ixI^S,idir)-half*local_block%dx(ixI^S,idir)
+     xhalfL(ixI^S,idir)=x(ixI^S,idir)+half*local_block%dx(ixI^S,idir)
+
+     !where(DABS(xhalfR(ixI^S,r_))<=smalldouble)
+       !xhalfR(ixI^S,r_)=x(ixI^S,idir)-half*local_block%dx(ixI^S,idir)+smalldouble
+     !end where
+     !where(DABS(xhalfL(ixI^S,r_))<=smalldouble)
+       !xhalfL(ixI^S,r_)=x(ixI^S,idir)+half*local_block%dx(ixI^S,idir)-smalldouble
+     !end where
+
+     call usr_gravity_potential(ixI^L,ixO^L,wCT,xhalfR,gravity_potentialR)
+     call usr_gravity_potential(ixI^L,ixO^L,wCT,x,gravity_potential)
+     call usr_gravity_potential(ixI^L,ixO^L,wCT,xhalfL,gravity_potentialL)
+
+
+     wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-wprim(kxR^S,iw_rho)*&
+                     (gravity_potentialR(kxR^S)-gravity_potential(kxR^S))
+     wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-wprim(kxC^S,iw_rho)*&
+                     (gravity_potentialL(kxC^S)-gravity_potential(kxC^S))
+
+
+    ! Determine stencil size
+    ! phys_wider_stencil from mod_physics and set in each physics mod_..._phys.t module
+    {ixCRmin^D = ixCmin^D - phys_wider_stencil\}
+    {ixCRmax^D = ixCmax^D + phys_wider_stencil\}
+
+
+
+    ! apply limited reconstruction for left and right status at cell interfaces
+    select case (typelimited)
+    case ('previous')
+    call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
+    case ('predictor')
+    call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
+    case default
+    call mpistop("Error in reconstruction: no such base for limiter")
+    end select
+
+    !write(*,*) 'phys_modify_wLR called until end !!'
+
+  end subroutine improve_gravity_hse
+
+  subroutine improve_gravity_hse_exact(wLp, wRp, wCT, x, ixI^L, ixO^L, idir,&
+  qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
+    use mod_global_parameters
+    use mod_usr_methods, only: usr_reset_solver, usr_gravity_fpotential
+    use mod_finite_volume, only: reconstruct_LR, reconstruct_LR3
+    character(len=*), intent(in)                         :: method
+    integer, intent(in)             :: ixI^L, ixO^L, idir
+    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
+    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
+    real(kind=dp)      , intent(inout) :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
+    type(walloc)       , intent(inout)    :: local_block
+    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
+    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
+    ! ..........local...........
+    ! primitive w at cell center
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim,wpert,wpertLp,wpertRp
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wpertLC, wpertRC
+    real(kind=dp)   , dimension(ixI^S)      :: wphikR,wphikC,wphikL
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: xhalfR,xhalfL
+    integer                                 :: ixOfinite^L
+    real(kind=dp)   , dimension(1:ndim)     :: dxinv
+    character(len=len(method))              :: method_loc
+    integer :: iw, ix^L, hxO^L, ixC^L, ixCR^L, kxL^L, kxC^L, kxR^L, myidim
+
+
+
+    write(*,*) 'improve_gravity_hse_exact in mod_hd_phys.t:'
+    write(*,*) 'use_gravity_g is true but'
+    write(*,*) 'but this part is not yet implemented'
+    call mpistop('Code part not yet implemented')
+
+
+    !write(*,*) 'phys_modify_wLR called until end !!'
+
+
+
+
+  end subroutine improve_gravity_hse_exact
 
 
   subroutine hd_fill_chemical_ionisation(He_abundance_sub,hd_chemical_gas_type,mean_nall_to_nH &
@@ -479,7 +624,6 @@ contains
     implicit none
     ! .. local ..
     integer :: itr, idir
-    character(len=30) :: varstr^D
     !-------------------------------------
 
     ! Determine flux variables
@@ -539,15 +683,6 @@ contains
     hd_ind%mythetafield_ = var_set_extravar('theta', 'theta')
     hd_ind%mytheta_zero_ = var_set_extravar('thetazero', 'thetazero')
 
-    ! Set index of energy variable
-    !if (hd_config%gravity) then
-      !grav_phi_=var_set_extravar('Gphi','Gphi')
-    !else
-      !grav_phi_=-1
-    !end if
-
-    !hd_ind%grav_phi_   =grav_phi_
-
     if(hd_config%n_tracer>0)then
       allocate(hd_ind%tracer(hd_config%n_tracer))
       hd_ind%tracer(:) = tracer(:)
@@ -558,6 +693,42 @@ contains
     hd_config%nwfluxbc = nwfluxbc
 
   end subroutine hd_fill_phys_indices
+
+  subroutine hd_get_aux(clipping,w,x,ixI^L,ixO^L,subname,use_oldaux,sqrB,SdotB)
+    use mod_global_parameters
+    use mod_usr_methods
+    integer, intent(in)                :: ixI^L, ixO^L
+    real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
+    real(kind=dp)      , intent(inout) :: w(ixI^S,nw)
+    logical, intent(in)                :: clipping
+    character(len=*), intent(in)       :: subname
+    logical         , intent(in), target, optional :: use_oldaux(ixI^S)
+    real(kind=dp)   , intent(in), target, optional :: sqrB(ixI^S),SdotB(ixI^S)
+
+    !---local------
+    double precision, allocatable :: gravity_potential(:^D&)
+    integer :: iw_g_dir,idim
+    !---------------------------------------------------------------------------
+
+
+
+  if (.not. associated(usr_gravity_potential)) then
+  write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"
+  write(*,*) "like the phys_gravity_potential in mod_usr_methods.t"
+  call mpistop("hd_get_aux: usr_gravity_potential not defined")
+  else
+  if(.not.allocated(gravity_potential))allocate(gravity_potential(ixI^S))
+    gravity_potential(ixO^S)=1.0_dp
+    call usr_gravity_potential(ixI^L,ixO^L,w,x,gravity_potential)
+    !==========================================
+    w(ixO^S,grav_phi_)=gravity_potential(ixO^S)
+    !==========================================
+  if(allocated(gravity_potential))deallocate(gravity_potential)
+  end if
+
+
+
+end subroutine hd_get_aux
 
   subroutine hd_check_params
     use mod_global_parameters
@@ -1255,526 +1426,7 @@ contains
   !                  =finite_volume:ixOmin^D
   !/
 
-  subroutine improve_gravity_hse(wLp, wRp, wCT, x, ixI^L, ixO^L, idir,&
-  qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
-    use mod_global_parameters
-    use mod_usr_methods, only: usr_reset_solver
-    use mod_finite_volume, only: reconstruct_LR, reconstruct_LR3
-    character(len=*), intent(in)                         :: method
-    integer, intent(in)             :: ixI^L, ixO^L, idir
-    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
-    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
-    real(kind=dp)      , intent(inout) :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
-    type(walloc)       , intent(inout)    :: local_block
-    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
-    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
-    ! ..........local...........
-    ! primitive w at cell center
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim,wpert,wpertLp,wpertRp
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: wpertLC, wpertRC
-    integer                                 :: ixOfinite^L
-    real(kind=dp)   , dimension(1:ndim)     :: dxinv
-    character(len=len(method))              :: method_loc
-    integer :: iw, ix^L, hxO^L, ixC^L, ixCR^L, kxL^L, kxC^L, kxR^L
 
-
-
-    !Recompute output part of the indexes from mod_finite_volume.t:finite_volume
-    ixOfinitemax^D=ixOmax^D;
-    ixOfinitemin^D=ixOmin^D+kr(idir,^D);
-
-
-
-    wprim=wCT
-    call phys_to_primitive(ixI^L,ixI^L,wprim,x)
-
-
-    ^D&dxinv(^D)=-qdt/dx^D;
-
-    ! initialise the flux scheme
-    method_loc=trim(method)
-
-    !allow the user to change localy the numerical method
-    !Mialy : this should be at the end of the finite volume treatment
-    !after cooling source term and then L1 is being properly computed
-    !so that solver is changed for the next time step
-    call usr_reset_solver(ixI^L,ixI^L,idir,qt,wprim,x,method,&
-      type_limiter(node(plevel_,saveigrid)),method_loc,typelimiter)
-
-
-    ! use interface value of w0 at idir=finite_volume:idim
-    local_block%iw0=idir
-
-    hxO^L=ixOfinite^L-kr(idir,^D);
-    ! ixC is centered index in the idir=finite_volume:idim
-    ! direction from ixOmin-1/2 to ixOmax+1/2
-    ixCmax^D=ixOfinitemax^D; ixCmin^D=hxOmin^D;
-
-    kxCmin^D=ixImin^D; kxCmax^D=ixImax^D-kr(idir,^D);!i or j
-    kxR^L=kxC^L+kr(idir,^D);! i+1 or j+1
-    kxL^L=kxC^L-kr(idir,^D);! i-1 or j-1
-
-
-
-    ! wRp and wLp are defined at the same locations, and will correspond to
-    ! the left and right reconstructed values at a cell face. Their indexing
-    ! is similar to cell-centered values, but in direction idir=finite_volume:idim they are
-    ! shifted half a cell towards the 'lower' direction.
-
-    !first setting of the primitive left and right state variables
-    !at the cell centers
-    ! 20-03-22 : The methods below are only [yet]
-    ! possible because iw_e > 0
-    ! for non-adiabatic HD.
-    ! For abiabatic HD, we have iw_e = -1
-    ! which breaks the indexing in the below schemes
-    select case (hd_config%gravity_hse_scheme)
-    case('zerothorder','twoordernohse','twoordernopert')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-    case('firstorder')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-      !first-order scheme from Kappeli et al. (2016)
-      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                      half*wprim(kxR^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                      half*wprim(kxC^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-    case('twoorderpert','twoorderpert2')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-      ! State vectors for all perturbation parts:
-      ! - Here, only the pressure is perturbated
-      wpertRp(kxC^S,1:nw)=0.0_dp
-      wpertLp(kxC^S,1:nw)=0.0_dp
-      ! By definition, wpert(i,j)(R_i,z_j)=0 for all variables
-      ! (non-reconstructed pressure included)
-      wpert(kxC^S,1:nw)=0.0_dp
-      !p_1,i,j(R_i+1,z_j)=p_i+1,j-p_0,i,j(R_i+1,z_j)
-      wpertRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-        (wprim(kxC^S,iw_e)-&
-        half*(wprim(kxC^S,iw_rho)+wprim(kxR^S,iw_rho))*&
-        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi)))
-      !p_1,i,j(R_i-1,z_j)=p_i-1,j-p_0,i,j(R_i-1,z_j)
-      wpertLp(kxC^S,iw_e)=wprim(kxL^S,iw_e)-&
-        (wprim(kxC^S,iw_e)+&
-        half*(wprim(kxL^S,iw_rho)+wprim(kxC^S,iw_rho))*&
-        (wprim(kxC^S,iw_grav_phi)-wprim(kxL^S,iw_grav_phi)))
-    case default
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-    end select
-
-    ! Determine stencil size
-    ! phys_wider_stencil from mod_physics and set in each physics mod_..._phys.t module
-    {ixCRmin^D = ixCmin^D - phys_wider_stencil\}
-    {ixCRmax^D = ixCmax^D + phys_wider_stencil\}
-
-    !reconstruction or not of the left and right state variables
-    !at the cell interfaces and their conservative variables
-    select case (hd_config%gravity_hse_scheme)
-
-    case('zerothorder','firstorder')
-      ! do no left/right states reconstruction
-      wLC=wLp
-      wRC=wRp
-      call phys_to_conserved(ixI^L,ixI^L,wLC,x)
-      call phys_to_conserved(ixI^L,ixI^L,wRC,x)
-    case('twoordernohse')
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-    case('twoordernopert')
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-      ! since no perturbation part of the pressure is taken into account
-      ! and this equilibrum pressure part allow to resolve spatially second-order
-      ! hydrostatic equilibrum
-      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                      half*wprim(kxR^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                      half*wprim(kxC^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLC=wLp
-      wRC=wRp
-      call phys_to_conserved(ixI^L,ixI^L,wLC,x)
-      call phys_to_conserved(ixI^L,ixI^L,wRC,x)
-    case('twoorderpert','twoorderpert2')
-      ! 1) apply limited reconstruction for left and right status at cell interfaces
-      ! for the perturbated part of the pressure
-      ! *p_1,i,j^L(R_i+1/2,z_j)=p_1,i,j(R_i,z_j)+&
-      ! D(p_1,i,j(R_i,z_j))*(R_i+1/2-R_i)
-      ! = wpertLp(i,j)
-      ! *p_1,i,j^R(R_i-1/2,z_j)
-      ! => p_1,(i+1),j^R(R_(i+1)-1/2,z_j)
-      ! = p_1,i+1,j^R(R_i+1/2,z_j)
-      ! = p_1,i+1,j(R_i+1,z_j)+&
-      !   D(p_1,i+1,j(R_i+1,z_j))*(R_i+1/2-R_i+1)
-      ! = wpertRp(i,j)
-
-      ! if trim(hd_config%gravity_hse_scheme)=='twoorderpert'
-      !  ===> recompute first the equilibrum part of the pressure
-      ! and then reconstruct it too, before adding the reconstructed
-      ! perturbation part of the pressure
-      if(trim(hd_config%gravity_hse_scheme)=='twoorderpert2')then
-        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                        half*wprim(kxR^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-        wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                        half*wprim(kxC^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      end if
-
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR3(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wpertLC,wpertRC,&
-        wpertLp,wpert,wpertRp,x,.true.,iw_e)
-      case ('predictor')
-        call reconstruct_LR3(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wpertLC,wpertRC,&
-        wpertLp,wpert,wpertRp,x,.false.,iw_e)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-
-      ! 2) apply limited reconstruction for left and right status at cell interfaces
-      ! for wLp and wRp (main state variables)
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-
-      ! 3) Combine the (non-slope limited) equilibrum and
-      ! slope-limited reconstructed perturbation pressure parts
-      ! from 1) and 2) : need to recompute equilibrum pressure part
-      ! which has been non-desirably slope-limited in the process
-      ! 3)a] Equilibrum part of:
-      ! - pressure
-      if(trim(hd_config%gravity_hse_scheme)=='twoorderpert')then
-        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                        half*wprim(kxR^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-        wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                        half*wprim(kxC^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      end if
-      ! 3)b] Combination with the perturbated part of :
-      ! - pressure
-      wRp(kxC^S,iw_e)=wRp(kxC^S,iw_e)+wpertRp(kxC^S,iw_e)!beware of indexing
-      wLp(kxC^S,iw_e)=wLp(kxC^S,iw_e)+wpertLp(kxC^S,iw_e)
-    case default
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-    end select
-    !write(*,*) 'phys_modify_wLR called until end !!'
-
-
-
-
-  end subroutine improve_gravity_hse
-
-
-  subroutine improve_gravity_hse_exact(wLp, wRp, wCT, x, ixI^L, ixO^L, idir,&
-  qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
-    use mod_global_parameters
-    use mod_usr_methods, only: usr_reset_solver, usr_gravity_fpotential
-    use mod_finite_volume, only: reconstruct_LR, reconstruct_LR3
-    character(len=*), intent(in)                         :: method
-    integer, intent(in)             :: ixI^L, ixO^L, idir
-    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
-    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
-    real(kind=dp)      , intent(inout) :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
-    type(walloc)       , intent(inout)    :: local_block
-    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
-    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
-    ! ..........local...........
-    ! primitive w at cell center
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim,wpert,wpertLp,wpertRp
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: wpertLC, wpertRC
-    real(kind=dp)   , dimension(ixI^S)      :: wphikR,wphikC,wphikL
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: xhalfR,xhalfL
-    integer                                 :: ixOfinite^L
-    real(kind=dp)   , dimension(1:ndim)     :: dxinv
-    character(len=len(method))              :: method_loc
-    integer :: iw, ix^L, hxO^L, ixC^L, ixCR^L, kxL^L, kxC^L, kxR^L, myidim
-
-    if (.not. associated(usr_gravity_fpotential)) then
-      write(*,*) "mod_usr.t: please point usr_gravity_fpotential to a subroutine"
-      write(*,*) "like the phys_gravity_fpotential in mod_usr_methods.t"
-      call mpistop("hd_get_aux: usr_gravity_fpotential not defined")
-    end if
-
-
-    !Recompute output part of the indexes from mod_finite_volume.t:finite_volume
-    ixOfinitemax^D=ixOmax^D;
-    ixOfinitemin^D=ixOmin^D+kr(idir,^D);
-
-
-
-    wprim=wCT
-    call phys_to_primitive(ixI^L,ixI^L,wprim,x)
-
-    do myidim=1,ndim
-      if(myidim==idir)then
-        xhalfR(ixI^S,myidim)=x(ixI^S,myidim)+local_block%dx(ixI^S,myidim)
-        xhalfL(ixI^S,myidim)=x(ixI^S,myidim)-local_block%dx(ixI^S,myidim)
-      else
-        xhalfR(ixI^S,myidim)=x(ixI^S,myidim)
-        xhalfL(ixI^S,myidim)=x(ixI^S,myidim)
-      end if
-    end do
-
-
-
-    ^D&dxinv(^D)=-qdt/dx^D;
-
-    ! initialise the flux scheme
-    method_loc=trim(method)
-
-    !allow the user to change localy the numerical method
-    !Mialy : this should be at the end of the finite volume treatment
-    !after cooling source term and then L1 is being properly computed
-    !so that solver is changed for the next time step
-    call usr_reset_solver(ixI^L,ixI^L,idir,qt,wprim,x,method,&
-      type_limiter(node(plevel_,saveigrid)),method_loc,typelimiter)
-
-
-    ! use interface value of w0 at idir=finite_volume:idim
-    local_block%iw0=idir
-
-    hxO^L=ixOfinite^L-kr(idir,^D);
-    ! ixC is centered index in the idir=finite_volume:idim
-    ! direction from ixOmin-1/2 to ixOmax+1/2
-    ixCmax^D=ixOfinitemax^D; ixCmin^D=hxOmin^D;
-
-    kxCmin^D=ixImin^D; kxCmax^D=ixImax^D-kr(idir,^D);!i or j
-    kxR^L=kxC^L+kr(idir,^D);! i+1 or j+1
-    kxL^L=kxC^L-kr(idir,^D);! i-1 or j-1
-
-
-
-    ! wRp and wLp are defined at the same locations, and will correspond to
-    ! the left and right reconstructed values at a cell face. Their indexing
-    ! is similar to cell-centered values, but in direction idir=finite_volume:idim they are
-    ! shifted half a cell towards the 'lower' direction.
-
-    wphikR(kxC^S)=usr_gravity_fpotential(ixI^L,ixI^L,wCT,xhalfR)!at kxC=i
-    wphikC(kxC^S)=usr_gravity_fpotential(ixI^L,ixI^L,wCT,x)     !at kxC=i
-    wphikL(kxC^S)=usr_gravity_fpotential(ixI^L,ixI^L,wCT,xhalfL)!at kxC=i
-
-    !first setting of the primitive left and right state variables
-    !at the cell centers
-    ! 20-03-22 : The methods below are only [yet]
-    ! possible because iw_e > 0
-    ! for non-adiabatic HD.
-    ! For abiabatic HD, we have iw_e = -1
-    ! which breaks the indexing in the below schemes
-    select case (hd_config%gravity_hse_scheme)
-    case('zerothorder','twoordernohse','twoordernopert')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-    case('firstorder')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-      !first-order scheme from Kappeli et al. (2016)
-      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-                      wprim(kxR^S,iw_rho)*&
-                      (wphikL(kxR^S)-wphikC(kxR^S))
-                      !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                      wprim(kxC^S,iw_rho)*&
-                      (wphikR(kxC^S)-wphikC(kxC^S))
-                      !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-    case('twoorderpert','twoorderpert2')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-      ! State vectors for all perturbation parts:
-      ! - Here, only the pressure is perturbated
-      wpertRp(kxC^S,1:nw)=0.0_dp
-      wpertLp(kxC^S,1:nw)=0.0_dp
-      ! By definition, wpert(i,j)(R_i,z_j)=0 for all variables
-      ! (non-reconstructed pressure included)
-      wpert(kxC^S,1:nw)=0.0_dp
-      !p_1,i,j(R_i+1,z_j)=p_i+1,j-p_0,i,j(R_i+1,z_j)
-      wpertRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-        (wprim(kxC^S,iw_e)-&
-        (wprim(kxR^S,iw_rho)*(wphikC(kxR^S)-wphikL(kxR^S))+&
-         wprim(kxC^S,iw_rho)*(wphikR(kxC^S)-wphikC(kxC^S))))
-        !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi)))
-      !p_1,i,j(R_i-1,z_j)=p_i-1,j-p_0,i,j(R_i-1,z_j)
-      wpertLp(kxC^S,iw_e)=wprim(kxL^S,iw_e)-&
-        (wprim(kxC^S,iw_e)-&
-        (wprim(kxL^S,iw_rho)*(wphikC(kxL^S)-wphikR(kxL^S))+&
-         wprim(kxC^S,iw_rho)*(wphikL(kxC^S)-wphikC(kxC^S))))
-        !(wprim(kxC^S,iw_grav_phi)-wprim(kxL^S,iw_grav_phi)))
-    case default
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-    end select
-
-    ! Determine stencil size
-    ! phys_wider_stencil from mod_physics and set in each physics mod_..._phys.t module
-    {ixCRmin^D = ixCmin^D - phys_wider_stencil\}
-    {ixCRmax^D = ixCmax^D + phys_wider_stencil\}
-
-    !reconstruction or not of the left and right state variables
-    !at the cell interfaces and their conservative variables
-    select case (hd_config%gravity_hse_scheme)
-
-    case('zerothorder','firstorder')
-      ! do no left/right states reconstruction
-      wLC=wLp
-      wRC=wRp
-      call phys_to_conserved(ixI^L,ixI^L,wLC,x)
-      call phys_to_conserved(ixI^L,ixI^L,wRC,x)
-    case('twoordernohse')
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-    case('twoordernopert')
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-      ! since no perturbation part of the pressure is taken into account
-      ! and this equilibrum pressure part allow to resolve spatially second-order
-      ! hydrostatic equilibrum
-      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-                      wprim(kxR^S,iw_rho)*&
-                      (wphikL(kxR^S)-wphikC(kxR^S))
-                      !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                      wprim(kxC^S,iw_rho)*&
-                      (wphikR(kxC^S)-wphikC(kxC^S))
-                      !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLC=wLp
-      wRC=wRp
-      call phys_to_conserved(ixI^L,ixI^L,wLC,x)
-      call phys_to_conserved(ixI^L,ixI^L,wRC,x)
-    case('twoorderpert','twoorderpert2')
-      ! 1) apply limited reconstruction for left and right status at cell interfaces
-      ! for the perturbated part of the pressure
-      ! *p_1,i,j^L(R_i+1/2,z_j)=p_1,i,j(R_i,z_j)+&
-      ! D(p_1,i,j(R_i,z_j))*(R_i+1/2-R_i)
-      ! = wpertLp(i,j)
-      ! *p_1,i,j^R(R_i-1/2,z_j)
-      ! => p_1,(i+1),j^R(R_(i+1)-1/2,z_j)
-      ! = p_1,i+1,j^R(R_i+1/2,z_j)
-      ! = p_1,i+1,j(R_i+1,z_j)+&
-      !   D(p_1,i+1,j(R_i+1,z_j))*(R_i+1/2-R_i+1)
-      ! = wpertRp(i,j)
-
-      ! if trim(hd_config%gravity_hse_scheme)=='twoorderpert'
-      !  ===> recompute first the equilibrum part of the pressure
-      ! and then reconstruct it too, before adding the reconstructed
-      ! perturbation part of the pressure
-      if(trim(hd_config%gravity_hse_scheme)=='twoorderpert2')then
-        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-                        wprim(kxR^S,iw_rho)*&
-                        (wphikL(kxR^S)-wphikC(kxR^S))
-                        !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-        wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                        wprim(kxC^S,iw_rho)*&
-                        (wphikR(kxC^S)-wphikC(kxC^S))
-                        !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      end if
-
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR3(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wpertLC,wpertRC,&
-        wpertLp,wpert,wpertRp,x,.true.,iw_e)
-      case ('predictor')
-        call reconstruct_LR3(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wpertLC,wpertRC,&
-        wpertLp,wpert,wpertRp,x,.false.,iw_e)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-
-      ! 2) apply limited reconstruction for left and right status at cell interfaces
-      ! for wLp and wRp (main state variables)
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-
-      ! 3) Combine the (non-slope limited) equilibrum and
-      ! slope-limited reconstructed perturbation pressure parts
-      ! from 1) and 2) : need to recompute equilibrum pressure part
-      ! which has been non-desirably slope-limited in the process
-      ! 3)a] Equilibrum part of:
-      ! - pressure
-      if(trim(hd_config%gravity_hse_scheme)=='twoorderpert')then
-        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-                        wprim(kxR^S,iw_rho)*&
-                        (wphikL(kxR^S)-wphikC(kxR^S))
-                        !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-        wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                        wprim(kxC^S,iw_rho)*&
-                        (wphikR(kxC^S)-wphikC(kxC^S))
-                        !(wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      end if
-      ! 3)b] Combination with the perturbated part of :
-      ! - pressure
-      wRp(kxC^S,iw_e)=wRp(kxC^S,iw_e)+wpertRp(kxC^S,iw_e)!beware of indexing
-      wLp(kxC^S,iw_e)=wLp(kxC^S,iw_e)+wpertLp(kxC^S,iw_e)
-    case default
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-    end select
-    !write(*,*) 'phys_modify_wLR called until end !!'
-
-
-
-
-  end subroutine improve_gravity_hse_exact
 
   function hd_kin_en(w, ixI^L, ixO^L, inv_rho) result(ke)
     use mod_global_parameters, only: nw, ndim
@@ -1790,44 +1442,7 @@ contains
     end if
   end function hd_kin_en
 
-  subroutine hd_get_aux(clipping,w,x,ixI^L,ixO^L,subname,use_oldaux,sqrB,SdotB)
-    use mod_global_parameters
-    use mod_usr_methods
-    integer, intent(in)                :: ixI^L, ixO^L
-    real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
-    real(kind=dp)      , intent(inout) :: w(ixI^S,nw)
-    logical, intent(in)                :: clipping
-    character(len=*), intent(in)       :: subname
-    logical         , intent(in), target, optional :: use_oldaux(ixI^S)
-    real(kind=dp)   , intent(in), target, optional :: sqrB(ixI^S),SdotB(ixI^S)
 
-    !---local------
-    double precision, allocatable :: gravity_potential(:^D&)
-    integer :: iw_g_dir,idim
-    !---------------------------------------------------------------------------
-
-
-
-    if(hd_config%use_gravity_g)then
-      w(ixO^S,grav_phi_)=0.0_dp
-    else
-      if (.not. associated(usr_gravity_potential)) then
-        write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"
-        write(*,*) "like the phys_gravity_potential in mod_usr_methods.t"
-        call mpistop("hd_get_aux: usr_gravity_potential not defined")
-      else
-        if(.not.allocated(gravity_potential))allocate(gravity_potential(ixI^S))
-          gravity_potential(ixO^S)=1.0_dp
-          call usr_gravity_potential(ixI^L,ixO^L,w,x,gravity_potential)
-          !==========================================
-          w(ixO^S,grav_phi_)=gravity_potential(ixO^S)
-          !==========================================
-        if(allocated(gravity_potential))deallocate(gravity_potential)
-      end if
-    end if
-
-
-  end subroutine hd_get_aux
 
   function hd_inv_rho(w, ixI^L, ixO^L) result(inv_rho)
     use mod_global_parameters, only: nw, ndim

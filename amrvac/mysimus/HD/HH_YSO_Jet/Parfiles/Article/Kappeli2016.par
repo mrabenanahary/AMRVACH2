@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        nwauxio = 19
+        nwauxio = 12
         /
         !restart_from_file='Output/Ulrich1976_limitinflow/Jet_CC_0061.dat'
         /
@@ -45,8 +45,8 @@
         itsave(1,2)=0
         dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	!ditsave_log =50
-        dtsave_dat=  3.1557600d9!1.57788d11!! 10 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
-        !ditsave_dat =1
+        !dtsave_dat=  3.1557600d9!1.57788d11!! 10 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        ditsave_dat =1
  /
 
         ditsave_log = 1
@@ -57,8 +57,8 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  3.1557600d11 !1.57788d12!9.46728d11!3.1557600d11 !3.15576d11 ! 10000 yrs 6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
-        !it_max=100
+        !time_max=  3.1557600d11 !1.57788d12!9.46728d11!3.1557600d11 !3.15576d11 ! 10000 yrs 6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        it_max=100
 
 
 /
@@ -118,13 +118,13 @@
         ! if you wand to treat xprobmin1 <0, switch to Cartesian coordinates, with the disadvantage of not being able to simply treat rotation along phi
         ! (need to convert from phi to z)
         xprobmin1 =  0.0d0    ! cm
-        xprobmax1 =  3.0d17!3.0d17! <--- r_max=7e16cm
-        xprobmin2 =  -1.5d17!-1.5d17!0.0d0    ! cm
+        xprobmax1 =  1.5d17!3.0d17! <--- r_max=7e16cm
+        xprobmin2 =  0.0d0!-1.5d17!0.0d0    ! cm
         xprobmax2 =  1.5d17!3.0d17! <--- z_max=1.9e17cm
 
         ! total cell at level 1
-        domain_nx1= 480!240! <---dr=1.25e15 cm at lvl 1
-        domain_nx2= 480! <---dr=1.25e15 cm at lvl 1
+        domain_nx1= 240!480!240! <---dr=1.25e15 cm at lvl 1
+        domain_nx2= 240!480! <---dr=1.25e15 cm at lvl 1
         ! number of cell by block
         block_nx1 = 8!120!8!8!
         block_nx2 = 8!240!8!8!
@@ -175,7 +175,7 @@
          hd_dust              = .false.   ! dust off
          hd_radiative_cooling = .false. !>>HH4647 .false.!.true.    ! cooling on
          hd_gravity	       = .true. !>>HH4647 .false.!.true.    ! gravity on
-         hd_gravity_hse       = .true. !>>HH4647 .false.!.true.    ! gravity on         
+         hd_gravity_hse       = .false. !>>HH4647 .false.!.true.    ! gravity on         
          hd_gravity_hse_scheme= 'twoorderpert'!options:'zerothorder','firstorder','twoordernohse','twoordernopert','twoorderpert','twoorderpert2'
          hd_use_gravity_g = .false.
          hd_chemical          = .false.   ! use chemical
@@ -335,7 +335,7 @@ ism_config%weight_mean_variable = 'default'!'minus_density_grad'
 ism_config%profile_rw_force = 2.5d16
 ism_config%weight_num_index = 1.0d0
 ism_config%weight_analy_index = 1.0d0
-ism_config%profile_density    = 'Ulrich1976'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_density    = 'Lee2001'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
 ism_config%profile_jspec = 8.0782850178d20!20       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
