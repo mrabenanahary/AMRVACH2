@@ -1262,7 +1262,11 @@ return
     real(dp), intent(in)    :: wCT(ixI^S,1:nw)
     real(dp), intent(out)   :: gravity_field(ixI^S,ndim)
     real(dp)                        :: Ggrav, Mpoint, alpha
+<<<<<<< HEAD
     real(kind=dp), dimension(ixI^S) :: r_distance
+=======
+    real(kind=dp), dimension(ixI^S) :: r_distance,absr
+>>>>>>> 9d14d4810cb6d32e7a0d8f731c712d5598634575
     real(kind=dp), dimension(ixI^S) :: theta_profile
     real(kind=dp), dimension(1:ndim) :: zero_dim
     integer                      :: i_ism,idim
@@ -1322,11 +1326,40 @@ return
                 gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
                 (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
               end where
+<<<<<<< HEAD
+
+=======
+>>>>>>> 9d14d4810cb6d32e7a0d8f731c712d5598634575
 
 
 
 
+              case('slab','slabstretch')
 
+<<<<<<< HEAD
+                if(ndim<3)then
+                  gravity_field(ixO^S,x_)=(-Ggrav*Mpoint/&
+                  (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                  gravity_field(ixO^S,y_)=(-Ggrav*Mpoint/&
+                  (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+                  if(ndir>2)then
+                    gravity_field(ixO^S,z_) = 0.0_dp
+                  end if
+                else
+                  gravity_field(ixO^S,x_)= 0.0_dp ! TO DO
+                  gravity_field(ixO^S,y_)= 0.0_dp ! TO DO
+                  if(ndir>2)then
+                     gravity_field(ixO^S,z_) = 0.0_dp ! TO DO
+                  end if
+                end if
+
+              case default
+                 call mpistop('Unknown typeaxial')
+            end select
+
+          else
+
+=======
               case('slab','slabstretch')
 
                 if(ndim<3)then
@@ -1351,6 +1384,7 @@ return
 
           else
 
+>>>>>>> 9d14d4810cb6d32e7a0d8f731c712d5598634575
             if(phys_config%use_gravity_g)then
               write(*,*) 'special_pointmass_gravity in mod_usr.t:'
               write(*,*) 'use_gravity_g is true but'
@@ -1371,8 +1405,14 @@ return
           case('Lee2001')
 
             alpha = ism_surround(i_ism)%myconfig%profile_p
+<<<<<<< HEAD
             gravity_field(ixO^S,r_) = - alpha * (x(ixO^S,r_)**2.0_dp-&
             x(ixO^S,z_)**2.0_dp)/(x(ixO^S,r_)*(x(ixO^S,r_)**2.0_dp+&
+=======
+            absr(ixI^S)=DABS(x(ixI^S,r_))
+            gravity_field(ixO^S,r_) = - alpha * (x(ixO^S,r_)**2.0_dp-&
+            x(ixO^S,z_)**2.0_dp)/(absr(ixO^S)*(x(ixO^S,r_)**2.0_dp+&
+>>>>>>> 9d14d4810cb6d32e7a0d8f731c712d5598634575
             x(ixO^S,z_)**2.0_dp))
 
             gravity_field(ixO^S,z_) = - 2.0_dp * alpha * x(ixO^S,z_) / &
