@@ -1,0 +1,3565 @@
+mkdir: cannot create directory ‘Ulrich1976_limitinflow’: File exists
+2942346
+tycho63
+/scratch/mrabenanahary/run.2942346.Ulrich1976_limitinflow
+::::::::::::::
+Ulrich1976_limitinflow.par
+::::::::::::::
+!==============================================================
+! Project : YSO JET MIALY
+! Aim     :
+! Results :
+! Method  : Use cartesian coordinate
+!
+! Update  : 22/11/2019
+! configuration :
+! Openmpi/gfortran or intel or ....
+! $AMRVAC_DIR/setup.pl -d=2 -phys=hd -arch=default
+! with intel
+! $AMRVAC_DIR/setup.pl -d=2 -phys=hd -arch=intel
+!==============================================================
+
+ &filelist
+        base_filename='Output/Ulrich1976_limitinflow/Jet_CC_'
+        saveprim=.true.
+        autoconvert=.true.
+        convert_type='vtuBCCmpi'
+        nwauxio = 7
+        /
+        !restart_from_file='Output/Ulrich1976_limitinflow/Jet_CC_0061.dat'
+        /
+        convert = .true.
+
+
+
+        snapshotnext =0326
+/
+
+
+
+
+/
+        nwauxio=10
+
+
+
+
+/
+
+
+ &savelist
+        itsave(1,1)=0
+        itsave(1,2)=0
+        dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
+	!ditsave_log =50
+        dtsave_dat=  3.1557600d9! 10 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        !ditsave_dat =1
+ /
+
+        ditsave_log = 1
+        ditsave_dat =1
+        dtsave_dat =21.08
+
+ &stoplist
+
+        dtmin=1.0d-13
+        !time_max= 99d15 ! years
+        time_max=  3.1557600d11 !3.15576d11 ! 10000 yrs 6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        !it_max=100
+
+
+/
+  reset_it=.true.
+
+          it_init=0
+
+
+
+
+
+
+ &methodlist
+        time_integrator          =  'twostep'
+        typepred1                =  20*'hllc'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        flux_scheme              =  20*'hllc'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        limiter                  =  20*'minmod'!>>HH4647 !'koren'!'cada3'
+        small_pressure           = 1.0d-9
+        small_density            = 1.0d-8
+        small_values_method      =  'average'
+        small_values_daverage    = 8
+
+        check_small_values       = .true.
+        small_values_force_floor = .true.
+        loglimit(1) = .false.
+        angmomfix=.true.
+
+
+ /
+         loglimit(4) = .true.
+         loglimit(1)            = .true.
+         loglimit(5)            = .true.
+         loglimit(6)            = .true.
+         loglimit(7)            = .true.
+        tvdlfeps=0.5d0
+
+ &boundlist
+        internalboundary  = .true.
+        nghostcells       = 2
+        !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
+        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
+        typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
+        typeboundary_min2 =  7*'special'!'symm','symm','limitinflow','symm','symm',2*'symm'!'symm','symm','asymm','symm','symm',2*'symm'!                                    ! C.L. inférieure <=> zmin
+        typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
+
+/
+        typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max
+        typeboundary_min3 = 8*'cont'                                         ! C.L. avant <=> phi/profondeur min
+ /
+
+ &meshlist
+        ! grid at level 1
+        xprobmin1 =  0.0d0    ! cm
+        xprobmax1 =  3.0d17! <--- r_max=7e16cm
+        xprobmin2 =  0.0d0    ! cm
+        xprobmax2 =  3.0d17! <--- z_max=1.9e17cm
+
+        ! total cell at level 1
+        domain_nx1= 240! <---dr=1.25e15 cm at lvl 1
+        domain_nx2= 240! <---dr=1.25e15 cm at lvl 1
+        ! number of cell by block
+        block_nx1 = 8!8!
+        block_nx2 = 8!8!
+
+        ! AMR configuration
+        refine_criterion=3
+        refine_max_level=5 !<--- dr=dz=7.8125e13 cm au lvl 5
+        refine_threshold=20*0.01d0
+        derefine_ratio=20*1d-3
+        !w_refine_weight(1)=0.5d0
+        !w_refine_weight(2)=0.165d0
+        !w_refine_weight(3)=0.165d0
+        !w_refine_weight(4)=0.17d0
+        w_refine_weight(9)=1.0d0
+
+        max_blocks = 20000
+        ! can be added when is needed
+        prolongprimitive= .false.
+        coarsenprimitive= .false.
+        /
+
+
+
+
+
+
+
+ /
+        stretched_grid    = .true.
+        stretched_dim(1)  = .true.
+        stretched_dim(2)  = .true.
+        itfixgrid =0
+
+ &paramlist
+        typecourant         = 'maxsum'
+        courantpar          = 0.8d0
+        slowsteps           = 500
+        small_getdt_average = .true.
+        small_dt_coef       = 1.0d-5
+ /
+
+  &hd_list
+         hd_energy            = .true. !non-adiabatic: enables energy solving
+         hd_gamma             = 1.666666667         
+         SI_unit              = .false.  ! use cgs
+         He_abundance         = 0.1d0                     !
+
+         hd_dust              = .false.   ! dust off
+         hd_radiative_cooling = .true. !>>HH4647 .false.!.true.    ! cooling on
+         hd_gravity	       = .true. !>>HH4647 .false.!.true.    ! gravity on
+         hd_chemical          = .false.   ! use chemical
+         hd_n_tracer          = 2
+         hd_mean_mup_on       = .true. !>>HH4647 .true.
+         hd_chemical_gas_type = 'fullyatomic'
+   /
+
+  &grav_list 
+  	grav_split=.false.
+   /
+
+ !'MLcosmol' : 'Use Mellema & Lundqvist (2002) cooling curve for zero metallicity '
+ !'SPEX_DM'  : 'Use SPEX cooling curve for solar metallicity above 10^4 K. At lower temperatures,use Dalgarno & McCray (1972), with a pre-set ionization fraction of 10^-3 as described by Schure et al. (2009). '
+   &rc_list
+         ncool            = 4000
+         coolcurve        = 'SPEX_DM'!'MLcosmol' !
+         coolmethod       = 'exact'
+         cfrac            = 1.d0
+         Tfix             = .false.
+         tlow             = 110 !<--- T_low = 110 K comme limite inférieure de la table de cooling afin d'éviter que le jet à 100 K ne se mette à refroidir par radiative cooling, ce qui serait non-physique
+         coolsaveL        = .true.
+         coolsavedT       = .true.
+         He_abundance = 0.1d0
+         rc_chemical_gas_type = 'fullyatomic'
+   /
+
+
+ &dust_list
+     dust_n_species           = 2
+     dust_min_rho             = 1.0d-10
+     gas_mu                   = 1.0d0
+     dust_method              = 'Kwok'
+     dust_small_to_zero       = .true.
+     dust_temperature         = 1.0d0
+     dust_temperature_type    = 'silicate'
+     dust_source_split        = .false.
+     dust_it_diff             = 50000
+   /
+
+
+
+
+
+ &usr_list
+        usrconfig%ism_on              = .true.                      !> set ism
+        usrconfig%cloud_on            = .false.                      !> set cloud
+        usrconfig%cloud_structure     = 2                           !> cloud structure type
+        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+        usrconfig%physunit_on         = .true.                      !> set the normalisation in use
+        usrconfig%reset_medium        = .true.                      !> set on the reset
+        usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
+        usrconfig%phys_inuse          = 'hd' !'mhd' ! set physique want to be used
+
+        usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
+        usrconfig%reset_flux_scheme_on          = .true.
+        usrconfig%reset_flux_scheme_diffuse     = 'hllc'
+        usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
+        usrconfig%reset_flux_scheme_thresholdL1_max = 1.0d20
+
+
+ /
+
+
+
+
+&usr_physical_unit_list
+ phys_unit%unit                  = 'cgs'
+ phys_unit%length                = 1.496d14                 ! cm (1 parsec) : par defaut = 1.496d14
+ phys_unit%time                  = 3d8                      ! s (2 year) : par defaut = 3d10
+ phys_unit%number_density        = 1.0d-6 !>>HH4647                      ! cm^-3 : par defaut = 1.0d8 (1.0d5 pour un milieu ambiant tres peu dense, e.g. a 100cm-3)                      ! cm^-3 : par defaut = 1.0d8 (1.0d5 pour un milieu ambiant tres peu dense, e.g. a 100cm-3)
+ phys_unit%chemical_He_abundance = 0.1d0
+ phys_unit%chemical_gas_type = 'fullyatomic'
+/
+
+!11/12/19 : pour ISM et le projet n°1 de Sylvie Cabrit sur son article de 1997, les paramètres ci-dessous pour l'ISM ont été testés
+!et fixées aux valeurs recommandées et correspondant le mieux à la simulation de l'article
+ &usr_ism_list
+  ism_config%unit               ='cgs'
+  ism_config%density            = 1.1663894832267845d-18         !Li & Shu et 1996b ism density if it set to 0 it will use number_density
+  ism_config%number_density     = 0.0d0  !>>HH4647  !2.95d9    !1.0d2     !4.44d6     ! Zheng19 = 2.95d9 cm-3 ! ism number density (1/cm^3) ) of protons n_H = facteur rho_j (e.g. = 100 cm-3) physique dans l'expression du profil de densité rho_c du milieu ambiant
+                                            ! and w(ixO^S,phys_ind%rho_)        =  self%myconfig%density = = self%myconfig%number_density*mp = rho_h the mass density of protons
+                                            ! si tu l'augmentes e.g. a number_density=1.0d3,
+                                            !la valeur rho_c=rho_j de densité au niveau de la frontière inférieure ISM augmente d'un facteur 10
+  ism_config%velocity(1)        = 0.0d0       ! ism  speed components (cm/s) R/X : 0.0 = milieu statique
+  ism_config%velocity(2)        = 0.0d0!5.d8     ! ism  speed components (cm/s) Z : 0.0 = milieu statique
+  ism_config%velocity(3)        = 0.0d0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
+  ism_config%Mach_number_tomov_obj= 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
+  ism_config%temperature        = 100.0d0  !<---T_a = 100 K temperature typique
+  ism_config%pressure           = 0.0d0     !1.3806485199999997d-12! ism pressure if is set to 0 it will use temperature : äraview trouve a T=100 K et rho_j=100 cm-3 >>> p_j = 2.71055e-12 Ba
+  ism_config%tracer_on          = .true.    ! ism tracer
+  ism_config%tracer_init_density= 1.0d9!1.0d3     ! ism tracer density
+  ism_config%tracer_small_density  =  1.0d-15!1.0d-5
+
+  ism_config%reset_on           = .false.    ! ism reset
+  ism_config%reset_coef         = 0.0! 0.0     ! ism reset  coefficient : 19-03-2021 --> don't use it ! it creates bugs when >0.0d0
+  ism_config%reset_dtemperature = 1.0d-6    !> set the pressure variation
+  ism_config%reset_distance(2)  =  1.01d18  ! ism rest distance
+  ism_config%reset_scale(2)     =  5d16     ! ism reset scalling distance
+	
+	
+  ! 3 cases : 
+  ! 1) boundary_cond = 'fix' : 03-03-22 > successfully implemented !
+  ! 2) boundary_cond /= 'fix' but mixed_fixed_bound == .false. everywhere
+  ! 3) boundary_cond /= 'fix' and at least one of the mixed_fixed_bound is .true.
+  
+  ism_config%boundary_cond(2,1) = 'limitinflow'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
+  
+  ism_config%flux_frac          = 1.0d-2
+  ism_config%useprimitive       = .false. 
+  
+  ! Use :
+  !  - ism_config%mixed_fixed_bound(idims,iside,index) to 'fix' the index-th flux variable w(ixG^S,index) on top of the above boundary conditions:
+  !  - (idims,iside) = (direction along which are set the boundary conditions,side i=1=min or i=2=max of the direction along which the bc is applied)
+  !  - <<<<<!>>>>> : to enable this feature, you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
+  !  - index:
+  ! 	* 1 : rho
+  ! 	* 2 : v1 =  v_R in cylindrical coordinates
+  ! 	* 3 : v2 =  v_Z in cylindrical coordinates
+  ! 	* 4 : v3 =  v_phi in cylindrical coordinates  
+  ! 	* 5 : p (or e for conservative variables) only when hd_energy==.true.
+  ! 	* 6,7 (or resp. 5,6) : tracers when hd_energy==.true. (resp. hd_energy==.false.)
+  !
+  ! - By default, all ism_config%mixed_fixed_bound(2,1,index) are .false., so that only the above boundary conditions are considered !
+  
+  !ism_config%mixed_fixed_bound(2,1,1) = .true.
+  !ism_config%mixed_fixed_bound(2,1,2) = .true.
+  !ism_config%mixed_fixed_bound(2,1,3) = .true.
+  !ism_config%mixed_fixed_bound(2,1,4) = .false.
+  !ism_config%mixed_fixed_bound(2,1,5) = .true.
+  !ism_config%mixed_fixed_bound(2,1,6) = .true.
+  !ism_config%mixed_fixed_bound(2,1,7) = .true.
+  !ism_config%boundary_cond(2,2) = 'fix'!'limitoutflow'!> ce truc ne sert à rien à moins que typeboundary_max2 = 7*'special'
+  ism_config%boundary_on        = .true.
+!  ism_config%debug        	 = .false. ! use it as .true. to debug user module mod_obj_ism.t
+
+
+ism_config%profile_typeaxial  = 'spherical'!'projection_direction'
+ism_config%profile_idir       = 1.0,0.0,0.0       !z=2,r=1  !  ism profile direction
+
+ism_config%profile_center     = 0,0,0
+
+ism_config%profile_density_on = .true. ! Zheng=True ! .false. ! .true. ! ISM set density profile
+ism_config%profile_pressure_on= .true. ! Zheng=True ! .false. !.true.
+ism_config%theta_floored      = 0.0d0
+ism_config%profile_force_on   = .false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
+ism_config%profile_force_gradP_on = .false.
+ism_config%weight_mean = 'arithmetic'
+ism_config%weight_analy = 1.0d0
+ism_config%weight_num = 3.0d0
+ism_config%weight_mean_variable = 'minus_density_grad'
+ism_config%profile_rw_force = 2.5d16
+ism_config%weight_num_index = 20.0d0
+ism_config%weight_analy_index = 20.0d0
+ism_config%profile_density    = 'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_jspec = 8.0782850178d20       !> ISM envelope specific angular momentum
+ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
+ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
+
+ism_config%profile_zc    = 1.0d16!4.49d14 ! 1.0d16 !4.49d14 ! Zheng19 = 30 au = 4.49d14 cm :  grandeur de normalisation dans le profil de pression/densite (en cm)
+ism_config%profile_rw    = 2.5d16 !> ISM reference radius for Lee 2001 profile (in cm)
+ism_config%profile_kappa    = 2.0d0 ! Zheng19 = 2 ! indice kappa pour la loi de densité et de pression : 'cabrit1997' <=> kappa=2
+ism_config%profile_shiftstart = 0.00d0 !>>HH4647 3.33d14 ! 3.33d14 ! 1.0d15 ! the distance from which the ISM profile is set
+
+ism_config%chemical_gas_type = 'fullyatomic'!>>HH4647'fullyatomic'
+ism_config%He_abundance      = 0.1
+/
+
+&usr_usrboundary_ism_list
+  usrboundary_config%boundary_type(2,1) = 'limitinflow'!'limitinflowdisc'!'disc'
+  usrboundary_config%boundary_type(2,2) = 'open'
+  usrboundary_config%useprimitive       = .false.
+  !usrboundary_config%special_origin_theta       = .true.
+  usrboundary_config%nghostcells(1)        = 2
+  usrboundary_config%nghostcells(2)        = 2
+  usrboundary_config%flux_frac          = 1.0d-2
+  usrboundary_config%ngc          = 0
+  usrboundary_config%RHS          = 0
+  usrboundary_config%LHS          = 0
+/
+
+&usr_cla_jet_list
+    cla_jet_config%unit                  =  'cgs' !> physical unit at parameter file
+    cla_jet_config%time_cla_jet_on       =  0.0d0 !> initial time the cla_jet is set in the simulation box
+
+    cla_jet_config%myindice              =  0       !> cla_jet associated indice
+    cla_jet_config%density               =  1.795963442083303d-19!<-------Fm=0.6e-7 Msun/yr
+
+    cla_jet_config%number_density        =  0.0d0
+    cla_jet_config%temperature           =  100.0d0  !>>HH4647 !> cla_jet temperature  (K)
+    cla_jet_config%pressure              =  0.0d0   !> cla_jet pressure
+    cla_jet_config%pressure_toism        =  0.0d0   !> cla_jet pressure relative to ism pressure
+    cla_jet_config%magnetic(1)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%magnetic(2)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%magnetic(3)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%xisigma               =  0.0d0   !> cla_jet magnetisation : 0.0d0 = HD
+    cla_jet_config%magn_anglePHItoPol    =  0.0d0   !> cla_jet magnetisation field incl : 0.0d0 = HD
+
+    cla_jet_config%Mach_number           =  0.0!250.0d0   !> cla_jet  Mach number : Par défaut : Ma = 20
+    cla_jet_config%c_sound               =  0.0d0   !> cla_jet  sound speed (cm/s)
+    cla_jet_config%velocity(1)           =  0.0d0   !> cla_jet  velocity (radial speed)(cm/s)
+    cla_jet_config%velocity(2)           =  1.2d7 !
+    cla_jet_config%velocity(3)           =  0.0d0   !> cla_jet  velocity (rotation speed)(cm/s)
+    cla_jet_config%velocity_poloidal     =  1.2d7 !<--- norme du vecteur vitesse au niveau de l'inlet du jet
+    cla_jet_config%power                 =  0.0d0   !> wind power flux
+    cla_jet_config%mass_flux             =  0.0d0   ! 3.15e19 ! flux en H+H^++H2 1.13d21 !1.89d18 ! grammes/s>>>Zhang19 = 0.3e-7 Msun/yr  0.0!9.8525563d16!1.9705112501213315d17!1.3136741667475542d17!!   !> wind mass flux : cabrit1997 = 1.3136741d17 à Vjet = 100 km/s et 1.9705111e+17 à Vjet = 150 km/s (Vjet = 150 km/s ne marche qu a basse resolution de maillage)
+                                            ! c'est par l'imposition de cla_jet_config%mass_flux et de cla_jet_config%velocity(2) que la densité est alors imposée à l'intérieur du jet
+                                            ! pour avoir :
+                                            ! * Vjet = 100 km/s, R_jet = 0.5e16 cm et n_jet = 100 cm-3 >>> mass_flux = 1.3136741667475542e+17 g / s
+                                            ! * Vjet = 150 km/s, R_jet = 0.5e16 cm et n_jet = 100 cm-3 >>> mass_flux = 1.9705112501213315e+17 g / s
+                                            ! * Vjet = 150 km/s, R_jet = 0.5e16 cm et n_jet = 50 cm-3 >>> mass_flux = 9.8525563e+16 g / s
+
+    cla_jet_config%open_angle            = 3.0d0 !>>HH4647 !>  cla_jet initial open angle  (degre): 0.0d0 = jet droit cylindrique
+    cla_jet_config%z_in                  =  -46.275d18 !> cla_jet inner boundary position
+    cla_jet_config%variation_n_cells     = 2
+    cla_jet_config%z_impos               =  8.22d14 !
+    cla_jet_config%z_out_init            =  8.30d14 !
+    cla_jet_config%r_out_init            =  7.47d14! <--- 50 UA
+    cla_jet_config%r_out_impos           =  7.47d14! <--- 50 UA
+
+    cla_jet_config%r_in_init             =  0.0 !-7.48d14 !> cla_jet inner jet  region : position de la limite gauche du jet en coordonnées cylindriques : à tenir compte dans le calcul de la surface d'éjection du jet et donc du calcul du flux de masse ejectée
+
+    cla_jet_config%tracer_on             =  .true. !> cla_jet logical to set tracer
+    cla_jet_config%tracer_init_density   =  1.0d9!> cla_jet tracer density
+    cla_jet_config%tracer_small_density  =  1.0d-15!> cla_jet tracer small density
+    cla_jet_config%shape                 =  'conical'  !> cla_jet shape
+    cla_jet_config%profile               =  'none'  !> cla_jet profile
+
+
+    cla_jet_config%variation_on          =  .true. ! Zhang19 .false. !.true.! to set on  or off the jet-injection in-real-time velocity variability
+    cla_jet_config%density_variation_on  =  .true. !<----- vary mass-loss rate !> cla_jet density variation switch
+    cla_jet_config%pressure_variation_on =  .true. !<----- vary constant jet temperature !> cla_jet pressure variation switch : enables constant temperature in the jet inlet
+    cla_jet_config%density_variation_profile =  'conserved_mflux' !<----- which variability apply to pressure and/or pressure
+    cla_jet_config%variation_start_time  =  0.0d0 !time (in s in cgs) at which to begin the time variability : 0.0 to begin at the start of the simulation
+    cla_jet_config%variation_end_time    =  4d15
+    cla_jet_config%variation_velocity_amplitude =  1.2d7 !<--- norme du vecteur vitesse au niveau de l'inlet du jet (aux yeux du code, c'est une autre variable qu'on a oublié, surtout moi, de retirer quand on a rajouté   le paramètre cla_jet_config%velocity_poloidal en ouvrant le jet, donc par sécurité, comme je ne sais pas si on l'utilise toujours ailleurs, fixons la même valeur qu'au-dessus)
+    cla_jet_config%variation_velocity_poloidal =  6.0d6 !<------ variation de la norme du vecteur vitesse du jet
+    cla_jet_config%variation_velocity(1) =  0.0d0
+    cla_jet_config%variation_velocity(2) =  6.0d6 !<------ variation de la norme du vecteur vitesse du jet
+    cla_jet_config%variation_velocity(3) =  0.0d0
+    cla_jet_config%variation_time        =  9.46728d9!<---- 300 ans
+    cla_jet_config%variation_position    =  0.0d0,8.22d14 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
+    cla_jet_config%variation_type        =  'sawtooth2' !
+    cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation
+    cla_jet_config%variation_phys_variable(1) =  3 ! 3 mean the velocity in Z direction
+
+    cla_jet_config%refine_min_level      = 5
+    cla_jet_config%chemical_gas_type     = 'fullyatomic' !>>HH4647
+
+
+
+/
+ ---------------------------------------------------------------------------
+ ---------------------------------------------------------------------------
+ |         __  __ ____ ___        _    __  __ ______     ___    ____       |
+ |        |  \/  |  _ \_ _|      / \  |  \/  |  _ \ \   / / \  / ___|      |
+ |        | |\/| | |_) | |_____ / _ \ | |\/| | |_) \ \ / / _ \| |          |
+ |        | |  | |  __/| |_____/ ___ \| |  | |  _ < \ V / ___ \ |___       |
+ |        |_|  |_|_|  |___|   /_/   \_\_|  |_|_| \_\ \_/_/   \_\____|      |
+ --------------------------------------------------------------------------
+ ---------------------------------------------------------------------------
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_physical_values_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_ism_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+ End of Reading 
+ usr_ismlist0                                                                  
+ Reading usr_boundary_list           1 
+ boundary                                                                      
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+ End of Reading 
+ usr_boundarylist1                                                             
+ Reading usr_cla_jet_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+ Use SPEX cooling curve for solar metallicity above 10^4 K. 
+ At lower temperatures,use Dalgarno & McCray (1972), 
+ with a pre-set ionization fraction of 10^-3. 
+ as described by Schure et al. (2009). 
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the usr_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+ Reading Ulrich1976_limitinflow.par
+ End par file read
+ 
+ Output type | dtsave    | ditsave | itsave(1) | tsave(1)
+         log | 0.105E+00 | ******  |      0    | *********
+      normal | 0.105E+02 | ******  |      0    | *********
+       slice | ********* | ******  | ******    | *********
+   collapsed | ********* | ******  | ******    | *********
+    analysis | ********* | ******  | ******    | *********
+ 
+                 typelimited: predictor                                                                                                                          
+         Domain size (cells): 240 240 
+                Level one dx: 0.836E+01 0.836E+01 
+           Refine estimation: Lohner's scheme
+                   slicenext: 0
+                collapsenext: 0
+           restart_from_file:  undefined
+                  converting: F
+
+  End of reading of the usr_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ cylindrical                                                                    
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ 1)the jet radius =    747000000000000.     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ jet shape conical             
+ jet shape conical             
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet Surface =   2.115466860209846E+030
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ ====================Ulrich1976s model====================
+ -Setting completely all parameters:
+ * rW =   2.500000000000000E+016  cm
+ * rD =   1.092733345182041E+016  cm
+ * vK =    73927.3222824020       cm/s
+ * rho_0 =   2.272054281004061E-018  g/cm3
+ * r = (rD/rw) =    2.28784086348488     
+ * rho_a0 =   1.166389483226784E-018  g/cm3
+ * nH_a0 =    498101.457614819       cm-3
+ =========================================================
+ ======================ISM settings=======================
+ * at (R,z) = (r_j,0) : 
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ ** The ism base temperature is =    100.000000000000     
+ ** The ism base density is =  1.166389483226784E-018
+ ** The ism base number density nH is    498101.457614819     
+ =========================================================
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet temperature =    100.000000000000     
+ jet density  1.795963442083303E-019
+ jet ndensity   76695.8225523272     
+ set_complet jet shapeconical             
+ jet v_j   628031.474915326        11983554.4170549       0.000000000000000E+000
+ the jet mflux =   4.559161372650759E+018
+ 3)the jet radius =    820312500000000.     
+ 3)the jet inner radius =   -39062500000000.0     
+ the jet Surface =   2.115466860209846E+030
+ phys_config%He_abundance  0.100000000000000     
+ in mod_obj_usr_unit.t usr_physical_unit_fillphysunit subroutine: 
+ ism density  2.341670487800000E-030
+ ism ndensity  1.000000000000000E-006
+ ism pressure  5.822995576026895E-019
+ ism temperature   3834.16285288672     
+ Jet start :-)
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ -------------------------------------------------------------------------------
+ Startup phase took :             0.159 sec
+ -------------------------------------------------------------------------------
+ Start integrating, print status every  3.00E+01 seconds
+        it        time          dt  wc-time(s)
+         0   0.000E+00   6.495E-05   2.949E-04
+In CGS          0 T=   0.000E+00 dT=   1.948E+04
+ -------------------------------------------------------------------------------
+ Saving visual data. Coordinate directions and variable names are:
+          -1 R               
+           0 Z               
+           1 rho             rho             
+           2 v1              v1              
+           3 v2              v2              
+           4 v3              v3              
+           5 p               p               
+           6 tracer_ism      tracer_ism      
+           7 tracer_jet      tracer_jet      
+           8 mup             mup             
+           9 L1              L1              
+          10 dtcool1         dtcool1         
+          11 mach_number     mach_number     
+          12 temperature     temperature     
+          13 level           level           
+          14 number density  number density  
+          15 gravfield1      gravfield1      
+          16 gravfield2      gravfield2      
+          17 gravfield3      gravfield3      
+ time =  0.000000000000000E+000
+ -------------------------------------------------------------------------------
+      1135   1.622E+01   1.055E-02   3.002E+01
+In CGS       1135 T=   4.866E+09 dT=   3.166E+06
+      2229   2.804E+01   1.227E-02   6.003E+01
+In CGS       2229 T=   8.413E+09 dT=   3.681E+06
+      3275   4.116E+01   1.419E-02   9.004E+01
+In CGS       3275 T=   1.235E+10 dT=   4.256E+06
+      4222   5.261E+01   1.083E-02   1.219E+02
+In CGS       4222 T=   1.578E+10 dT=   3.248E+06
+      5201   6.290E+01   1.150E-02   1.519E+02
+In CGS       5201 T=   1.887E+10 dT=   3.451E+06
+      6054   7.223E+01   1.194E-02   1.819E+02
+In CGS       6054 T=   2.167E+10 dT=   3.582E+06
+      6829   8.104E+01   1.081E-02   2.119E+02
+In CGS       6829 T=   2.431E+10 dT=   3.244E+06
+      7540   8.852E+01   1.092E-02   2.419E+02
+In CGS       7540 T=   2.656E+10 dT=   3.276E+06
+      8183   9.529E+01   1.078E-02   2.719E+02
+In CGS       8183 T=   2.859E+10 dT=   3.233E+06
+      8915   1.030E+02   1.134E-02   3.020E+02
+In CGS       8915 T=   3.089E+10 dT=   3.402E+06
+      9508   1.095E+02   1.169E-02   3.320E+02
+In CGS       9508 T=   3.285E+10 dT=   3.506E+06
+     10094   1.157E+02   1.082E-02   3.632E+02
+In CGS      10094 T=   3.472E+10 dT=   3.247E+06
+     10743   1.225E+02   1.121E-02   3.932E+02
+In CGS      10743 T=   3.676E+10 dT=   3.363E+06
+     11259   1.280E+02   1.132E-02   4.232E+02
+In CGS      11259 T=   3.839E+10 dT=   3.395E+06
+     11873   1.344E+02   1.120E-02   4.532E+02
+In CGS      11873 T=   4.033E+10 dT=   3.359E+06
+     12345   1.394E+02   1.157E-02   4.832E+02
+In CGS      12345 T=   4.182E+10 dT=   3.471E+06
+     12920   1.456E+02   1.089E-02   5.133E+02
+In CGS      12920 T=   4.368E+10 dT=   3.266E+06
+     13355   1.502E+02   1.114E-02   5.433E+02
+In CGS      13355 T=   4.506E+10 dT=   3.343E+06
+     13885   1.559E+02   1.176E-02   5.733E+02
+In CGS      13885 T=   4.678E+10 dT=   3.529E+06
+     14281   1.601E+02   1.156E-02   6.033E+02
+In CGS      14281 T=   4.804E+10 dT=   3.468E+06
+     14765   1.655E+02   1.151E-02   6.334E+02
+In CGS      14765 T=   4.964E+10 dT=   3.453E+06
+     15119   1.695E+02   1.210E-02   6.634E+02
+In CGS      15119 T=   5.085E+10 dT=   3.630E+06
+     15598   1.749E+02   1.078E-02   6.934E+02
+In CGS      15598 T=   5.246E+10 dT=   3.233E+06
+     15976   1.788E+02   1.114E-02   7.260E+02
+In CGS      15976 T=   5.365E+10 dT=   3.342E+06
+     16422   1.835E+02   1.167E-02   7.561E+02
+In CGS      16422 T=   5.506E+10 dT=   3.502E+06
+     16862   1.887E+02   1.182E-02   7.861E+02
+In CGS      16862 T=   5.660E+10 dT=   3.546E+06
+     17161   1.922E+02   5.506E-03   8.161E+02
+In CGS      17161 T=   5.765E+10 dT=   1.652E+06
+     17589   1.972E+02   1.232E-02   8.461E+02
+In CGS      17589 T=   5.915E+10 dT=   3.697E+06
+     17881   2.006E+02   1.205E-02   8.761E+02
+In CGS      17881 T=   6.017E+10 dT=   3.614E+06
+     18296   2.052E+02   1.015E-02   9.062E+02
+In CGS      18296 T=   6.156E+10 dT=   3.045E+06
+     18689   2.093E+02   1.092E-02   9.362E+02
+In CGS      18689 T=   6.278E+10 dT=   3.277E+06
+     18941   2.119E+02   1.098E-02   9.662E+02
+In CGS      18941 T=   6.358E+10 dT=   3.295E+06
+     19322   2.161E+02   1.186E-02   9.963E+02
+In CGS      19322 T=   6.482E+10 dT=   3.557E+06
+     19697   2.205E+02   1.289E-02   1.026E+03
+In CGS      19697 T=   6.614E+10 dT=   3.868E+06
+     19934   2.232E+02   1.278E-02   1.056E+03
+In CGS      19934 T=   6.697E+10 dT=   3.835E+06
+     20302   2.278E+02   1.343E-02   1.086E+03
+In CGS      20302 T=   6.833E+10 dT=   4.030E+06
+     20581   2.314E+02   1.388E-02   1.121E+03
+In CGS      20581 T=   6.943E+10 dT=   4.164E+06
+     20932   2.361E+02   1.437E-02   1.151E+03
+In CGS      20932 T=   7.082E+10 dT=   4.310E+06
+     21277   2.398E+02   1.087E-02   1.181E+03
+In CGS      21277 T=   7.193E+10 dT=   3.260E+06
+     21485   2.420E+02   1.075E-02   1.212E+03
+In CGS      21485 T=   7.259E+10 dT=   3.225E+06
+     21815   2.454E+02   1.160E-02   1.242E+03
+In CGS      21815 T=   7.363E+10 dT=   3.480E+06
+     22145   2.490E+02   1.200E-02   1.272E+03
+In CGS      22145 T=   7.470E+10 dT=   3.599E+06
+     22442   2.525E+02   1.243E-02   1.313E+03
+In CGS      22442 T=   7.574E+10 dT=   3.730E+06
+     22773   2.563E+02   7.188E-03   1.343E+03
+In CGS      22773 T=   7.690E+10 dT=   2.156E+06
+     23099   2.602E+02   1.277E-02   1.373E+03
+In CGS      23099 T=   7.805E+10 dT=   3.831E+06
+     23342   2.630E+02   1.295E-02   1.408E+03
+In CGS      23342 T=   7.890E+10 dT=   3.885E+06
+     23661   2.667E+02   1.298E-02   1.438E+03
+In CGS      23661 T=   8.002E+10 dT=   3.893E+06
+     23983   2.702E+02   1.072E-02   1.468E+03
+In CGS      23983 T=   8.107E+10 dT=   3.215E+06
+     24293   2.735E+02   1.092E-02   1.511E+03
+In CGS      24293 T=   8.205E+10 dT=   3.275E+06
+     24599   2.767E+02   1.130E-02   1.541E+03
+In CGS      24599 T=   8.302E+10 dT=   3.391E+06
+     24901   2.800E+02   1.162E-02   1.571E+03
+In CGS      24901 T=   8.399E+10 dT=   3.485E+06
+     25210   2.835E+02   1.234E-02   1.601E+03
+In CGS      25210 T=   8.506E+10 dT=   3.701E+06
+     25375   2.855E+02   1.247E-02   1.631E+03
+In CGS      25375 T=   8.564E+10 dT=   3.742E+06
+     25684   2.891E+02   1.266E-02   1.661E+03
+In CGS      25684 T=   8.672E+10 dT=   3.799E+06
+     25984   2.926E+02   1.297E-02   1.691E+03
+In CGS      25984 T=   8.778E+10 dT=   3.891E+06
+     26152   2.946E+02   1.293E-02   1.722E+03
+In CGS      26152 T=   8.837E+10 dT=   3.880E+06
+     26450   2.983E+02   1.339E-02   1.752E+03
+In CGS      26450 T=   8.948E+10 dT=   4.018E+06
+     26749   3.017E+02   1.076E-02   1.782E+03
+In CGS      26749 T=   9.051E+10 dT=   3.227E+06
+     27048   3.048E+02   1.093E-02   1.812E+03
+In CGS      27048 T=   9.145E+10 dT=   3.278E+06
+     27195   3.064E+02   1.111E-02   1.842E+03
+In CGS      27195 T=   9.192E+10 dT=   3.333E+06
+     27485   3.095E+02   1.150E-02   1.872E+03
+In CGS      27485 T=   9.284E+10 dT=   3.450E+06
+     27772   3.126E+02   1.190E-02   1.902E+03
+In CGS      27772 T=   9.378E+10 dT=   3.570E+06
+     28028   3.156E+02   1.235E-02   1.945E+03
+In CGS      28028 T=   9.468E+10 dT=   3.705E+06
+     28312   3.188E+02   1.185E-02   1.975E+03
+In CGS      28312 T=   9.563E+10 dT=   3.556E+06
+     28600   3.221E+02   1.205E-02   2.005E+03
+In CGS      28600 T=   9.664E+10 dT=   3.616E+06
+     28888   3.255E+02   1.219E-02   2.035E+03
+In CGS      28888 T=   9.765E+10 dT=   3.656E+06
+     29022   3.271E+02   1.270E-02   2.065E+03
+In CGS      29022 T=   9.812E+10 dT=   3.809E+06
+     29298   3.303E+02   4.183E-03   2.095E+03
+In CGS      29298 T=   9.909E+10 dT=   1.255E+06
+     29570   3.332E+02   1.070E-02   2.125E+03
+In CGS      29570 T=   9.997E+10 dT=   3.209E+06
+     29839   3.361E+02   7.383E-03   2.155E+03
+In CGS      29839 T=   1.008E+11 dT=   2.215E+06
+     29966   3.374E+02   1.079E-02   2.185E+03
+In CGS      29966 T=   1.012E+11 dT=   3.236E+06
+     30243   3.403E+02   1.070E-02   2.215E+03
+In CGS      30243 T=   1.021E+11 dT=   3.209E+06
+     30517   3.432E+02   1.113E-02   2.245E+03
+In CGS      30517 T=   1.030E+11 dT=   3.338E+06
+     30786   3.460E+02   1.153E-02   2.275E+03
+In CGS      30786 T=   1.038E+11 dT=   3.458E+06
+     30914   3.474E+02   1.162E-02   2.305E+03
+In CGS      30914 T=   1.042E+11 dT=   3.486E+06
+     31180   3.503E+02   1.177E-02   2.336E+03
+In CGS      31180 T=   1.051E+11 dT=   3.530E+06
+     31443   3.532E+02   1.158E-02   2.366E+03
+In CGS      31443 T=   1.060E+11 dT=   3.474E+06
+     31710   3.563E+02   1.206E-02   2.396E+03
+In CGS      31710 T=   1.069E+11 dT=   3.619E+06
+     31824   3.577E+02   1.214E-02   2.426E+03
+In CGS      31824 T=   1.073E+11 dT=   3.643E+06
+     32085   3.607E+02   1.228E-02   2.456E+03
+In CGS      32085 T=   1.082E+11 dT=   3.684E+06
+     32344   3.636E+02   1.062E-02   2.486E+03
+In CGS      32344 T=   1.091E+11 dT=   3.186E+06
+     32600   3.663E+02   1.090E-02   2.516E+03
+In CGS      32600 T=   1.099E+11 dT=   3.269E+06
+     32775   3.682E+02   1.097E-02   2.553E+03
+In CGS      32775 T=   1.105E+11 dT=   3.290E+06
+     33036   3.709E+02   1.079E-02   2.583E+03
+In CGS      33036 T=   1.113E+11 dT=   3.238E+06
+     33297   3.737E+02   1.113E-02   2.613E+03
+In CGS      33297 T=   1.121E+11 dT=   3.338E+06
+     33552   3.764E+02   1.122E-02   2.644E+03
+In CGS      33552 T=   1.129E+11 dT=   3.365E+06
+     33775   3.787E+02   1.151E-02   2.687E+03
+In CGS      33775 T=   1.136E+11 dT=   3.454E+06
+     34025   3.813E+02   1.161E-02   2.717E+03
+In CGS      34025 T=   1.144E+11 dT=   3.484E+06
+     34270   3.842E+02   1.194E-02   2.747E+03
+In CGS      34270 T=   1.153E+11 dT=   3.582E+06
+     34521   3.871E+02   1.197E-02   2.777E+03
+In CGS      34521 T=   1.161E+11 dT=   3.592E+06
+     34702   3.892E+02   1.217E-02   2.816E+03
+In CGS      34702 T=   1.168E+11 dT=   3.650E+06
+     34953   3.922E+02   1.207E-02   2.846E+03
+In CGS      34953 T=   1.176E+11 dT=   3.620E+06
+     35199   3.950E+02   1.057E-02   2.876E+03
+In CGS      35199 T=   1.185E+11 dT=   3.170E+06
+     35446   3.976E+02   1.085E-02   2.907E+03
+In CGS      35446 T=   1.193E+11 dT=   3.254E+06
+     35653   3.997E+02   1.098E-02   2.950E+03
+In CGS      35653 T=   1.199E+11 dT=   3.294E+06
+     35899   4.023E+02   1.086E-02   2.980E+03
+In CGS      35899 T=   1.207E+11 dT=   3.259E+06
+     36145   4.049E+02   1.107E-02   3.010E+03
+In CGS      36145 T=   1.215E+11 dT=   3.320E+06
+     36382   4.074E+02   1.125E-02   3.041E+03
+In CGS      36382 T=   1.222E+11 dT=   3.376E+06
+     36615   4.099E+02   1.139E-02   3.071E+03
+In CGS      36615 T=   1.230E+11 dT=   3.418E+06
+     36712   4.109E+02   1.145E-02   3.101E+03
+In CGS      36712 T=   1.233E+11 dT=   3.434E+06
+     36946   4.133E+02   1.166E-02   3.131E+03
+In CGS      36946 T=   1.240E+11 dT=   3.498E+06
+     37186   4.161E+02   1.186E-02   3.161E+03
+In CGS      37186 T=   1.248E+11 dT=   3.557E+06
+     37427   4.189E+02   1.203E-02   3.191E+03
+In CGS      37427 T=   1.257E+11 dT=   3.610E+06
+     37588   4.208E+02   1.234E-02   3.230E+03
+In CGS      37588 T=   1.262E+11 dT=   3.702E+06
+     37823   4.235E+02   1.192E-02   3.260E+03
+In CGS      37823 T=   1.271E+11 dT=   3.575E+06
+     38058   4.262E+02   1.050E-02   3.290E+03
+In CGS      38058 T=   1.279E+11 dT=   3.149E+06
+     38271   4.285E+02   1.073E-02   3.320E+03
+In CGS      38271 T=   1.285E+11 dT=   3.218E+06
+     38464   4.305E+02   1.023E-02   3.350E+03
+In CGS      38464 T=   1.292E+11 dT=   3.068E+06
+     38545   4.313E+02   1.096E-02   3.380E+03
+In CGS      38545 T=   1.294E+11 dT=   3.287E+06
+     38779   4.338E+02   5.759E-03   3.410E+03
+In CGS      38779 T=   1.301E+11 dT=   1.728E+06
+     39011   4.362E+02   1.109E-02   3.441E+03
+In CGS      39011 T=   1.309E+11 dT=   3.326E+06
+     39241   4.387E+02   1.126E-02   3.471E+03
+In CGS      39241 T=   1.316E+11 dT=   3.378E+06
+     39469   4.411E+02   3.167E-03   3.501E+03
+In CGS      39469 T=   1.323E+11 dT=   9.502E+05
+     39557   4.420E+02   1.139E-02   3.531E+03
+In CGS      39557 T=   1.326E+11 dT=   3.418E+06
+     39785   4.444E+02   1.153E-02   3.561E+03
+In CGS      39785 T=   1.333E+11 dT=   3.458E+06
+     40015   4.469E+02   1.209E-02   3.591E+03
+In CGS      40015 T=   1.341E+11 dT=   3.627E+06
+     40246   4.496E+02   1.224E-02   3.621E+03
+In CGS      40246 T=   1.349E+11 dT=   3.671E+06
+     40468   4.522E+02   1.232E-02   3.651E+03
+In CGS      40468 T=   1.356E+11 dT=   3.696E+06
+     40541   4.530E+02   1.260E-02   3.681E+03
+In CGS      40541 T=   1.359E+11 dT=   3.780E+06
+     40756   4.555E+02   1.256E-02   3.711E+03
+In CGS      40756 T=   1.367E+11 dT=   3.769E+06
+     40982   4.581E+02   9.436E-03   3.741E+03
+In CGS      40982 T=   1.374E+11 dT=   2.831E+06
+     41209   4.603E+02   1.074E-02   3.771E+03
+In CGS      41209 T=   1.381E+11 dT=   3.222E+06
+     41436   4.627E+02   1.047E-02   3.801E+03
+In CGS      41436 T=   1.388E+11 dT=   3.140E+06
+     41507   4.634E+02   1.079E-02   3.831E+03
+In CGS      41507 T=   1.390E+11 dT=   3.238E+06
+     41731   4.658E+02   1.105E-02   3.861E+03
+In CGS      41731 T=   1.397E+11 dT=   3.315E+06
+     41956   4.681E+02   1.115E-02   3.891E+03
+In CGS      41956 T=   1.404E+11 dT=   3.344E+06
+     42179   4.705E+02   1.134E-02   3.922E+03
+In CGS      42179 T=   1.411E+11 dT=   3.403E+06
+     42394   4.727E+02   1.147E-02   3.952E+03
+In CGS      42394 T=   1.418E+11 dT=   3.440E+06
+     42474   4.736E+02   1.146E-02   3.982E+03
+In CGS      42474 T=   1.421E+11 dT=   3.438E+06
+     42694   4.759E+02   1.154E-02   4.012E+03
+In CGS      42694 T=   1.428E+11 dT=   3.463E+06
+     42913   4.782E+02   1.170E-02   4.042E+03
+In CGS      42913 T=   1.435E+11 dT=   3.511E+06
+     43136   4.808E+02   1.182E-02   4.072E+03
+In CGS      43136 T=   1.442E+11 dT=   3.546E+06
+     43357   4.834E+02   1.176E-02   4.102E+03
+In CGS      43357 T=   1.450E+11 dT=   3.529E+06
+     43421   4.841E+02   1.175E-02   4.132E+03
+In CGS      43421 T=   1.452E+11 dT=   3.526E+06
+     43643   4.867E+02   8.406E-03   4.162E+03
+In CGS      43643 T=   1.460E+11 dT=   2.522E+06
+     43864   4.893E+02   1.010E-02   4.192E+03
+In CGS      43864 T=   1.468E+11 dT=   3.030E+06
+     44079   4.913E+02   1.071E-02   4.222E+03
+In CGS      44079 T=   1.474E+11 dT=   3.214E+06
+     44289   4.935E+02   1.072E-02   4.252E+03
+In CGS      44289 T=   1.480E+11 dT=   3.217E+06
+     44380   4.944E+02   1.073E-02   4.287E+03
+In CGS      44380 T=   1.483E+11 dT=   3.219E+06
+     44593   4.967E+02   1.099E-02   4.317E+03
+In CGS      44593 T=   1.490E+11 dT=   3.297E+06
+     44807   4.989E+02   1.097E-02   4.347E+03
+In CGS      44807 T=   1.497E+11 dT=   3.291E+06
+     45020   5.011E+02   1.120E-02   4.377E+03
+In CGS      45020 T=   1.503E+11 dT=   3.360E+06
+     45232   5.034E+02   1.120E-02   4.407E+03
+In CGS      45232 T=   1.510E+11 dT=   3.361E+06
+     45380   5.049E+02   1.142E-02   4.448E+03
+In CGS      45380 T=   1.515E+11 dT=   3.427E+06
+     45592   5.072E+02   1.160E-02   4.478E+03
+In CGS      45592 T=   1.521E+11 dT=   3.481E+06
+     45806   5.095E+02   1.172E-02   4.508E+03
+In CGS      45806 T=   1.528E+11 dT=   3.516E+06
+     46018   5.119E+02   1.187E-02   4.538E+03
+In CGS      46018 T=   1.536E+11 dT=   3.562E+06
+     46230   5.144E+02   1.201E-02   4.568E+03
+In CGS      46230 T=   1.543E+11 dT=   3.602E+06
+     46318   5.155E+02   1.208E-02   4.603E+03
+In CGS      46318 T=   1.546E+11 dT=   3.623E+06
+     46532   5.180E+02   7.960E-03   4.633E+03
+In CGS      46532 T=   1.554E+11 dT=   2.388E+06
+     46745   5.204E+02   1.208E-02   4.663E+03
+In CGS      46745 T=   1.561E+11 dT=   3.623E+06
+     46958   5.227E+02   1.071E-02   4.693E+03
+In CGS      46958 T=   1.568E+11 dT=   3.214E+06
+     47172   5.250E+02   1.065E-02   4.723E+03
+In CGS      47172 T=   1.575E+11 dT=   3.195E+06
+     47269   5.260E+02   1.061E-02   4.759E+03
+In CGS      47269 T=   1.578E+11 dT=   3.182E+06
+     47484   5.282E+02   1.067E-02   4.789E+03
+In CGS      47484 T=   1.585E+11 dT=   3.202E+06
+     47697   5.305E+02   5.099E-03   4.819E+03
+In CGS      47697 T=   1.591E+11 dT=   1.530E+06
+     47905   5.327E+02   1.104E-02   4.849E+03
+In CGS      47905 T=   1.598E+11 dT=   3.313E+06
+     48114   5.349E+02   1.126E-02   4.879E+03
+In CGS      48114 T=   1.605E+11 dT=   3.378E+06
+     48269   5.365E+02   1.129E-02   4.923E+03
+In CGS      48269 T=   1.609E+11 dT=   3.386E+06
+     48478   5.387E+02   1.138E-02   4.953E+03
+In CGS      48478 T=   1.616E+11 dT=   3.415E+06
+     48686   5.409E+02   1.158E-02   4.983E+03
+In CGS      48686 T=   1.623E+11 dT=   3.475E+06
+     48897   5.432E+02   1.183E-02   5.013E+03
+In CGS      48897 T=   1.630E+11 dT=   3.549E+06
+     49111   5.457E+02   1.178E-02   5.043E+03
+In CGS      49111 T=   1.637E+11 dT=   3.535E+06
+     49220   5.470E+02   1.180E-02   5.081E+03
+In CGS      49220 T=   1.641E+11 dT=   3.539E+06
+     49433   5.494E+02   1.176E-02   5.111E+03
+In CGS      49433 T=   1.648E+11 dT=   3.527E+06
+     49642   5.519E+02   1.226E-02   5.141E+03
+In CGS      49642 T=   1.656E+11 dT=   3.678E+06
+     49853   5.541E+02   1.078E-02   5.171E+03
+In CGS      49853 T=   1.662E+11 dT=   3.235E+06
+     50066   5.564E+02   1.065E-02   5.201E+03
+In CGS      50066 T=   1.669E+11 dT=   3.196E+06
+     50176   5.575E+02   1.055E-02   5.239E+03
+In CGS      50176 T=   1.673E+11 dT=   3.166E+06
+     50388   5.598E+02   1.065E-02   5.269E+03
+In CGS      50388 T=   1.679E+11 dT=   3.194E+06
+     50600   5.620E+02   1.073E-02   5.299E+03
+In CGS      50600 T=   1.686E+11 dT=   3.218E+06
+     50811   5.642E+02   1.062E-02   5.329E+03
+In CGS      50811 T=   1.692E+11 dT=   3.186E+06
+     51020   5.664E+02   1.126E-02   5.359E+03
+In CGS      51020 T=   1.699E+11 dT=   3.378E+06
+     51181   5.680E+02   1.145E-02   5.403E+03
+In CGS      51181 T=   1.704E+11 dT=   3.435E+06
+     51384   5.702E+02   1.162E-02   5.433E+03
+In CGS      51384 T=   1.711E+11 dT=   3.485E+06
+     51589   5.725E+02   1.174E-02   5.463E+03
+In CGS      51589 T=   1.717E+11 dT=   3.522E+06
+     51798   5.749E+02   1.181E-02   5.494E+03
+In CGS      51798 T=   1.725E+11 dT=   3.544E+06
+     52003   5.771E+02   1.117E-02   5.524E+03
+In CGS      52003 T=   1.731E+11 dT=   3.352E+06
+     52145   5.786E+02   1.048E-02   5.565E+03
+In CGS      52145 T=   1.736E+11 dT=   3.143E+06
+     52350   5.807E+02   1.108E-02   5.595E+03
+In CGS      52350 T=   1.742E+11 dT=   3.323E+06
+     52552   5.829E+02   1.127E-02   5.625E+03
+In CGS      52552 T=   1.749E+11 dT=   3.381E+06
+     52756   5.850E+02   1.069E-02   5.655E+03
+In CGS      52756 T=   1.755E+11 dT=   3.208E+06
+     52962   5.872E+02   1.075E-02   5.685E+03
+In CGS      52962 T=   1.762E+11 dT=   3.225E+06
+     53142   5.891E+02   1.054E-02   5.734E+03
+In CGS      53142 T=   1.767E+11 dT=   3.161E+06
+     53346   5.912E+02   1.068E-02   5.764E+03
+In CGS      53346 T=   1.774E+11 dT=   3.203E+06
+     53553   5.934E+02   1.071E-02   5.794E+03
+In CGS      53553 T=   1.780E+11 dT=   3.214E+06
+     53761   5.956E+02   1.095E-02   5.824E+03
+In CGS      53761 T=   1.787E+11 dT=   3.286E+06
+     53967   5.978E+02   1.116E-02   5.855E+03
+In CGS      53967 T=   1.793E+11 dT=   3.349E+06
+     54142   5.996E+02   1.131E-02   5.901E+03
+In CGS      54142 T=   1.799E+11 dT=   3.392E+06
+     54345   6.017E+02   1.151E-02   5.931E+03
+In CGS      54345 T=   1.805E+11 dT=   3.452E+06
+     54547   6.039E+02   1.170E-02   5.962E+03
+In CGS      54547 T=   1.812E+11 dT=   3.510E+06
+     54755   6.063E+02   1.123E-02   5.992E+03
+In CGS      54755 T=   1.819E+11 dT=   3.370E+06
+     54961   6.087E+02   1.184E-02   6.022E+03
+In CGS      54961 T=   1.826E+11 dT=   3.551E+06
+     55088   6.101E+02   1.155E-02   6.062E+03
+In CGS      55088 T=   1.830E+11 dT=   3.464E+06
+     55289   6.124E+02   1.185E-02   6.092E+03
+In CGS      55289 T=   1.837E+11 dT=   3.556E+06
+     55485   6.145E+02   1.168E-02   6.122E+03
+In CGS      55485 T=   1.843E+11 dT=   3.505E+06
+     55690   6.167E+02   9.003E-03   6.152E+03
+In CGS      55690 T=   1.850E+11 dT=   2.701E+06
+     55895   6.189E+02   1.075E-02   6.182E+03
+In CGS      55895 T=   1.857E+11 dT=   3.226E+06
+     56062   6.206E+02   1.055E-02   6.229E+03
+In CGS      56062 T=   1.862E+11 dT=   3.164E+06
+     56268   6.228E+02   1.063E-02   6.259E+03
+In CGS      56268 T=   1.868E+11 dT=   3.190E+06
+     56474   6.250E+02   1.074E-02   6.289E+03
+In CGS      56474 T=   1.875E+11 dT=   3.222E+06
+     56677   6.271E+02   1.109E-02   6.319E+03
+In CGS      56677 T=   1.881E+11 dT=   3.327E+06
+     56874   6.292E+02   1.124E-02   6.350E+03
+In CGS      56874 T=   1.888E+11 dT=   3.372E+06
+     57062   6.312E+02   1.143E-02   6.399E+03
+In CGS      57062 T=   1.893E+11 dT=   3.430E+06
+     57263   6.333E+02   1.161E-02   6.429E+03
+In CGS      57263 T=   1.900E+11 dT=   3.483E+06
+     57466   6.355E+02   1.173E-02   6.459E+03
+In CGS      57466 T=   1.907E+11 dT=   3.519E+06
+     57669   6.379E+02   1.147E-02   6.489E+03
+In CGS      57669 T=   1.914E+11 dT=   3.441E+06
+     57873   6.400E+02   1.091E-02   6.519E+03
+In CGS      57873 T=   1.920E+11 dT=   3.274E+06
+     58034   6.417E+02   1.168E-02   6.564E+03
+In CGS      58034 T=   1.925E+11 dT=   3.503E+06
+     58236   6.439E+02   1.118E-02   6.594E+03
+In CGS      58236 T=   1.932E+11 dT=   3.354E+06
+     58437   6.460E+02   1.109E-02   6.624E+03
+In CGS      58437 T=   1.938E+11 dT=   3.328E+06
+     58634   6.480E+02   1.067E-02   6.654E+03
+In CGS      58634 T=   1.944E+11 dT=   3.200E+06
+     58839   6.502E+02   8.780E-03   6.684E+03
+In CGS      58839 T=   1.951E+11 dT=   2.634E+06
+     59031   6.522E+02   1.055E-02   6.735E+03
+In CGS      59031 T=   1.957E+11 dT=   3.165E+06
+     59236   6.544E+02   1.067E-02   6.765E+03
+In CGS      59236 T=   1.963E+11 dT=   3.202E+06
+     59440   6.565E+02   1.074E-02   6.795E+03
+In CGS      59440 T=   1.970E+11 dT=   3.222E+06
+     59645   6.587E+02   1.078E-02   6.825E+03
+In CGS      59645 T=   1.976E+11 dT=   3.235E+06
+     59849   6.608E+02   6.220E-03   6.855E+03
+In CGS      59849 T=   1.982E+11 dT=   1.866E+06
+     60031   6.627E+02   1.111E-02   6.903E+03
+In CGS      60031 T=   1.988E+11 dT=   3.334E+06
+     60186   6.644E+02   1.118E-02   6.933E+03
+In CGS      60186 T=   1.993E+11 dT=   3.354E+06
+     60367   6.663E+02   1.124E-02   6.964E+03
+In CGS      60367 T=   1.999E+11 dT=   3.372E+06
+     60568   6.684E+02   1.134E-02   6.994E+03
+In CGS      60568 T=   2.005E+11 dT=   3.401E+06
+     60770   6.705E+02   1.175E-02   7.024E+03
+In CGS      60770 T=   2.012E+11 dT=   3.526E+06
+     60976   6.729E+02   1.183E-02   7.054E+03
+In CGS      60976 T=   2.019E+11 dT=   3.548E+06
+     61029   6.735E+02   1.188E-02   7.084E+03
+In CGS      61029 T=   2.021E+11 dT=   3.565E+06
+     61233   6.758E+02   1.154E-02   7.114E+03
+In CGS      61233 T=   2.028E+11 dT=   3.463E+06
+     61435   6.780E+02   1.168E-02   7.144E+03
+In CGS      61435 T=   2.034E+11 dT=   3.503E+06
+     61640   6.801E+02   1.080E-02   7.174E+03
+In CGS      61640 T=   2.040E+11 dT=   3.239E+06
+     61846   6.823E+02   1.073E-02   7.204E+03
+In CGS      61846 T=   2.047E+11 dT=   3.218E+06
+     61984   6.838E+02   1.063E-02   7.248E+03
+In CGS      61984 T=   2.051E+11 dT=   3.188E+06
+     62182   6.858E+02   9.624E-03   7.278E+03
+In CGS      62182 T=   2.058E+11 dT=   2.887E+06
+     62379   6.879E+02   1.070E-02   7.308E+03
+In CGS      62379 T=   2.064E+11 dT=   3.209E+06
+     62582   6.901E+02   7.819E-03   7.338E+03
+In CGS      62582 T=   2.070E+11 dT=   2.346E+06
+     62784   6.922E+02   1.121E-02   7.368E+03
+In CGS      62784 T=   2.077E+11 dT=   3.362E+06
+     62984   6.943E+02   1.124E-02   7.419E+03
+In CGS      62984 T=   2.083E+11 dT=   3.373E+06
+     63184   6.964E+02   1.137E-02   7.449E+03
+In CGS      63184 T=   2.089E+11 dT=   3.410E+06
+     63385   6.985E+02   1.153E-02   7.479E+03
+In CGS      63385 T=   2.095E+11 dT=   3.458E+06
+     63587   7.006E+02   1.167E-02   7.509E+03
+In CGS      63587 T=   2.102E+11 dT=   3.501E+06
+     63788   7.030E+02   1.193E-02   7.539E+03
+In CGS      63788 T=   2.109E+11 dT=   3.580E+06
+     63946   7.048E+02   1.187E-02   7.585E+03
+In CGS      63946 T=   2.114E+11 dT=   3.561E+06
+     64151   7.072E+02   9.394E-03   7.615E+03
+In CGS      64151 T=   2.122E+11 dT=   2.818E+06
+     64355   7.096E+02   1.197E-02   7.645E+03
+In CGS      64355 T=   2.129E+11 dT=   3.591E+06
+     64559   7.118E+02   1.075E-02   7.675E+03
+In CGS      64559 T=   2.135E+11 dT=   3.224E+06
+     64764   7.139E+02   1.073E-02   7.705E+03
+In CGS      64764 T=   2.142E+11 dT=   3.219E+06
+     64897   7.153E+02   1.056E-02   7.747E+03
+In CGS      64897 T=   2.146E+11 dT=   3.167E+06
+     65097   7.174E+02   1.067E-02   7.778E+03
+In CGS      65097 T=   2.152E+11 dT=   3.200E+06
+     65300   7.196E+02   1.074E-02   7.808E+03
+In CGS      65300 T=   2.159E+11 dT=   3.221E+06
+     65498   7.216E+02   1.083E-02   7.838E+03
+In CGS      65498 T=   2.165E+11 dT=   3.248E+06
+     65698   7.237E+02   1.095E-02   7.868E+03
+In CGS      65698 T=   2.171E+11 dT=   3.285E+06
+     65897   7.258E+02   1.111E-02   7.919E+03
+In CGS      65897 T=   2.178E+11 dT=   3.332E+06
+     66097   7.279E+02   1.140E-02   7.949E+03
+In CGS      66097 T=   2.184E+11 dT=   3.420E+06
+     66297   7.300E+02   1.127E-02   7.979E+03
+In CGS      66297 T=   2.190E+11 dT=   3.380E+06
+     66497   7.321E+02   1.113E-02   8.009E+03
+In CGS      66497 T=   2.196E+11 dT=   3.340E+06
+     66697   7.343E+02   1.131E-02   8.039E+03
+In CGS      66697 T=   2.203E+11 dT=   3.393E+06
+     66897   7.364E+02   1.143E-02   8.090E+03
+In CGS      66897 T=   2.209E+11 dT=   3.429E+06
+     67098   7.385E+02   1.142E-02   8.120E+03
+In CGS      67098 T=   2.215E+11 dT=   3.425E+06
+     67294   7.405E+02   1.151E-02   8.150E+03
+In CGS      67294 T=   2.222E+11 dT=   3.453E+06
+     67497   7.427E+02   1.068E-02   8.180E+03
+In CGS      67497 T=   2.228E+11 dT=   3.204E+06
+     67700   7.447E+02   1.023E-02   8.210E+03
+In CGS      67700 T=   2.234E+11 dT=   3.068E+06
+     67902   7.467E+02   1.057E-02   8.240E+03
+In CGS      67902 T=   2.240E+11 dT=   3.170E+06
+     67952   7.472E+02   1.054E-02   8.271E+03
+In CGS      67952 T=   2.242E+11 dT=   3.162E+06
+     68156   7.494E+02   9.207E-03   8.301E+03
+In CGS      68156 T=   2.248E+11 dT=   2.762E+06
+     68360   7.515E+02   1.069E-02   8.331E+03
+In CGS      68360 T=   2.255E+11 dT=   3.207E+06
+     68563   7.537E+02   1.079E-02   8.361E+03
+In CGS      68563 T=   2.261E+11 dT=   3.237E+06
+     68764   7.558E+02   1.100E-02   8.391E+03
+In CGS      68764 T=   2.267E+11 dT=   3.300E+06
+     68918   7.574E+02   1.096E-02   8.436E+03
+In CGS      68918 T=   2.272E+11 dT=   3.289E+06
+     69112   7.594E+02   1.118E-02   8.466E+03
+In CGS      69112 T=   2.278E+11 dT=   3.355E+06
+     69307   7.615E+02   1.129E-02   8.496E+03
+In CGS      69307 T=   2.284E+11 dT=   3.387E+06
+     69504   7.636E+02   1.141E-02   8.526E+03
+In CGS      69504 T=   2.291E+11 dT=   3.424E+06
+     69705   7.658E+02   1.180E-02   8.557E+03
+In CGS      69705 T=   2.297E+11 dT=   3.539E+06
+     69890   7.679E+02   1.191E-02   8.607E+03
+In CGS      69890 T=   2.304E+11 dT=   3.573E+06
+     70084   7.702E+02   1.205E-02   8.637E+03
+In CGS      70084 T=   2.311E+11 dT=   3.615E+06
+     70284   7.725E+02   9.149E-03   8.667E+03
+In CGS      70284 T=   2.318E+11 dT=   2.745E+06
+     70484   7.747E+02   1.073E-02   8.697E+03
+In CGS      70484 T=   2.324E+11 dT=   3.219E+06
+     70684   7.768E+02   1.074E-02   8.727E+03
+In CGS      70684 T=   2.330E+11 dT=   3.222E+06
+     70841   7.784E+02   1.060E-02   8.775E+03
+In CGS      70841 T=   2.335E+11 dT=   3.180E+06
+     71041   7.805E+02   1.060E-02   8.805E+03
+In CGS      71041 T=   2.342E+11 dT=   3.180E+06
+     71241   7.826E+02   1.076E-02   8.835E+03
+In CGS      71241 T=   2.348E+11 dT=   3.228E+06
+     71442   7.848E+02   1.087E-02   8.865E+03
+In CGS      71442 T=   2.354E+11 dT=   3.261E+06
+     71641   7.868E+02   1.099E-02   8.895E+03
+In CGS      71641 T=   2.361E+11 dT=   3.297E+06
+     71838   7.889E+02   1.124E-02   8.925E+03
+In CGS      71838 T=   2.367E+11 dT=   3.371E+06
+     71897   7.895E+02   1.137E-02   8.956E+03
+In CGS      71897 T=   2.369E+11 dT=   3.412E+06
+     72093   7.916E+02   1.138E-02   8.986E+03
+In CGS      72093 T=   2.375E+11 dT=   3.415E+06
+     72291   7.937E+02   1.121E-02   9.016E+03
+In CGS      72291 T=   2.381E+11 dT=   3.363E+06
+     72483   7.957E+02   1.139E-02   9.046E+03
+In CGS      72483 T=   2.387E+11 dT=   3.418E+06
+forrtl: severe (174): SIGSEGV, segmentation fault occurred
+Image              PC                Routine            Line        Source             
+amrvac             0000000000D5D07D  for__signal_handl     Unknown  Unknown
+libpthread-2.24.s  00007FF36B03C0E0  Unknown               Unknown  Unknown
+mca_btl_vader.so   00007FF35C2EAF31  Unknown               Unknown  Unknown
+libopen-pal.so.40  00007FF36A2A79B4  opal_progress         Unknown  Unknown
+libmpi.so.40.10.2  00007FF36B59ECA8  ompi_request_defa     Unknown  Unknown
+libmpi.so.40.10.2  00007FF36B5F600F  ompi_coll_base_se     Unknown  Unknown
+libmpi.so.40.10.2  00007FF36B5F7C0A  ompi_coll_base_al     Unknown  Unknown
+libmpi.so.40.10.2  00007FF36B5B3607  PMPI_Allreduce        Unknown  Unknown
+libmpi_mpifh.so.4  00007FF36B8C2D29  mpi_allreduce_        Unknown  Unknown
+amrvac             0000000000625E6A  Unknown               Unknown  Unknown
+amrvac             000000000040F63D  Unknown               Unknown  Unknown
+amrvac             000000000040CF5E  Unknown               Unknown  Unknown
+libc-2.24.so       00007FF36ACAC2E1  __libc_start_main     Unknown  Unknown
+amrvac             000000000040CE2A  Unknown               Unknown  Unknown
+-------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+-------------------------------------------------------
+--------------------------------------------------------------------------
+mpiexec detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[37555,1],38]
+  Exit code:    174
+--------------------------------------------------------------------------
+/bin/cp: srun: error: tycho63: task 0: Exited with exit code 1
+cannot stat 'Output/Ulrich1976_limitinflow/Jet_CC_0100.dat': No such file or directory
+::::::::::::::
+uniform/Ulrich1976_limitinflow/Ulrich1976_limitinflow.par
+::::::::::::::
+	!==============================================================
+! Project : YSO JET MIALY
+! Aim     :
+! Results :
+! Method  : Use cartesian coordinate
+!
+! Update  : 22/11/2019
+! configuration :
+! Openmpi/gfortran or intel or ....
+! $AMRVAC_DIR/setup.pl -d=2 -phys=hd -arch=default
+! with intel
+! $AMRVAC_DIR/setup.pl -d=2 -phys=hd -arch=intel
+!==============================================================
+
+ &filelist
+        base_filename='uniform/Ulrich1976_limitinflow/Jet_CC_'
+        saveprim=.true.
+	autoconvert=.true.
+	convert_type='vtuBCCmpi'
+	restart_from_file='Jet_CC_0100.dat'
+	convert = .true.
+	level_io=5
+        nwauxio = 7
+        /
+        !restart_from_file='Output/Ulrich1976_limitinflow/Jet_CC_0061.dat'
+        /
+        convert = .true.
+
+
+
+        snapshotnext =0326
+/
+
+
+
+
+/
+        nwauxio=10
+
+
+
+
+/
+
+
+ &savelist
+        itsave(1,1)=0
+        itsave(1,2)=0
+        dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
+	!ditsave_log =50
+        dtsave_dat=  3.1557600d9! 10 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        !ditsave_dat =1
+ /
+
+        ditsave_log = 1
+        ditsave_dat =1
+        dtsave_dat =21.08
+
+ &stoplist
+
+        dtmin=1.0d-13
+        !time_max= 99d15 ! years
+        time_max=  3.1557600d11 !3.15576d11 ! 10000 yrs 6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        !it_max=100
+
+
+/
+  reset_it=.true.
+
+          it_init=0
+
+
+
+
+
+
+ &methodlist
+        time_integrator          =  'twostep'
+        typepred1                =  20*'hllc'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        flux_scheme              =  20*'hllc'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        limiter                  =  20*'minmod'!>>HH4647 !'koren'!'cada3'
+        small_pressure           = 1.0d-9
+        small_density            = 1.0d-8
+        small_values_method      =  'average'
+        small_values_daverage    = 8
+
+        check_small_values       = .true.
+        small_values_force_floor = .true.
+        loglimit(1) = .false.
+        angmomfix=.true.
+
+
+ /
+         loglimit(4) = .true.
+         loglimit(1)            = .true.
+         loglimit(5)            = .true.
+         loglimit(6)            = .true.
+         loglimit(7)            = .true.
+        tvdlfeps=0.5d0
+
+ &boundlist
+        internalboundary  = .true.
+        nghostcells       = 2
+        !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
+        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
+        typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
+        typeboundary_min2 =  7*'special'!'symm','symm','limitinflow','symm','symm',2*'symm'!'symm','symm','asymm','symm','symm',2*'symm'!                                    ! C.L. inférieure <=> zmin
+        typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
+
+/
+        typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max
+        typeboundary_min3 = 8*'cont'                                         ! C.L. avant <=> phi/profondeur min
+ /
+
+ &meshlist
+        ! grid at level 1
+        xprobmin1 =  0.0d0    ! cm
+        xprobmax1 =  3.0d17! <--- r_max=7e16cm
+        xprobmin2 =  0.0d0    ! cm
+        xprobmax2 =  3.0d17! <--- z_max=1.9e17cm
+
+        ! total cell at level 1
+        domain_nx1= 240! <---dr=1.25e15 cm at lvl 1
+        domain_nx2= 240! <---dr=1.25e15 cm at lvl 1
+        ! number of cell by block
+        block_nx1 = 8!8!
+        block_nx2 = 8!8!
+
+        ! AMR configuration
+        refine_criterion=3
+        refine_max_level=5 !<--- dr=dz=7.8125e13 cm au lvl 5
+        refine_threshold=20*0.01d0
+        derefine_ratio=20*1d-3
+        !w_refine_weight(1)=0.5d0
+        !w_refine_weight(2)=0.165d0
+        !w_refine_weight(3)=0.165d0
+        !w_refine_weight(4)=0.17d0
+        w_refine_weight(9)=1.0d0
+
+        max_blocks = 20000
+        ! can be added when is needed
+        prolongprimitive= .false.
+        coarsenprimitive= .false.
+        /
+
+
+
+
+
+
+
+ /
+        stretched_grid    = .true.
+        stretched_dim(1)  = .true.
+        stretched_dim(2)  = .true.
+        itfixgrid =0
+
+ &paramlist
+        typecourant         = 'maxsum'
+        courantpar          = 0.8d0
+        slowsteps           = 500
+        small_getdt_average = .true.
+        small_dt_coef       = 1.0d-5
+ /
+
+  &hd_list
+         hd_energy            = .true. !non-adiabatic: enables energy solving
+         hd_gamma             = 1.666666667         
+         SI_unit              = .false.  ! use cgs
+         He_abundance         = 0.1d0                     !
+
+         hd_dust              = .false.   ! dust off
+         hd_radiative_cooling = .true. !>>HH4647 .false.!.true.    ! cooling on
+         hd_gravity	       = .true. !>>HH4647 .false.!.true.    ! gravity on
+         hd_chemical          = .false.   ! use chemical
+         hd_n_tracer          = 2
+         hd_mean_mup_on       = .true. !>>HH4647 .true.
+         hd_chemical_gas_type = 'fullyatomic'
+   /
+
+  &grav_list 
+  	grav_split=.false.
+   /
+
+ !'MLcosmol' : 'Use Mellema & Lundqvist (2002) cooling curve for zero metallicity '
+ !'SPEX_DM'  : 'Use SPEX cooling curve for solar metallicity above 10^4 K. At lower temperatures,use Dalgarno & McCray (1972), with a pre-set ionization fraction of 10^-3 as described by Schure et al. (2009). '
+   &rc_list
+         ncool            = 4000
+         coolcurve        = 'SPEX_DM'!'MLcosmol' !
+         coolmethod       = 'exact'
+         cfrac            = 1.d0
+         Tfix             = .false.
+         tlow             = 110 !<--- T_low = 110 K comme limite inférieure de la table de cooling afin d'éviter que le jet à 100 K ne se mette à refroidir par radiative cooling, ce qui serait non-physique
+         coolsaveL        = .true.
+         coolsavedT       = .true.
+         He_abundance = 0.1d0
+         rc_chemical_gas_type = 'fullyatomic'
+   /
+
+
+ &dust_list
+     dust_n_species           = 2
+     dust_min_rho             = 1.0d-10
+     gas_mu                   = 1.0d0
+     dust_method              = 'Kwok'
+     dust_small_to_zero       = .true.
+     dust_temperature         = 1.0d0
+     dust_temperature_type    = 'silicate'
+     dust_source_split        = .false.
+     dust_it_diff             = 50000
+   /
+
+
+
+
+
+ &usr_list
+        usrconfig%ism_on              = .true.                      !> set ism
+        usrconfig%cloud_on            = .false.                      !> set cloud
+        usrconfig%cloud_structure     = 2                           !> cloud structure type
+        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+        usrconfig%physunit_on         = .true.                      !> set the normalisation in use
+        usrconfig%reset_medium        = .true.                      !> set on the reset
+        usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
+        usrconfig%phys_inuse          = 'hd' !'mhd' ! set physique want to be used
+
+        usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
+        usrconfig%reset_flux_scheme_on          = .true.
+        usrconfig%reset_flux_scheme_diffuse     = 'hllc'
+        usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
+        usrconfig%reset_flux_scheme_thresholdL1_max = 1.0d20
+
+
+ /
+
+
+
+
+&usr_physical_unit_list
+ phys_unit%unit                  = 'cgs'
+ phys_unit%length                = 1.496d14                 ! cm (1 parsec) : par defaut = 1.496d14
+ phys_unit%time                  = 3d8                      ! s (2 year) : par defaut = 3d10
+ phys_unit%number_density        = 1.0d-6 !>>HH4647                      ! cm^-3 : par defaut = 1.0d8 (1.0d5 pour un milieu ambiant tres peu dense, e.g. a 100cm-3)                      ! cm^-3 : par defaut = 1.0d8 (1.0d5 pour un milieu ambiant tres peu dense, e.g. a 100cm-3)
+ phys_unit%chemical_He_abundance = 0.1d0
+ phys_unit%chemical_gas_type = 'fullyatomic'
+/
+
+!11/12/19 : pour ISM et le projet n°1 de Sylvie Cabrit sur son article de 1997, les paramètres ci-dessous pour l'ISM ont été testés
+!et fixées aux valeurs recommandées et correspondant le mieux à la simulation de l'article
+ &usr_ism_list
+  ism_config%unit               ='cgs'
+  ism_config%density            = 1.1663894832267845d-18         !Li & Shu et 1996b ism density if it set to 0 it will use number_density
+  ism_config%number_density     = 0.0d0  !>>HH4647  !2.95d9    !1.0d2     !4.44d6     ! Zheng19 = 2.95d9 cm-3 ! ism number density (1/cm^3) ) of protons n_H = facteur rho_j (e.g. = 100 cm-3) physique dans l'expression du profil de densité rho_c du milieu ambiant
+                                            ! and w(ixO^S,phys_ind%rho_)        =  self%myconfig%density = = self%myconfig%number_density*mp = rho_h the mass density of protons
+                                            ! si tu l'augmentes e.g. a number_density=1.0d3,
+                                            !la valeur rho_c=rho_j de densité au niveau de la frontière inférieure ISM augmente d'un facteur 10
+  ism_config%velocity(1)        = 0.0d0       ! ism  speed components (cm/s) R/X : 0.0 = milieu statique
+  ism_config%velocity(2)        = 0.0d0!5.d8     ! ism  speed components (cm/s) Z : 0.0 = milieu statique
+  ism_config%velocity(3)        = 0.0d0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
+  ism_config%Mach_number_tomov_obj= 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
+  ism_config%temperature        = 100.0d0  !<---T_a = 100 K temperature typique
+  ism_config%pressure           = 0.0d0     !1.3806485199999997d-12! ism pressure if is set to 0 it will use temperature : äraview trouve a T=100 K et rho_j=100 cm-3 >>> p_j = 2.71055e-12 Ba
+  ism_config%tracer_on          = .true.    ! ism tracer
+  ism_config%tracer_init_density= 1.0d9!1.0d3     ! ism tracer density
+  ism_config%tracer_small_density  =  1.0d-15!1.0d-5
+
+  ism_config%reset_on           = .false.    ! ism reset
+  ism_config%reset_coef         = 0.0! 0.0     ! ism reset  coefficient : 19-03-2021 --> don't use it ! it creates bugs when >0.0d0
+  ism_config%reset_dtemperature = 1.0d-6    !> set the pressure variation
+  ism_config%reset_distance(2)  =  1.01d18  ! ism rest distance
+  ism_config%reset_scale(2)     =  5d16     ! ism reset scalling distance
+	
+	
+  ! 3 cases : 
+  ! 1) boundary_cond = 'fix' : 03-03-22 > successfully implemented !
+  ! 2) boundary_cond /= 'fix' but mixed_fixed_bound == .false. everywhere
+  ! 3) boundary_cond /= 'fix' and at least one of the mixed_fixed_bound is .true.
+  
+  ism_config%boundary_cond(2,1) = 'limitinflow'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
+  
+  ism_config%flux_frac          = 1.0d-2
+  ism_config%useprimitive       = .false. 
+  
+  ! Use :
+  !  - ism_config%mixed_fixed_bound(idims,iside,index) to 'fix' the index-th flux variable w(ixG^S,index) on top of the above boundary conditions:
+  !  - (idims,iside) = (direction along which are set the boundary conditions,side i=1=min or i=2=max of the direction along which the bc is applied)
+  !  - <<<<<!>>>>> : to enable this feature, you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
+  !  - index:
+  ! 	* 1 : rho
+  ! 	* 2 : v1 =  v_R in cylindrical coordinates
+  ! 	* 3 : v2 =  v_Z in cylindrical coordinates
+  ! 	* 4 : v3 =  v_phi in cylindrical coordinates  
+  ! 	* 5 : p (or e for conservative variables) only when hd_energy==.true.
+  ! 	* 6,7 (or resp. 5,6) : tracers when hd_energy==.true. (resp. hd_energy==.false.)
+  !
+  ! - By default, all ism_config%mixed_fixed_bound(2,1,index) are .false., so that only the above boundary conditions are considered !
+  
+  !ism_config%mixed_fixed_bound(2,1,1) = .true.
+  !ism_config%mixed_fixed_bound(2,1,2) = .true.
+  !ism_config%mixed_fixed_bound(2,1,3) = .true.
+  !ism_config%mixed_fixed_bound(2,1,4) = .false.
+  !ism_config%mixed_fixed_bound(2,1,5) = .true.
+  !ism_config%mixed_fixed_bound(2,1,6) = .true.
+  !ism_config%mixed_fixed_bound(2,1,7) = .true.
+  !ism_config%boundary_cond(2,2) = 'fix'!'limitoutflow'!> ce truc ne sert à rien à moins que typeboundary_max2 = 7*'special'
+  ism_config%boundary_on        = .true.
+!  ism_config%debug        	 = .false. ! use it as .true. to debug user module mod_obj_ism.t
+
+
+ism_config%profile_typeaxial  = 'spherical'!'projection_direction'
+ism_config%profile_idir       = 1.0,0.0,0.0       !z=2,r=1  !  ism profile direction
+
+ism_config%profile_center     = 0,0,0
+
+ism_config%profile_density_on = .true. ! Zheng=True ! .false. ! .true. ! ISM set density profile
+ism_config%profile_pressure_on= .true. ! Zheng=True ! .false. !.true.
+ism_config%theta_floored      = 0.0d0
+ism_config%profile_force_on   = .false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
+ism_config%profile_force_gradP_on = .false.
+ism_config%weight_mean = 'arithmetic'
+ism_config%weight_analy = 1.0d0
+ism_config%weight_num = 3.0d0
+ism_config%weight_mean_variable = 'minus_density_grad'
+ism_config%profile_rw_force = 2.5d16
+ism_config%weight_num_index = 20.0d0
+ism_config%weight_analy_index = 20.0d0
+ism_config%profile_density    = 'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_jspec = 8.0782850178d20       !> ISM envelope specific angular momentum
+ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
+ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
+
+ism_config%profile_zc    = 1.0d16!4.49d14 ! 1.0d16 !4.49d14 ! Zheng19 = 30 au = 4.49d14 cm :  grandeur de normalisation dans le profil de pression/densite (en cm)
+ism_config%profile_rw    = 2.5d16 !> ISM reference radius for Lee 2001 profile (in cm)
+ism_config%profile_kappa    = 2.0d0 ! Zheng19 = 2 ! indice kappa pour la loi de densité et de pression : 'cabrit1997' <=> kappa=2
+ism_config%profile_shiftstart = 0.00d0 !>>HH4647 3.33d14 ! 3.33d14 ! 1.0d15 ! the distance from which the ISM profile is set
+
+ism_config%chemical_gas_type = 'fullyatomic'!>>HH4647'fullyatomic'
+ism_config%He_abundance      = 0.1
+/
+
+&usr_usrboundary_ism_list
+  usrboundary_config%boundary_type(2,1) = 'limitinflow'!'limitinflowdisc'!'disc'
+  usrboundary_config%boundary_type(2,2) = 'open'
+  usrboundary_config%useprimitive       = .false.
+  !usrboundary_config%special_origin_theta       = .true.
+  usrboundary_config%nghostcells(1)        = 2
+  usrboundary_config%nghostcells(2)        = 2
+  usrboundary_config%flux_frac          = 1.0d-2
+  usrboundary_config%ngc          = 0
+  usrboundary_config%RHS          = 0
+  usrboundary_config%LHS          = 0
+/
+
+&usr_cla_jet_list
+    cla_jet_config%unit                  =  'cgs' !> physical unit at parameter file
+    cla_jet_config%time_cla_jet_on       =  0.0d0 !> initial time the cla_jet is set in the simulation box
+
+    cla_jet_config%myindice              =  0       !> cla_jet associated indice
+    cla_jet_config%density               =  1.795963442083303d-19!<-------Fm=0.6e-7 Msun/yr
+
+    cla_jet_config%number_density        =  0.0d0
+    cla_jet_config%temperature           =  100.0d0  !>>HH4647 !> cla_jet temperature  (K)
+    cla_jet_config%pressure              =  0.0d0   !> cla_jet pressure
+    cla_jet_config%pressure_toism        =  0.0d0   !> cla_jet pressure relative to ism pressure
+    cla_jet_config%magnetic(1)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%magnetic(2)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%magnetic(3)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%xisigma               =  0.0d0   !> cla_jet magnetisation : 0.0d0 = HD
+    cla_jet_config%magn_anglePHItoPol    =  0.0d0   !> cla_jet magnetisation field incl : 0.0d0 = HD
+
+    cla_jet_config%Mach_number           =  0.0!250.0d0   !> cla_jet  Mach number : Par défaut : Ma = 20
+    cla_jet_config%c_sound               =  0.0d0   !> cla_jet  sound speed (cm/s)
+    cla_jet_config%velocity(1)           =  0.0d0   !> cla_jet  velocity (radial speed)(cm/s)
+    cla_jet_config%velocity(2)           =  1.2d7 !
+    cla_jet_config%velocity(3)           =  0.0d0   !> cla_jet  velocity (rotation speed)(cm/s)
+    cla_jet_config%velocity_poloidal     =  1.2d7 !<--- norme du vecteur vitesse au niveau de l'inlet du jet
+    cla_jet_config%power                 =  0.0d0   !> wind power flux
+    cla_jet_config%mass_flux             =  0.0d0   ! 3.15e19 ! flux en H+H^++H2 1.13d21 !1.89d18 ! grammes/s>>>Zhang19 = 0.3e-7 Msun/yr  0.0!9.8525563d16!1.9705112501213315d17!1.3136741667475542d17!!   !> wind mass flux : cabrit1997 = 1.3136741d17 à Vjet = 100 km/s et 1.9705111e+17 à Vjet = 150 km/s (Vjet = 150 km/s ne marche qu a basse resolution de maillage)
+                                            ! c'est par l'imposition de cla_jet_config%mass_flux et de cla_jet_config%velocity(2) que la densité est alors imposée à l'intérieur du jet
+                                            ! pour avoir :
+                                            ! * Vjet = 100 km/s, R_jet = 0.5e16 cm et n_jet = 100 cm-3 >>> mass_flux = 1.3136741667475542e+17 g / s
+                                            ! * Vjet = 150 km/s, R_jet = 0.5e16 cm et n_jet = 100 cm-3 >>> mass_flux = 1.9705112501213315e+17 g / s
+                                            ! * Vjet = 150 km/s, R_jet = 0.5e16 cm et n_jet = 50 cm-3 >>> mass_flux = 9.8525563e+16 g / s
+
+    cla_jet_config%open_angle            = 3.0d0 !>>HH4647 !>  cla_jet initial open angle  (degre): 0.0d0 = jet droit cylindrique
+    cla_jet_config%z_in                  =  -46.275d18 !> cla_jet inner boundary position
+    cla_jet_config%variation_n_cells     = 2
+    cla_jet_config%z_impos               =  8.22d14 !
+    cla_jet_config%z_out_init            =  8.30d14 !
+    cla_jet_config%r_out_init            =  7.47d14! <--- 50 UA
+    cla_jet_config%r_out_impos           =  7.47d14! <--- 50 UA
+
+    cla_jet_config%r_in_init             =  0.0 !-7.48d14 !> cla_jet inner jet  region : position de la limite gauche du jet en coordonnées cylindriques : à tenir compte dans le calcul de la surface d'éjection du jet et donc du calcul du flux de masse ejectée
+
+    cla_jet_config%tracer_on             =  .true. !> cla_jet logical to set tracer
+    cla_jet_config%tracer_init_density   =  1.0d9!> cla_jet tracer density
+    cla_jet_config%tracer_small_density  =  1.0d-15!> cla_jet tracer small density
+    cla_jet_config%shape                 =  'conical'  !> cla_jet shape
+    cla_jet_config%profile               =  'none'  !> cla_jet profile
+
+
+    cla_jet_config%variation_on          =  .true. ! Zhang19 .false. !.true.! to set on  or off the jet-injection in-real-time velocity variability
+    cla_jet_config%density_variation_on  =  .true. !<----- vary mass-loss rate !> cla_jet density variation switch
+    cla_jet_config%pressure_variation_on =  .true. !<----- vary constant jet temperature !> cla_jet pressure variation switch : enables constant temperature in the jet inlet
+    cla_jet_config%density_variation_profile =  'conserved_mflux' !<----- which variability apply to pressure and/or pressure
+    cla_jet_config%variation_start_time  =  0.0d0 !time (in s in cgs) at which to begin the time variability : 0.0 to begin at the start of the simulation
+    cla_jet_config%variation_end_time    =  4d15
+    cla_jet_config%variation_velocity_amplitude =  1.2d7 !<--- norme du vecteur vitesse au niveau de l'inlet du jet (aux yeux du code, c'est une autre variable qu'on a oublié, surtout moi, de retirer quand on a rajouté   le paramètre cla_jet_config%velocity_poloidal en ouvrant le jet, donc par sécurité, comme je ne sais pas si on l'utilise toujours ailleurs, fixons la même valeur qu'au-dessus)
+    cla_jet_config%variation_velocity_poloidal =  6.0d6 !<------ variation de la norme du vecteur vitesse du jet
+    cla_jet_config%variation_velocity(1) =  0.0d0
+    cla_jet_config%variation_velocity(2) =  6.0d6 !<------ variation de la norme du vecteur vitesse du jet
+    cla_jet_config%variation_velocity(3) =  0.0d0
+    cla_jet_config%variation_time        =  9.46728d9!<---- 300 ans
+    cla_jet_config%variation_position    =  0.0d0,8.22d14 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
+    cla_jet_config%variation_type        =  'sawtooth2' !
+    cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation
+    cla_jet_config%variation_phys_variable(1) =  3 ! 3 mean the velocity in Z direction
+
+    cla_jet_config%refine_min_level      = 5
+    cla_jet_config%chemical_gas_type     = 'fullyatomic' !>>HH4647
+
+
+
+/
+ ---------------------------------------------------------------------------
+ ---------------------------------------------------------------------------
+ |         __  __ ____ ___        _    __  __ ______     ___    ____       |
+ |        |  \/  |  _ \_ _|      / \  |  \/  |  _ \ \   / / \  / ___|      |
+ |        | |\/| | |_) | |_____ / _ \ | |\/| | |_) \ \ / / _ \| |          |
+ |        | |  | |  __/| |_____/ ___ \| |  | |  _ < \ V / ___ \ |___       |
+ |        |_|  |_|_|  |___|   /_/   \_\_|  |_|_| \_\ \_/_/   \_\____|      |
+ --------------------------------------------------------------------------
+ ---------------------------------------------------------------------------
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_physical_values_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_ism_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ End of Reading 
+ usr_ismlist0                                                                  
+ Reading usr_boundary_list           1 
+ boundary                                                                      
+  End of reading of the hd_list
+  End of reading of the hd_list
+ End of Reading 
+ usr_boundarylist1                                                             
+ Reading usr_cla_jet_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+ Use SPEX cooling curve for solar metallicity above 10^4 K. 
+ At lower temperatures,use Dalgarno & McCray (1972), 
+ with a pre-set ionization fraction of 10^-3. 
+ as described by Schure et al. (2009). 
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the usr_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+ Reading uniform/Ulrich1976_limitinflow/Ulrich1976_limitinflow.par
+ End par file read
+ 
+ Output type | dtsave    | ditsave | itsave(1) | tsave(1)
+         log | 0.105E+00 | ******  |      0    | *********
+      normal | 0.105E+02 | ******  |      0    | *********
+       slice | ********* | ******  | ******    | *********
+   collapsed | ********* | ******  | ******    | *********
+    analysis | ********* | ******  | ******    | *********
+ 
+                 typelimited: predictor                                                                                                                          
+         Domain size (cells): 240 240 
+                Level one dx: 0.836E+01 0.836E+01 
+           Refine estimation: Lohner's scheme
+                   slicenext: 0
+                collapsenext: 0
+           restart_from_file:  Jet_CC_0100.dat
+                  converting: T
+
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ jet shape conical             
+ 1)the jet radius =    747000000000000.     
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet open_angle =    3.00000000000000     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ jet typeaxial 
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ cylindrical                                                                    
+                                                     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet Surface =   2.115466860209846E+030
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet Surface =   2.115466860209846E+030
+ ====================Ulrich1976s model====================
+ -Setting completely all parameters:
+ * rW =   2.500000000000000E+016  cm
+ * rD =   1.092733345182041E+016  cm
+ * vK =    73927.3222824020       cm/s
+ * rho_0 =   2.272054281004061E-018  g/cm3
+ * r = (rD/rw) =    2.28784086348488     
+ * rho_a0 =   1.166389483226784E-018  g/cm3
+ * nH_a0 =    498101.457614819       cm-3
+ =========================================================
+ ======================ISM settings=======================
+ * at (R,z) = (r_j,0) : 
+ ** The ism base temperature is =    100.000000000000     
+ ** The ism base density is =  1.166389483226784E-018
+ ** The ism base number density nH is    498101.457614819     
+ =========================================================
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ the jet temperature =    100.000000000000     
+ jet density  1.795963442083303E-019
+ jet ndensity   76695.8225523272     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ set_complet jet shapeconical             
+ the jet self%myconfig%r_out_init =    820312500000000.     
+ jet shape conical             
+ jet shape conical             
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   0.000000000000000E+000
+ the jet open_angle =    3.00000000000000     
+ the jet open_angle_in =   0.000000000000000E+000
+ the jet z0 =   1.565249493915205E+016
+ the jet jet_radius_out_init =   1.567397557793927E+016
+ jet typeaxial 
+ cylindrical                                                                    
+                                                     
+ the jet Surface =   2.115466860209846E+030
+ jet v_j   628031.474915326        11983554.4170549       0.000000000000000E+000
+ the jet mflux =   4.559161372650759E+018
+ 3)the jet radius =    820312500000000.     
+ 3)the jet inner radius =   -39062500000000.0     
+ the jet Surface =   2.115466860209846E+030
+ phys_config%He_abundance  0.100000000000000     
+ in mod_obj_usr_unit.t usr_physical_unit_fillphysunit subroutine: 
+ ism density  2.341670487800000E-030
+ ism ndensity  1.000000000000000E-006
+ ism pressure  5.822995576026895E-019
+ ism temperature   3834.16285288672     
+ ERROR for processor           0 :
+ Jet_CC_0100.dat not found!
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 0 in communicator MPI_COMM_WORLD
+with errorcode 1050269424.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------
+[warn] Epoll MOD(1) on fd 26 failed.  Old events were 6; read change was 0 (none); write change was 2 (del): Bad file descriptor
+[warn] Epoll MOD(4) on fd 26 failed.  Old events were 6; read change was 2 (del); write change was 0 (none): Bad file descriptor
+/bin/mv: inter-device move failed: 'uniform' to '/data/mrabenanahary/Output/Ulrich1976_limitinflow/./uniform'; unable to remove target: Directory not empty
+srun: error: tycho63: task 0: Exited with exit code 1

@@ -6,6 +6,7 @@ module mod_finite_volume
   public :: finite_volume
   public :: hancock
   public :: reconstruct_LR
+  public :: reconstruct_LR3
 
 contains
 
@@ -175,7 +176,8 @@ contains
        end select
 
        ! special modification of left and right status before flux evaluation
-       call phys_modify_wLR(wLp, wRp, ixI^L, ixC^L, idim)
+       call phys_modify_wLR(wLp, wRp, wCT, x, ixI^L, ixC^L,&
+        idim, qdt, qtC, qt, dx^D, method, wnew, wold, block, wLC, wRC)
 
        ! evaluate physical fluxes according to reconstructed status
        call phys_get_flux(wLC,wLp,x,ixI^L,ixC^L,idim,fLC)
@@ -636,5 +638,110 @@ contains
     call phys_to_conserved(ixI^L,ixR^L,wRC,x)
 
   end subroutine reconstruct_LR
+
+  subroutine reconstruct_LR3(ixI^L,ixL^L,ixR^L,idim,w,wCT,wLC,&
+                            wRC,wLp,wCp,wRp,x,needprim,iw)
+    use mod_physics
+    use mod_global_parameters
+    use mod_limiter
+
+    integer, intent(in) :: ixI^L, ixL^L, ixR^L, idim,iw
+    logical, intent(in) :: needprim
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: w, wCT
+    ! left and right constructed status in conservative form
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wLC, wRC
+    ! left and right constructed status in primitive form
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wLp, wCp, wRp
+    real(kind=dp)   , dimension(ixI^S,1:ndim) :: x
+
+    integer            :: jxR^L, ixC^L, jxC^L
+    real(kind=dp)      :: ldw(ixI^S), rdw(ixI^S), dwC(ixI^S)
+    logical            :: limiter_need_log
+    ! integer            :: flagL(ixI^S), flagR(ixI^S)
+     limiter_need_log=.false.
+    ! Transform w,wL,wR to primitive variables
+    if (needprim) then
+       call phys_to_primitive(ixI^L,ixI^L,w,x)
+    end if
+
+    ! TODO>> CORRECT/ADAPT original MP5limiter and PPMlimiter
+    ! to THIS subroutine
+    if (typelimiter == limiter_mp5) then
+       call MP5limiter(ixI^L,ixL^L,idim,w,wLp,wRp)
+    else if (typelimiter == limiter_ppm) then
+       call PPMlimiter(ixI^L,ixM^LL,idim,w,wCT,wLp,wRp)
+    else
+       jxR^L=ixR^L+kr(idim,^D);
+       ixCmax^D=jxRmax^D; ixCmin^D=ixLmin^D-kr(idim,^D);
+       jxC^L=ixC^L+kr(idim,^D);
+
+       !do iw=1,nwflux
+
+      !BEWARE since using loglimit(iw) with
+      !wCp will create -infty value
+      !for dlog10(wCp)
+      if (loglimit(iw)) then
+         limiter_need_log=maxval(dabs(wRp(ixR^S,iw)-wLp(ixL^S,iw))/&
+                                min(wRp(ixR^S,iw),wLp(ixL^S,iw)))>limiter_log_threshold
+         if(limiter_need_log)then
+          wLp(ixL^S,iw)=dlog10(wLp(ixL^S,iw))
+          wCp(ixL^S,iw)=dlog10(wCp(ixL^S,iw))
+          wRp(ixR^S,iw)=dlog10(wRp(ixR^S,iw))
+         end if
+      end if
+
+
+      ! original : dwC(ixC^S)=w(jxC^S,iw)-w(ixC^S,iw)
+      ! limit flux from left and/or right
+      ! *p_1,i,j^L(R_i+1/2,z_j)=p_1,i,j(R_i,z_j)+&
+      ! D(p_1,i,j(R_i,z_j))*(R_i+1/2-R_i)
+      ! = wpertLp(i,j)
+      ! *p_1,i,j^R(R_i-1/2,z_j)
+      ! => p_1,(i+1),j^R(R_(i+1)-1/2,z_j)
+      ! = p_1,i+1,j^R(R_i+1/2,z_j)
+      ! = p_1,i+1,j(R_i+1,z_j)+&
+      !   D(p_1,i+1,j(R_i+1,z_j))*(R_i+1/2-R_i+1)
+      ! = wpertRp(i,j)
+      call dwlimiter3(wLp,wCp,wRp,ixI^L,ixC^L,idim,typelimiter,ldw,rdw)
+      wLp(ixL^S,iw)=wCp(ixL^S,iw)+half*ldw(ixL^S)
+      wRp(ixR^S,iw)=wCp(jxR^S,iw)-half*rdw(jxR^S)
+
+      if (loglimit(iw).and.limiter_need_log) then
+         wLp(ixL^S,iw)=10.0d0**wLp(ixL^S,iw)
+         wCp(ixL^S,iw)=10.0d0**wCp(ixL^S,iw)
+         wRp(ixR^S,iw)=10.0d0**wRp(ixR^S,iw)
+      end if
+       !end do
+
+       !! TODO: does this actually help? if not, remove
+       !call phys_check_w(.true., ixI^L, ixL^L, wLtmp, flagL)
+       !call phys_check_w(.true., ixI^L, ixR^L, wRtmp, flagR)
+
+       !do iw=1,nwflux
+       !   where (flagL(ixL^S) == 0 .and. flagR(ixR^S) == 0)
+       !      wLC(ixL^S,iw)=wLtmp(ixL^S,iw)
+       !      wRC(ixR^S,iw)=wRtmp(ixR^S,iw)
+       !   end where
+
+       !   ! Elsewhere, we still need to convert back when using loglimit
+       !   if (loglimit(iw)) then
+       !      where (flagL(ixL^S) /= 0 .or. flagR(ixR^S) /= 0)
+       !         wLC(ixL^S,iw)=10.0d0**wLC(ixL^S,iw)
+       !         wRC(ixR^S,iw)=10.0d0**wRC(ixR^S,iw)
+       !      end where
+       !   end if
+       !enddo
+    endif
+
+    ! Transform w,wL,wR back to conservative variables
+    if(needprim)then
+       call phys_to_conserved(ixI^L,ixI^L,w,x)
+    endif
+    wLC(ixL^S,1:nw)=wLp(ixL^S,1:nw)
+    wRC(ixR^S,1:nw)=wRp(ixR^S,1:nw)
+    call phys_to_conserved(ixI^L,ixL^L,wLC,x)
+    call phys_to_conserved(ixI^L,ixR^L,wRC,x)
+
+  end subroutine reconstruct_LR3
 
 end module mod_finite_volume

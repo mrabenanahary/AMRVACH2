@@ -73,9 +73,10 @@
 
  &methodlist
         time_integrator          =  'twostep'
-        typepred1                =  20*'hllc'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
-        flux_scheme              =  20*'hllc'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
-        limiter                  =  20*'minmod'!>>HH4647 !'koren'!'cada3'
+        typepred1                =  20*'hancock'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        flux_scheme              =  20*'tvdlf'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        limiter                  =  20*'woodward'!>>HH4647 !'koren'!'cada3'
+        dimsplit 	 	  = .false.
         small_pressure           = 1.0d-9
         small_density            = 1.0d-8
         small_values_method      =  'average'
@@ -125,7 +126,7 @@
 
         ! AMR configuration
         refine_criterion=3
-        refine_max_level=1 !<--- dr=dz=7.8125e13 cm au lvl 5
+        refine_max_level=3 !<--- dr=dz=7.8125e13 cm au lvl 5
         refine_threshold=20*0.01d0
         derefine_ratio=20*1d-3
         w_refine_weight(1)=0.5d0
@@ -222,8 +223,8 @@
         usrconfig%phys_inuse          = 'hd' !'mhd' ! set physique want to be used
 
         usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
-        usrconfig%reset_flux_scheme_on          = .true.
-        usrconfig%reset_flux_scheme_diffuse     = 'hllc'
+        usrconfig%reset_flux_scheme_on          = .false.
+        usrconfig%reset_flux_scheme_diffuse     = 'hancock'
         usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
         usrconfig%reset_flux_scheme_thresholdL1_max = 1.0d20
 
@@ -294,7 +295,7 @@
   
   !ism_config%mixed_fixed_bound(2,1,1) = .true.
   !ism_config%mixed_fixed_bound(2,1,2) = .true.
-  ism_config%mixed_fixed_bound(2,1,3) = .true.
+  !ism_config%mixed_fixed_bound(2,1,3) = .true.
   !ism_config%mixed_fixed_bound(2,1,4) = .false.
   !ism_config%mixed_fixed_bound(2,1,5) = .true.
   !ism_config%mixed_fixed_bound(2,1,6) = .true.

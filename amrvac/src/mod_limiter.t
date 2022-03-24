@@ -243,4 +243,185 @@ contains
 
   end subroutine dwlimiter2
 
+
+  ! Slope limiter subroutine needed for addings by Mialy: since pressure pertubation p_1,i,j
+  ! need to use theta = (p_1,i,j(R_i+1,z_j)-p_1,i,j(R_i/2,z_j))/(p_1,i,j(R_i,z_j)-p_1,i,j(R_i-1,z_j))
+  ! ==> we must use separate arrays for p_1,i,j(R_i+1,z_j),p_1,i,j(R_i-1,z_j),
+  ! p_1,i,j(R_i+1,z_j)-p_1,i,j(R_i/2,z_j)) and (p_1,i,j(R_i,z_j)-p_1,i,j(R_i-1,z_j))
+  !/
+  subroutine dwlimiter3(wLp,wCp,wRp,ixI^L,ixC^L,idims,typelim,ldw,rdw)
+    use mod_global_parameters
+
+    integer, intent(in) :: ixI^L, ixC^L, idims
+    double precision, intent(in) :: wLp(ixI^S),wCp(ixI^S),wRp(ixI^S)
+    integer, intent(in) :: typelim
+    !> Result using left-limiter (same as right for symmetric)
+    double precision, intent(out), optional :: ldw(ixI^S)
+    !> Result using right-limiter (same as left for symmetric)
+    double precision, intent(out), optional :: rdw(ixI^S)
+
+    double precision :: tmp(ixI^S), tmp2(ixI^S)
+    integer :: ixO^L, hxO^L
+    double precision, parameter :: qsmall=1.d-12, qsmall2=2.d-12
+    double precision, parameter :: eps = sqrt(epsilon(1.0d0))
+
+    ! mcbeta limiter parameter value
+    double precision, parameter :: c_mcbeta=1.4d0
+    ! cada limiter parameter values
+    double precision, parameter :: cadalfa=0.5d0, cadbeta=2.0d0, cadgamma=1.6d0
+    ! full third order cada limiter
+    double precision :: rdelinv
+    double precision :: ldwA(ixI^S),ldwB(ixI^S),tmpeta(ixI^S)
+    double precision, parameter :: cadepsilon=1.d-14, invcadepsilon=1.d14,cada3_radius=0.1d0
+    !-----------------------------------------------------------------------------
+
+    ! Contract indices in idim for output.
+    ixOmin^D=ixCmin^D+kr(idims,^D); ixOmax^D=ixCmax^D;
+    hxO^L=ixO^L-kr(idims,^D);
+
+    ! About the notation: the conventional argument theta (the ratio of slopes)
+    ! would be given by (wRp(ixO^S)-wCp(ixO^S))/(wCp(ixO^S)-wLp(ixO^S)).
+    ! However, in the end one
+    ! multiplies phi(theta) (wCp(ixO^S)-wLp(ixO^S)), which is incorporated in the
+    ! equations below. The minmod limiter can for example be written as:
+    ! A:
+    ! max[0.0d0, min[1.0d0, (wRp(ixO^S)-wCp(ixO^S))/(wCp(ixO^S)-wLp(ixO^S))]]
+    ! * (wCp(ixO^S)-wLp(ixO^S))
+    ! B:
+    ! tmp(ixO^S)*max[0.0d0,min[abs[wRp(ixO^S)-wCp(ixO^S)],tmp(ixO^S)*
+    ! (wCp(ixO^S)-wLp(ixO^S))]]
+    ! where tmp(ixO^S)=sign(1.0d0,wCp(ixO^S)-wLp(ixO^S))
+
+    select case (typelim)
+    case (limiter_minmod)
+       ! Minmod limiter eq(3.51e) and (eq.3.38e) with omega=1
+       tmp(ixO^S)=sign(one,wRp(ixO^S)-wCp(ixO^S))
+       tmp(ixO^S)=tmp(ixO^S)* &
+            max(zero,min(abs(wRp(ixO^S)-wCp(ixO^S)),tmp(ixO^S)*(wCp(ixO^S)-wLp(ixO^S))))
+       if (present(ldw)) ldw(ixO^S) = tmp(ixO^S)
+       if (present(rdw)) rdw(ixO^S) = tmp(ixO^S)
+    case (limiter_woodward)
+       ! Woodward and Collela limiter (eq.3.51h), a factor of 2 is pulled out
+       tmp(ixO^S)=sign(one,wRp(ixO^S)-wCp(ixO^S))
+       tmp(ixO^S)=2*tmp(ixO^S)* &
+            max(zero,min(abs(wRp(ixO^S)-wCp(ixO^S)),tmp(ixO^S)*(wCp(ixO^S)-wLp(ixO^S)),&
+            tmp(ixO^S)*quarter*((wCp(ixO^S)-wLp(ixO^S))+&
+            (wRp(ixO^S)-wCp(ixO^S)))))
+       if (present(ldw)) ldw(ixO^S) = tmp(ixO^S)
+       if (present(rdw)) rdw(ixO^S) = tmp(ixO^S)
+    case (limiter_mcbeta)
+       ! Woodward and Collela limiter, with factor beta
+       tmp(ixO^S)=sign(one,wRp(ixO^S)-wCp(ixO^S))
+       tmp(ixO^S)=tmp(ixO^S)* &
+            max(zero,min(c_mcbeta*abs(wRp(ixO^S)-wCp(ixO^S)),&
+            c_mcbeta*tmp(ixO^S)*(wCp(ixO^S)-wLp(ixO^S)),&
+            tmp(ixO^S)*half*((wCp(ixO^S)-wLp(ixO^S))+&
+            (wRp(ixO^S)-wCp(ixO^S)))))
+       if (present(ldw)) ldw(ixO^S) = tmp(ixO^S)
+       if (present(rdw)) rdw(ixO^S) = tmp(ixO^S)
+    case (limiter_superbee)
+       ! Roes superbee limiter (eq.3.51i)
+       tmp(ixO^S)=sign(one,(wRp(ixO^S)-wCp(ixO^S)))
+       tmp(ixO^S)=tmp(ixO^S)* &
+            max(zero,min(2*abs((wRp(ixO^S)-wCp(ixO^S))),&
+            tmp(ixO^S)*(wCp(ixO^S)-wLp(ixO^S))),&
+            min(abs((wRp(ixO^S)-wCp(ixO^S))),&
+            2*tmp(ixO^S)*(wCp(ixO^S)-wLp(ixO^S))))
+       if (present(ldw)) ldw(ixO^S) = tmp(ixO^S)
+       if (present(rdw)) rdw(ixO^S) = tmp(ixO^S)
+    case (limiter_vanleer)
+      ! van Leer limiter (eq 3.51f), but a missing delta2=1.D-12 is added
+      tmp(ixO^S)=2*max((wCp(ixO^S)-wLp(ixO^S))*(wRp(ixO^S)-wCp(ixO^S)),zero)/&
+           ((wRp(ixO^S)-wCp(ixO^S))+(wCp(ixO^S)-wLp(ixO^S))+qsmall)
+      if (present(ldw)) ldw(ixO^S) = tmp(ixO^S)
+      if (present(rdw)) rdw(ixO^S) = tmp(ixO^S)
+    case (limiter_albada)
+      ! Albada limiter (eq.3.51g) with delta2=1D.-12
+      tmp(ixO^S)=((wCp(ixO^S)-wLp(ixO^S))*((wRp(ixO^S)-wCp(ixO^S))**2+qsmall)&
+           +(wRp(ixO^S)-wCp(ixO^S))*((wCp(ixO^S)-wLp(ixO^S))**2+qsmall))/&
+           ((wRp(ixO^S)-wCp(ixO^S))**2+(wCp(ixO^S)-wLp(ixO^S))**2+qsmall2)
+      if (present(ldw)) ldw(ixO^S) = tmp(ixO^S)
+      if (present(rdw)) rdw(ixO^S) = tmp(ixO^S)
+    case (limiter_koren)
+       tmp(ixO^S)=sign(one,wRp(ixO^S)-wCp(ixO^S))
+       tmp2(ixO^S)=min(2*abs(wRp(ixO^S)-wCp(ixO^S)),2*tmp(ixO^S)*&
+       (wCp(ixO^S)-wLp(ixO^S)))
+       if (present(ldw)) then
+          ldw(ixO^S)=tmp(ixO^S)* &
+               max(zero,min(tmp2(ixO^S),&
+               ((wCp(ixO^S)-wLp(ixO^S))*tmp(ixO^S)+2*abs(wRp(ixO^S)-wCp(ixO^S)))*third))
+       end if
+       if (present(rdw)) then
+          rdw(ixO^S)=tmp(ixO^S)* &
+                max(zero,min(tmp2(ixO^S),&
+               (2*(wCp(ixO^S)-wLp(ixO^S))*tmp(ixO^S)+abs(wRp(ixO^S)-wCp(ixO^S)))*third))
+       end if
+    case (limiter_cada)
+       ! This limiter has been rewritten in the usual form, and uses a division
+       ! of the gradients.
+       if (present(ldw)) then
+          ! Cada Left variant
+          ! Compute theta, but avoid division by zero
+          tmp(ixO^S)=(wCp(ixO^S)-wLp(ixO^S))/((wRp(ixO^S)-wCp(ixO^S)) + sign(eps, &
+          (wRp(ixO^S)-wCp(ixO^S))))
+          tmp2(ixO^S)=(2+tmp(ixO^S))*third
+          ldw(ixO^S)= max(zero,min(tmp2(ixO^S), &
+               max(-cadalfa*tmp(ixO^S), &
+               min(cadbeta*tmp(ixO^S), tmp2(ixO^S), &
+               cadgamma)))) * (wRp(ixO^S)-wCp(ixO^S))
+       end if
+
+       if (present(rdw)) then
+          ! Cada Right variant
+          tmp(ixO^S)=(wRp(ixO^S)-wCp(ixO^S))/((wCp(ixO^S)-wLp(ixO^S)) + sign(eps, wCp(ixO^S)-wLp(ixO^S)))
+          tmp2(ixO^S)=(2+tmp(ixO^S))*third
+          rdw(ixO^S)= max(zero,min(tmp2(ixO^S), &
+               max(-cadalfa*tmp(ixO^S), &
+               min(cadbeta*tmp(ixO^S), tmp2(ixO^S), &
+               cadgamma)))) * (wCp(ixO^S)-wLp(ixO^S))
+       end if
+    case (limiter_cada3)
+       rdelinv=one/(cada3_radius*dxlevel(idims))**2
+       tmpeta(ixO^S)=((wRp(ixO^S)-wCp(ixO^S))**2+(wCp(ixO^S)-wLp(ixO^S))**2)*rdelinv
+
+       if (present(ldw)) then
+          tmp(ixO^S)=(wCp(ixO^S)-wLp(ixO^S))/((wRp(ixO^S)-wCp(ixO^S)) + sign(eps, wRp(ixO^S)-wCp(ixO^S)))
+          ldwA(ixO^S)=(two+tmp(ixO^S))*third
+          ldwB(ixO^S)= max(zero,min(ldwA(ixO^S), max(-cadalfa*tmp(ixO^S), &
+               min(cadbeta*tmp(ixO^S), ldwA(ixO^S), cadgamma))))
+          where(tmpeta(ixO^S)<=one-cadepsilon)
+             ldw(ixO^S)=ldwA(ixO^S)
+          elsewhere(tmpeta(ixO^S)>=one+cadepsilon)
+             ldw(ixO^S)=ldwB(ixO^S)
+          elsewhere
+             tmp2(ixO^S)=(tmpeta(ixO^S)-one)*invcadepsilon
+             ldw(ixO^S)=half*( (one-tmp2(ixO^S))*ldwA(ixO^S) &
+                  +(one+tmp2(ixO^S))*ldwB(ixO^S))
+          endwhere
+          ldw(ixO^S)=ldw(ixO^S) * (wRp(ixO^S)-wCp(ixO^S))
+       end if
+
+       if (present(rdw)) then
+          tmp(ixO^S)=(wRp(ixO^S)-wCp(ixO^S))/((wCp(ixO^S)-wLp(ixO^S)) + sign(eps, wCp(ixO^S)-wLp(ixO^S)))
+          ldwA(ixO^S)=(two+tmp(ixO^S))*third
+          ldwB(ixO^S)= max(zero,min(ldwA(ixO^S), max(-cadalfa*tmp(ixO^S), &
+               min(cadbeta*tmp(ixO^S), ldwA(ixO^S), cadgamma))))
+          where(tmpeta(ixO^S)<=one-cadepsilon)
+             rdw(ixO^S)=ldwA(ixO^S)
+          elsewhere(tmpeta(ixO^S)>=one+cadepsilon)
+             rdw(ixO^S)=ldwB(ixO^S)
+          elsewhere
+             tmp2(ixO^S)=(tmpeta(ixO^S)-one)*invcadepsilon
+             rdw(ixO^S)=half*( (one-tmp2(ixO^S))*ldwA(ixO^S) &
+                  +(one+tmp2(ixO^S))*ldwB(ixO^S))
+          endwhere
+          rdw(ixO^S)=rdw(ixO^S) * (wCp(ixO^S)-wLp(ixO^S))
+       end if
+
+    case default
+       call mpistop("Error in dwLimiter: unknown limiter")
+    end select
+
+  end subroutine dwlimiter3
+
 end module mod_limiter

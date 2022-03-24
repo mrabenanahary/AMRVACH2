@@ -45,6 +45,11 @@ module mod_variables
   !> Index of the energy density
   integer, protected :: iw_e = -1
 
+
+  !> Index of the gravity potential
+  integer, protected :: iw_grav_phi = -1
+
+
   !> Indices of the magnetic field components
   integer, allocatable, protected :: iw_mag(:)
 
@@ -181,5 +186,23 @@ contains
       write(prim_wnames(nwflux),"(A1,I1)") "b", idir
     end do
   end function var_set_bfield
+
+
+  !> Set auxiliary variable for gravity potential,
+  ! which is not advected and has no boundary conditions.
+  !> This has to be done after defining flux variables.
+  function var_set_grav_phi(name_aux) result(iw)
+    character(len=*), intent(in)  :: name_aux
+    integer                       :: iw
+
+    nwaux = nwaux + 1
+    nw      = nw + 1
+    iw_grav_phi = nw
+    iw      = nw
+
+    prim_wnames(iw) = name_aux
+    cons_wnames(iw) = name_aux
+
+  end function var_set_grav_phi
 
 end module mod_variables

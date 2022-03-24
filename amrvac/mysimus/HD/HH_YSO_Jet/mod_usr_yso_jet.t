@@ -50,13 +50,15 @@ module mod_usr
     real(kind=dp)     :: phys_adiab
     real(kind=dp)     :: phys_temperature_isotherm
     character(len=20) :: phys_inuse
+
+
   end type usr_config
   type(usr_config)    :: usrconfig
   integer, parameter  :: n_dust_max = 20
   real(dp) :: SUM_MASS   = 0.0_dp
   real(dp) :: SUM_VOLUME = 0.0_dp
 
-
+  !add type for fluxes here
   type (ISM),allocatable,target      :: ism_surround(:)
   type (cloud),allocatable,target    :: cloud_medium(:)
   type (cla_jet),allocatable,target  :: jet_yso(:)
@@ -106,6 +108,8 @@ contains
     usr_internal_bc     => usr_special_internal_bc
     usr_reset_solver    => special_reset_solver
     usr_gravity         => special_pointmass_gravity
+    usr_gravity_potential => special_pointmass_gravity_potential
+    usr_gravity_fpotential => special_pointmass_gravity_fpotential
     call usr_set_default_parameters ! >mod_obj_usr_yso_jet.t
 
 
@@ -140,7 +144,8 @@ contains
     ! and then read their user-defined parameters in .par
     !4) If jet on, set all usr jets parameters to their default values
     ! and then read their user-defined parameters in .par
-
+    ! TO DO: 5) If computeflux is on, set all usr fluxes parameters to their default values
+    ! and then read their user-defined parameters in .par
 
     ! complet all physical unit in use
     if(usrconfig%physunit_on) then
@@ -203,6 +208,8 @@ contains
     usrconfig%cloud_profile_density_on      = .false.
     usrconfig%cloud_profile_pressure_on     = .false.
     usrconfig%cloud_profile_velocity_on     = .false.
+
+
 
 
   end subroutine usr_set_default_parameters
@@ -559,12 +566,14 @@ contains
      rjet_=r_
    end if
 
-
+   !Add here the set_complet of the fluxes !!!!<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
    if(phys_config%dust_on)allocate(the_dust_inuse(n_object_w_dust))
 
    call usr_normalise_parameters
    if(mype==0)call usr_write_setting
+
+
 
   end subroutine initglobaldata_usr
   !> The initial conditions
@@ -590,9 +599,11 @@ contains
     type(dust)    :: dust_dummy
     integer       :: i_object_w_dust
     real(dp)      :: cloud_profile(ixI^S,1:nw)
+    real(kind=dp), dimension(ixI^S) :: theta_profile,d_profile,r_normalized
+    real(kind=dp), dimension(ixI^S) :: cos_theta_zero, theta_zero
     ! .. only test ..
     real(dp)      ::old_w(ixO^S,1:nw)
-    !-----------------------------------------
+    !-----------------------------------------/
     patch_all(ixO^S) = .true.
     if(first)then
       if(mype==0) then
@@ -601,6 +612,21 @@ contains
       first=.false.
     endif
 
+    !Let s initiate theta and cos_theta_zero
+    call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+    w(ixI^S,phys_ind%mythetafield_)=theta_profile(ixI^S)
+    if(ism_surround(i_ism)%myconfig%profile_density_on)then
+      if(trim(ism_surround(i_ism)%myconfig%profile_density)=='Ulrich1976')then
+
+      call ism_surround(i_ism)%set_profile_distance(ixI^L,ixO^L,x,d_profile)
+      r_normalized(ixI^S) = (d_profile(ixI^S)/ism_surround(i_ism)%myconfig%profile_rd)
+      call usr_ulrich1976_costheta_zero(ixI^L, ixO^L,x,r_normalized,&
+      theta_profile,cos_theta_zero)
+      theta_zero(ixI^S) = DACOS(cos_theta_zero(ixI^S))
+      w(ixI^S,phys_ind%mytheta_zero_)=theta_zero(ixI^S)
+
+      end if
+    end if
     i_object_w_dust=0
     ! set the ism
     cond_ism_on : if(usrconfig%ism_on) then
@@ -1235,14 +1261,12 @@ return
     real(dp), intent(in)    :: x(ixI^S,1:ndim)
     real(dp), intent(in)    :: wCT(ixI^S,1:nw)
     real(dp), intent(out)   :: gravity_field(ixI^S,ndim)
-    real(dp)                        :: Ggrav, Mpoint
+    real(dp)                        :: Ggrav, Mpoint, alpha
     real(kind=dp), dimension(ixI^S) :: r_distance
     real(kind=dp), dimension(ixI^S) :: theta_profile
     real(kind=dp), dimension(1:ndim) :: zero_dim
     integer                      :: i_ism,idim
     !-----------------------------------
-
-
 
     Ggrav = constusr%G
 
@@ -1261,49 +1285,254 @@ return
         call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
         Mpoint = ism_surround(i_ism)%myconfig%profile_Mstar
 
-        select case(typeaxial)
-          case('spherical')
+        Loop_isms : do i_ism=0,usrconfig%ism_number-1
+        select case(trim(ism_surround(i_ism)%myconfig%profile_density))
+          case('Ulrich1976')
+          if(.not.phys_config%gravity_hse)then
+            select case(typeaxial)
+              case('spherical')
 
-            gravity_field(ixO^S,r_)=-Ggrav*Mpoint/(r_distance(ixO^S)*r_distance(ixO^S))
+                gravity_field(ixO^S,r_)=-Ggrav*Mpoint/(r_distance(ixO^S)*r_distance(ixO^S))
 
-          case('cylindrical')
+              case('cylindrical')
+              where(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
+                gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+              elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)>=0.0_dp)
+                !g_R(z<0)=g_R(z<0)
+                gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                !g_Z(z<0)=-g_Z(z>0)
+                gravity_field(ixO^S,z_)=-(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+              elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)<0.0_dp)
+                !g_R(R<0)=-g_R(R>0)
+                gravity_field(ixO^S,r_)=-(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                !g_Z(R<0)=g_Z(R>0)
+                gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+              elsewhere(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)<0.0_dp)
+                !g_R(R<0)=-g_R(R>0)
+                gravity_field(ixO^S,r_)=-(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                !g_Z(R<0)=g_Z(R>0)
+                gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
+                (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+              end where
 
-            gravity_field(ixO^S,r_)=(-Ggrav*Mpoint/&
-            (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-            gravity_field(ixO^S,z_)=(-Ggrav*Mpoint/&
-            (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
 
 
 
 
-          case('slab','slabstretch')
+              case('slab','slabstretch')
 
-            if(ndim<3)then
-              gravity_field(ixO^S,x_)=(-Ggrav*Mpoint/&
-              (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
-              gravity_field(ixO^S,y_)=(-Ggrav*Mpoint/&
-              (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
-              if(ndir>2)then
-                gravity_field(ixO^S,z_) = 0.0_dp
-              end if
+                if(ndim<3)then
+                  gravity_field(ixO^S,x_)=(-Ggrav*Mpoint/&
+                  (r_distance(ixO^S)*r_distance(ixO^S)))*DSIN(theta_profile(ixO^S))
+                  gravity_field(ixO^S,y_)=(-Ggrav*Mpoint/&
+                  (r_distance(ixO^S)*r_distance(ixO^S)))*DCOS(theta_profile(ixO^S))
+                  if(ndir>2)then
+                    gravity_field(ixO^S,z_) = 0.0_dp
+                  end if
+                else
+                  gravity_field(ixO^S,x_)= 0.0_dp ! TO DO
+                  gravity_field(ixO^S,y_)= 0.0_dp ! TO DO
+                  if(ndir>2)then
+                     gravity_field(ixO^S,z_) = 0.0_dp ! TO DO
+                  end if
+                end if
+
+              case default
+                 call mpistop('Unknown typeaxial')
+            end select
+
+          else
+
+            if(phys_config%use_gravity_g)then
+              write(*,*) 'special_pointmass_gravity in mod_usr.t:'
+              write(*,*) 'use_gravity_g is true but'
+              write(*,*) 'but this part is not yet implemented'
+              call mpistop('Code part not yet implemented')
             else
-              gravity_field(ixO^S,x_)= 0.0_dp ! TO DO
-              gravity_field(ixO^S,y_)= 0.0_dp ! TO DO
-              if(ndir>2)then
-                 gravity_field(ixO^S,z_) = 0.0_dp ! TO DO
-              end if
+
+              write(*,*) 'special_pointmass_gravity in mod_usr.t:'
+              write(*,*) 'use_gravity_g is false but'
+              write(*,*) 'but this part is not yet implemented'
+              call mpistop('Code part not yet implemented')
             end if
 
+          end if
+          !gravity_field(ixO^S,1:ndim)=gravity_field(ixO^S,1:ndim)/&
+          !((usr_physunit%myconfig%length**3.0_dp)/(usr_physunit%myconfig%mass*&
+          !usr_physunit%myconfig%time**2.0_dp))
+          case('Lee2001')
+
+            alpha = ism_surround(i_ism)%myconfig%profile_p
+            gravity_field(ixO^S,r_) = - alpha * (x(ixO^S,r_)**2.0_dp-&
+            x(ixO^S,z_)**2.0_dp)/(x(ixO^S,r_)*(x(ixO^S,r_)**2.0_dp+&
+            x(ixO^S,z_)**2.0_dp))
+
+            gravity_field(ixO^S,z_) = - 2.0_dp * alpha * x(ixO^S,z_) / &
+            (x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)
+
+            !gravity_field(ixO^S,phi_) = 0.0_dp
+            !treat theta=0 where dp/dR=-rho*dPhi/dR=0
+            !where(DABS(x(ixO^S,r_))<=smalldouble)
+              !gravity_field(ixO^S,r_)=0.0_dp
+              !gravity_field(ixO^S,z_)=0.0_dp
+            !end where
+
+            !call mpistop('the code arrives here !!! ')
+
           case default
-             call mpistop('Unknown typeaxial')
-        end select
+
+            gravity_field(ixO^S,1:ndim)=0.0_dp
+
+          end select
+          end do Loop_isms
+        end if
+
+  end subroutine special_pointmass_gravity
+
+
+  subroutine special_pointmass_gravity_potential(ixI^L,ixO^L,wCT,x,gravity_field)
+    use mod_global_parameters
+    integer, intent(in)             :: ixI^L, ixO^L
+    real(dp), intent(in)    :: x(ixI^S,1:ndim)
+    real(dp), intent(in)    :: wCT(ixI^S,1:nw)
+    real(dp), intent(out)   :: gravity_field(ixI^S)
+    real(dp)                        :: Ggrav, Mpoint, alpha
+    real(kind=dp), dimension(ixI^S) :: r_distance
+    real(kind=dp), dimension(ixI^S) :: theta_profile
+    real(kind=dp), dimension(1:ndim) :: zero_dim
+    integer                      :: i_ism,idim
+    !-----------------------------------
+
+
+
+
+
+    Ggrav = constusr%G
+
+    gravity_field(ixO^S)=0.0_dp
+    {zero_dim(^D)=0.0_dp\}!-dx(1,1)
+
+
+
+    ! Here we set the graviationnal acceleration inside the whole domain
+    ! from the state vector wCT
+    ! here the called wCT contains conservative variables
+      if(usrconfig%ism_on)then
+        i_ism =0
+        call usr_distance(ixI^L,ixO^L,typeaxial,&
+                          zero_dim,x,r_distance)
+        call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+        Mpoint = ism_surround(i_ism)%myconfig%profile_Mstar
+
+        Loop_isms : do i_ism=0,usrconfig%ism_number-1
+        select case(trim(ism_surround(i_ism)%myconfig%profile_density))
+          case('Ulrich1976')
+            gravity_field(ixO^S)=-Ggrav*Mpoint/r_distance(ixO^S)
+
+            !gravity_field(ixO^S,1:ndim)=gravity_field(ixO^S,1:ndim)/&
+            !((usr_physunit%myconfig%length**3.0_dp)/(usr_physunit%myconfig%mass*usr_physunit%myconfig%time**2.0_dp))
+          case('Lee2001')
+
+            alpha = ism_surround(i_ism)%myconfig%profile_p
+            gravity_field(ixO^S) = alpha * &
+            DLOG((r_distance(ixO^S)/DSIN(theta_profile(ixO^S)))/&
+            (ism_surround(i_ism)%myconfig%profile_rw/1.0_dp)) !theta_0=pi/2
+            !gravity_field(ixO^S,phi_) = 0.0_dp
+            !treat theta=0 where dp/dR=-rho*dPhi/dR=0
+
+            !call mpistop('the code arrives here !!! ')
+
+          case default
+
+            gravity_field(ixO^S)=0.0_dp
+
+          end select
+        end do Loop_isms
+
+
+      end if
+
+      ! [p] = [p_i,j - rho_i,j*(phi_i+1-phi_i)/2] ==> renormalise to more usefulf pressure:
+      ! [phi]= [p/rho]
+
+      ! de-normalize
+      gravity_field(ixO^S)=gravity_field(ixO^S)*&
+      usr_physunit%myconfig%length*&
+      usr_physunit%myconfig%mass/&
+      (unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
+      (usr_physunit%myconfig%length*usr_physunit%myconfig%length))
+
+      !re-normalize:
+
+      gravity_field(ixO^S)=gravity_field(ixO^S)/&
+      (usr_physunit%myconfig%pressure/usr_physunit%myconfig%density)
+
+  end subroutine special_pointmass_gravity_potential
+
+
+  function special_pointmass_gravity_fpotential(ixI^L,ixO^L,wCT,x) result(gravity_field)
+    use mod_global_parameters
+    integer, intent(in)             :: ixI^L, ixO^L
+    real(dp), intent(in)    :: x(ixI^S,1:ndim)
+    real(dp), intent(in)    :: wCT(ixI^S,1:nw)
+    real(dp)                :: gravity_field(ixO^S)
+    real(dp)                        :: Ggrav, Mpoint
+    real(kind=dp), dimension(ixI^S) :: r_distance
+    real(kind=dp), dimension(ixI^S) :: theta_profile
+    real(kind=dp), dimension(1:ndim) :: zero_dim
+    integer                      :: i_ism,idim
+    !-----------------------------------
+
+
+
+    Ggrav = constusr%G
+
+    gravity_field(ixO^S)=0.0_dp
+    {zero_dim(^D)=0.0_dp\}!-dx(1,1)
+
+
+
+    ! Here we set the graviationnal acceleration inside the whole domain
+    ! from the state vector wCT
+    ! here the called wCT contains conservative variables
+      if(usrconfig%ism_on)then
+        i_ism =0
+        call usr_distance(ixI^L,ixO^L,typeaxial,&
+                          zero_dim,x,r_distance)
+        call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+        Mpoint = ism_surround(i_ism)%myconfig%profile_Mstar
+
+        gravity_field(ixO^S)=-Ggrav*Mpoint/r_distance(ixO^S)
+
         !gravity_field(ixO^S,1:ndim)=gravity_field(ixO^S,1:ndim)/&
         !((usr_physunit%myconfig%length**3.0_dp)/(usr_physunit%myconfig%mass*usr_physunit%myconfig%time**2.0_dp))
       end if
 
+      ! [p] = [p_i,j - rho_i,j*(phi_i+1-phi_i)/2] ==> renormalise to more usefulf pressure:
+      ! [phi]= [p/rho]
 
+      ! de-normalize
+      gravity_field(ixO^S)=gravity_field(ixO^S)*&
+      usr_physunit%myconfig%length*&
+      usr_physunit%myconfig%mass/&
+      (unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
+      (usr_physunit%myconfig%length*usr_physunit%myconfig%length))
 
-  end subroutine special_pointmass_gravity
+      !re-normalize:
+
+      gravity_field(ixO^S)=gravity_field(ixO^S)/&
+      (usr_physunit%myconfig%pressure/usr_physunit%myconfig%density)
+
+  end function special_pointmass_gravity_fpotential
+
 
   !-----------------------------------------------------------
   !> subroutine to check w
@@ -1553,6 +1782,7 @@ return
   ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
   ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
   ! corresponding normalization values (default value 1)
+  !/
     use mod_physics
     use mod_dust
     implicit none
@@ -1561,7 +1791,7 @@ return
     real(dp)                   :: win(ixI^S,nw+nwauxio)
     real(dp)                   :: normconv(0:nw+nwauxio)
     ! .. local ..
-    real(dp)                   :: w(ixI^S,nw)
+    real(dp)                   :: w(ixI^S,nw),w_init(ixI^S,nw)
     real(dp)                   :: error_var(ixM^T)
     integer                    :: iw, level,idir,idust
     integer, parameter         :: imach_             = 1
@@ -1571,21 +1801,30 @@ return
     integer, parameter         :: igravfield1         = 5
     integer, parameter         :: igravfield2         = 6
     integer, parameter         :: igravfield3         = 7
-    integer, parameter         :: ierror_lohner_rho_ = 8
-    integer, parameter         :: ierror_lohner_p_   = 9
-    integer, parameter         :: ideltav_dust11_    = 10
-    integer, parameter         :: ideltav_dust12_    = 11
-    integer, parameter         :: ipos_rCC_           = 12
-    integer, parameter         :: ipos_zCC_           = 13
+    integer, parameter         :: igravphi_         = 8
+    integer, parameter         :: ierror_lohner_rho_ = 9
+    integer, parameter         :: ierror_lohner_p_   = 10
+    integer, parameter         :: ideltav_dust11_    = 11
+    integer, parameter         :: ideltav_dust12_    = 12
+    integer, parameter         :: ipos_rCC_           = 13
+    integer, parameter         :: ipos_zCC_           = 14
+    integer, parameter         :: irelerr_rho_           = 15
+    integer, parameter         :: irelerr_p_           = 16
+    integer, parameter         :: irelerr_v1_          = 17
+    integer, parameter         :: irelerr_v2_          = 18
+    integer, parameter         :: irelerr_v3_          = 19
     integer, parameter         :: irhod1torho_       = 20
 
     real(dp),dimension(ixI^S)                                  :: csound2,temperature
     real(dp),dimension(ixI^S,ndir)                             :: vgas
     real(dp),dimension(ixI^S,ndir,phys_config%dust_n_species)  :: vdust
     double precision :: gravity_field(ixI^S,ndim)
+    double precision :: gravity_potential(ixI^S)
 
 
     !----------------------------------------------------
+
+
     w(ixI^S,1:nw) = win(ixI^S,1:nw)
     level = node(plevel_,saveigrid)
 
@@ -1597,6 +1836,7 @@ return
       win(ixO^S,nw+imach_) = dsqrt(SUM(w(ixO^S,phys_ind%mom(1):phys_ind%mom(ndir))**2.0_dp&
                                 ,dim=ndim+1)/csound2(ixO^S))&
                                 /(w(ixO^S,phys_ind%rho_))
+      !/
       case(itemperature_)
         call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
         win(ixO^S,nw+itemperature_) = temperature(ixO^S)*unit_temperature
@@ -1634,6 +1874,23 @@ return
         usr_physunit%myconfig%mass/&
         (unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
         (usr_physunit%myconfig%length*usr_physunit%myconfig%length))
+      case(igravphi_)
+        if (.not. associated(usr_gravity_potential)) then
+          write(*,*) "mod_usr.t: please point usr_gravity to a subroutine"
+          write(*,*) "like the phys_gravity in mod_usr_methods.t"
+          call mpistop("gravity_add_source: usr_gravity not defined")
+        else
+          call usr_gravity_potential(ixI^L,ixO^L,w,x,gravity_potential)
+        end if
+        normconv(nw+igravphi_)     = 1.0_dp
+        win(ixO^S,nw+igravphi_)    = 0.0_dp
+        win(ixO^S,nw+igravphi_)    = gravity_potential(ixO^S) ! same thing than w(ixO^S,phys_ind%grav_phi_)
+        !*&
+        !usr_physunit%myconfig%length*&
+        !usr_physunit%myconfig%mass/&
+        !(unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
+        !(usr_physunit%myconfig%length*usr_physunit%myconfig%length))
+
       case(ipos_rCC_)
         normconv(nw+ipos_rCC_)     = 1.0_dp
         win(ixO^S,nw+ipos_rCC_)    = x(ixO^S,r_)*unit_length
@@ -1666,7 +1923,7 @@ return
               win(ixI^S,nw+ideltav_dust11_) = 0.0_dp
             endwhere
         end if  dust_on_deltav11
-
+        !/
       case(ideltav_dust12_)
         normconv(nw+iw)     = 1.0_dp
         dust_on_deltav12 : if(phys_config%dust_on)then
@@ -1683,6 +1940,7 @@ return
               win(ixI^S,nw+ideltav_dust12_) = 0.0_dp
             endwhere
         end if  dust_on_deltav12
+        !/
       case(irhod1torho_)
         normconv(nw+iw)     = 1.0_dp
         idust = 1
@@ -1692,6 +1950,44 @@ return
         elsewhere
           win(ixI^S,nw+irhod1torho_) = 0.0_dp
         end where
+
+      case(irelerr_rho_,irelerr_p_,irelerr_v1_,irelerr_v2_,irelerr_v3_)
+        call initonegrid_usr(ixI^L,ixO^L,w_init,x)
+        select case(iw)
+        case(irelerr_rho_)
+          normconv(nw+irelerr_rho_)     = 1.0_dp
+          win(ixO^S,nw+irelerr_rho_)    = 100.0_dp*((w(ixO^S,phys_ind%rho_)-&
+                                          w_init(ixO^S,phys_ind%rho_))/&
+                                          w_init(ixO^S,phys_ind%rho_))
+        case(irelerr_p_)
+          normconv(nw+irelerr_p_)     = 1.0_dp
+          win(ixO^S,nw+irelerr_p_)    = 100.0_dp*((w(ixO^S,phys_ind%pressure_)-&
+                                          w_init(ixO^S,phys_ind%pressure_))/&
+                                          w_init(ixO^S,phys_ind%pressure_))
+        case(irelerr_v1_)
+          normconv(nw+irelerr_v1_)     = 1.0_dp
+          win(ixO^S,nw+irelerr_v1_)  = 100.0_dp*((w(ixO^S,phys_ind%mom(1))-&
+                                          w_init(ixO^S,phys_ind%mom(1)))/&
+                                          w_init(ixO^S,phys_ind%mom(1)))
+        case(irelerr_v2_)
+          normconv(nw+irelerr_v2_)     = 1.0_dp
+          if(ndir>=2)then
+            win(ixO^S,nw+irelerr_v2_)  = 100.0_dp*((w(ixO^S,phys_ind%mom(2))-&
+                                            w_init(ixO^S,phys_ind%mom(2)))/&
+                                            w_init(ixO^S,phys_ind%mom(2)))
+          else
+            win(ixO^S,nw+irelerr_v2_)  = 0.0_dp
+          end if
+        case(irelerr_v3_)
+          normconv(nw+irelerr_v3_)     = 1.0_dp
+          if(ndir>=3)then
+            win(ixO^S,nw+irelerr_v3_)  = 100.0_dp*((w(ixO^S,phys_ind%mom(3))-&
+                                            w_init(ixO^S,phys_ind%mom(3)))/&
+                                            w_init(ixO^S,phys_ind%mom(3)))
+          else
+            win(ixO^S,nw+irelerr_v3_)  = 0.0_dp
+          end if
+        end select
       case default
        write(*,*)'is not implimented at specialvar_output in mod_user'
     end select
@@ -1720,14 +2016,22 @@ return
     integer, parameter         :: igravfield1         = 5
     integer, parameter         :: igravfield2         = 6
     integer, parameter         :: igravfield3         = 7
-    integer, parameter         :: ierror_lohner_rho_ = 8
-    integer, parameter         :: ierror_lohner_p_   = 9
-    integer, parameter         :: ideltav_dust11_    = 10
-    integer, parameter         :: ideltav_dust12_    = 11
-    integer, parameter         :: ipos_rCC_           = 12
-    integer, parameter         :: ipos_zCC_           = 13
+    integer, parameter         :: igravphi_         = 8
+    integer, parameter         :: ierror_lohner_rho_ = 9
+    integer, parameter         :: ierror_lohner_p_   = 10
+    integer, parameter         :: ideltav_dust11_    = 11
+    integer, parameter         :: ideltav_dust12_    = 12
+    integer, parameter         :: ipos_rCC_           = 13
+    integer, parameter         :: ipos_zCC_           = 14
+    integer, parameter         :: irelerr_rho_           = 15
+    integer, parameter         :: irelerr_p_           = 16
+    integer, parameter         :: irelerr_v1_          = 17
+    integer, parameter         :: irelerr_v2_          = 18
+    integer, parameter         :: irelerr_v3_          = 19
     integer, parameter         :: irhod1torho_       = 20
+    character(len=30)          :: strint
     !----------------------------------------------------
+
     Loop_iw : do  iw = 1,nwauxio
       select case(iw)
       case(imach_)
@@ -1742,6 +2046,8 @@ return
         varnames(igravfield1)           = 'gravfield1'
         varnames(igravfield2)           = 'gravfield2'
         varnames(igravfield3)           = 'gravfield3'
+      case(igravphi_)
+        varnames(igravphi_)           = 'grav_phi'
       case(ierror_lohner_rho_)
         varnames(ierror_lohner_rho_)   = 'erroramrrho'
       case(ierror_lohner_p_)
@@ -1756,6 +2062,16 @@ return
         varnames(ipos_rCC_)         = 'r_cell'
       case(ipos_zCC_)
         varnames(ipos_zCC_)         = 'z_cell'
+      case(irelerr_rho_)
+        varnames(irelerr_rho_)   = 'relerrorrho'
+      case(irelerr_p_)
+        varnames(irelerr_p_)   = 'relerrorp'
+      case(irelerr_v1_)
+        varnames(irelerr_v1_)   = 'relerrorv1'
+      case(irelerr_v2_)
+        varnames(irelerr_v2_)   = 'relerrorv2'
+      case(irelerr_v3_)
+        varnames(irelerr_v3_)   = 'relerrorv3'
       end select
     end do Loop_iw
 

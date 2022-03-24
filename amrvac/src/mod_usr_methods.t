@@ -38,6 +38,8 @@ module mod_usr_methods
   procedure(source), pointer          :: usr_source           => null()
   procedure(get_dt), pointer          :: usr_get_dt           => null()
   procedure(phys_gravity), pointer    :: usr_gravity          => null()
+  procedure(phys_gravity_potential), pointer    :: usr_gravity_potential          => null()
+  procedure(phys_gravity_fpotential), pointer    :: usr_gravity_fpotential        => null()
 
   ! Usr defined space varying viscosity
   procedure(phys_visco), pointer      :: usr_setvisco         => null()
@@ -188,6 +190,24 @@ module mod_usr_methods
        double precision, intent(in)    :: wCT(ixI^S,1:nw)
        double precision, intent(out)   :: gravity_field(ixI^S,ndim)
      end subroutine phys_gravity
+
+
+     !> Calculate gravitational potential scalar
+     subroutine phys_gravity_potential(ixI^L,ixO^L,wCT,x,gravity_field)
+       use mod_global_parameters
+       integer, intent(in)             :: ixI^L, ixO^L
+       double precision, intent(in)    :: x(ixI^S,1:ndim)
+       double precision, intent(in)    :: wCT(ixI^S,1:nw)
+       double precision, intent(out)   :: gravity_field(ixI^S)
+     end subroutine phys_gravity_potential
+
+     function phys_gravity_fpotential(ixI^L,ixO^L,wCT,x) result(gravity_field)
+       use mod_global_parameters
+       integer, intent(in)             :: ixI^L,ixO^L
+       double precision, intent(in)    :: x(ixI^S,1:ndim)
+       double precision, intent(in)    :: wCT(ixI^S,1:nw)
+       double precision                :: gravity_field(ixO^S)
+     end function phys_gravity_fpotential
 
      !>Calculation anormal viscosity depending on space
      subroutine phys_visco(ixI^L,ixO^L,x,w,mu)

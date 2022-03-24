@@ -57,7 +57,13 @@ contains
       else
         call usr_gravity(ixI^L,ixO^L,wCT,x,gravity_field)
       end if
-  
+
+      if (.not. associated(usr_gravity_potential)) then
+        write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"
+        write(*,*) "like the phys_gravity_potential in mod_usr_methods.t"
+        call mpistop("gravity_add_source: usr_gravity_potential not defined")
+      end if
+
       do idim = 1, ndim
         w(ixO^S,iw_mom(idim)) = w(ixO^S,iw_mom(idim)) &
               + qdt * gravity_field(ixO^S,idim) * wCT(ixO^S,iw_rho)
