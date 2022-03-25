@@ -41,6 +41,7 @@ module mod_obj_ism
       logical              :: profile_pressure_on  !> ISM pressure profile on
       logical              :: profile_force_on     !> ISM force profile on
       logical              :: profile_force_gradP_on !> ISM profile numerical gradient of p
+      logical              :: profile_force_with_grav
       logical              :: self_gravity_force_on     !> ISM self-gravity force on
       character(len=30)    :: self_gravity_force_profile !> ISM self-gravity force profile name
 
@@ -89,6 +90,7 @@ module mod_obj_ism
       logical              :: useprimitive
       integer              :: nghostcells(3)
       integer              :: escapencells(3)
+      integer              :: escapencellsglobal(3)
       logical              :: mixed_fixed_bound(3,2,100) !> ism 'fix' flux variables
       !TO DO    : f95 does not allow to namelist an allocatable array, but fortran 2003+ does
       !So, for now, take a big enough useful array and the same size as in mod_obj_mat.t
@@ -388,6 +390,7 @@ contains
      self%myconfig%profile_force_on       = .false.
      self%myconfig%self_gravity_force_on       = .false.
      self%myconfig%profile_force_gradP_on = .false.
+     self%myconfig%profile_force_with_grav = .false.
 
      self%myconfig%ism_display_parameters    = .false.
      self%myconfig%w_already_initialized   = .false.
@@ -426,6 +429,7 @@ contains
      self%myconfig%flux_frac             = 1.0d-2
      self%myconfig%nghostcells(1:3)           = 2
      self%myconfig%escapencells(1:3)     = 4
+     self%myconfig%escapencellsglobal(1:3) = 2
      self%myconfig%useprimitive         = .false.
      self%myconfig%debug                 = .false.
      self%myconfig%mixed_fixed_bound(1:3,1:2,1:nwfluxbc)     = .false.
@@ -1442,8 +1446,6 @@ contains
     real(kind=dp), intent(in)            :: w(ixI^S,1:nw)
     class(ism)                           :: self
     real(kind=dp), intent(inout)         :: f_profile(ixI^S,1:ndim)
-    real(kind=dp)                        :: f_profile1(ixI^S,1:ndim)
-    real(kind=dp)                        :: f_profile2(ixI^S,1:ndim)
     real(kind=dp), intent(inout)         :: divpv(ixI^S)
     ! ..local ..
     integer                              :: idims
@@ -1467,6 +1469,7 @@ contains
 
     f_profile(ixO^S,:) = 0.0
       call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
+
 
 
       cond_density_fprofile : if(self%myconfig%profile_density_on) then
@@ -1538,23 +1541,23 @@ contains
                        case('spherical')
                          where(self%patch(ixO^S))
                            where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-                            f_profile1(ixO^S,r_) = -w(ixO^S,phys_ind%pressure_)/&
+                            f_profile(ixO^S,r_) = -w(ixO^S,phys_ind%pressure_)/&
                             d_profile(ixO^S)
-                            f_profile1(ixO^S,theta_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                            f_profile(ixO^S,theta_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
                             (d_profile(ixO^S)*dtan(theta_profile(ixO^S)))
                            end where
                          end where
                        case('cylindrical')
                          where(self%patch(ixO^S))
                            where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-                             f_profile1(ixO^S,r_) = ((self%myconfig%density*&
+                             f_profile(ixO^S,r_) = ((self%myconfig%density*&
                              kB* self%myconfig%temperature/(self%myconfig%mean_mup*mp))*&
                              self%myconfig%profile_rw**2.0_dp)*&
                              (2*DABS(x(ixO^S,r_)) * (x(ixO^S,z_)**2.0_dp-x(ixO^S,r_)**2.0_dp))/&
                              (x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)**4.0_dp
                              !-4.0_dp*w(ixO^S,phys_ind%pressure_)*&
                              !x(ixO^S,r_)/(x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)
-                             f_profile1(ixO^S,z_) = - 6.0_dp * ((self%myconfig%density*&
+                             f_profile(ixO^S,z_) = - 6.0_dp * ((self%myconfig%density*&
                              kB* self%myconfig%temperature/(self%myconfig%mean_mup*mp))*&
                              self%myconfig%profile_rw**2.0_dp)*&
                              x(ixO^S,r_)**2.0_dp*x(ixO^S,z_)/&
@@ -1566,9 +1569,9 @@ contains
                        case('slab','slabstretch')
                          where(self%patch(ixO^S))
                            where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-                             f_profile1(ixO^S,x_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
+                             f_profile(ixO^S,x_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
                              x(ixO^S,x_)/(x(ixO^S,x_)**2.0_dp+x(ixO^S,y_)**2.0_dp)
-                             f_profile1(ixO^S,y_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                             f_profile(ixO^S,y_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
                              x(ixO^S,y_)
                            end where
                          end where
@@ -1581,25 +1584,25 @@ contains
                          case('spherical')
                           where(self%patch(ixO^S))
                            where(theta_profile(ixO^S)<=self%myconfig%theta_floored)
-                             f_profile1(ixO^S,theta_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                             f_profile(ixO^S,theta_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
                              (d_profile(ixO^S)*dtan(self%myconfig%theta_floored))
                            end where
                           end where
                          case('cylindrical')
                           where(self%patch(ixO^S))
                             where(theta_profile(ixO^S)<=self%myconfig%theta_floored)
-                              f_profile1(ixO^S,r_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
+                              f_profile(ixO^S,r_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
                               dcos(self%myconfig%theta_floored)/d_profile(ixO^S)
-                              f_profile1(ixO^S,z_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                              f_profile(ixO^S,z_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
                               (d_profile(ixO^S)*dsin(self%myconfig%theta_floored))
                             end where
                           end where
                          case('slab','slabstretch')
                            where(self%patch(ixO^S))
                              where(theta_profile(ixO^S)<=self%myconfig%theta_floored)
-                               f_profile1(ixO^S,x_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
+                               f_profile(ixO^S,x_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
                                dcos(self%myconfig%theta_floored)/d_profile(ixO^S)
-                               f_profile1(ixO^S,y_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
+                               f_profile(ixO^S,y_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
                                (d_profile(ixO^S)*dsin(self%myconfig%theta_floored))
                              end where
                             end where
@@ -1612,7 +1615,7 @@ contains
                      Loop_idim_default : do idims=1,ndim
                       where(self%patch(ixO^S))
                         where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-                         f_profile1(ixO^S,idims) = 0.0_dp
+                         f_profile(ixO^S,idims) = 0.0_dp
                         end where
                       end where
                      end do Loop_idim_default
@@ -1626,6 +1629,14 @@ contains
              self%patch(ixI^S)=patch_tosave(ixI^S)
 
       end if cond_fprofile_numerical
+
+      if(self%myconfig%profile_force_with_grav)then
+        where((DABS(x(ixO^S,r_))>self%myconfig%escapencells(r_)*&
+              dx(r_,1)).and.self%patch(ixO^S))
+              ^D&f_profile(ixO^S,^D)=0.0_dp\
+        end where
+      end if
+
     end if cond_density_fprofile
 
    end subroutine usr_ism_get_pforce_profile

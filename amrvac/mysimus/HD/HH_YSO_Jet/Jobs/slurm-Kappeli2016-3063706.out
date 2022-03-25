@@ -1,3 +1,10 @@
+mkdir: cannot create directory ‘Kappeli2016’: File exists
+3063706
+tycho63
+/scratch/mrabenanahary/run.3063706.Kappeli2016
+::::::::::::::
+Kappeli2016.par
+::::::::::::::
 !==============================================================
 ! Project : YSO JET MIALY
 ! Aim     :
@@ -274,25 +281,32 @@
   ism_config%reset_distance(2)  =  1.01d18  ! ism rest distance
   ism_config%reset_scale(2)     =  5d16     ! ism reset scalling distance
 
-  ism_config%profile_force_with_grav = .false.
   !ism_config%boundary_cond(1,1) = 'axis'  
   ism_config%boundary_cond(2,1) = 'fix'!'limitinflow'!'limitinflowdisc'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
-
+=======
 	
 	
   ! 3 cases : 
   ! 1) boundary_cond = 'fix' : 03-03-22 > successfully implemented !
   ! 2) boundary_cond /= 'fix' but mixed_fixed_bound == .false. everywhere
   ! 3) boundary_cond /= 'fix' and at least one of the mixed_fixed_bound is .true.
+
+  ism_config%boundary_cond(1,1) = 'axis'  
+  ism_config%boundary_cond(2,1) = 'disc'!'limitinflow'!'limitinflowdisc'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
+>>>>>>> 9d14d4810cb6d32e7a0d8f731c712d5598634575
+
+
   ism_config%nghostcells(1)        = 4
   ism_config%nghostcells(2)        = 4
-
+<<<<<<< HEAD
   ism_config%flux_frac          = 9.0d-1
   ism_config%useprimitive       = .true. 
-  ism_config%escapencells(1)       = 8
-  ism_config%escapencells(2)       = 8    
-  ism_config%escapencellsglobal(1)       = 1
-  ism_config%escapencellsglobal(2)       = 1
+=======
+  ism_config%flux_frac          = 1.0d-2
+  ism_config%useprimitive       = .false. 
+>>>>>>> 9d14d4810cb6d32e7a0d8f731c712d5598634575
+  ism_config%escapencells(1)       = 20
+  ism_config%escapencells(2)       = 20    
   ! Use :
   !  - ism_config%mixed_fixed_bound(idims,iside,index) to 'fix' the index-th flux variable w(ixG^S,index) on top of the above boundary conditions:
   !  - (idims,iside) = (direction along which are set the boundary conditions,side i=1=min or i=2=max of the direction along which the bc is applied)
@@ -437,3 +451,371 @@ ism_config%He_abundance      = 0.1
 
 
 /
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ ---------------------------------------------------------------------------
+ ---------------------------------------------------------------------------
+ |         __  __ ____ ___        _    __  __ ______     ___    ____       |
+ |        |  \/  |  _ \_ _|      / \  |  \/  |  _ \ \   / / \  / ___|      |
+ |        | |\/| | |_) | |_____ / _ \ | |\/| | |_) \ \ / / _ \| |          |
+ |        | |  | |  __/| |_____/ ___ \| |  | |  _ < \ V / ___ \ |___       |
+ |        |_|  |_|_|  |___|   /_/   \_\_|  |_|_| \_\ \_/_/   \_\____|      |
+ --------------------------------------------------------------------------
+ ---------------------------------------------------------------------------
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_physical_values_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_ism_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor           7 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          11 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          12 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          26 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          30 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor           5 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          14 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor           2 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          19 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          43 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          29 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          41 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          13 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          17 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          23 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor           3 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor           0 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor           1 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          45 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          20 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          34 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          40 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          10 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          33 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          15 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          32 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          35 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          47 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          21 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          36 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          22 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor           4 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor           8 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          16 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          44 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          25 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor           9 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          28 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          24 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          18 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          39 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          42 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor           6 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          37 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          27 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          38 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          31 :
+ It stops at reading the parfile
+ At user side in 
+ mod_obj_ism.t                                                                 
+ : error at reading parfile
+ Check input.  Something was wrong, it will stop
+ ERROR for processor          46 :
+ It stops at reading the parfile
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 31 in communicator MPI_COMM_WORLD
+with errorcode 606238912.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------
+[tycho63:151498] [[60740,0],0] ORTE_ERROR_LOG: Out of resource in file util/show_help.c at line 501
+[tycho63:151498] 46 more processes have sent help message help-mpi-api.txt / mpi-abort
+[tycho63:151498] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+/bin/cp: cannot stat 'Output/Kappeli2016/Jet_CC_0100.dat': No such file or directory
+srun: error: tycho63: task 0: Exited with exit code 1
+srun: got SIGCONT
+slurmstepd-tycho63: error: *** JOB 3063706 ON tycho63 CANCELLED AT 2022-03-24T02:07:00 ***
+srun: Job step 3063706.11 aborted before step completely launched.
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+srun: forcing job termination
+slurmstepd-tycho63: error: *** STEP 3063706.11 ON tycho63 CANCELLED AT 2022-03-24T02:07:00 ***
+srun: error: tycho63: task 0: Terminated
