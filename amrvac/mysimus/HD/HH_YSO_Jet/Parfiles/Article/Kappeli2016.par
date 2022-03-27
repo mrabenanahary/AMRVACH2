@@ -45,7 +45,7 @@
         itsave(1,2)=0
         dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	!ditsave_log =50
-        dtsave_dat=  3.1557600d9! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !ditsave_dat =1
  /
 
@@ -57,8 +57,8 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
-        !it_max=10
+        time_max=  3.15576d10 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        !it_max=100
 
 
 /
@@ -130,13 +130,14 @@
 
         ! AMR configuration
         refine_criterion=3
-        refine_max_level=5 !<--- dr=dz=7.8125e13 cm au lvl 5
+        refine_max_level=2 !<--- dr=dz=7.8125e13 cm au lvl 5
         refine_threshold=20*0.01d0
         derefine_ratio=20*1d-3
-      !  w_refine_weight(1)=0.25d0
-      !  w_refine_weight(2)=0.25d0
-      !  w_refine_weight(3)=0.25d0
-        w_refine_weight(12)=1.0d0
+        w_refine_weight(1)=0.5d0
+        w_refine_weight(2)=0.16d0
+        w_refine_weight(3)=0.17d0
+        w_refine_weight(4)=0.17d0        
+      !  w_refine_weight(12)=1.0d0
 
         max_blocks = 200000
         ! can be added when is needed
@@ -220,9 +221,10 @@
 
  &usr_list
         usrconfig%ism_on              = .true.                      !> set ism
+        usrconfig%profile_use_hse     = .true.
         usrconfig%cloud_on            = .false.                      !> set cloud
         usrconfig%cloud_structure     = 2                           !> cloud structure type
-        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+        usrconfig%jet_yso_on          = .false. !>>HH4647.false.!.false.!.false.!                      !> set a jet
         usrconfig%physunit_on         = .true.                      !> set the normalisation in use
         usrconfig%reset_medium        = .true.                      !> set on the reset
         usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
@@ -289,8 +291,8 @@
 
   ism_config%flux_frac          = 9.0d-1
   ism_config%useprimitive       = .true. 
-  ism_config%escapencells(1)       = 8
-  ism_config%escapencells(2)       = 8    
+  ism_config%escapencells(1)       = 10
+  ism_config%escapencells(2)       = 10   
   ism_config%escapencellsglobal(1)       = 1
   ism_config%escapencellsglobal(2)       = 1
   ! Use :
@@ -336,10 +338,12 @@ ism_config%weight_mean_variable = 'default'!'minus_density_grad'
 ism_config%profile_rw_force = 2.5d16
 ism_config%weight_num_index = 1.0d0
 ism_config%weight_analy_index = 1.0d0
-ism_config%profile_density    = 'Lee2001'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_density    = 'Ulrich1976'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
 ism_config%profile_jspec = 8.0782850178d20!20       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
+ism_config%profile_rhomax = 9.061196164618196d-18
+
 
 ism_config%profile_zc    = 1.0d16!4.49d14 ! 1.0d16 !4.49d14 ! Zheng19 = 30 au = 4.49d14 cm :  grandeur de normalisation dans le profil de pression/densite (en cm)
 ism_config%profile_rw    = 2.5d15 !> ISM reference radius for Lee 2001 profile (in cm)
@@ -431,7 +435,7 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation
     cla_jet_config%variation_phys_variable(1) =  3 ! 3 mean the velocity in Z direction
 
-    cla_jet_config%refine_min_level      = 5
+    cla_jet_config%refine_min_level      = 2
     cla_jet_config%chemical_gas_type     = 'fullyatomic' !>>HH4647
 
 

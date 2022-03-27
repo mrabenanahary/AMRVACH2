@@ -1009,13 +1009,13 @@ end subroutine usr_mat_profile_dist
   end subroutine usr_ulrich1976_costheta_zero
 
   !--------------------------------------------------------------------
-  subroutine usr_get_theta(ixI^L, ixO^L,x,theta_profile,specialorigintheta)
+  subroutine usr_get_theta(ixI^L, ixO^L,x,theta_profile,costheta,sintheta)
    implicit none
    integer, intent(in)             :: ixI^L,ixO^L
    real(kind=dp), intent(in)       :: x(ixI^S,1:ndim)
    real(kind=dp), intent(inout)    :: theta_profile(ixI^S)
+   real(kind=dp), intent(inout),optional    :: costheta(ixI^S),sintheta(ixI^S)
    real(kind=dp)                   :: dstce(ixI^S)
-   logical,optional                :: specialorigintheta
    !----------------------------------------------------
 
 

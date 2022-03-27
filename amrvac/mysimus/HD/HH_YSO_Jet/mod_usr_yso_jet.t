@@ -17,6 +17,7 @@ module mod_usr
   type usr_config
     logical           :: physunit_on
     logical           :: ism_on
+    logical           :: profile_use_hse
     logical           :: cloud_on
     logical           :: jet_yso_on
     logical           :: ism_list_diff
@@ -107,7 +108,7 @@ contains
     usr_get_dt          => special_get_dt
     usr_internal_bc     => usr_special_internal_bc
     usr_reset_solver    => special_reset_solver
-    usr_gravity         => special_pointmass_gravity
+
     usr_gravity_potential => special_pointmass_gravity_potential
     usr_gravity_fpotential => special_pointmass_gravity_fpotential
     call usr_set_default_parameters ! >mod_obj_usr_yso_jet.t
@@ -147,6 +148,12 @@ contains
     ! TO DO: 5) If computeflux is on, set all usr fluxes parameters to their default values
     ! and then read their user-defined parameters in .par
 
+    if(usrconfig%profile_use_hse)then
+      usr_gravity         => special_effective_gravity!special_pointmass_gravity
+    else
+      usr_gravity         => special_pointmass_gravity!special_effective_gravity
+    end if
+
     ! complet all physical unit in use
     if(usrconfig%physunit_on) then
       call usr_physunit%set_complet(trim(usrconfig%phys_inuse))
@@ -167,6 +174,301 @@ contains
 
   end subroutine usr_init
   !------------------------------------------------------------------
+
+  subroutine special_effective_gravity(ixI^L,ixO^L,wCT,x,gravity_field)
+    use mod_global_parameters
+    integer, intent(in)             :: ixI^L, ixO^L
+    real(dp), intent(in)    :: x(ixI^S,1:ndim)
+    real(dp), intent(in)    :: wCT(ixI^S,1:nw)
+    real(dp), intent(out)   :: gravity_field(ixI^S,ndim)
+    real(dp)                :: gravity_field_sphrc(ixI^S,ndim)
+    real(dp)                        :: Ggrav, Mpoint, alpha
+    real(kind=dp), dimension(ixI^S) :: r_distance,radius
+    real(dp)                        :: xd(ixI^S,1:ndim)
+    real(dp)                        :: wprim(ixI^S,1:nw)
+    real(kind=dp), dimension(ixI^S) :: rd_distance,rdradius
+    real(kind=dp), dimension(ixI^S) :: theta_profile
+    real(kind=dp), dimension(ixI^S) :: costta,sintta,rr
+    real(kind=dp), dimension(ixI^S) :: fc,dfcdr,dfcdt
+    logical                        :: xpatch(ixI^S)
+    real(kind=dp), dimension(1:ndim) :: zero_dim,dx_local,dx_local_min
+    integer                      :: i_ism,idim,level,ix^D
+    !-----------------------------------
+
+    wprim(ixO^S,1:nw)=wCT(ixO^S,1:nw)
+    call phys_to_primitive(ixI^L,ixI^L,wprim,x)
+    Ggrav = constusr%G
+
+    gravity_field(ixO^S,1:ndim)=0.0_dp
+    {zero_dim(^D)=0.0_dp\}!-dx(1,1)
+    {^D&
+    xd(ixO^S,^D)=x(ixO^S,^D)-kr(r_,^D)*ism_surround(i_ism)%myconfig%profile_rd
+    }
+
+
+
+
+    ! Here we set the graviationnal acceleration inside the whole domain
+    ! from the state vector wCT
+    ! here the called wCT contains conservative variables
+      if(usrconfig%ism_on)then
+        i_ism =0
+        level = node(plevel_,saveigrid)
+        ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1.0_dp));
+        call usr_distance(ixI^L,ixO^L,typeaxial,&
+                          zero_dim,x,r_distance)
+        call usr_distance(ixI^L,ixO^L,typeaxial,&
+                          zero_dim,xd,rd_distance)
+        call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+        Mpoint = ism_surround(i_ism)%myconfig%profile_Mstar
+        radius(ixO^S)=r_distance(ixO^S)/ism_surround(i_ism)%myconfig%profile_rd
+        rdradius(ixO^S)=rd_distance(ixO^S)/ism_surround(i_ism)%myconfig%profile_rd
+
+        Loop_isms : do i_ism=0,usrconfig%ism_number-1
+        select case(trim(ism_surround(i_ism)%myconfig%profile_density))
+          case('Ulrich1976')
+
+          ^D&dx_local_min(^D)=min(ism_surround(i_ism)%myconfig%escapencells(^D)*dx_local(^D),&
+                          ism_surround(i_ism)%myconfig%escapencellsglobal(^D)*dx(^D,1))/&
+                          ism_surround(i_ism)%myconfig%profile_rd;
+
+
+          xpatch(ixI^S)=.true.
+
+
+          rr(ixO^S)=radius(ixO^S)
+          costta(ixO^S)=x(ixO^S,z_)/DSQRT(x(ixO^S,r_)**2.0_dp+&
+                                 x(ixO^S,z_)**2.0_dp)
+          sintta(ixO^S)=x(ixO^S,r_)/DSQRT(x(ixO^S,r_)**2.0_dp+&
+                                x(ixO^S,z_)**2.0_dp)
+
+          ! Case 1: r==1
+          where(DABS(radius(ixO^S)-1.0_dp)<=0.0_dp*DSQRT(sum(dx_local_min**2.0_dp)))
+
+            gravity_field_sphrc(ixO^S,1)=-(-1.0_dp+3.0_dp*rr(ixO^S)+&
+                3.0_dp*costta(ixO^S)**(2.0_dp/3.0_dp))/&
+                (2.0_dp*rr(ixO^S)*(-1.0_dp+rr(ixO^S)+3.0_dp*&
+                costta(ixO^S)**(2.0_dp/3.0_dp)))
+            gravity_field_sphrc(ixO^S,2)=((5.0_dp + rr(ixO^S) + 9.0_dp*&
+            costta(ixO^S)**(2.0_dp/3.0_dp))*&
+            sintta(ixO^S))/(3.0_dp*rr(ixO^S)*(1.0_dp + costta(ixO^S)**(2.0_dp/3.0_dp))*&
+            (-1.0_dp + rr(ixO^S) + 3.0_dp*costta(ixO^S)**(2.0_dp/3.0_dp))*&
+            costta(ixO^S)**(1.0_dp/3.0_dp))
+            gravity_field(ixO^S,r_) = (gravity_field_sphrc(ixO^S,1)*&
+            sintta(ixO^S))+(gravity_field_sphrc(ixO^S,2)*&
+            costta(ixO^S))
+            gravity_field(ixO^S,z_) = (gravity_field_sphrc(ixO^S,1)*&
+            costta(ixO^S))-(gravity_field_sphrc(ixO^S,2)*&
+            sintta(ixO^S))
+            !gravity_field(ixO^S,r_) = 1.0_dp
+            !gravity_field(ixO^S,z_) = 1.0_dp
+            xpatch(ixO^S)=.false.
+          end where
+
+
+          !Case 2: r>1
+
+            where(radius(ixO^S)>1.0_dp)!.and.DABS(x(ixO^S,z_))>dx_local(z_))
+              fc(ixO^S)=2.0_dp*DSQRT((rr(ixO^S)-1.0_dp)/3.0_dp)*&
+              DSINH((1.0_dp/3.0_dp)*DASINH((rr(ixO^S)*costta(ixO^S))/&
+              (2.0_dp*((rr(ixO^S)-1.0_dp)/3.0_dp)**1.5_dp)))
+
+              dfcdr(ixO^S)=DSINH((1.0_dp/3.0_dp)*DASINH((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*&
+              costta(ixO^S))/(2.0_dp*(rr(ixO^S)-1.0_dp)**1.5_dp)))/&
+              (DSQRT(3.0_dp)*DSQRT(rr(ixO^S)-1.0_dp))&
+              -((rr(ixO^S)+2.0_dp)*costta(ixO^S)*DCOSH((1.0_dp/3.0_dp)*&
+              DASINH((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S))/&
+              (2.0_dp*(rr(ixO^S)-1.0_dp)**1.5_dp))))/&
+              ((rr(ixO^S)-1.0_dp)**2.0_dp*DSQRT((27.0_dp*rr(ixO^S)**2.0_dp*&
+               costta(ixO^S)**2.0_dp + 4.0_dp*(rr(ixO^S)-1.0_dp)**3.0_dp)/&
+               (rr(ixO^S)-1.0_dp)**3.0_dp))
+
+              dfcdt(ixO^S)=-(rr(ixO^S)*sintta(ixO^S)*&
+              DCOSH((1.0_dp/3.0_dp)*DASINH((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S))/&
+              (2.0_dp*(rr(ixO^S)-1.0_dp)**1.5_dp))))/&
+              ((rr(ixO^S)-1.0_dp)*DSQRT((2.7d1*rr(ixO^S)**2.0_dp*costta(ixO^S)**2.0_dp)/&
+              (4.0_dp*(rr(ixO^S)-1.0_dp)**3.0_dp)+1.0_dp))
+
+              gravity_field_sphrc(ixO^S,1)=-(rr(ixO^S)*dfcdr(ixO^S)*&
+              (12.0_dp*fc(ixO^S)**3.0_dp+9.0_dp*costta(ixO^S)*fc(ixO^S)**2.0_dp+&
+              costta(ixO^S)*(1.0_dp-rr(ixO^S)))+fc(ixO^S)*(3.0_dp*fc(ixO^S)**2.0+&
+              3.0_dp*rr(ixO^S)-1.0_dp)*(fc(ixO^S)+costta(ixO^S)))/&
+              (2.0_dp*rr(ixO^S)*fc(ixO^S)*(3.0_dp*fc(ixO^S)**2.0_dp+rr(ixO^S)-1.0_dp)*&
+              (fc(ixO^S)+costta(ixO^S)))
+
+
+              gravity_field_sphrc(ixO^S,2)=(3.0_dp*fc(ixO^S)**3.0_dp*&
+              (sintta(ixO^S)-4.0_dp*dfcdt(ixO^S))-&
+              9.0_dp*costta(ixO^S)*dfcdt(ixO^S)*fc(ixO^S)**2.0_dp&
+              +(rr(ixO^S)-1.0_dp)*costta(ixO^S)*dfcdt(ixO^S)+&
+              (rr(ixO^S)-1.0_dp)*sintta(ixO^S)*fc(ixO^S))/&
+              (2.0_dp*rr(ixO^S)*fc(ixO^S)*(3.0_dp*fc(ixO^S)**2.0_dp+rr(ixO^S)-1.0_dp)*&
+              (fc(ixO^S)+costta(ixO^S)))
+
+
+              gravity_field(ixO^S,r_) = (gravity_field_sphrc(ixO^S,1)*&
+              sintta(ixO^S))+(gravity_field_sphrc(ixO^S,2)*&
+              costta(ixO^S))
+              gravity_field(ixO^S,z_) = (gravity_field_sphrc(ixO^S,1)*&
+              costta(ixO^S))-(gravity_field_sphrc(ixO^S,2)*&
+              sintta(ixO^S))
+              !gravity_field(ixO^S,r_) = 1.0_dp
+              !gravity_field(ixO^S,z_) = 1.0_dp
+              xpatch(ixO^S)=.false.
+            end where
+
+            !Case 3: r<1 and xi>0
+
+            where(radius(ixO^S)<1.0_dp.and.&
+            ((((radius(ixO^S)*costta(ixO^S))/2.0_dp)**2.0_dp)-&
+            (((1.0_dp-radius(ixO^S))/3.0_dp)**3.0_dp)>0.0_dp))
+              fc(ixO^S)=2.0_dp*DSQRT((1.0_dp-rr(ixO^S))/3.0_dp)*&
+              DCOSH((1.0_dp/3.0_dp)*DACOSH((rr(ixO^S)*costta(ixO^S))/&
+              (2.0_dp*((1.0_dp-rr(ixO^S))/3.0_dp)**1.5_dp)))
+
+              dfcdr(ixO^S)=((rr(ixO^S)+2.0_dp)*costta(ixO^S)*DSINH((1.0_dp/3.0_dp)*&
+               DACOSH((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S))/&
+               (2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)))/&
+              ((rr(ixO^S)-1.0_dp)**2.0_dp*DSQRT((3.0_dp*DSQRT(3.0_dp-3.0_dp*rr(ixO^S))*&
+              rr(ixO^S)*costta(ixO^S)-2.0_dp*(rr(ixO^S)-1.0_dp)**2.0_dp)/&
+              (rr(ixO^S)-1.0_dp)**2.0_dp)*DSQRT((3.0_dp*DSQRT(3.0_dp-3.0_dp*rr(ixO^S))*&
+              rr(ixO^S)*costta(ixO^S)+2.0_dp*(rr(ixO^S)-1.0_dp)**2.0_dp)/&
+              (rr(ixO^S)-1.0_dp)**2.0_dp)))&
+              -DCOSH((1.0_dp/3.0_dp)*DACOSH((3.0*DSQRT(3.0_dp)*&
+              rr(ixO^S)*costta(ixO^S))/(2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)))/&
+              DSQRT(3.0_dp - 3.0_dp*rr(ixO^S))
+
+              dfcdt(ixO^S)=(2.0_dp*rr(ixO^S)*sintta(ixO^S)*DSINH((1.0_dp/3.0_dp)*&
+              DACOSH((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S))/(2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp))))/&
+              ((rr(ixO^S)-1.0_dp)*DSQRT((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S)&
+              -2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)/(1.0_dp-rr(ixO^S))**1.5_dp)*&
+              DSQRT((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S)&
+              +2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)/(1.0_dp-rr(ixO^S))**1.5_dp))
+
+              gravity_field_sphrc(ixO^S,1)=-(rr(ixO^S)*dfcdr(ixO^S)*&
+              (12.0_dp*fc(ixO^S)**3.0_dp+9.0_dp*costta(ixO^S)*fc(ixO^S)**2.0_dp+&
+              costta(ixO^S)*(1.0_dp-rr(ixO^S)))+fc(ixO^S)*(3.0_dp*fc(ixO^S)**2.0+&
+              3.0_dp*rr(ixO^S)-1.0_dp)*(fc(ixO^S)+costta(ixO^S)))/&
+              (2.0_dp*rr(ixO^S)*fc(ixO^S)*(3.0_dp*fc(ixO^S)**2.0_dp+rr(ixO^S)-1.0_dp)*&
+              (fc(ixO^S)+costta(ixO^S)))
+
+
+              gravity_field_sphrc(ixO^S,2)=(3.0_dp*fc(ixO^S)**3.0_dp*&
+              (sintta(ixO^S)-4.0_dp*dfcdt(ixO^S))-&
+              9.0_dp*costta(ixO^S)*dfcdt(ixO^S)*fc(ixO^S)**2.0_dp&
+              +(rr(ixO^S)-1.0_dp)*costta(ixO^S)*dfcdt(ixO^S)+&
+              (rr(ixO^S)-1.0_dp)*sintta(ixO^S)*fc(ixO^S))/&
+              (2.0_dp*rr(ixO^S)*fc(ixO^S)*(3.0_dp*fc(ixO^S)**2.0_dp+rr(ixO^S)-1.0_dp)*&
+              (fc(ixO^S)+costta(ixO^S)))
+
+
+              gravity_field(ixO^S,r_) = (gravity_field_sphrc(ixO^S,1)*&
+              sintta(ixO^S))+(gravity_field_sphrc(ixO^S,2)*&
+              costta(ixO^S))
+              gravity_field(ixO^S,z_) = (gravity_field_sphrc(ixO^S,1)*&
+              costta(ixO^S))-(gravity_field_sphrc(ixO^S,2)*&
+              sintta(ixO^S))
+              !gravity_field(ixO^S,r_) = 1.0_dp
+              !gravity_field(ixO^S,z_) = 1.0_dp
+              xpatch(ixO^S)=.false.
+            end where
+
+            !Case 4: r<1 and xi<0
+
+            where(radius(ixO^S)<1.0_dp.and.&
+            ((((radius(ixO^S)*costta(ixO^S))/2.0_dp)**2.0_dp)-&
+            (((1.0_dp-radius(ixO^S))/3.0_dp)**3.0_dp)<0.0_dp))
+
+              fc(ixO^S)=2.0_dp*DSQRT((1.0_dp-rr(ixO^S))/3.0_dp)*&
+              DCOS((1.0_dp/3.0_dp)*DACOS((rr(ixO^S)*costta(ixO^S))/&
+              (2.0_dp*((1.0_dp-rr(ixO^S))/3.0_dp)**1.5_dp)))
+
+
+
+
+              dfcdr(ixO^S)=((rr(ixO^S)+2.0_dp)*costta(ixO^S)*DSIN((1.0_dp/3.0_dp)*&
+               DACOS((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S))/&
+               (2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)))/&
+              ((rr(ixO^S)-1.0_dp)**2.0_dp*DSQRT((27.0_dp*rr(ixO^S)**2.0_dp*costta(ixO^S)**2.0_dp+&
+              4.0_dp*(rr(ixO^S)-1.0_dp)**3.0_dp)/(rr(ixO^S)-1.0_dp)**3.0_dp)))&
+              -DCOS((1.0_dp/3.0_dp)*DACOS((3.0*DSQRT(3.0_dp)*&
+              rr(ixO^S)*costta(ixO^S))/(2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)))/&
+              DSQRT(3.0_dp - 3.0_dp*rr(ixO^S))
+
+              dfcdt(ixO^S)=(2.0_dp*rr(ixO^S)*sintta(ixO^S)*DSIN((1.0_dp/3.0_dp)*&
+              DACOS((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S))/(2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp))))/&
+              ((rr(ixO^S)-1.0_dp)*DSQRT((27.0_dp*rr(ixO^S)**2.0_dp*costta(ixO^S)**2.0_dp)/&
+              (rr(ixO^S)-1.0_dp)**3.0_dp+4.0_dp))
+
+
+              gravity_field_sphrc(ixO^S,1)=-(rr(ixO^S)*dfcdr(ixO^S)*&
+              (12.0_dp*fc(ixO^S)**3.0_dp+9.0_dp*costta(ixO^S)*fc(ixO^S)**2.0_dp+&
+              costta(ixO^S)*(1.0_dp-rr(ixO^S)))+fc(ixO^S)*(3.0_dp*fc(ixO^S)**2.0+&
+              3.0_dp*rr(ixO^S)-1.0_dp)*(fc(ixO^S)+costta(ixO^S)))/&
+              (2.0_dp*rr(ixO^S)*fc(ixO^S)*(3.0_dp*fc(ixO^S)**2.0_dp+rr(ixO^S)-1.0_dp)*&
+              (fc(ixO^S)+costta(ixO^S)))
+
+
+              gravity_field_sphrc(ixO^S,2)=(3.0_dp*fc(ixO^S)**3.0_dp*&
+              (sintta(ixO^S)-4.0_dp*dfcdt(ixO^S))-&
+              9.0_dp*costta(ixO^S)*dfcdt(ixO^S)*fc(ixO^S)**2.0_dp&
+              +(rr(ixO^S)-1.0_dp)*costta(ixO^S)*dfcdt(ixO^S)+&
+              (rr(ixO^S)-1.0_dp)*sintta(ixO^S)*fc(ixO^S))/&
+              (2.0_dp*rr(ixO^S)*fc(ixO^S)*(3.0_dp*fc(ixO^S)**2.0_dp+rr(ixO^S)-1.0_dp)*&
+              (fc(ixO^S)+costta(ixO^S)))
+
+
+              gravity_field(ixO^S,r_) = (gravity_field_sphrc(ixO^S,1)*&
+              sintta(ixO^S))+(gravity_field_sphrc(ixO^S,2)*&
+              costta(ixO^S))
+              gravity_field(ixO^S,z_) = (gravity_field_sphrc(ixO^S,1)*&
+              costta(ixO^S))-(gravity_field_sphrc(ixO^S,2)*&
+              sintta(ixO^S))
+              !gravity_field(ixO^S,r_) = 1.0_dp
+              !gravity_field(ixO^S,z_) = 1.0_dp
+              xpatch(ixO^S)=.false.
+            end where
+
+
+            !do idim=1,ndim
+            !where(wprim(ixO^S,phys_ind%rho_)>=&
+            !0.1_dp*ism_surround(i_ism)%myconfig%profile_rhomax)
+              !gravity_field(ixO^S,idim)=0.0_dp
+            !end where
+            !end do
+
+          gravity_field(ixO^S,r_) = gravity_field(ixO^S,r_) *&
+            ism_surround(i_ism)%myconfig%profile_Beta
+
+          case('Lee2001')
+
+
+          alpha = ism_surround(i_ism)%myconfig%profile_p
+          gravity_field(ixO^S,r_) = - alpha * (x(ixO^S,r_)**2.0_dp-&
+          x(ixO^S,z_)**2.0_dp)/(x(ixO^S,r_)*(x(ixO^S,r_)**2.0_dp+&
+          x(ixO^S,z_)**2.0_dp))
+
+          gravity_field(ixO^S,z_) = - 2.0_dp * alpha * x(ixO^S,z_) / &
+          (x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)
+            !call mpistop('the code arrives here !!! ')
+
+          level = node(plevel_,saveigrid)
+          ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
+          where(DABS(x(ixO^S,r_))<=min(ism_surround(i_ism)%myconfig%escapencells(r_)*&
+                dx_local(r_),ism_surround(i_ism)%myconfig%escapencellsglobal(r_)*dx(r_,1)))
+              ^D&gravity_field(ixO^S,^D)=0.0_dp\
+          end where
+
+          case default
+
+            gravity_field(ixO^S,1:ndim)=0.0_dp
+
+          end select
+          end do Loop_isms
+        end if
+
+  end subroutine special_effective_gravity
+
   !> default usr parameters from a file
   subroutine usr_set_default_parameters
     !-------------------------------------
@@ -176,6 +478,7 @@ contains
     usrconfig%phys_temperature_isotherm    = -1.0_dp
     usrconfig%physunit_on                   = .false.
     usrconfig%ism_on                        = .false.
+    usrconfig%profile_use_hse               = .false.
     usrconfig%cloud_on                      = .false.
     usrconfig%jet_yso_on                    = .false.
     usrconfig%cloud_number                  = 1

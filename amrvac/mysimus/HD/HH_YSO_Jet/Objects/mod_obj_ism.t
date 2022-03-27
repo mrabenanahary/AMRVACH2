@@ -56,7 +56,9 @@ module mod_obj_ism
       real(dp)             :: profile_rd    !> ISM envelope lower ﬁducial radius
       real(dp)             :: profile_vd    !> ISM envelope kepler velocity at r=profile_rd
       real(dp)             :: profile_rho_0 !> ISM envelope fiducial density
-
+      real(dp)             :: profile_Beta !> ISM envelope fiducial density
+      real(dp)             :: profile_rhomax !> ISM envelope fiducial density
+      integer              :: patching_idim !> ISM tracer indice
 
       logical              :: ism_display_parameters     !> ISM display of parameters at the end of the set_profile subroutine
       logical              :: w_already_initialized
@@ -412,6 +414,9 @@ contains
      self%myconfig%profile_rd    = 0.0_dp !> ISM envelope lower ﬁducial radius
      self%myconfig%profile_vd    = 0.0_dp   !> ISM envelope kepler velocity at r=profile_rd
      self%myconfig%profile_rho_0 = 0.0_dp  !> ISM envelope fiducial density
+     self%myconfig%profile_Beta  = 0.0_dp
+     self%myconfig%patching_idim = 1
+     self%myconfig%profile_rhomax= 0.0_dp
 
      self%myconfig%reset_coef            = 0.0_dp
      self%myconfig%weight_mean           = 'arithmetic'
@@ -792,6 +797,10 @@ contains
 
    self%myconfig%profile_p = 2.0_dp*kB*self%myconfig%temperature/&
    (self%myconfig%mean_mup*mp)
+
+   self%myconfig%profile_Beta = kB*self%myconfig%temperature/&
+   (self%myconfig%mean_mup*mp*self%myconfig%profile_rd)
+
     call self%myboundaries%set_complet
 
     if(mype==0)then
@@ -859,6 +868,9 @@ contains
      self%myconfig%profile_rd    = self%myconfig%profile_rd    / physunit_inuse%myconfig%length
      self%myconfig%profile_vd    = self%myconfig%profile_vd    / physunit_inuse%myconfig%velocity
      self%myconfig%profile_rho_0 = self%myconfig%profile_rho_0 / physunit_inuse%myconfig%density
+     self%myconfig%profile_Beta  = self%myconfig%profile_Beta  / (physunit_inuse%myconfig%pressure/(physunit_inuse%myconfig%length*&
+                                                                  physunit_inuse%myconfig%density))
+     self%myconfig%profile_rhomax=self%myconfig%profile_rhomax / physunit_inuse%myconfig%density
 
      self%myconfig%profile_shiftstart      =  self%myconfig%profile_shiftstart   /physunit_inuse%myconfig%length
      self%myconfig%profile_shift_density          =  self%myconfig%profile_shift_density        /physunit_inuse%myconfig%density
@@ -1253,7 +1265,7 @@ contains
 
    call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
 
-   call usr_get_theta(ixI^L,ixO^L,x,theta_profile,self%myboundaries%myconfig%special_origin_theta)
+   call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
 
    !w(ixI^S,phys_ind%mythetafield_)=theta_profile(ixI^S)
 
