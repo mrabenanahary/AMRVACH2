@@ -243,9 +243,9 @@ subroutine usr_boundaries_set_complet(self)
        self%variable_typebound(idims,iside,:)='cont'
      case('disc')
        self%variable_typebound(idims,iside,:)='symm'
-       self%variable_typebound(idims,iside,2)='symm'
-       self%variable_typebound(idims,iside,3)='asymm'
-       self%variable_typebound(idims,iside,4)='symm'
+       self%variable_typebound(idims,iside,phys_ind%mom(r_))='symm'
+       self%variable_typebound(idims,iside,phys_ind%mom(z_))='asymm'
+       self%variable_typebound(idims,iside,phys_ind%mom(phi_))='symm'
      case('dischole')
          self%variable_typebound(idims,iside,:)='symmhole'
          self%variable_typebound(idims,iside,2)='symmhole'
@@ -1009,13 +1009,13 @@ end subroutine usr_mat_profile_dist
   end subroutine usr_ulrich1976_costheta_zero
 
   !--------------------------------------------------------------------
-  subroutine usr_get_theta(ixI^L, ixO^L,x,theta_profile,costheta,sintheta)
+  subroutine usr_get_theta(ixI^L, ixO^L,x,theta_profile,specialorigintheta)
    implicit none
    integer, intent(in)             :: ixI^L,ixO^L
    real(kind=dp), intent(in)       :: x(ixI^S,1:ndim)
    real(kind=dp), intent(inout)    :: theta_profile(ixI^S)
-   real(kind=dp), intent(inout),optional    :: costheta(ixI^S),sintheta(ixI^S)
    real(kind=dp)                   :: dstce(ixI^S)
+   logical,optional                :: specialorigintheta
    !----------------------------------------------------
 
 

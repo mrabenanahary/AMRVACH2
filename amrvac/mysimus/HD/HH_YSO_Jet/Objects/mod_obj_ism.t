@@ -1265,7 +1265,7 @@ contains
 
    call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
 
-   call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+   call usr_get_theta(ixI^L,ixO^L,x,theta_profile,self%myboundaries%myconfig%special_origin_theta)
 
    !w(ixI^S,phys_ind%mythetafield_)=theta_profile(ixI^S)
 
@@ -1357,18 +1357,18 @@ contains
               DSIN(theta_profile(ixO^S))))
             elsewhere(x(ixO^S,z_)<0.0_dp.and.x(ixO^S,r_)<0.0_dp)
               !v_R(R<0)=v_R(R>0)
-              project_speed(ixO^S,r_) = (vr_profile(ixO^S)*&
+              project_speed(ixO^S,r_) = -((vr_profile(ixO^S)*&
               DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
-              DCOS(theta_profile(ixO^S)))
+              DCOS(theta_profile(ixO^S))))
               !v_Z(R<0)=-v_Z(R>0)
               project_speed(ixO^S,z_) = -((vr_profile(ixO^S)*&
               DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&
               DSIN(theta_profile(ixO^S))))
             elsewhere(x(ixO^S,z_)>=0.0_dp.and.x(ixO^S,r_)<0.0_dp)
               !v_R(R<0)=v_R(R>0)
-              project_speed(ixO^S,r_) = (vr_profile(ixO^S)*&
+              project_speed(ixO^S,r_) = -((vr_profile(ixO^S)*&
               DSIN(theta_profile(ixO^S)))+(vt_profile(ixO^S)*&
-              DCOS(theta_profile(ixO^S)))
+              DCOS(theta_profile(ixO^S))))
               !v_Z(R<0)=v_Z(R>0)
               project_speed(ixO^S,z_) = (vr_profile(ixO^S)*&
               DCOS(theta_profile(ixO^S)))-(vt_profile(ixO^S)*&

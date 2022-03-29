@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        nwauxio = 7
+        nwauxio = 8
         /
         !restart_from_file='Output/Ulrich1976_limitinflow/Jet_CC_0061.dat'
         /
@@ -45,7 +45,7 @@
         itsave(1,2)=0
         dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	!ditsave_log =50
-        dtsave_dat=  3.1557600d8! 10 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  3.1557600d9! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !ditsave_dat =1
  /
 
@@ -57,7 +57,7 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  3.15576d10 ! 10000 yrs 6.31152d11!2e4 yrs 3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !it_max=100
 
 
@@ -84,7 +84,6 @@
         check_small_values       = .true.
         small_values_force_floor = .true.
         loglimit(1) = .false.
-        angmomfix=.true.
 
 
  /
@@ -97,12 +96,12 @@
 
  &boundlist
         internalboundary  = .true.
-        nghostcells       = 2
+        nghostcells       = 4
         !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
-        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
-        typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
-        typeboundary_min2 =  'symm','symm','limitinflow','symm','symm',2*'symm'!7*'special'!'symm','symm','asymm','symm','symm',2*'symm'!                                    ! C.L. inférieure <=> zmin
-        typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
+        typeboundary_min1 =  7*'special'!'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
+        typeboundary_max1 =  7*'special'!7*'cont'                                    ! C.L. droite <=> rmax
+        typeboundary_min2 =  7*'special'!'symm','symm','asymm','symm','symm',2*'symm'!7*'special'!'symm','symm','asymm','symm','symm',2*'symm'!                                    ! C.L. inférieure <=> zmin
+        typeboundary_max2 =  7*'special'!7*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
 
 /
         typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max
@@ -111,6 +110,12 @@
 
  &meshlist
         ! grid at level 1
+        ! if  geometry in use in 2D is usrconfig%coordinate_system   = 'cylindrical_2D' or 'cylindrical_2.5D'         
+        ! always make sure that xprobmin1=R>=0 since the code treats any xprobmin<0 grid as a cartesian grid and thus
+        ! introduces non-physical behaviour since the code treats the spatial indexes as in the cartesian case, thus creating
+        ! non-physical solutions
+        ! if you wand to treat xprobmin1 <0, switch to Cartesian coordinates, with the disadvantage of not being able to simply treat rotation along phi
+        ! (need to convert from phi to z)
         xprobmin1 =  0.0d0    ! cm
         xprobmax1 =  3.0d17! <--- r_max=7e16cm
         xprobmin2 =  0.0d0    ! cm
@@ -129,10 +134,10 @@
         refine_threshold=20*0.01d0
         derefine_ratio=20*1d-3
         w_refine_weight(1)=0.5d0
-        w_refine_weight(2)=0.165d0
-        w_refine_weight(3)=0.165d0
-        w_refine_weight(4)=0.17d0
-      !  w_refine_weight(9)=1.0d0
+        !w_refine_weight(2)=0.165d0
+        !w_refine_weight(3)=0.165d0
+        !w_refine_weight(4)=0.17d0
+        w_refine_weight(9)=0.5d0
 
         max_blocks = 20000
         ! can be added when is needed
@@ -155,20 +160,23 @@
  &paramlist
         typecourant         = 'maxsum'
         courantpar          = 0.8d0
-        slowsteps           = 500
+        slowsteps           = 10000
         small_getdt_average = .true.
         small_dt_coef       = 1.0d-5
  /
 
   &hd_list
          hd_energy            = .true. !non-adiabatic: enables energy solving
-         hd_gamma             = 1.666666667         
+         hd_gamma             = 1.666666667
          SI_unit              = .false.  ! use cgs
          He_abundance         = 0.1d0                     !
 
          hd_dust              = .false.   ! dust off
          hd_radiative_cooling = .true. !>>HH4647 .false.!.true.    ! cooling on
          hd_gravity	       = .true. !>>HH4647 .false.!.true.    ! gravity on
+         hd_gravity_hse       = .false. !>>HH4647 .false.!.true.    ! gravity on         
+         hd_gravity_hse_scheme= 'twoorderpert'!options:'zerothorder','firstorder','twoordernohse','twoordernopert','twoorderpert','twoorderpert2'
+         hd_use_gravity_g = .false.
          hd_chemical          = .false.   ! use chemical
          hd_n_tracer          = 2
          hd_mean_mup_on       = .true. !>>HH4647 .true.
@@ -213,6 +221,8 @@
 
  &usr_list
         usrconfig%ism_on              = .true.                      !> set ism
+        usrconfig%profile_use_hse     = .true.
+        usrconfig%profile_add_pmgrav_to_hse = .true.
         usrconfig%cloud_on            = .false.                      !> set cloud
         usrconfig%cloud_structure     = 2                           !> cloud structure type
         usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
@@ -266,18 +276,29 @@
   ism_config%reset_dtemperature = 1.0d-6    !> set the pressure variation
   ism_config%reset_distance(2)  =  1.01d18  ! ism rest distance
   ism_config%reset_scale(2)     =  5d16     ! ism reset scalling distance
+
+  ism_config%profile_force_with_grav = .false.
+  ism_config%boundary_cond(1,1) = 'axis'  
+  ism_config%boundary_cond(1,2) = 'fix'  
+  ism_config%boundary_cond(2,1) = 'fix'!'limitinflow'!'limitinflowdisc'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
+  ism_config%boundary_cond(2,2) = 'fix'  
+   
+
 	
 	
   ! 3 cases : 
   ! 1) boundary_cond = 'fix' : 03-03-22 > successfully implemented !
   ! 2) boundary_cond /= 'fix' but mixed_fixed_bound == .false. everywhere
   ! 3) boundary_cond /= 'fix' and at least one of the mixed_fixed_bound is .true.
-  
-  ism_config%boundary_cond(2,1) = 'limitinflow'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
-  
-  ism_config%flux_frac          = 1.0d-2
+  ism_config%nghostcells(1)        = 4
+  ism_config%nghostcells(2)        = 4
+
+  ism_config%flux_frac          = 9.0d-1
   ism_config%useprimitive       = .false. 
-  
+  ism_config%escapencells(1)       = 8
+  ism_config%escapencells(2)       = 8
+  ism_config%escapencellsglobal(1)       = 1
+  ism_config%escapencellsglobal(2)       = 1
   ! Use :
   !  - ism_config%mixed_fixed_bound(idims,iside,index) to 'fix' the index-th flux variable w(ixG^S,index) on top of the above boundary conditions:
   !  - (idims,iside) = (direction along which are set the boundary conditions,side i=1=min or i=2=max of the direction along which the bc is applied)
@@ -316,15 +337,17 @@ ism_config%profile_force_on   = .false. ! Zheng=True  !.true.!.false.!.true. ! .
 ism_config%profile_force_gradP_on = .false.
 ism_config%weight_mean = 'arithmetic'
 ism_config%weight_analy = 1.0d0
-ism_config%weight_num = 3.0d0
-ism_config%weight_mean_variable = 'minus_density_grad'
+ism_config%weight_num = 0.0d0
+ism_config%weight_mean_variable = 'default'!'minus_density_grad'
 ism_config%profile_rw_force = 2.5d16
-ism_config%weight_num_index = 20.0d0
-ism_config%weight_analy_index = 20.0d0
-ism_config%profile_density    = 'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
-ism_config%profile_jspec = 8.0782850178d20       !> ISM envelope specific angular momentum
+ism_config%weight_num_index = 1.0d0
+ism_config%weight_analy_index = 1.0d0
+ism_config%profile_density    = 'Ulrich1976'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_jspec = 8.0782850178d20!20       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
+ism_config%profile_rhomax = 9.061196164618196d-18
+
 
 ism_config%profile_zc    = 1.0d16!4.49d14 ! 1.0d16 !4.49d14 ! Zheng19 = 30 au = 4.49d14 cm :  grandeur de normalisation dans le profil de pression/densite (en cm)
 ism_config%profile_rw    = 2.5d16 !> ISM reference radius for Lee 2001 profile (in cm)
@@ -336,18 +359,21 @@ ism_config%He_abundance      = 0.1
 /
 
 &usr_usrboundary_ism_list
-  usrboundary_config%boundary_type(2,1) = 'limitinflow'!'limitinflowdisc'!'disc'
-  usrboundary_config%boundary_type(2,2) = 'open'
-  usrboundary_config%useprimitive       = .false.
-  usrboundary_config%special_origin_theta       = .true.
-  usrboundary_config%nghostcells(1)        = 2
-  usrboundary_config%nghostcells(2)        = 2
-  usrboundary_config%flux_frac          = 1.0d-2
-  usrboundary_config%ngc          = 0
+  !usrboundary_config%boundary_type(1,1) = 'axis'
+  !usrboundary_config%boundary_type(2,1) = 'fix'!'limitinflow'!'limitinflowdisc'!'disc'
+  !usrboundary_config%boundary_type(2,2) = 'open'
+  !usrboundary_config%useprimitive       = .true.
+  !usrboundary_config%special_origin_theta       = .true.
+  !usrboundary_config%nghostcells(1)        = 4
+  !usrboundary_config%nghostcells(2)        = 4
+  usrboundary_config%flux_frac          = 9.0d-1
+  usrboundary_config%ngc          = 9
   usrboundary_config%RHS          = 0
   usrboundary_config%LHS          = 0
 /
 
+!11/12/19 : pour le jet et le projet n°1 de Sylvie Cabrit sur son article de 1997, les paramètres ci-dessous pour le jet ont été testés
+!et fixées aux valeurs recommandées et correspondant le mieux à la simulation de l'article
 &usr_cla_jet_list
     cla_jet_config%unit                  =  'cgs' !> physical unit at parameter file
     cla_jet_config%time_cla_jet_on       =  0.0d0 !> initial time the cla_jet is set in the simulation box
