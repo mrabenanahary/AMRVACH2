@@ -18,7 +18,6 @@ module mod_usr
     logical           :: physunit_on
     logical           :: ism_on
     logical           :: profile_use_hse
-    logical           :: profile_add_pmgrav_to_hse
     logical           :: cloud_on
     logical           :: jet_yso_on
     logical           :: ism_list_diff
@@ -183,7 +182,7 @@ contains
     real(dp), intent(in)    :: wCT(ixI^S,1:nw)
     real(dp), intent(out)   :: gravity_field(ixI^S,ndim)
     real(dp)                :: gravity_field_sphrc(ixI^S,ndim)
-    real(dp)                        :: Ggrav, Mpoint, alpha
+    real(dp)                        :: Ggrav, Mpoint, alpha,sqrtthree,threesqrtthree, halfdrr
     real(kind=dp), dimension(ixI^S) :: r_distance,radius
     real(dp)                        :: xd(ixI^S,1:ndim)
     real(dp)                        :: wprim(ixI^S,1:nw)
@@ -201,6 +200,7 @@ contains
     Ggrav = constusr%G
 
     gravity_field(ixO^S,1:ndim)=0.0_dp
+    gravity_field_sphrc(ixO^S,1:ndim)=0.0_dp
     {zero_dim(^D)=0.0_dp\}!-dx(1,1)
     {^D&
     xd(ixO^S,^D)=x(ixO^S,^D)-kr(r_,^D)*ism_surround(i_ism)%myconfig%profile_rd
@@ -224,6 +224,8 @@ contains
         Mpoint = ism_surround(i_ism)%myconfig%profile_Mstar
         radius(ixO^S)=r_distance(ixO^S)/ism_surround(i_ism)%myconfig%profile_rd
         rdradius(ixO^S)=rd_distance(ixO^S)/ism_surround(i_ism)%myconfig%profile_rd
+        sqrtthree = DSQRT(3.0_dp)
+        threesqrtthree = 3.0_dp * sqrtthree
 
         Loop_isms : do i_ism=0,usrconfig%ism_number-1
         select case(trim(ism_surround(i_ism)%myconfig%profile_density))
@@ -232,9 +234,11 @@ contains
           ^D&dx_local_min(^D)=min(ism_surround(i_ism)%myconfig%escapencells(^D)*dx_local(^D),&
                           ism_surround(i_ism)%myconfig%escapencellsglobal(^D)*dx(^D,1));
 
-
+          dx_local_min(:)=dx_local_min(:)/ism_surround(i_ism)%myconfig%profile_rd
           xpatch(ixI^S)=.true.
 
+
+          halfdrr = 0.5_dp*DSQRT(SUM(dx_local_min**2.0_dp))
 
           rr(ixO^S)=radius(ixO^S)
           sintta(ixO^S)=x(ixO^S,r_)/DSQRT(x(ixO^S,r_)**2.0_dp+&
@@ -244,110 +248,351 @@ contains
 
 
 
-          !Case 1: r==1:
-          where(DABS(rr(ixO^S)-1.0_dp)<=0.0_dp)
-            fc(ixO^S)=costta(ixO^S)**(1.0_dp/3.0_dp)
-            dfcdr(ixO^S)=0.0_dp
-            dfcdt(ixO^S)=-sintta(ixO^S)/(3.0_dp*costta(ixO^S)**(2.0_dp/3.0_dp))
-          end where
-
           !Case 2: r>1:
           where(rr(ixO^S)>1.0_dp)
-            fc(ixO^S)=2.0_dp*((rr(ixO^S)-1.0_dp)/3.0_dp)**0.5_dp*&
-            DSINH((1.0_dp/3.0_dp)*DASINH(rr(ixO^S)*costta(ixO^S)/(2.0_dp*((rr(ixO^S)-1.0_dp)/3.0_dp)**1.5_dp)))
-            dfcdr(ixO^S)=DSINH((1.0_dp/3.0_dp)*DASINH((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*&
-            costta(ixO^S))/(2.0_dp*(rr(ixO^S)-1.0_dp)**1.5_dp)))/&
-                (DSQRT(3.0_dp)*DSQRT(rr(ixO^S)-1.0_dp))-&
-                ((rr(ixO^S)+2.0_dp)*costta(ixO^S)*DCOSH((1.0_dp/3.0_dp)*&
-                DASINH((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S))/&
-                (2.0_dp*(rr(ixO^S)-1.0_dp)**1.5_dp))))/&
-                ((rr(ixO^S)-1.0_dp)**2.0_dp*&
-                DSQRT((27.0_dp*rr(ixO^S)**2.0_dp*costta(ixO^S)**2.0_dp+&
-                4.0_dp*(rr(ixO^S)-1.0_dp)**3.0_dp)/(rr(ixO^S)-1.0_dp)**3.0_dp))
+            gravity_field_sphrc(ixO^S,1) = rr(ixO^S) ** ( 3.0_dp/2.0_dp ) * &
+            ( ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) * DSINH( (1.0_dp/3.0_dp) * &
+            DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) **2.0_dp - 1.0_dp ) / rr(ixO^S) &
+            + 1.0_dp ) * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * 1.0_dp / DSINH( (1.0_dp/3.0_dp) * &
+            DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( rr(ixO^S) - 1.0_dp ) ) + 1.0_dp ) * &
+            ( -3.0_dp / ( 2.0_dp * rr(ixO^S) ** (5.0_dp/2.0_dp) * &
+            ( ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) * DSINH( (1.0_dp/3.0_dp) * &
+            DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - &
+            1.0_dp ) / rr(ixO^S) + 1.0_dp ) * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( rr(ixO^S) - 1.0_dp ) ) + 1.0_dp ) ) - &
+            ( ( ( 8.0_dp * ( rr(ixO^S) - 1.0_dp ) * ( ( threesqrtthree * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) - ( 9.0_dp * sqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (5.0_dp/2.0_dp) ) ) * &
+            DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2 * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) * DCOSH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) / &
+            ( 3.0_dp * DSQRT( ( 27.0_dp * rr(ixO^S) ** 2.0_dp * DCOS( theta_profile(ixO^S) ) ** 2.0_dp ) / &
+            ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) ** 3.0_dp ) + 1.0_dp ) ) + &
+            4.0_dp * DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * &
+            ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp ) / rr(ixO^S) - &
+            ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) * DSINH( (1.0_dp/3.0_dp) * &
+            DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) **2.0_dp - 1.0_dp ) / &
+            rr(ixO^S) ** 2.0_dp ) / ( rr(ixO^S) ** (3.0_dp/2.0_dp) * ( ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) * &
+            DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / rr(ixO^S) + 1.0_dp ) ** 2.0_dp * &
+            DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * ( 1.0_dp / SINH( (1.0_dp/3.0_dp) * &
+            DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( rr(ixO^S) - 1.0_dp ) ) + 1.0_dp ) ) - &
+            (-( DCOS( theta_profile(ixO^S) ) * ( ( threesqrtthree * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) - ( 9.0_dp * DSQRT(3.0_dp) * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (5.0_dp/2.0_dp) ) ) * &
+            ( 1.0_dp / DTANH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) *&
+            (1.0_dp / DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * sqrtthree * DSQRT( rr(ixO^S) - 1.0_dp ) * DSQRT( ( 27.0_dp * rr(ixO^S) ** 2.0_dp * &
+            DCOS( theta_profile(ixO^S) ) ** 2.0_dp ) / ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) ** 3.0_dp ) + 1.0_dp ) ) - &
+            ( sqrtthree * DCOS ( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) / &
+            ( 2.0_dp * rr(ixO^S) ** (3.0_dp/2.0_dp) * ( ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) * &
+            DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp) / rr(ixO^S) + 1.0_dp ) * &
+            ( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS ( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( rr(ixO^S) - 1.0_dp ) ) + 1.0_dp ) ** (3.0_dp/2.0_dp) ) )
 
-            dfcdt(ixO^S)=-(rr(ixO^S)*sintta(ixO^S)*&
-            DCOSH((1.0_dp/3.0_dp)*DASINH((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S))/&
-            (2.0_dp*(rr(ixO^S)-1.0_dp)**1.5_dp))))/((rr(ixO^S)-1.0_dp)*&
-            DSQRT((27.0_dp*rr(ixO^S)**2*costta(ixO^S)**2.0_dp)/(4.0_dp*(rr(ixO^S)-1.0_dp)**3.0_dp)+1.0_dp))
+            gravity_field_sphrc(ixO^S,2) = rr(ixO^S) ** (1.0_dp/2.0_dp) * &
+            ( ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) * DSINH( (1.0_dp/3.0_dp) * &
+            DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / &
+            rr(ixO^S) + 1.0_dp ) * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( rr(ixO^S) - 1.0_dp ) ) + 1.0_dp ) * ( ( 4.0_dp * sqrtthree * DSIN( theta_profile(ixO^S) ) * &
+            DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) * DCOSH( (1.0_dp/3.0_dp) * &
+            DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) / &
+            ( DSQRT( rr(ixO^S) - 1.0_dp ) * rr(ixO^S) ** (3.0_dp/2.0_dp) * &
+            DSQRT( ( 27.0_dp * rr(ixO^S) ** 2.0_dp * DCOS( theta_profile(ixO^S) ) ** 2.0_dp ) / &
+            ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) ** 3.0_dp ) + 1.0_dp ) * &
+            ( ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) * DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / rr(ixO^S)  + 1.0_dp ) ** 2.0_dp * &
+            DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( rr(ixO^S) - 1.0_dp ) ) + 1.0_dp ) ) - ( ( 3.0_dp * rr(ixO^S) * &
+            DSIN( theta_profile(ixO^S) ) * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DTANH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) * &
+            ( 1.0_dp / DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) ** 2.0_dp * DSQRT( ( 27.0_dp * rr(ixO^S) ** 2.0_dp * DCOS( theta_profile(ixO^S) ) ** 2.0_dp ) / &
+            ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) ** 3.0_dp ) + 1.0_dp ) ) - &
+            ( sqrtthree * DSIN( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( rr(ixO^S) - 1.0_dp ) ) ) / ( 2.0_dp * rr(ixO^S) ** (3.0_dp/2.0_dp) * &
+            ( ( 4.0_dp * ( rr(ixO^S) - 1.0_dp ) * DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / &
+            rr(ixO^S) + 1.0_dp ) * ( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DSINH( (1.0_dp/3.0_dp) * DASINH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( rr(ixO^S) - 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( rr(ixO^S) - 1.0_dp) ) + 1.0_dp ) ** (3.0_dp/2.0_dp) ) )
+
           end where
+
+
 
           !Case 3: r<1 and xi>0:
           where((rr(ixO^S)<1.0_dp).and.((((rr(ixO^S)*costta(ixO^S))/2.0_dp)**2.0_dp)-&
           (((1.0_dp-rr(ixO^S))/3.0_dp)**3.0_dp)>=0.0_dp))
 
-            fc(ixO^S)=2.0_dp*((1.0_dp-rr(ixO^S))/3.0_dp)**0.5_dp*&
-            DCOSH((1.0_dp/3.0_dp)*DACOSH(rr(ixO^S)*costta(ixO^S)/&
-            (2.0_dp*((1.0_dp-rr(ixO^S))/3.0_dp)**1.5_dp)))
+            gravity_field_sphrc(ixO^S,1) = rr(ixO^S) ** (3.0_dp/2.0_dp) * &
+            ( ( 4.0_dp * (1.0_dp - rr(ixO^S) ) * DCOSH( (1.0_dp/3.0_dp) * &
+            DACOSH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / &
+            rr(ixO^S) + 1.0_dp ) * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) * &
+            (- ( ( ( 8.0_dp * ( 1.0_dp - rr(ixO^S) ) * ( ( 9.0_dp * sqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (5.0_dp/2.0_dp) ) + &
+            ( threesqrtthree * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) * &
+            DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) * &
+            DSINH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) / &
+            ( 3.0_dp * DSQRT( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) - 1.0_dp ) * DSQRT( ( threesqrtthree * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) + &
+            1.0_dp ) ) - 4.0_dp * DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp ) / rr(ixO^S) - &
+            ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * DCOSH( (1.0_dp/3.0_dp) * &
+            DACOSH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / rr(ixO^S) ** 2.0_dp ) / &
+            ( rr(ixO^S) ** (3.0_dp/2.0_dp) * ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * &
+            DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / &
+            rr(ixO^S) + 1.0_dp ) ** 2.0_dp * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) ) - &
+            ( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) - &
+            ( DCOS( theta_profile(ixO^S) ) * ( ( 9.0_dp * sqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (5.0_dp/2.0_dp) ) + &
+            ( threesqrtthree * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) * &
+            ( 1.0_dp / DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) * &
+            DTANH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) / &
+            ( 2.0_dp * sqrtthree * DSQRT( 1.0_dp - rr(ixO^S) ) * &
+            DSQRT( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) - 1.0_dp ) * &
+            DSQRT( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) + 1.0_dp ) ) ) / &
+            ( 2.0_dp * rr(ixO^S) ** (3.0_dp/2.0_dp) * ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * &
+            DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / rr(ixO^S) + 1.0_dp ) * &
+            ( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / COSH( (1.0/3.0_dp * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) ** (3.0_dp/2.0_dp) ) ) - &
+            3.0_dp / ( 2.0_dp * rr(ixO^S) ** (5.0_dp/2.0_dp) * ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * &
+            cosh( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp  - &
+            1.0_dp ) / rr(ixO^S) + 1.0_dp ) * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) ) )
 
-            dfcdr(ixO^S)=((rr(ixO^S) + 2.0_dp)*costta(ixO^S)*DSINH((1.0_dp/3.0_dp)*&
-            DACOSH((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S))/&
-            (2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp))))/&
-            ((rr(ixO^S)-1.0_dp)**2.0_dp*DSQRT((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*&
-            costta(ixO^S)-2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)/&
-            (1.0_dp-rr(ixO^S))**1.5_dp)*DSQRT((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*&
-            costta(ixO^S)+2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)/&
-            (1.0_dp-rr(ixO^S))**1.5_dp))-&
-            DCOSH((1.0_dp/3.0_dp)*DACOSH((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S))/&
-            (2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)))/(DSQRT(3.0_dp)*DSQRT(1.0_dp-rr(ixO^S)))
-
-
-            dfcdt(ixO^S)=-rr(ixO^S)*sintta(ixO^S)*DSINH((1.0_dp/3.0_dp)*&
-            DACOSH(3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*&
-            costta(ixO^S)/(2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)))/((1.0_dp-rr(ixO^S))&
-            *(3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S)/&
-            (2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)-1.0_dp)**0.5_dp&
-            *(3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*costta(ixO^S)/&
-            (2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)+1.0_dp)**0.5_dp)
+            gravity_field_sphrc(ixO^S,2) = DSQRT( rr(ixO^S) ) * &
+            ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / rr(ixO^S) + 1.0_dp ) * &
+            DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) * &
+            ( ( 4.0_dp * sqrtthree * DSIN( theta_profile(ixO^S) ) * &
+            DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) * &
+            DSINH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) / &
+            ( DSQRT( 1.0_dp - rr(ixO^S) ) * rr(ixO^S) ** (3.0_dp/2.0_dp) * &
+            DSQRT( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp ) ) - 1.0_dp ) * &
+            DSQRT( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp ) ) + 1.0_dp ) * &
+            ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / rr(ixO^S) &
+            + 1.0_dp ) ** 2.0_dp * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / COSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) ) &
+            - &
+            ( ( 3.0_dp * rr(ixO^S) * DSIN( theta_profile(ixO^S) ) * DCOS( theta_profile(ixO^S) ) * &
+            DTANH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) * &
+            ( 1.0_dp / DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** 2.0_dp * DSQRT( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) - &
+            1.0_dp ) * DSQRT( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) + 1.0_dp ) ) - &
+            ( sqrtthree * DSIN( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) )  / &
+            ( 2.0_dp * rr(ixO^S) ** (3.0_dp/2.0_dp) * ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * &
+            DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / rr(ixO^S) + 1.0_dp) * &
+            ( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOSH( (1.0_dp/3.0_dp) * DACOSH( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) ** (3.0_dp/2.0_dp) ) )
 
           end where
+
+
 
           !Case 4: r<1 and xi<0:
           where((rr(ixO^S)<1.0_dp).and.((((rr(ixO^S)*costta(ixO^S))/2.0_dp)**2.0_dp)-&
           (((1.0_dp-rr(ixO^S))/3.0_dp)**3.0_dp)<0.0_dp))
 
-            fc(ixO^S)=2.0_dp*((1.0_dp-rr(ixO^S))/3.0_dp)**0.5_dp*&
-            DCOS((1.0_dp/3.0_dp)*DACOS(rr(ixO^S)*costta(ixO^S)/&
-            (2.0_dp*((1.0_dp-rr(ixO^S))/3.0_dp)**1.5_dp)))
+            gravity_field_sphrc(ixO^S,1) = rr(ixO^S) ** (3.0_dp/2.0_dp) * &
+            ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * DCOS( (1.0_dp/3.0) * DACOS( ( threesqrtthree * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - &
+            1.0_dp ) / rr(ixO^S) + 1.0_dp ) * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( (threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) * &
+            ( - ( ( ( 8.0_dp * ( 1.0_dp - rr(ixO^S) ) * ( ( 9.0_dp * sqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (5.0_dp/2.0_dp) ) + &
+            ( threesqrtthree * DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) * &
+            DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) * &
+            DSIN( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) / &
+            ( 3.0_dp * DSQRT( 1.0_dp - ( 27.0_dp * rr(ixO^S) ** 2.0_dp * DCOS( theta_profile(ixO^S) ) ** 2.0_dp) / &
+            ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** 3.0_dp ) ) ) - 4.0_dp * DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp ) / rr(ixO^S) - &
+            ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * DCOS( (1.0_dp/3.0_dp) * &
+            DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / &
+            rr(ixO^S) ** 2.0_dp ) / ( rr(ixO^S) ** (3.0_dp/2.0_dp) * &
+            ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - &
+            1.0_dp ) / rr(ixO^S) + 1.0_dp ) ** 2.0_dp * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) )  - &
+            ( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) - &
+            ( DCOS( theta_profile(ixO^S) ) * ( ( 9.0_dp * sqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (5.0_dp/2.0_dp) ) + &
+            ( threesqrtthree * DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) * &
+            ( 1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) * &
+            DTAN( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) / ( 2.0_dp * sqrtthree * &
+            DSQRT( 1.0_dp - rr(ixO^S) ) * DSQRT( 1.0_dp - ( 27.0_dp * rr(ixO^S) ** 2.0_dp * DCOS( theta_profile(ixO^S) ) ** 2.0_dp ) / &
+            ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** 3.0_dp ) ) ) ) / ( 2.0_dp * rr(ixO^S) ** (3.0_dp/2.0_dp) * &
+            ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / &
+            rr(ixO^S) + 1.0_dp ) * ( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) ** (3.0_dp/2.0_dp) ) - &
+            3.0_dp/( 2.0_dp * rr(ixO^S) ** (5.0_dp/2.0_dp) * ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * &
+            DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / rr(ixO^S) + 1.0_dp ) * &
+            DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) ) )
 
-            dfcdr(ixO^S)=((rr(ixO^S)+2.0_dp)*costta(ixO^S)*&
-            DSIN((1.0_dp/3.0_dp)*DACOS((3.0_dp*DSQRT(3.0_dp)*rr(ixO^S)*&
-            costta(ixO^S))/(2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp))))/&
-            ((rr(ixO^S)-1.0_dp)**2.0_dp*DSQRT((27.0_dp*rr(ixO^S)**2.0_dp*&
-            costta(ixO^S)**2.0_dp+&
-            4.0_dp*(rr(ixO^S)-1.0_dp)**3.0_dp)/(rr(ixO^S)-1.0_dp)**3.0_dp))-&
-            DCOS((1.0_dp/3.0_dp)*DACOS((3.0_dp*DSQRT(3.0_dp)*&
-            rr(ixO^S)*costta(ixO^S))/(2.0_dp*(1.0_dp-rr(ixO^S))**1.5_dp)))/&
-            DSQRT(3.0_dp-3.0_dp*rr(ixO^S))
 
-            dfcdt(ixO^S)=(2.0_dp*rr(ixO^S)*sintta(ixO^S)*&
-            DSIN((1.0_dp/3.0_dp)*DACOS((3.0_dp*DSQRT(3.0_dp)*&
-            rr(ixO^S)*costta(ixO^S))/(2.0_dp*(1.0-rr(ixO^S))**1.5_dp))))/&
-            ((rr(ixO^S)-1.0_dp)*DSQRT((4.0_dp*rr(ixO^S)**3.0_dp+&
-            27.0_dp*rr(ixO^S)**2.0_dp*costta(ixO^S)**2.0_dp-&
-            12.0_dp*rr(ixO^S)**2.0_dp+12.0_dp*rr(ixO^S)-4.0_dp)/&
-            (rr(ixO^S)-1.0_dp)**3.0_dp))
+            gravity_field_sphrc(ixO^S,2) = DSQRT( rr(ixO^S) ) * &
+            ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * DCOS( (1.0_dp/3.0_dp) * &
+            DACOS( ( threesqrtthree * rr(ixO^S) * cos( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp) / &
+            rr(ixO^S) + 1.0_dp ) * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) * &
+            ( ( 4.0_dp * sqrtthree * DSIN( theta_profile(ixO^S) ) * &
+            DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) * DSIN( (1.0_dp/3.0_dp) * &
+            DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) / &
+            ( DSQRT( 1.0_dp - rr(ixO^S) ) * rr(ixO^S) ** (3.0_dp/2.0_dp) * &
+            DSQRT( 1.0_dp - ( 27.0_dp * rr(ixO^S) ** 2.0_dp * DCOS( theta_profile(ixO^S) ) ** 2.0_dp ) / &
+            ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** 3.0_dp ) ) * &
+            ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / &
+            rr(ixO^S) + 1.0_dp ) ** 2.0_dp * DSQRT( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) ) - &
+            ( ( 3.0_dp * rr(ixO^S) * DSIN( theta_profile(ixO^S) ) * DCOS( theta_profile(ixO^S) ) * &
+            DTAN( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) * &
+            ( 1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** 2.0_dp * DSQRT( 1.0_dp - ( 27.0_dp * &
+            rr(ixO^S) ** 2.0_dp * DCOS( theta_profile(ixO^S) ) ** 2.0_dp ) / &
+            ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) ** 3.0_dp ) ) ) - &
+            ( sqrtthree * DSIN( theta_profile(ixO^S) ) * &
+            ( 1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) ) / ( 2.0_dp * rr(ixO^S) ** (3.0_dp/2.0_dp) * &
+            ( ( 4.0_dp * ( 1.0_dp - rr(ixO^S) ) * DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * &
+            rr(ixO^S) * DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ** 2.0_dp - 1.0_dp ) / rr(ixO^S) + 1.0_dp ) * &
+            ( ( sqrtthree * DCOS( theta_profile(ixO^S) ) * &
+            1.0_dp / DCOS( (1.0_dp/3.0_dp) * DACOS( ( threesqrtthree * rr(ixO^S) * &
+            DCOS( theta_profile(ixO^S) ) ) / &
+            ( 2.0_dp * ( 1.0_dp - rr(ixO^S) ) ** (3.0_dp/2.0_dp) ) ) ) ) / &
+            ( 2.0_dp * DSQRT( 1.0_dp - rr(ixO^S) ) ) + 1.0_dp ) ** (3.0_dp/2.0_dp) ) )
 
           end where
 
-         !========F_g=============
-         !* (F_g^e)_r:
-         gravity_field_sphrc(ixO^S,1) = (rr(ixO^S)*dfcdr(ixO^S)*&
-         (costta(ixO^S)*(-9.0_dp*fc(ixO^S)**2.0_dp+rr(ixO^S)-&
-         1.0_dp)-12.0_dp*fc(ixO^S)**3.0_dp)-fc(ixO^S)*&
-         (3.0_dp*fc(ixO^S)**2.0_dp+3.0_dp*rr(ixO^S)-1.0_dp)*&
-         (fc(ixO^S)+&
-         costta(ixO^S)))/&
-         (2.0_dp*rr(ixO^S)*fc(ixO^S)*(3.0_dp*fc(ixO^S)**2.0_dp+rr(ixO^S)-1.0_dp)*&
-         (fc(ixO^S)+costta(ixO^S)))
 
 
+          !Case 1: r==1:
+          where(DABS(rr(ixO^S)-1.0_dp)<=halfdrr)
 
-         !* (F_g^e)_theta:
-         gravity_field_sphrc(ixO^S,2) = (dfcdt(ixO^S)*&
-         (-(12.0_dp*fc(ixO^S))/(3.0_dp*fc(ixO^S)**2.0_dp+rr(ixO^S)-1.0_dp)+&
-         1.0_dp/fc(ixO^S)-1.0_dp/(fc(ixO^S)+costta(ixO^S)))+sintta(ixO^S)/&
-         (fc(ixO^S)+costta(ixO^S)))/(2.0_dp*rr(ixO^S))
+          gravity_field_sphrc(ixO^S,1) = (- 3.0_dp * DCOS( theta_profile(ixO^S) ) ** (2.0_dp/3.0_dp) - &
+          3.0_dp * rr(ixO^S) + 1.0_dp ) / ( 2.0_dp * rr(ixO^S) * ( 3.0_dp * &
+          DCOS( theta_profile(ixO^S) ) ** (2.0_dp/3.0_dp) + rr(ixO^S) - 1.0_dp ) )
 
+          gravity_field_sphrc(ixO^S,2) = ( DSIN( theta_profile(ixO^S) ) * ( 9.0_dp * &
+          DCOS( theta_profile(ixO^S) ) ** (2.0_dp/3.0_dp) + &
+          rr(ixO^S) + 5.0_dp ) ) / ( 3.0_dp * ( DCOS( theta_profile(ixO^S) ) ** (2.0_dp/3.0_dp) + &
+          1.0_dp ) * DCOS( theta_profile(ixO^S) ) ** (1.0_dp/3.0_dp) * &
+          ( 3.0_dp * DCOS( theta_profile(ixO^S) ) ** (2.0_dp/3.0_dp) + rr(ixO^S) - 1.0_dp ) )
+
+          end where
+
+          where(x(ixO^S,z_)<0.0_dp)
+            gravity_field_sphrc(ixO^S,2) = -gravity_field_sphrc(ixO^S,2)
+          end where
 
          gravity_field(ixO^S,r_) = (gravity_field_sphrc(ixO^S,1)*&
          x(ixO^S,r_)/DSQRT(x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp))&
@@ -358,12 +603,6 @@ contains
          -(gravity_field_sphrc(ixO^S,2)*&
          x(ixO^S,r_)/DSQRT(x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp))
 
-         !do idim=1,ndim
-         !where(wprim(ixO^S,phys_ind%rho_)>=&
-         !0.1_dp*ism_surround(i_ism)%myconfig%profile_rhomax)
-           !gravity_field(ixO^S,idim)=0.0_dp
-         !end where
-         !end do
 
 
          {^D&gravity_field(ixO^S,^D) = gravity_field(ixO^S,^D) *&
@@ -371,7 +610,7 @@ contains
 
 
 
-         if(usrconfig%profile_add_pmgrav_to_hse)then
+         if(ism_surround(i_ism)%myconfig%profile_add_pmgrav_to_hse)then
            gravity_field(ixO^S,r_)=gravity_field(ixO^S,r_)+&
            (-Ggrav*Mpoint/&
            (r_distance(ixO^S)*r_distance(ixO^S)))*x(ixO^S,r_)/DSQRT(x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)
@@ -682,7 +921,6 @@ contains
     usrconfig%physunit_on                   = .false.
     usrconfig%ism_on                        = .false.
     usrconfig%profile_use_hse               = .false.
-    usrconfig%profile_add_pmgrav_to_hse     = .false.
     usrconfig%cloud_on                      = .false.
     usrconfig%jet_yso_on                    = .false.
     usrconfig%cloud_number                  = 1

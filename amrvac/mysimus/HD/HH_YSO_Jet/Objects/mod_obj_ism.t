@@ -59,6 +59,10 @@ module mod_obj_ism
       real(dp)             :: profile_Beta !> ISM envelope fiducial density
       real(dp)             :: profile_rhomax !> ISM envelope fiducial density
       integer              :: patching_idim !> ISM tracer indice
+      logical              :: profile_add_pmgrav_to_hse
+      logical              :: profile_addvphi
+      logical              :: profile_zero_velocities
+
 
       logical              :: ism_display_parameters     !> ISM display of parameters at the end of the set_profile subroutine
       logical              :: w_already_initialized
@@ -417,6 +421,9 @@ contains
      self%myconfig%profile_Beta  = 0.0_dp
      self%myconfig%patching_idim = 1
      self%myconfig%profile_rhomax= 0.0_dp
+     self%myconfig%profile_add_pmgrav_to_hse = .false.
+     self%myconfig%profile_addvphi           = .false.
+     self%myconfig%profile_zero_velocities   = .false.
 
      self%myconfig%reset_coef            = 0.0_dp
      self%myconfig%weight_mean           = 'arithmetic'
@@ -800,6 +807,10 @@ contains
 
    self%myconfig%profile_Beta = kB*self%myconfig%temperature/&
    (self%myconfig%mean_mup*mp*self%myconfig%profile_rd)
+
+   if(.not.self%myconfig%profile_add_pmgrav_to_hse)then
+    self%myconfig%profile_zero_velocities = .true.
+   end if
 
     call self%myboundaries%set_complet
 
@@ -1253,10 +1264,22 @@ contains
    real(kind=dp), dimension(ixI^S,1:ndir) :: project_speed
    integer                         :: idir
    real(kind=dp), dimension(1:ndim) :: zero_dim
+   real(kind=dp)                   :: fce_factor,fce_vphi
    !--------------------------------------------------------------------
 
 
    {zero_dim(^D)=0.0_dp\}!-dx(1,1)
+
+   fce_factor = 1.0_dp
+   fce_vphi = 1.0_dp
+
+   if(self%myconfig%profile_zero_velocities)then
+    fce_factor = 0.0_dp
+   end if
+
+   if(.not.self%myconfig%profile_addvphi)then
+    fce_vphi = 0.0_dp
+   end if
 
    p_profile(ixO^S) = 1.0_dp
    vr_profile(ixO^S) = 1.0_dp
@@ -1309,14 +1332,14 @@ contains
    ((1.0_dp + (3.0_dp * cos_theta_zero(ixO^S) * &
    cos_theta_zero(ixO^S) - 1.0_dp)/r_normalized(ixO^S)))
 
-   vr_profile(ixO^S) = -(r_normalized(ixO^S)**(-0.5_dp))*&
+   vr_profile(ixO^S) = - fce_factor * (r_normalized(ixO^S)**(-0.5_dp))*&
    ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))
 
-   vt_profile(ixO^S) = (r_normalized(ixO^S)**(-0.5_dp))*&
+   vt_profile(ixO^S) =  fce_factor * (r_normalized(ixO^S)**(-0.5_dp))*&
    ((1.0_dp + (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))*&
    ((cos_theta_zero(ixO^S)-DCOS(theta_profile(ixO^S)))/DSIN(theta_profile(ixO^S)))
 
-   vp_profile(ixO^S) = (r_normalized(ixO^S)**(-0.5_dp))*&
+   vp_profile(ixO^S) =  fce_vphi * (r_normalized(ixO^S)**(-0.5_dp))*&
    ((1.0_dp - (DCOS(theta_profile(ixO^S))/cos_theta_zero(ixO^S)))**(0.5_dp))*&
    ((DSIN(theta_zero(ixO^S)))/DSIN(theta_profile(ixO^S)))
 
