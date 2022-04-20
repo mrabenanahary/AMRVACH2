@@ -1139,7 +1139,16 @@ end subroutine hd_get_aux
         end if
       end if
     else
-      Temperature(ixO^S) = hd_config%adiab/phys_config%mean_mass
+      Temperature(ixO^S) = hd_config%adiab!/phys_config%mean_mass
+      if(hd_config%mean_mup_on)then
+        patch_mult_mup(ixO^S) = dabs(w(ixO^S, phys_ind%mup_)-1.0_dp)>smalldouble &
+             .or. w(ixO^S, phys_ind%mup_)>smalldouble
+        if(any(patch_mult_mup(ixO^S)))then
+          where(patch_mult_mup(ixO^S))
+            temperature(ixO^S) =temperature(ixO^S)*w(ixO^S,phys_ind%mup_)
+          end where
+        end if
+      end if
     end if
   end subroutine hd_get_temperature
 

@@ -1,3 +1,5 @@
+
+
 ifndef AMRVAC_DIR
 $(error AMRVAC_DIR is not set)
 endif
@@ -37,10 +39,11 @@ LIB_AMRVAC := $(LIB_DIR)/libamrvac.a
 LIB_USER := Lib_user
 
 
+
 SRC_DIR+= $(OBJ_DIR)
 # These are used for compilation
 INC_DIRS := $(LIB_DIR)
-LIB_DIRS := $(LIB_DIR)
+LIB_DIRS := $(LIB_DIR) 
 LIBS := amrvac
 
 .PHONY: all clean allclean force
@@ -50,6 +53,7 @@ all: amrvac
 # Include architecture and compilation rules
 include $(AMRVAC_DIR)/arch/$(ARCH).defs
 include $(AMRVAC_DIR)/arch/rules.make
+
 
 # Optionally include a local user makefile
 -include local.make
@@ -61,7 +65,7 @@ vpath %.t $(SRC_DIR)
 # Keep mod_usr.f for inspection
 .PRECIOUS: mod_usr_yso_jet.f \
 					$(OBJ_DIR)/mod_obj_cla_jet.f \
-          $(OBJ_DIR)/mod_obj_global_parameters.f $(OBJ_DIR)/mod_obj_mat.f \
+          $(OBJ_DIR)/mod_obj_global_parameters.f $(OBJ_DIR)/mod_obj_mat.f $(OBJ_DIR)/mod_obj_chemistry.f \
 					$(OBJ_DIR)/mod_obj_relativistic_wind.f $(OBJ_DIR)/mod_obj_star_envelope.f\
 					$(OBJ_DIR)/mod_obj_star.f $(OBJ_DIR)/mod_obj_pulsar.f\
 					$(OBJ_DIR)/mod_obj_sn_remnant.f $(OBJ_DIR)/mod_obj_ism.f \
@@ -74,7 +78,7 @@ vpath %.t $(SRC_DIR)
 $(LIB_AMRVAC): force
 	@mkdir -p $(LIB_DIR)
 	@mkdir -p $(LIB_USER)
-	$(MAKE) -C $(LIB_DIR) -f $(LIB_MAKE)
+	$(MAKE) -C $(LIB_DIR) -f $(LIB_MAKE) 
 
 clean:
 	@echo $(SRC_DIR)
@@ -92,8 +96,9 @@ allclean: clean
 	$(MAKE) -C $(LIB_DIR) -f $(LIB_MAKE) clean
 
 # Dependencies
-amrvac: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o\
+amrvac: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
 	      $(OBJ_DIR)/mod_obj_readrebuilddata.o                          \
+	      $(OBJ_DIR)/mod_obj_chemistry.o \
 	      $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_sn_remnant.o      \
 	      $(OBJ_DIR)/mod_obj_relativistic_wind.o $(OBJ_DIR)/mod_obj_star_envelope.o\
 	      $(OBJ_DIR)/mod_obj_star.o $(OBJ_DIR)/mod_obj_pulsar.o          \
@@ -103,33 +108,38 @@ amrvac: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o\
         mod_usr_yso_jet.o amrvac.o
 
 amrvac.o  mod_usr_yso_jet.o: $(LIB_AMRVAC)
+
+$(OBJ_DIR)/mod_obj_chemistry.o: $(LIB_AMRVAC) 
+
 $(OBJ_DIR)/mod_obj_dust.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
-	                   $(OBJ_DIR)/mod_obj_usr_unit.o
+	                   $(OBJ_DIR)/mod_obj_usr_unit.o 
 $(OBJ_DIR)/mod_obj_readrebuilddata.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
-	                   $(OBJ_DIR)/mod_obj_usr_unit.o
+	                   $(OBJ_DIR)/mod_obj_usr_unit.o 
 
 $(OBJ_DIR)/mod_obj_star_envelope.o:$(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
 	                           $(OBJ_DIR)/mod_obj_usr_unit.o $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o\
-														 $(OBJ_DIR)/mod_obj_usr_unit.o
+				    $(OBJ_DIR)/mod_obj_usr_unit.o 
 $(OBJ_DIR)/mod_obj_relativistic_wind.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
-	                                $(OBJ_DIR)/mod_obj_usr_unit.o
+	                                $(OBJ_DIR)/mod_obj_usr_unit.o 
 $(OBJ_DIR)/mod_obj_sn_remnant.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
-	                         $(OBJ_DIR)/mod_obj_usr_unit.o
+	                         $(OBJ_DIR)/mod_obj_usr_unit.o  
 $(OBJ_DIR)/mod_obj_star.o:$(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o\
-	                  $(OBJ_DIR)/mod_obj_usr_unit.o
+	                  $(OBJ_DIR)/mod_obj_usr_unit.o 
 $(OBJ_DIR)/mod_obj_pulsar.o:$(OBJ_DIR)/mod_obj_sn_remnant.o  $(OBJ_DIR)/mod_obj_relativistic_wind.o \
 	                          $(OBJ_DIR)/mod_obj_star_envelope.o $(OBJ_DIR)/mod_obj_star.o\
-         			              $(OBJ_DIR)/mod_obj_usr_unit.o $(OBJ_DIR)/mod_obj_readrebuilddata.o
+         			              $(OBJ_DIR)/mod_obj_usr_unit.o $(OBJ_DIR)/mod_obj_readrebuilddata.o 
 
 $(OBJ_DIR)/mod_obj_ism.o    : $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o \
-	                            $(OBJ_DIR)/mod_obj_usr_unit.o
+	                            $(OBJ_DIR)/mod_obj_usr_unit.o 
 $(OBJ_DIR)/mod_obj_cloud.o  : $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o \
-	                            $(OBJ_DIR)/mod_obj_usr_unit.o
+	                            $(OBJ_DIR)/mod_obj_usr_unit.o 
 $(OBJ_DIR)/mod_obj_cla_jet.o: $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o \
-	                            $(OBJ_DIR)/mod_obj_usr_unit.o
+	                            $(OBJ_DIR)/mod_obj_usr_unit.o 
 
-mod_usr_yso_jet.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
+mod_usr_yso_jet.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o  \
+	$(OBJ_DIR)/mod_obj_chemistry.o \
 	$(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_cla_jet.o\
 	$(OBJ_DIR)/mod_obj_sn_remnant.o $(OBJ_DIR)/mod_obj_ism.o $(OBJ_DIR)/mod_obj_cloud.o\
-	$(OBJ_DIR)/mod_obj_readrebuilddata.o
-amrvac.o: mod_usr_yso_jet.o
+	$(OBJ_DIR)/mod_obj_readrebuilddata.o 
+
+amrvac.o: mod_usr_yso_jet.o $(OBJ_DIR)/mod_obj_chemistry.o

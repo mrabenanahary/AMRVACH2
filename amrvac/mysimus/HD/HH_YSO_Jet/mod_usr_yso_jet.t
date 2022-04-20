@@ -1202,11 +1202,202 @@ contains
 !-------------------------------------------------------------------------
   subroutine initglobaldata_usr
    use mod_variables
+   use mod_obj_chemistry
    implicit none
    ! .. local ..
    integer        :: i_cloud,i_ism,i_jet_yso,n_objects,n_object_w_dust
    real(kind=dp)  :: mp,kB
    !------------------------------------
+   !/
+
+   call test_chemistry()
+ !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+ !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+ !     Create a grackle chemistry object for parameters and set defaults
+
+       iresult = set_default_chemistry_parameters(grackle_data)
+
+ !     Set parameters
+
+       grackle_data%use_grackle = 1            ! chemistry on
+
+       PRINT*, 'on est arrive jusqu ici 1 '
+
+ !     Set parameters
+
+       grackle_data%use_grackle = 1            ! chemistry on
+       grackle_data%with_radiative_cooling = 1 ! cooling on
+       grackle_data%primordial_chemistry = 3   ! network with H, He, D
+       grackle_data%dust_chemistry = 1         ! dust processes
+       grackle_data%metal_cooling = 1          ! metal cooling on
+       grackle_data%UVbackground = 1           ! UV background on
+ !     cooling data for Haardt & Madau 2012 background
+       filename = "input/CloudyData_UVB=HM2012.h5"//C_NULL_CHAR
+       grackle_data%grackle_data_file = C_LOC(filename(1:1))
+       grackle_data%h2_on_dust = 0             ! no dust
+       grackle_data%cmb_temperature_floor = 1  ! include CMB cooling floor
+       grackle_data%Gamma = 5./3.;          ! monoatomic gas
+
+ !     Set units
+
+       my_units%comoving_coordinates = 0
+       my_units%density_units = 1.67d-24
+       my_units%length_units = 1.0d0
+       my_units%time_units = 1.0d12
+       my_units%a_units = 1.0d0
+
+ !     Set initial expansion factor (for internal units).
+ !     Set expansion factor to 1 for non-cosmological simulation.
+       initial_redshift = 0.;
+       my_units%a_value = 1. / (1. + initial_redshift);
+
+       PRINT*, 'on est arrive jusqu ici 2 '
+
+       call set_velocity_units(my_units)
+
+ !     Initialize the Grackle
+
+       write(6,*) "primordial_chemistry:", &
+           grackle_data%primordial_chemistry
+       write(6,*) "metal_cooling:", &
+           grackle_data%metal_cooling
+       iresult = initialize_chemistry_data(my_units)
+
+ !     Set field arrays
+
+ !     If grid rank is less than 3, set the other dimensions,
+ !     start indices, and end indices to 0.
+       grid_rank = 3
+       do i = 1, grid_rank
+          grid_dimension(i) = 1
+          grid_start(i) = 0
+          grid_end(i) = 0
+       enddo
+       grid_dx = 0.0
+       grid_dimension(1) = field_size
+ !     0-based
+       grid_end(1) = field_size - 1
+
+       temperature_units = get_temperature_units(my_units)
+
+       do i = 1,field_size
+          density(i) = 10000.0
+          HI_density(i) = fH * density(i)
+          HII_density(i) = tiny_number * density(i)
+          HM_density(i) = tiny_number * density(i)
+          HeI_density(i) = (1.0 - fH) * density(i)
+          HeII_density(i) = tiny_number * density(i)
+          HeIII_density(i) = tiny_number * density(i)
+          H2I_density(i) = tiny_number * density(i)
+          H2II_density(i) = tiny_number * density(i)
+          DI_density(i) = 2.0 * 3.4e-5 * density(i)
+          DII_density(i) = tiny_number * density(i)
+          HDI_density(i) = tiny_number * density(i)
+          e_density(i) = tiny_number * density(i)
+ !        solar metallicity
+          metal_density(i) = grackle_data%SolarMetalFractionByMass * &
+              density(i)
+          dust_density_ch(i) = grackle_data%local_dust_to_gas_ratio * &
+              density(i)
+
+          x_velocity(i) = 0.0
+          y_velocity(i) = 0.0
+          z_velocity(i) = 0.0
+
+ !        initilize internal energy (here 1000 K for no reason)
+          energy(i) = 1000. / temperature_units
+
+          volumetric_heating_rate(i) = 0.0
+          specific_heating_rate(i) = 0.0
+          RT_HI_ionization_rate(i) = 0.0
+          RT_HeI_ionization_rate(i) = 0.0
+          RT_HeII_ionization_rate(i) = 0.0
+          RT_H2_dissociation_rate(i) = 0.0
+          RT_heating_rate(i) = 0.0
+       enddo
+ !
+ !     Fill in structure to be passed to Grackle
+ !
+       my_fields%grid_rank = 1
+       my_fields%grid_dimension = C_LOC(grid_dimension)
+       my_fields%grid_start = C_LOC(grid_start)
+       my_fields%grid_end = C_LOC(grid_end)
+       my_fields%grid_dx  = grid_dx
+
+       my_fields%density = C_LOC(density)
+       my_fields%HI_density = C_LOC(HI_density)
+       my_fields%HII_density = C_LOC(HII_density)
+       my_fields%HM_density = C_LOC(HM_density)
+       my_fields%HeI_density = C_LOC(HeI_density)
+       my_fields%HeII_density = C_LOC(HeII_density)
+       my_fields%HeIII_density = C_LOC(HeIII_density)
+       my_fields%H2I_density = C_LOC(H2I_density)
+       my_fields%H2II_density = C_LOC(H2II_density)
+       my_fields%DI_density = C_LOC(DI_density)
+       my_fields%DII_density = C_LOC(DII_density)
+       my_fields%HDI_density = C_LOC(HDI_density)
+       my_fields%e_density = C_LOC(e_density)
+       my_fields%metal_density = C_LOC(metal_density)
+       my_fields%internal_energy = C_LOC(energy)
+       my_fields%x_velocity = C_LOC(x_velocity)
+       my_fields%y_velocity = C_LOC(y_velocity)
+       my_fields%z_velocity = C_LOC(z_velocity)
+       my_fields%volumetric_heating_rate = &
+                                      C_LOC(volumetric_heating_rate)
+       my_fields%specific_heating_rate = C_LOC(specific_heating_rate)
+       my_fields%RT_HI_ionization_rate = C_LOC(RT_HI_ionization_rate)
+       my_fields%RT_HeI_ionization_rate = C_LOC(RT_HeI_ionization_rate)
+       my_fields%RT_HeII_ionization_rate = &
+                                        C_LOC(RT_HeII_ionization_rate)
+       my_fields%RT_H2_dissociation_rate = C_LOC(RT_H2_dissociation_rate)
+       my_fields%RT_heating_rate = C_LOC(RT_heating_rate)
+
+ !
+ !     Calling the chemistry solver
+ !     These routines can now be called during the simulation.
+
+ !     Evolving the chemistry.
+
+       dtchem = 3.15e7 * 1e8 / my_units%time_units    ! some timestep
+       
+       write(*,*) 'HI density before (local,global):',my_fields%density, density
+       iresult = solve_chemistry(my_units, my_fields, dtchem)
+       write(*,*) 'HI density after (local,global):' ,my_fields%density, density
+
+ !     Calculate cooling time.
+
+       iresult = calculate_cooling_time(my_units, my_fields,cooling_time)
+       write(*,*) "Cooling time = ", (cooling_time(1) * &
+           my_units%time_units), "s."
+
+ !     Calculate temperature.
+
+       iresult = calculate_temperature(my_units, my_fields, temperature)
+       write(*,*) "Temperature = ", temperature(1), "K."
+
+ !     Calcualte pressure.
+
+       pressure_units = my_units%density_units * &
+           my_units%velocity_units**2
+       iresult = calculate_pressure(my_units, my_fields, pressure)
+       write(*,*) "Pressure = ", pressure(1)*pressure_units, "dyne/cm^2."
+
+ !     Calculate gamma.
+
+       iresult = calculate_gamma(my_units, my_fields, gamma)
+       write(*,*) "Gamma = ", gamma(1)
+
+ !     Calculate dust temperature.
+
+       iresult = calculate_dust_temperature(my_units, my_fields,&
+           dust_temperature)
+       write(*,*) "Dust temperature = ", dust_temperature(1), "K."
+
+ !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
     n_objects       = 0
     n_object_w_dust = 0
     itr             = 1
@@ -1228,9 +1419,9 @@ contains
           usrconfig%phys_adiab = kB/(phys_config%mean_mup*mp)*usrconfig%phys_temperature_isotherm
         elseif(usrconfig%phys_adiab>0.0_dp)then
           usrconfig%phys_temperature_isotherm = usrconfig%phys_adiab*phys_config%mean_mup*mp/kB
-        else
-          write(*,*) 'It stops at the mod_usr_yso_jet.t at initglobaldata_usr'
-          call mpistop('the phys_temperature_isotherm or phys_adiab should be set')
+        !else
+          !write(*,*) 'It stops at the mod_usr_yso_jet.t at initglobaldata_usr'
+          !call mpistop('the phys_temperature_isotherm or phys_adiab should be set')
         end if
       end if cond_gamma_1
 
@@ -2261,7 +2452,7 @@ return
     real(dp)                   :: w(ixI^S,nw),w_init(ixI^S,nw)
     real(dp)                   :: error_var(ixM^T)
     integer                    :: iw, level,idir,idust
-    integer, parameter         :: imach_             = 1
+    integer, parameter         :: icsound_             = 1
     integer, parameter         :: itemperature_      = 2
     integer, parameter         :: ilevel_            = 3
     integer, parameter         :: indensity_         = 4
@@ -2298,11 +2489,12 @@ return
     call phys_handle_small_values(.false., w, x, ixI^L, ixO^L,'specialvar_output')
     Loop_iw :  do iw = 1,nwauxio
     select case(iw)
-    case(imach_)
+    case(icsound_)
       call phys_get_csound2(w,x,ixI^L,ixO^L,csound2)
-      win(ixO^S,nw+imach_) = dsqrt(SUM(w(ixO^S,phys_ind%mom(1):phys_ind%mom(ndir))**2.0_dp&
-                                ,dim=ndim+1)/csound2(ixO^S))&
-                                /(w(ixO^S,phys_ind%rho_))
+      win(ixO^S,nw+icsound_) = csound2(ixO^S)*usr_physunit%myconfig%velocity**2.0_dp
+          !dsqrt(SUM(w(ixO^S,phys_ind%mom(1):phys_ind%mom(ndir))**2.0_dp&
+                                !,dim=ndim+1)/csound2(ixO^S))&
+                                !/(w(ixO^S,phys_ind%rho_))
       !/
       case(itemperature_)
         call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
@@ -2476,7 +2668,7 @@ return
     character(len=*), intent(inout) :: varnames(:)
     ! .. local ..
     integer                    :: iw
-    integer, parameter         :: imach_             = 1
+    integer, parameter         :: icsound_             = 1
     integer, parameter         :: itemperature_      = 2
     integer, parameter         :: ilevel_            = 3
     integer, parameter         :: indensity_         = 4
@@ -2501,8 +2693,8 @@ return
 
     Loop_iw : do  iw = 1,nwauxio
       select case(iw)
-      case(imach_)
-        varnames(imach_)               = 'mach_number'
+      case(icsound_)
+        varnames(icsound_)               = 'csound2'
       case(itemperature_)
         varnames(itemperature_)        ='temperature'
       case(ilevel_)
