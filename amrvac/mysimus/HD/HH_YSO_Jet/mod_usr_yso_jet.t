@@ -1283,7 +1283,7 @@ contains
        temperature_units = get_temperature_units(my_units)
 
        do i = 1,field_size
-          density(i) = 10000.0
+          density(i) = 1.0
           HI_density(i) = fH * density(i)
           HII_density(i) = tiny_number * density(i)
           HM_density(i) = tiny_number * density(i)
@@ -1360,11 +1360,11 @@ contains
 
  !     Evolving the chemistry.
 
-       dtchem = 3.15e7 * 1e8 / my_units%time_units    ! some timestep
-       
-       write(*,*) 'HI density before (local,global):',my_fields%density, density
+       dtchem = 3.15e7 * 1e6 / my_units%time_units    ! some timestep
+
+       !write(*,*) 'HI density before (local,global):',my_fields%density, density
        iresult = solve_chemistry(my_units, my_fields, dtchem)
-       write(*,*) 'HI density after (local,global):' ,my_fields%density, density
+       !write(*,*) 'HI density after (local,global):' ,my_fields%density, density
 
  !     Calculate cooling time.
 

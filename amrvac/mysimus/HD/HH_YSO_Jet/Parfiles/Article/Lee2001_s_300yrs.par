@@ -134,8 +134,8 @@
 
         max_blocks = 20000
         ! can be added when is needed
-        prolongprimitive= .false.
-        coarsenprimitive= .false.
+        prolongprimitive= .true.
+        coarsenprimitive= .true.
         /
 
 
@@ -167,7 +167,7 @@
          hd_dust              = .false.   ! dust off
          hd_radiative_cooling = .true. !>>HH4647 .false.!.true.    ! cooling on
          hd_gravity	       = .true. !>>HH4647 .false.!.true.    ! gravity on
-         hd_gravity_hse       = .true. !>>HH4647 .false.!.true.    ! gravity on         
+         hd_gravity_hse       = .false. !>>HH4647 .false.!.true.    ! gravity on         
          hd_chemical          = .false.   ! use chemical
          hd_n_tracer          = 2
          hd_mean_mup_on       = .true. !>>HH4647 .true.
