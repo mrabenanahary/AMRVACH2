@@ -41,13 +41,13 @@ pwd
 export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
 
 
-srun --ntasks=$SLURM_JOB_NUM_NODES more Parfiles/Article/${SLURM_JOB_NAME}.par
-mpiexec amrvac -i Parfiles/Article/${SLURM_JOB_NAME}.par
-srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jobs/slurm-${SLURM_JOB_NAME}-${SLURM_JOBID}.out /data/$USER/Output/${SLURM_JOB_NAME}/.
+#srun --ntasks=$SLURM_JOB_NUM_NODES more Parfiles/Article/${SLURM_JOB_NAME}.par
+#mpiexec amrvac -i Parfiles/Article/${SLURM_JOB_NAME}.par
+#srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jobs/slurm-${SLURM_JOB_NAME}-${SLURM_JOBID}.out /data/$USER/Output/${SLURM_JOB_NAME}/.
 
-srun --ntasks=$SLURM_JOB_NUM_NODES cp Output/${SLURM_JOB_NAME}/Jet_CC_0101.dat .
-srun --ntasks=$SLURM_JOB_NUM_NODES more Parfiles/Article/uniform/${SLURM_JOB_NAME}/${SLURM_JOB_NAME}.par
-mpiexec amrvac -i Parfiles/Article/uniform/${SLURM_JOB_NAME}/${SLURM_JOB_NAME}.par
+#srun --ntasks=$SLURM_JOB_NUM_NODES cp Output/${SLURM_JOB_NAME}/Jet_CC_0102.dat .
+srun --ntasks=$SLURM_JOB_NUM_NODES more Parfiles/Article/uniform/${SLURM_JOB_NAME}.par
+mpiexec amrvac -i Parfiles/Article/uniform/${SLURM_JOB_NAME}.par
 
 srun --ntasks=$SLURM_JOB_NUM_NODES mv Output/${SLURM_JOB_NAME}/* /data/$USER/Output/${SLURM_JOB_NAME}/.
 srun --ntasks=$SLURM_JOB_NUM_NODES mv uniform /data/$USER/Output/${SLURM_JOB_NAME}/.
