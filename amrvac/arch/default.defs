@@ -6,6 +6,12 @@ LINK= $(F90)  $(F90FLAGS)
 
 F77=mpif77
 FFLAGS77 = -c
-F77FLAGS = -cpp -ffixed-form -O2 -g -fimplicit-none -Wall -Wno-unused-dummy-argument	\
+F77FLAGS = -cpp -ffixed-form -O2 -g -fimplicit-none -fopenmp -Wall -Wno-unused-dummy-argument	\
 -Wno-unused-function -Wno-unused -Wno-uninitialized -DCONFIG_BFLOAT_8 -DH5_USE_16_API -fPIC
 LINK77= $(F77)  $(F77FLAGS)
+
+F90_amrvac=$(F90)
+FFLAGS_amrvac = $(FFLAGS)
+F90FLAGS_amrvac = $(F90FLAGS) -fopenmp
+LINK_amrvac= $(LINK)
+

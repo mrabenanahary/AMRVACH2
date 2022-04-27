@@ -29,14 +29,13 @@ ds = yt.load_sample("IsolatedGalaxy")
 
 my_dir = os.path.dirname(os.path.abspath(__file__))
 grackle_data_file = bytes(os.path.join(
-    my_dir, "input", "CloudyData_UVB=HM2012.h5"), 'utf-8')
+    my_dir, "..", "..", "..", "input", "CloudyData_UVB=HM2012.h5"), 'utf-8')
 
 grackle_pars = {'grackle_data_file': grackle_data_file,
                 'UVbackground': 1}
 
 add_grackle_fields(ds, parameters=grackle_pars)
 
-"""
 sp = ds.sphere(ds.domain_center, (10, 'kpc'))
 print (sp['gas', 'grackle_cooling_time'])
 print (sp['gas', 'grackle_gamma'])
@@ -44,4 +43,3 @@ print (sp['gas', 'grackle_mean_molecular_weight'])
 print (sp['gas', 'grackle_pressure'])
 print (sp['gas', 'grackle_temperature'])
 print (sp['gas', 'grackle_dust_temperature'])
-"""

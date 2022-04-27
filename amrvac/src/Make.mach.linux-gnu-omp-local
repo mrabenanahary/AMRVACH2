@@ -1,0 +1,101 @@
+#=======================================================================
+#
+# FILE:        Make.mach.linux-gnu
+#
+# DESCRIPTION: Makefile settings for a machine running Ubuntu
+#
+# AUTHOR:      Rick Wagner (rick@ucsd.edu)
+#
+# DATE:        2008-09-16
+#
+# This configuration assumes that build-essentials, gfortran, 
+# OpenMPI and HDF5 have been installed using apt-get.
+#
+#=======================================================================
+
+MACH_TEXT  = Use apt-get to install libhdf5-serial-dev gfortran
+MACH_VALID = 1
+MACH_FILE  = Make.mach.linux-gnu-omp
+
+#-----------------------------------------------------------------------
+# Install paths (local variables)
+#-----------------------------------------------------------------------
+
+
+
+LOCAL_HDF5_INSTALL = $(HDF5_INC_DIR)
+
+#-----------------------------------------------------------------------
+# Compiler settings
+#-----------------------------------------------------------------------
+
+
+
+MACH_CC_NOMPI  = mpicc #gcc # C compiler
+MACH_CXX_NOMPI = mpicxx #g++ # C++ compiler
+MACH_FC_NOMPI  = mpif90 # Fortran 77
+MACH_F90_NOMPI = mpif90 # Fortran 90
+MACH_LD_NOMPI  = mpicxx # Linker
+MACH_LIBTOOL   = libtool
+
+#-----------------------------------------------------------------------
+# Machine-dependent defines
+#-----------------------------------------------------------------------
+
+MACH_DEFINES   = -DLINUX -DH5_USE_16_API -fPIC
+
+#-----------------------------------------------------------------------
+# Compiler flag settings
+#-----------------------------------------------------------------------
+
+MACH_OMPFLAGS = -fopenmp 
+MACH_CPPFLAGS = -P -traditional
+# Intel C/C++/Fortran compiler flags : 
+# -mp1 = improves floating-point precision and consistency.
+# -prec-div = Improves precision of floating-point divides
+# -fp-port = Rounds floating-point results after floating-point operations --> Rounding to
+# user-specified precision occurs at assignments and type conversions. This has some impact on
+# speed. The default is to keep results of floating-point operations in higher precision. This provides
+# better performance but less consistent floating-point results.
+# -align = Tells the compiler how to align certain data items. By default: This option specifies the alignment to use for certain data items. The compiler adds padding
+# bytes to perform the alignment.
+# -axMIC-AVX512 : the Intel compilers (only) can take advantage of a feature called "automatic CPU dispatch" that lets a single executable run optimally on more than one kind of processor.
+# - save = Causes variables to be placed in static memory.
+# - zero = Initializes to zero all local scalar variables of intrinsic type INTEGER, REAL, COMPLEX, or LOGICAL that are saved but not yet initialized
+MACH_CFLAGS   =  # C compiler flags
+MACH_CXXFLAGS =  # C++ compiler flags
+MACH_FFLAGS   =  -cpp -ffixed-form -DCONFIG_BFLOAT_8 -fno-second-underscore -ffixed-line-length-132 #-fno-second-underscore -ffixed-line-length-132
+MACH_F90FLAGS =  -cpp -ffixed-form -DCONFIG_BFLOAT_8 -fno-second-underscore -ffixed-line-length-132 132 #-fno-second-underscore -ffixed-line-length-132
+#MACH_LDFLAGS  = 
+
+#-----------------------------------------------------------------------
+# Optimization flags
+#-----------------------------------------------------------------------
+
+MACH_OPT_WARN        = -Wall -g
+MACH_OPT_DEBUG       = -g
+MACH_OPT_HIGH        = -O2
+MACH_OPT_AGGRESSIVE  = -O3 -g
+
+#-----------------------------------------------------------------------
+# Includes
+#-----------------------------------------------------------------------
+
+LOCAL_INCLUDES_HDF5   = -I$(LOCAL_HDF5_INSTALL) # HDF5 includes
+
+MACH_INCLUDES         = $(LOCAL_INCLUDES_HDF5) 
+
+#-----------------------------------------------------------------------
+# Libraries
+#-----------------------------------------------------------------------
+
+LOCAL_LIBS_HDF5   = -L$(LOCAL_LIBS) -lhdf5_serial -lz # HDF5 libraries
+LOCAL_LIBS_MACH   = -lgfortran # Machine-dependent libraries
+
+MACH_LIBS         = $(LOCAL_LIBS_HDF5) $(LOCAL_LIBS_MACH)
+
+#-----------------------------------------------------------------------
+# Installation
+#-----------------------------------------------------------------------
+
+MACH_INSTALL_PREFIX = $(AMRVAC_DIR)/src/local

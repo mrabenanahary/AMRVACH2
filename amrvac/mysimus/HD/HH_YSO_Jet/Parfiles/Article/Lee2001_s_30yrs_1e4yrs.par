@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        restart_from_file='Output/Lee2001_s_30yrs_1e4yrs/Lee2001_s_0001.dat'             
+        !restart_from_file='Output/Lee2001_s_30yrs_1e4yrs/Lee2001_s_0001.dat'             
         nwauxio = 10
         /
         restart_from_file='Jet_Shang06_0118.dat'
