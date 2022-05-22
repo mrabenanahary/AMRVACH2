@@ -377,6 +377,8 @@ module mod_global_parameters
 
   !> Weights of variables used to calculate error for mesh refinement
   real(kind=dp)   , allocatable :: w_refine_weight(:)
+  character(len=name_len),allocatable :: w_refine_weight_wnames(:)
+  real(kind=dp)   , allocatable :: w_refine_weight_wvalues(:)
 
   !> Fix the AMR grid after this time
   real(kind=dp)    :: tfixgrid

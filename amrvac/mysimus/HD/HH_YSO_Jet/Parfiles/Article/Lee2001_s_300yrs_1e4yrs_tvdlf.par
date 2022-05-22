@@ -13,7 +13,7 @@
 !==============================================================
 
  &filelist
-        base_filename='Output/Lee2001_s_300yrs_1e4yrs/Lee2001_s_'
+        base_filename='Output/Lee2001_s_300yrs_1e4yrs_tvdlf/Lee2001_s_'
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'

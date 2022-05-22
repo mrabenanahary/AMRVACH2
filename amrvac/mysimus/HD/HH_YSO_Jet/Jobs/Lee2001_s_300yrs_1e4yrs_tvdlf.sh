@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=Lee2001_s_300yrs_1e4yrs
+#SBATCH --job-name=Lee2001_s_300yrs_1e4yrs_tvdlf
 #SBATCH --nodes=1 --ntasks-per-node=48
 #SBATCH --time=7200
 #SBATCH --partition=long
 #SBATCH --mail-user=mialy.rabenanahary@gmail.com
-#SBATCH --output=slurm-Lee2001_s_300yrs_1e4yrs-%j.out
+#SBATCH --output=slurm-Lee2001_s_300yrs_1e4yrs_tvdlf-%j.out
 #SBATCH --mail-type=ALL
 #SBATCH --mem=64gb
 #SBATCH --tmp=200gb

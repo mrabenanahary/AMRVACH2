@@ -98,7 +98,7 @@ contains
     integer          :: iB, isave, iw, level, idim, islice
     integer          :: nx_vec(^ND), block_nx_vec(^ND)
     integer          :: my_unit, iostate
-    integer          :: ilev
+    integer          :: ilev,i_array
     double precision :: dx_vec(^ND)
 
     character              :: c_ndim
@@ -158,7 +158,8 @@ contains
          stretched_grid, stretched_dim, stretched_symm_dim, &
          qstretch_baselevel, nstretchedblocks_baselevel, &
          amr_wavefilter,max_blocks,block_nx^D,domain_nx^D,iprob,xprob^L, &
-         w_refine_weight, prolongprimitive,coarsenprimitive, &
+         w_refine_weight, w_refine_weight_wnames, w_refine_weight_wvalues, &
+         prolongprimitive,coarsenprimitive, &
          typeprolonglimit, &
          logflag,tfixgrid,itfixgrid,ditregrid
     namelist /paramlist/  courantpar, dtpar, dtdiffpar, &
@@ -244,6 +245,16 @@ contains
     refine_criterion               = 3
     allocate(w_refine_weight(nw+1))
     w_refine_weight                    = 0.d0
+    allocate(w_refine_weight_wnames(nw+1))
+    allocate(w_refine_weight_wvalues(nw+1))
+    !defaul values
+    w_refine_weight_wnames  = ''
+    w_refine_weight_wvalues = 0.d0
+    write(*,*) '> prim_wnames avalaibles : '
+    do i_array = 1,size(prim_wnames)
+      write(*,*) i_array,' ',prim_wnames(i_array)
+    end do
+    !write(*,*) '> prim_wnames(nw+2) avalaibles : ', prim_wnames(nw+2)
     allocate(logflag(nw+1))
     logflag                     = .false.
     allocate(amr_wavefilter(nlevelshi))
@@ -381,6 +392,26 @@ contains
        read(unitpar, paramlist, end=107)
 
 107    close(unitpar)
+
+       !link w_refine_weight_wnames,w_refine_weight_wvalues with w_refine_weight
+       call link_w_refine_weight()
+       write(*,*) 'Check non-empty w_refine_weight_wnames : '
+       do i_array = 1,size(w_refine_weight_wnames)
+         if(w_refine_weight_wnames(i_array)=='')cycle
+         write(*,*) i_array,' ',w_refine_weight_wnames(i_array)
+       end do
+       write(*,*) 'Check non-zero w_refine_weight_wvalues : '
+       do i_array = 1,size(w_refine_weight_wvalues)
+         if(w_refine_weight_wvalues(i_array)==0.d0)cycle
+         write(*,*) i_array,' ',w_refine_weight_wvalues(i_array)
+       end do
+       write(*,*) 'Check non-zero w_refine_weight : '
+       do i_array = 1,size(w_refine_weight)
+         if(w_refine_weight(i_array)==0.d0)cycle
+         write(*,*) i_array,' ',prim_wnames(i_array),' ',w_refine_weight(i_array)
+       end do
+
+
        if(mype==0)write(*,*)'End par file read'
 
        ! Append the log and file names given in the par files
@@ -861,7 +892,12 @@ contains
 
     if(sum(w_refine_weight(:))==0) w_refine_weight(1) = 1.d0
     if(dabs(sum(w_refine_weight(:))-1.d0)>smalldouble) then
-      write(unitterm,*) "Sum of all elements in w_refine_weight be 1.d0"
+      write(unitterm,*) "Sum of all elements in w_refine_weight must be 1.d0"
+      write(*,*) 'Here is the list of your non-zero w_refine_weight : '
+      do i_array = 1,size(w_refine_weight)
+        if(w_refine_weight(i_array)==0.d0)cycle
+        write(*,*) i_array,' ',prim_wnames(i_array),' ',w_refine_weight(i_array)
+      end do
       call mpistop("Reset w_refine_weight so the sum is 1.d0")
     end if
 
@@ -975,7 +1011,59 @@ contains
     ! threshold to set the use of logarithmic
     limiter_log_threshold=-1.0_dp
   end  subroutine default_setting_method
+
+  subroutine get_iw_refine_weight(w_name,i_weight)
+    character(len=name_len),intent(in) :: w_name
+    integer,intent(out) :: i_weight
+    ! local
+    integer :: i_array
+    logical :: w_name_found
+    !--------
+
+    if(w_name=='')then
+      i_weight = -1
+      return
+    end if
+
+    w_name_found = .false.
+
+    do i_array=1,size(prim_wnames)
+      if(w_name==prim_wnames(i_array))then
+        w_name_found = .true.
+        i_weight = i_array
+        exit
+      end if
+    end do
+
+    if(.not.w_name_found)then
+      WRITE(*,*) 'ERROR is this : w_refine_weight_wvalues : ', w_name, 'not found among : '
+      do i_array = 1,size( prim_wnames)
+        write(*,*) i_array,' ',prim_wnames(i_array)
+      end do
+      call mpistop('Correct the par files. The code stops!')
+    end if
+  end subroutine get_iw_refine_weight
+
+  subroutine link_w_refine_weight()
+    ! local
+    integer :: i_array, i_weight
+    !--------
+    do i_array = 1,size(w_refine_weight_wnames)
+      call get_iw_refine_weight(w_refine_weight_wnames(i_array),i_weight)
+      if(i_weight==-1)then
+        cycle
+      elseif(i_weight>0)then
+        w_refine_weight(i_weight) = w_refine_weight_wvalues(i_array)
+      else
+        call mpistop("mod_input_output : Inconsistency in i_weight found!")
+      end if
+    end do
+  end subroutine link_w_refine_weight
+
+
   end subroutine read_par_files
+
+
 
   !> Routine to find entries in a string
   subroutine get_fields_string(line, delims, n_max, fields, n_found, fully_read)

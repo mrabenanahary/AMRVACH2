@@ -1,4 +1,4 @@
-      module mod_obj_chemistry
+      module grackle_header
 
       use mod_global_parameters
       use mod_obj_global_parameters
@@ -84,4 +84,4 @@ c     Define storage for grackle units, fields and parameter data
 
       end subroutine test_chemistry
 
-      end module mod_obj_chemistry
+      end module grackle_header

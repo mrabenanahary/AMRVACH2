@@ -686,6 +686,7 @@ contains
     !----------------------------------------------------
     else  cond_csound_set
      if(self%myconfig%temperature>0.0_dp) then
+      !fully atomic gas : self%myconfig%mean_mup ~ 1.27
       self%myconfig%pressure = self%myconfig%density*&
                             kB* self%myconfig%temperature/(self%myconfig%mean_mup*mp)
       if(trim(self%myconfig%profile_density)=='Ulrich1976')then
@@ -1491,7 +1492,7 @@ contains
     real(kind=dp), dimension(ixI^S)      :: alpha_analy,alpha_num,fsign
     logical                              :: tmp_active,src_active
     logical, dimension(ixI^S)            :: patch_tosave
-    real(dp)                 :: mp,kB
+    real(dp)                 :: mp,kB,Ggrav,alpha
     !----------------------------------------------------
 
     if(SI_unit) then
@@ -1502,168 +1503,93 @@ contains
       kB=kB_cgs
     end if
 
-    f_profile(ixO^S,:) = 0.0
-      call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
+    Ggrav = constusr%G
+
+    f_profile(ixO^S,:) = 0.0_dp
+    call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
+
+    patch_tosave(ixI^S)=self%patch(ixI^S)
+    self%patch(ixI^S)  =.true.
+    call self%set_w(ixI^L, ixI^L,qt,x,w_init)
+    self%patch(ixI^S)=patch_tosave(ixI^S)
+
+    call phys_to_conserved(ixI^L,ixI^L,w_init,x)
+
+    w_tmp(ixI^S,1:nw) = w_init(ixI^S,1:nw)
+
+    cond_density_fprofile : if(self%myconfig%profile_density_on) then
+     cond_fprofile_numerical : if(self%myconfig%profile_force_gradP_on)then
+
+      if(phys_config%radiative_cooling)then
+        tmp_active=.false.
+        src_active=.false.
+        call radiative_cooling_add_source(qdt,ixI^L,ixI^L,w_init,w_tmp,x,&
+                                           src_active,tmp_active)
+      end if
+      call phys_get_pthermal(w_tmp,x,ixI^L,ixI^L,ptherm)
+      Loop_idir_force : do idims=1,ndim
+        call gradient(ptherm,ixI^L,ixO^L,idims,gradp)
+
+        where(self%patch(ixO^S))
+          f_profile(ixO^S,idims) = gradp(ixO^S)
+        end where
+        pv(ixI^S,idims) =  ptherm(ixI^S)*w(ixI^S,phys_ind%mom(idims))/w(ixI^S,phys_ind%rho_)
+      end do  Loop_idir_force
+      if(ndir>ndim)pv(ixI^S,ndim+1:ndir)=0.0_dp
+      call  divvector(pv,ixI^L,ixO^L,divpv)
+
+    else cond_fprofile_numerical
+
+      call phys_get_pthermal(w_tmp,x,ixI^L,ixI^L,ptherm)
+
+      if(ndim>1)then
+
+        select case(trim(self%myconfig%profile_density))
+            case('Lee2001','Lee2001_floored')
+             !call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
+
+                  alpha = self%myconfig%profile_p
+                  where(self%patch(ixO^S))
+
+                      f_profile(ixO^S,r_) = - (alpha * (x(ixO^S,r_)**2.0_dp-&
+                      x(ixO^S,z_)**2.0_dp)/(x(ixO^S,r_)*(x(ixO^S,r_)**2.0_dp+&
+                      x(ixO^S,z_)**2.0_dp))) * w(ixO^S,phys_ind%rho_)
+
+                      f_profile(ixO^S,z_) = - (2.0_dp * alpha * x(ixO^S,z_) / &
+                      (x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)) * w(ixO^S,phys_ind%rho_)
+                      !call mpistop('the code arrives here !!! ')
+
+                  end where
+
+            case default
+              Loop_idim_default : do idims=1,ndim
+               where(self%patch(ixO^S))
+                 where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
+                  f_profile(ixO^S,idims) = 0.0_dp
+                 end where
+               end where
+              end do Loop_idim_default
+        end select
+
+      !if(ndim==1) then
+      !else
+      !TO DO
+      end if
+      ! restore the self%patch to its state before the call of this subroutine
+      ! self%patch(ixI^S)=patch_tosave(ixI^S)
+
+      divpv(ixI^S) = 0.0_dp
+      ! divpv(ixI^S) = rho * (Vec(grav) . Vec(v))
+      {^D&
+      divpv(ixI^S) =  divpv(ixI^S) + f_profile(ixO^S,^D) * w(ixI^S,phys_ind%mom(^D))
+      }
 
 
 
-      cond_density_fprofile : if(self%myconfig%profile_density_on) then
-       cond_fprofile_numerical : if(self%myconfig%profile_force_gradP_on)then
-
-        patch_tosave(ixI^S)=self%patch(ixI^S)
-        self%patch(ixI^S)  =.true.
-        call self%set_w(ixI^L, ixI^L,qt,x,w_init)
-        self%patch(ixI^S)=patch_tosave(ixI^S)
-
-        call phys_to_conserved(ixI^L,ixI^L,w_init,x)
-
-        w_tmp(ixI^S,1:nw) = w_init(ixI^S,1:nw)
-  !
-
-        if(phys_config%radiative_cooling)then
-          tmp_active=.false.
-          src_active=.false.
-          call radiative_cooling_add_source(qdt,ixI^L,ixI^L,w_init,w_tmp,x,&
-                                             src_active,tmp_active)
-        end if
-        call phys_get_pthermal(w_tmp,x,ixI^L,ixI^L,ptherm)
-        Loop_idir_force : do idims=1,ndim
-          call gradient(ptherm,ixI^L,ixO^L,idims,gradp)
-
-          where(self%patch(ixO^S))
-            f_profile(ixO^S,idims) = gradp(ixO^S)
-          end where
-          pv(ixI^S,idims) =  ptherm(ixI^S)*w(ixI^S,phys_ind%mom(idims))/w(ixI^S,phys_ind%rho_)
-        end do  Loop_idir_force
-        if(ndir>ndim)pv(ixI^S,ndim+1:ndir)=0.0_dp
-        call  divvector(pv,ixI^L,ixO^L,divpv)
-
-      else cond_fprofile_numerical
-
-        if(SI_unit) then
-          mp=mp_SI
-          kB=kB_SI
-        else
-          mp=mp_cgs
-          kB=kB_cgs
-        end if
-
-             !1> Compute analytical force
-             call self%set_profile_distance(ixI^L,ixO^L,x,d_profile)
-             !initiate the ism positions at current time step
-             !and the primitive state vector w_init, all previously to
-             !radiative cooling treatment
-
-             patch_tosave(ixI^S)=self%patch(ixI^S)
-             ! allow the following lines to be applied to the whole input
-             ! part of the grid in self%patch
-             self%patch(ixI^S)  =.true.
-             call self%set_w(ixI^L, ixI^L,qt,x,w_init)
-
-
-             w_tmp(ixI^S,1:nw) = w_init(ixI^S,1:nw)
 
 
 
-
-             if(ndim>1)then
-
-               select case(trim(self%myconfig%profile_density))
-                   case('Lee2001','Lee2001_floored')
-                      call usr_get_theta(ixI^L,ixO^L,x,theta_profile)
-
-                      select case(typeaxial)
-                       case('spherical')
-                         where(self%patch(ixO^S))
-                           where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-                            f_profile(ixO^S,r_) = -w(ixO^S,phys_ind%pressure_)/&
-                            d_profile(ixO^S)
-                            f_profile(ixO^S,theta_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
-                            (d_profile(ixO^S)*dtan(theta_profile(ixO^S)))
-                           end where
-                         end where
-                       case('cylindrical')
-                         where(self%patch(ixO^S))
-                           where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-                             f_profile(ixO^S,r_) = ((self%myconfig%density*&
-                             kB* self%myconfig%temperature/(self%myconfig%mean_mup*mp))*&
-                             self%myconfig%profile_rw**2.0_dp)*&
-                             (2*DABS(x(ixO^S,r_)) * (x(ixO^S,z_)**2.0_dp-x(ixO^S,r_)**2.0_dp))/&
-                             (x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)**4.0_dp
-                             !-4.0_dp*w(ixO^S,phys_ind%pressure_)*&
-                             !x(ixO^S,r_)/(x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)
-                             f_profile(ixO^S,z_) = - 6.0_dp * ((self%myconfig%density*&
-                             kB* self%myconfig%temperature/(self%myconfig%mean_mup*mp))*&
-                             self%myconfig%profile_rw**2.0_dp)*&
-                             x(ixO^S,r_)**2.0_dp*x(ixO^S,z_)/&
-                             (x(ixO^S,r_)**2.0_dp+x(ixO^S,z_)**2.0_dp)**4.0_dp
-                             !2.0_dp*w(ixO^S,phys_ind%pressure_)/&
-                             !x(ixO^S,z_)
-                           end where
-                         end where
-                       case('slab','slabstretch')
-                         where(self%patch(ixO^S))
-                           where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-                             f_profile(ixO^S,x_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
-                             x(ixO^S,x_)/(x(ixO^S,x_)**2.0_dp+x(ixO^S,y_)**2.0_dp)
-                             f_profile(ixO^S,y_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
-                             x(ixO^S,y_)
-                           end where
-                         end where
-                       case default
-                        call mpistop('Unknown geometry')
-                      end select
-
-                       if(trim(self%myconfig%profile_density)=='Lee2001_floored')then
-                        select case(typeaxial)
-                         case('spherical')
-                          where(self%patch(ixO^S))
-                           where(theta_profile(ixO^S)<=self%myconfig%theta_floored)
-                             f_profile(ixO^S,theta_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
-                             (d_profile(ixO^S)*dtan(self%myconfig%theta_floored))
-                           end where
-                          end where
-                         case('cylindrical')
-                          where(self%patch(ixO^S))
-                            where(theta_profile(ixO^S)<=self%myconfig%theta_floored)
-                              f_profile(ixO^S,r_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
-                              dcos(self%myconfig%theta_floored)/d_profile(ixO^S)
-                              f_profile(ixO^S,z_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
-                              (d_profile(ixO^S)*dsin(self%myconfig%theta_floored))
-                            end where
-                          end where
-                         case('slab','slabstretch')
-                           where(self%patch(ixO^S))
-                             where(theta_profile(ixO^S)<=self%myconfig%theta_floored)
-                               f_profile(ixO^S,x_) = -4.0_dp*w(ixO^S,phys_ind%pressure_)*&
-                               dcos(self%myconfig%theta_floored)/d_profile(ixO^S)
-                               f_profile(ixO^S,y_) = 2.0_dp*w(ixO^S,phys_ind%pressure_)/&
-                               (d_profile(ixO^S)*dsin(self%myconfig%theta_floored))
-                             end where
-                            end where
-                         case default
-                          call mpistop('Unknown geometry')
-                        end select
-                       end if
-
-                   case default
-                     Loop_idim_default : do idims=1,ndim
-                      where(self%patch(ixO^S))
-                        where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-                         f_profile(ixO^S,idims) = 0.0_dp
-                        end where
-                      end where
-                     end do Loop_idim_default
-               end select
-
-               !if ndim==1:
-               !else
-               !TO DO
-             end if
-             ! restore the self%patch to its state before the call of this subroutine
-             self%patch(ixI^S)=patch_tosave(ixI^S)
-
-      end if cond_fprofile_numerical
+    end if cond_fprofile_numerical
 
       if(self%myconfig%profile_force_with_grav)then
         where((DABS(x(ixO^S,r_))>self%myconfig%escapencells(r_)*&

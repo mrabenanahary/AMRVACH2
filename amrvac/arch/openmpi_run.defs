@@ -12,6 +12,6 @@ LINK77= $(F77)  $(F77FLAGS)
 
 F90_amrvac=$(F90)
 FFLAGS_amrvac = $(FFLAGS)
-F90FLAGS_amrvac = $(F90FLAGS) -fopenmp
+F90FLAGS_amrvac = $(F90FLAGS) -fopenmp -cpp
 LINK_amrvac= $(LINK)
 

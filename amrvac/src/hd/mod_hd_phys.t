@@ -24,6 +24,13 @@ module mod_hd_phys
   !> Whether viscosity is added
   logical, public, protected              :: hd_viscosity = .false.
 
+  !> Whether grackle chemistry is added
+  logical                   :: hd_use_grackle
+  integer                   :: hd_gr_primordial_chemistry
+  logical                   :: hd_gr_metal_cooling
+  logical                   :: hd_gr_dust_chemistry
+  logical                   :: hd_gr_with_radiative_cooling
+
   !> Whether gravity is added
   logical, public, protected              :: hd_gravity = .false.
 
@@ -48,6 +55,9 @@ module mod_hd_phys
   !> Indices of the momentum density
   integer, allocatable, public, protected :: mom(:)
 
+  !> Indices of grackle chemistry species
+  integer, allocatable, public, protected :: gr_species(:)
+
   !> Indices of the tracers
   integer, allocatable, public, protected :: tracer(:)
 
@@ -67,6 +77,7 @@ module mod_hd_phys
   !> The adiabatic constant
   real(dp), public                :: hd_adiab = 1.0_dp
 
+  logical, public                :: hd_isotherm_on = .false.
   !> The isotherm temperature constant
   real(dp), public                :: hd_temperature_isotherm = 1.0_dp
 
@@ -89,11 +100,13 @@ module mod_hd_phys
   logical, allocatable,target    :: hd_iw_average(:)
 
   type(physconfig),target,public                 :: hd_config
+  type(physconfig),target,public                 :: pre_hd_config
   type(phys_variables_indices),target,public     :: hd_ind
   ! for local use
   real(kind=dp), private         :: gamma_1
   ! Public methods
   public :: hd_phys_init
+  public :: hd_pre_read
   public :: hd_kin_en
   public :: hd_get_pthermal
   public :: hd_get_temperature
@@ -102,7 +115,30 @@ module mod_hd_phys
   public :: hd_small_values_floor
 contains
 
-  !> Read this module's parameters from a file
+subroutine hd_default_pre_config()
+
+      pre_hd_config%use_grackle          = .true.
+      ! check that energy is enabled when radiative cooling with grackle is enabled
+      pre_hd_config%energy               = .false.
+      pre_hd_config%isotherm_on               = .false.
+      pre_hd_config%temperature_isotherm = -1.d0
+      pre_hd_config%adiab                = 1.0_dp !P=c^2*rho^gamma = rho^gamma
+      pre_hd_config%gr_primordial_chemistry = 0
+      pre_hd_config%gr_metal_cooling     = .true.
+      pre_hd_config%gr_dust_chemistry    = .false.
+      pre_hd_config%gr_with_radiative_cooling = .false.
+      pre_hd_config%gamma             = 5.d0/3.d0
+      hd_use_grackle          = .true.
+      hd_gr_primordial_chemistry = 0
+      hd_gr_metal_cooling     = .true.
+      hd_gr_dust_chemistry    = .false.
+      hd_gamma    = 5.d0/3.d0
+
+      pre_phys_config => pre_hd_config
+
+end subroutine hd_default_pre_config
+
+  !> Read this module s parameters from a file
   subroutine hd_read_params(files)
     use mod_global_parameters
     character(len=*), intent(in) :: files(:)
@@ -114,7 +150,11 @@ contains
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
     hd_gravity, hd_gravity_hse, hd_gravity_hse_scheme,hd_use_gravity_g, &
     He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure,&
-    hd_chemical,hd_chemical_gas_type,hd_mean_mup_on,hd_temperature_isotherm
+    hd_chemical,hd_chemical_gas_type,hd_mean_mup_on,hd_temperature_isotherm,&
+    hd_use_grackle, hd_gr_primordial_chemistry, hd_gr_metal_cooling,&
+    hd_gr_with_radiative_cooling,&
+    hd_gr_dust_chemistry,hd_isotherm_on
+
     !---------------------------------------------------------
     error_message = 'At '//' mod_hd_phys.t'//'  in the procedure : hd_read_params'
     Loop_iparfile : do i_file = 1, size(files)
@@ -142,7 +182,112 @@ contains
 
   end subroutine hd_read_params
 
-  !> Write this module's parameters to a snapshot
+  subroutine hd_pre_read()
+    phys_pre_read_params => hd_pre_read_params
+    phys_default_pre_config => hd_default_pre_config
+  end subroutine hd_pre_read
+
+  subroutine hd_pre_read_params(files)
+    use mod_global_parameters
+    use mod_physics
+    character(len=*), intent(in) :: files(:)
+    integer                      :: i_file,i_reason
+    character(len=70)            :: error_message
+    !---------------------------------------------------------
+    namelist /hd_list/ hd_energy, hd_n_tracer, hd_unit_velocity, hd_unit_temperature, &
+    hd_gamma, hd_adiab, &
+    hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
+    hd_gravity, hd_gravity_hse, hd_gravity_hse_scheme,hd_use_gravity_g, &
+    He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure,&
+    hd_chemical,hd_chemical_gas_type,hd_mean_mup_on,hd_temperature_isotherm,&
+    hd_use_grackle, hd_gr_primordial_chemistry, hd_gr_metal_cooling,&
+    hd_gr_with_radiative_cooling,&
+    hd_gr_dust_chemistry,hd_isotherm_on
+
+    error_message = 'At '//' mod_hd_phys.t'//'  in the procedure : hd_pre_read_params'
+    Loop_iparfile : do i_file = 1, size(files)
+      open(unitpar, file=trim(files(i_file)), status="old")
+      read(unitpar, hd_list, iostat=i_reason)
+      cond_ierror : if(i_reason>0)then
+       write(*,*)' Error in pre reading the parameters file : ',trim(files(i_file))
+       write(*,*)' Error at namelist: ', 'hd_list'
+       write(*,*)' Error number = ',i_reason
+       write(*,*)' The code stops now '
+       call mpistop(trim(error_message))
+      elseif(i_reason<0)then cond_ierror
+       write(*,*)' Reache the end of the file  : ',trim(files(i_file))
+       write(*,*)' Error at namelist: hd_list'
+       write(*,*)' Error number = ',i_reason
+       write(*,*)' The code stops now '
+       call mpistop(trim(error_message))
+      else cond_ierror
+       write(*,*)' End of pre reading of the hd_list'
+      end if cond_ierror
+      close(unitpar)
+
+      !write(*,*) 'hd_use_grackle = ',hd_use_grackle
+      pre_hd_config%use_grackle          = hd_use_grackle
+      ! check that energy is enabled when radiative cooling with grackle is enabled
+      pre_hd_config%energy               = hd_energy
+      pre_hd_config%isotherm_on               = hd_isotherm_on
+      pre_hd_config%temperature_isotherm               = hd_temperature_isotherm
+      pre_hd_config%adiab                = hd_adiab
+      if(pre_hd_config%isotherm_on)then
+        if(pre_hd_config%energy)then
+        write(*,*) 'hd_energy=T & hd_isotherm_on=T,...'
+        call mpistop('.. but isothermal case incompatible with energy equation')
+        end if
+      end if
+      if(pre_hd_config%use_grackle)then
+        pre_hd_config%gr_primordial_chemistry = hd_gr_primordial_chemistry
+        pre_hd_config%gr_metal_cooling     = hd_gr_metal_cooling
+        pre_hd_config%gr_dust_chemistry    = hd_gr_dust_chemistry
+        pre_hd_config%gr_with_radiative_cooling = hd_gr_with_radiative_cooling
+        if(pre_hd_config%gr_with_radiative_cooling)then
+          if(.not.pre_hd_config%energy)then
+            write(*,*) 'hd_use_grackle=T with hd_gr_with_radiative_cooling=T, but hd_energy=F,...'
+            call mpistop('.. however, radiative cooling needs energy equation solving')
+          end if
+        end if
+      end if
+      pre_hd_config%gamma   = hd_gamma
+      !check that the if isotherm and no energy solved, then gamma=1
+
+      if(pre_hd_config%isotherm_on)then
+        if(dabs(pre_hd_config%gamma-1.0_dp)>smalldouble)then
+          write(*,*) 'pre_hd_config%gamma = ',pre_hd_config%gamma
+          call mpistop('Isothermal perfect gas but hd_gamma/=1')
+        else
+          write(*,*) '*********************************************************'
+          write(*,*) 'MPI-AMRVAC runs HD adiabatic isohermal run (no energy solved)'
+          write(*,*) 'with temperature = ',hd_config%temperature_isotherm*unit_temperature
+          write(*,*) 'and c_sound**2 = ',hd_config%adiab*(unit_velocity*unit_velocity)
+          write(*,*) '*********************************************************'
+        end if
+      else
+        if(.not.pre_hd_config%energy)then
+          write(*,*) '*********************************************************'
+          write(*,*) 'MPI-AMRVAC runs HD adiabatic non-isohermal run (gamma/=1)'
+          write(*,*) 'with parameters'
+          write(*,*) 'gamma =',pre_hd_config%gamma
+          write(*,*) 'and adiab =', pre_hd_config%adiab
+          write(*,*) '*********************************************************'
+        end if
+      end if
+
+
+
+
+      !write(*,*) 'pre_hd_config%use_grackle = ',pre_hd_config%use_grackle
+
+      pre_phys_config => pre_hd_config
+
+    end do Loop_iparfile
+
+
+  end subroutine hd_pre_read_params
+
+  !> Write this module s parameters to a snapshot
   subroutine hd_write_info(fh)
     use mod_global_parameters
     integer, intent(in)                 :: fh
@@ -238,6 +383,7 @@ contains
   hd_config%unit_temperature     = hd_unit_temperature
   hd_config%gamma                = hd_gamma
   hd_config%adiab                = hd_adiab
+  hd_config%isotherm_on          = hd_isotherm_on
   hd_config%temperature_isotherm = hd_temperature_isotherm
 
   gamma_1 = hd_config%gamma   - 1.0_dp
@@ -247,14 +393,32 @@ contains
     hd_config%small_energy       = hd_config%small_pressure/gamma_1
   end if
   hd_config%radiative_cooling    = hd_radiative_cooling
+  hd_config%use_grackle          = hd_use_grackle
+  hd_config%gr_primordial_chemistry = hd_gr_primordial_chemistry
+  hd_config%gr_metal_cooling     = hd_gr_metal_cooling
+  hd_config%gr_dust_chemistry    = hd_gr_dust_chemistry
+  hd_config%gr_with_radiative_cooling = hd_gr_with_radiative_cooling
   hd_config%thermal_conduction   = hd_thermal_conduction
   hd_config%viscosity            = hd_viscosity
   hd_config%particles            = hd_particles
 
   phys_energy                    = hd_config%energy
 
+  if(hd_config%isotherm_on)then
+    if(hd_config%energy)then
+      write(*,*) 'hd_energy=T & hd_isotherm_on=T,...'
+      call mpistop('.. but isothermal case incompatible with energy equation')
+    end if
+  end if
+  if(hd_config%isotherm_on)then
+    if(dabs(hd_config%gamma-1.0_dp)>smalldouble)then
+      call mpistop('Isothermal gas but hd_gamma/=1')
+    end if
+  end if
 
   end subroutine hd_phys_set_config
+
+
 
   subroutine hd_phys_to_phys
 
@@ -304,6 +468,7 @@ contains
     real(kind=dp)  :: mp,kB
     !------------------------------------------------------
     physics_type = "hd"
+    call phys_default_config(hd_config)
     call hd_read_params(par_files)
     call hd_phys_set_config()
     call hd_fill_phys_indices()
@@ -321,7 +486,7 @@ contains
     ! derive units from basic units
     call hd_physical_units
     !isotherm case
-    if(dabs(gamma_1)<smalldouble)then
+    if(hd_config%isotherm_on)then
       if(SI_unit) then
           mp=mp_SI
           kB=kB_SI
@@ -330,31 +495,54 @@ contains
           kB=kB_cgs
       end if
 
-      ! the adiab value set from temperature is gamma==1
-      if(hd_config%adiab<0)then
-        write(*,*) " mod_usr.t : non-physical hd_adiab < 0 set "
-        call mpistop(" .par parameter file : hd_list parameters uncorrect")
+      if(hd_config%temperature_isotherm>0)then
+        ! isotherm case : need to compute adiab = csound**2
+        hd_config%adiab = kB/(hd_config%mean_mup*mp)*hd_config%temperature_isotherm
+      elseif(hd_config%adiab>=0)then
+        ! isotherm case : need to compute isotherm temperature T
+        hd_config%temperature_isotherm = (hd_config%adiab/kB)*hd_config%mean_mup*mp
       end if
-       if(hd_config%temperature_isotherm>0)then
-            ! isotherm case : need to compute adiab = csound**2
-            hd_config%adiab = kB/(hd_config%mean_mup*mp)*hd_config%temperature_isotherm
-            ! normalise value for adiab
-            hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
-            ! normalise value for isotherm temperature
-            hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
 
-        elseif(hd_config%adiab>=0)then
-          ! isotherm case : need to compute isotherm temperature T
-          hd_config%temperature_isotherm = (hd_config%adiab/kB)*hd_config%mean_mup*mp
-          ! normalise value for isotherm temperature
-          hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
-          ! normalise value for adiab
-          hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
-        end if
+      ! normalise value for isotherm temperature
+      hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
+      ! normalise value for adiab
+      hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
 
-        ! save in local hd paramteres
-        hd_adiab= hd_config%adiab
-        hd_temperature_isotherm = hd_config%temperature_isotherm
+      ! save in local hd paramteres
+      hd_adiab= hd_config%adiab
+      hd_temperature_isotherm = hd_config%temperature_isotherm
+
+      if(hd_config%energy)then
+        write(*,*) 'hd_config%isotherm_on = T but hd_config%energy = T'
+        call mpistop('Isothermal gas : must have hd_config%isotherm_on=T,hd_config%energy=F')
+      end if
+
+      if(dabs(pre_hd_config%gamma-1.0_dp)>smalldouble)then
+        call mpistop('Isothermal gas but hd_gamma/=1')
+      else
+        write(*,*) '*********************************************************'
+        write(*,*) 'MPI-AMRVAC runs HD adiabatic isothermal run (no energy solved)'
+        write(*,*) 'with temperature = ',hd_config%temperature_isotherm*unit_temperature
+        write(*,*) 'and c_sound**2 = ',hd_config%adiab*(unit_velocity*unit_velocity)
+        write(*,*) '*********************************************************'
+      end if
+
+    else
+      if(.not.hd_config%energy)then
+        write(*,*) 'hd_config%isotherm_on = F but hd_config%energy = F'
+        call mpistop('Isothermal gas : must have hd_config%isotherm_on=T,hd_config%energy=F')
+      else
+        write(*,*) '*********************************************************'
+        write(*,*) 'MPI-AMRVAC runs HD run (gamma/=1) with energy solved'
+        write(*,*) 'temperature can be variable, and we have'
+        write(*,*) 'gamma =',hd_config%gamma
+        write(*,*) '*********************************************************'
+      end if
+    end if
+
+    if(hd_config%adiab<0)then
+      write(*,*) " mod_usr.t : non-physical hd_adiab < 0 set "
+      call mpistop(" .par parameter file : hd_list parameters uncorrect")
     end if
 
     if (hd_config%dust_on) call dust_init(hd_ind,hd_config,rho_, mom(:), e_)
@@ -683,6 +871,87 @@ contains
     hd_ind%mythetafield_ = var_set_extravar('theta', 'theta')
     hd_ind%mytheta_zero_ = var_set_extravar('thetazero', 'thetazero')
 
+
+    !>Grackle:
+
+    iw_HI_density = -1
+    iw_HII_density = -1
+    iw_HeI_density = -1
+    iw_HeII_density = -1
+    iw_HeIII_density = -1
+    iw_e_density = -1
+    iw_H2I_density = -1
+    iw_HM_density = -1
+    iw_H2II_density = -1
+    iw_DI_density = -1
+    iw_DII_density = -1
+    iw_HDI_density = -1
+    iw_metal_density = -1
+    iw_dust_density = -1
+
+    using_grackle : if(hd_config%use_grackle)then
+      prim_chem : if(hd_config%gr_primordial_chemistry>0.and.hd_config%gr_primordial_chemistry<=3)then
+        if(hd_config%gr_primordial_chemistry>=1)then
+          !six species: H, H+, He, He+, He++, e- (in this order)
+          iw_HI_density = var_set_extravar('HI', 'HI')
+          iw_HII_density = var_set_extravar('HII', 'HII')
+          iw_HeI_density = var_set_extravar('HeI', 'HeI')
+          iw_HeII_density = var_set_extravar('HeII', 'HeII')
+          iw_HeIII_density = var_set_extravar('HeIII', 'HeIII')
+          iw_e_density = var_set_extravar('electron_density', 'electron_density')
+          if(hd_config%gr_primordial_chemistry>=2)then
+            ! + 3 species : H2, H-, H2+ (in this order)
+            iw_H2I_density = var_set_extravar('H2I', 'H2I')
+            iw_HM_density = var_set_extravar('HM', 'HM')
+            iw_H2II_density = var_set_extravar('H2II', 'H2II')
+            if(hd_config%gr_primordial_chemistry>=3)then
+            ! + 3 species : D, D+, HD.
+              iw_DI_density = var_set_extravar('DI', 'DI')
+              iw_DII_density = var_set_extravar('DII', 'DII')
+              iw_HDI_density = var_set_extravar('HDI', 'HDI')
+            end if
+          end if
+        end if
+      elseif(hd_config%gr_primordial_chemistry==0)then
+        !DO NOTHING
+      else
+        write(*,*) 'Unknown primordial chemistry network'
+        call mpistop('You must set hd_gr_primordial_chemistry to  0,1,2 or 3!')
+      end if prim_chem
+      !metal cooling
+      if(hd_config%gr_metal_cooling)then
+        iw_metal_density = var_set_extravar('metal_density', 'metal_density')
+      end if
+      !dust chemistry
+      if(hd_config%gr_dust_chemistry)then
+        iw_dust_density = var_set_extravar('dust_density', 'dust_density')
+      end if
+    end if using_grackle
+
+
+    !six species: H, H+, He, He+, He++, e- (in this order)
+    hd_ind%HI_density_ = iw_HI_density
+    hd_ind%HII_density_ = iw_HII_density
+    hd_ind%HeI_density_ = iw_HeI_density
+    hd_ind%HeII_density_ = iw_HeII_density
+    hd_ind%HeIII_density_ = iw_HeIII_density
+    hd_ind%e_density_ = iw_e_density
+    ! + 3 species : H2, H-, H2+ (in this order)
+    hd_ind%H2I_density_ = iw_H2I_density
+    hd_ind%HM_density_ = iw_HM_density
+    hd_ind%H2II_density_ = iw_H2II_density
+    ! + 3 species : D, D+, HD.
+    hd_ind%DI_density_ = iw_DI_density
+    hd_ind%DII_density_ = iw_DII_density
+    hd_ind%HDI_density_ = iw_HDI_density
+    !metal cooling
+    hd_ind%metal_density_ = iw_metal_density
+    !dust chemistry
+    hd_ind%dust_density_ = iw_dust_density
+
+    !End of Grackle part
+
+
     if(hd_config%n_tracer>0)then
       allocate(hd_ind%tracer(hd_config%n_tracer))
       hd_ind%tracer(:) = tracer(:)
@@ -736,7 +1005,7 @@ end subroutine hd_get_aux
 
     if (.not. hd_config%energy) then
        if (hd_config%gamma <= 0.0_dp) call mpistop ("Error: hd_gamma <= 0")
-       if (hd_config%adiab <= 0.0_dp) call mpistop ("Error: hd_adiab <= 0")
+       if (hd_config%adiab < 0.0_dp) call mpistop ("Error: hd_adiab < 0")
        hd_config%small_pressure= hd_config%adiab*hd_config%small_density**hd_config%gamma
     else
        if (hd_config%gamma <= 0.0_dp .or. hd_config%gamma == 1.0_dp) &
@@ -1125,7 +1394,17 @@ end subroutine hd_get_aux
     real(dp), intent(out)        :: temperature(ixI^S)
     real(dp), dimension(ixI^S)   :: pth(ixI^S)
     logical , dimension(ixI^S)   :: patch_mult_mup
+    real(kind=dp)  :: mp,kB
     !----------------------------------------------------
+
+    if(SI_unit) then
+        mp=mp_SI
+        kB=kB_SI
+    else
+        mp=mp_cgs
+        kB=kB_cgs
+    end if
+
     if (hd_config%energy) then
       call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
       temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
@@ -1139,7 +1418,7 @@ end subroutine hd_get_aux
         end if
       end if
     else
-      Temperature(ixO^S) = hd_config%adiab!/phys_config%mean_mass
+      Temperature(ixO^S) = hd_config%temperature_isotherm !necessarilly isotherm
       if(hd_config%mean_mup_on)then
         patch_mult_mup(ixO^S) = dabs(w(ixO^S, phys_ind%mup_)-1.0_dp)>smalldouble &
              .or. w(ixO^S, phys_ind%mup_)>smalldouble

@@ -45,6 +45,21 @@ module mod_variables
   !> Index of the energy density
   integer, protected :: iw_e = -1
 
+  !> Grackle:
+  integer              :: iw_HI_density
+  integer              :: iw_HII_density
+  integer              :: iw_HeI_density
+  integer              :: iw_HeII_density
+  integer              :: iw_HeIII_density
+  integer              :: iw_e_density
+  integer              :: iw_H2I_density
+  integer              :: iw_HM_density
+  integer              :: iw_H2II_density
+  integer              :: iw_DI_density
+  integer              :: iw_DII_density
+  integer              :: iw_HDI_density
+  integer              :: iw_metal_density
+  integer              :: iw_dust_density
 
   !> Index of the gravity potential
   integer, protected :: iw_grav_phi = -1
@@ -93,8 +108,8 @@ contains
     iw      = nw
 
     if (.not. present(ix)) then
-      prim_wnames(iw) = name_cons
-      cons_wnames(iw) = name_prim
+      prim_wnames(iw) = name_prim
+      cons_wnames(iw) = name_cons
     else
       write(cons_wnames(iw),"(A,I0)") name_cons, ix
       write(prim_wnames(iw),"(A,I0)") name_prim, ix

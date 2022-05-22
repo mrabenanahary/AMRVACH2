@@ -33,6 +33,7 @@ module mod_physics
   !> Indicates dissipation should be omitted
   integer, parameter   :: flux_no_dissipation = 2
 
+
   logical,pointer :: phys_iw_average(:)
   type phys_variables_indices
     integer              :: rho_
@@ -49,6 +50,23 @@ module mod_physics
     integer, allocatable :: dust_rho(:)
     integer, allocatable :: dust_mom(:,:)
     integer, allocatable :: chemical_element(:)
+
+    !> Grackle:
+    integer              :: HI_density_
+    integer              :: HII_density_
+    integer              :: HeI_density_
+    integer              :: HeII_density_
+    integer              :: HeIII_density_
+    integer              :: e_density_
+    integer              :: H2I_density_
+    integer              :: HM_density_
+    integer              :: H2II_density_
+    integer              :: DI_density_
+    integer              :: DII_density_
+    integer              :: HDI_density_
+    integer              :: metal_density_
+    integer              :: dust_density_
+
 
     integer, allocatable :: epsinf_rho(:)
     integer, allocatable :: epsinf_rho0(:)
@@ -84,12 +102,18 @@ module mod_physics
     logical                   :: energy
     real(dp)                  :: gamma
     real(dp)                  :: adiab
+    logical                   :: isotherm_on
     real(dp)                  :: temperature_isotherm
     logical                   :: eos
     logical                   :: thermal_conduction
     logical                   :: radiative_cooling
     logical                   :: viscosity
     logical                   :: particles
+    logical                   :: use_grackle
+    integer                   :: gr_primordial_chemistry
+    logical                   :: gr_metal_cooling
+    logical                   :: gr_dust_chemistry
+    logical                   :: gr_with_radiative_cooling
     character(len=30)         :: chemical_gas_type
     real(dp)                  :: He_abundance
     real(dp)                  :: mean_mass
@@ -183,6 +207,7 @@ module mod_physics
   end type physconfig
 
   type(physconfig), pointer   :: phys_config
+  type(physconfig), public,pointer   :: pre_phys_config
 
   procedure(sub_activate), pointer        :: phys_activate             => null()
   procedure(sub_check_params), pointer    :: phys_check_params         => null()
@@ -209,6 +234,8 @@ module mod_physics
   procedure(sub_fill_chemical_ionisation), pointer :: phys_fill_chemical_ionisation => null()
   procedure(sub_get_4u_from_3v), pointer  :: phys_get_4u_from_3v       => null()
   procedure(sub_get_3v_from_4u), pointer  :: phys_get_3v_from_4u       => null()
+  procedure(sub_default_pre_config), pointer  :: phys_default_pre_config       => null()
+  procedure(sub_pre_read_params), pointer :: phys_pre_read_params      => null()
   abstract interface
 
 
@@ -417,92 +444,112 @@ module mod_physics
       real(kind=dp)   , intent(in)    :: lfac(ixI^S)
       real(kind=dp)   , intent(inout) :: vtou(ixI^S,1:ndir)
      end subroutine sub_get_3v_from_4u
+
+     subroutine sub_default_pre_config()
+     end subroutine sub_default_pre_config
+
+     subroutine sub_pre_read_params(files)
+       use mod_global_parameters
+       character(len=*), intent(in) :: files(:)
+       integer                      :: i_file,i_reason
+       character(len=70)            :: error_message
+     end subroutine sub_pre_read_params
   end interface
+
+
 
 contains
 
-  subroutine phys_default_config
+  subroutine phys_default_config(my_phys_config)
+    type(physconfig)   :: my_phys_config
 
-        phys_config%ismhd                 = .false.
-        phys_config%isrel                 = .false.
-        phys_config%SI_unit               = .false.
+        my_phys_config%ismhd                 = .false.
+        my_phys_config%isrel                 = .false.
+        my_phys_config%SI_unit               = .false.
 
-        phys_config%dust_on               = .false.
-        phys_config%dust_n_species        = 0
-        phys_config%dust_small_density    = -1.0_dp
+        my_phys_config%dust_on               = .false.
+        my_phys_config%dust_n_species        = 0
+        my_phys_config%dust_small_density    = -1.0_dp
 
-        phys_config%energy               = .true.
-        phys_config%gamma                = 5.d0/3.0d0
-        phys_config%adiab                = 1.0_dp
-        phys_config%temperature_isotherm = -1.0_dp
-        phys_config%eos                  = .false.
-        phys_config%thermal_conduction   = .false.
-        phys_config%radiative_cooling    = .false.
-        phys_config%viscosity            = .false.
-        phys_config%particles            = .false.
-        phys_config%He_abundance         = 0.1_dp
+        my_phys_config%energy               = .true.
+        my_phys_config%gamma                = 5.d0/3.0d0
+        my_phys_config%adiab                = 1.0_dp
+        my_phys_config%isotherm_on          = .false.
+        my_phys_config%temperature_isotherm = -1.0_dp
+        my_phys_config%eos                  = .false.
+        my_phys_config%thermal_conduction   = .false.
+        my_phys_config%radiative_cooling    = .false.
+        my_phys_config%viscosity            = .false.
+        my_phys_config%particles            = .false.
+        my_phys_config%use_grackle          = .true.
+        my_phys_config%gr_primordial_chemistry = 0
+        my_phys_config%gr_metal_cooling     = .true.
+        my_phys_config%gr_dust_chemistry    = .false.
+        my_phys_config%gr_with_radiative_cooling = .false.
+        my_phys_config%He_abundance         = 0.1_dp
 
 
-        phys_config%cool_saveL           = .false.
-        phys_config%cool_savedT          = .false.
-        phys_config%cool_npoint          = 4000
-        phys_config%cool_curve           = 'JCcorona'
-        phys_config%cool_method          = 'exact'
-        phys_config%cool_cfrac           = 0.1_dp
-        phys_config%cool_tlow            = bigdouble
-        phys_config%cool_Tfix            = .false.
-        phys_config%cool_saveL           = .false.
-        phys_config%cool_savedT          = .false.
-        phys_config%cool_fn              = 1.0d-3
-        phys_config%tracer_on            = .false.
-        phys_config%n_tracer             = 0
-        phys_config%unit_velocity        = 1.0_dp
-        phys_config%unit_temperature     = 1.0_dp
+        my_phys_config%cool_saveL           = .false.
+        my_phys_config%cool_savedT          = .false.
+        my_phys_config%cool_npoint          = 4000
+        my_phys_config%cool_curve           = 'JCcorona'
+        my_phys_config%cool_method          = 'exact'
+        my_phys_config%cool_cfrac           = 0.1_dp
+        my_phys_config%cool_tlow            = bigdouble
+        my_phys_config%cool_Tfix            = .false.
+        my_phys_config%cool_saveL           = .false.
+        my_phys_config%cool_savedT          = .false.
+        my_phys_config%cool_fn              = 1.0d-3
+        my_phys_config%tracer_on            = .false.
+        my_phys_config%n_tracer             = 0
+        my_phys_config%unit_velocity        = 1.0_dp
+        my_phys_config%unit_temperature     = 1.0_dp
 
-        phys_config%small_density        = 0.0_dp
-        phys_config%small_pressure       = 0.0_dp
-        phys_config%small_energy         = 0.0_dp
-        phys_config%small_v2             = 0.0_dp
-        phys_config%small_xi             = 0.0_dp
+        my_phys_config%small_density        = 0.0_dp
+        my_phys_config%small_pressure       = 0.0_dp
+        my_phys_config%small_energy         = 0.0_dp
+        my_phys_config%small_v2             = 0.0_dp
+        my_phys_config%small_xi             = 0.0_dp
 
-        phys_config%nwwave               = 5
-        phys_config%is4th_order          = .false.
-        phys_config%compactres           = .false.
-        phys_config%B0field_forcefree    = .false.
-        phys_config%typedivbfix          = 'linde'
-        phys_config%type_divb            = 1
-        phys_config%typedivbdiff         = 'all'
-        phys_config%source_split_divb    = .false.
-        phys_config%divbwave             = .true.
-        phys_config%glm                  = .false.
+        my_phys_config%nwwave               = 5
+        my_phys_config%is4th_order          = .false.
+        my_phys_config%compactres           = .false.
+        my_phys_config%B0field_forcefree    = .false.
+        my_phys_config%typedivbfix          = 'linde'
+        my_phys_config%type_divb            = 1
+        my_phys_config%typedivbdiff         = 'all'
+        my_phys_config%source_split_divb    = .false.
+        my_phys_config%divbwave             = .true.
+        my_phys_config%glm                  = .false.
 
-        phys_config%Hall                 = .false.
-        phys_config%eta                  = 0.0_dp
-        phys_config%eta_hyper            = 0.0_dp
-        phys_config%etah                 = 0.0_dp
-        phys_config%glm_alpha            = 0.5_dp
+        my_phys_config%Hall                 = .false.
+        my_phys_config%eta                  = 0.0_dp
+        my_phys_config%eta_hyper            = 0.0_dp
+        my_phys_config%etah                 = 0.0_dp
+        my_phys_config%glm_alpha            = 0.5_dp
 
-        phys_config%magnetofriction      = .false.
+        my_phys_config%magnetofriction      = .false.
 
-        phys_config%maxiterationNR       = 1000
-        phys_config%absaccNR             = 1.0d-12
-        phys_config%tolerNr              = 1.0d-9
-        phys_config%checkNR              = .true.
-        phys_config%maxdspeed            = 1.0d-9
-        phys_config%maxspeed             = 1.0_dp-phys_config%maxdspeed
-        phys_config%boundary_divbfix     = .true.
-        phys_config%boundary_divbfix_skip= 0
+        my_phys_config%maxiterationNR       = 1000
+        my_phys_config%absaccNR             = 1.0d-12
+        my_phys_config%tolerNr              = 1.0d-9
+        my_phys_config%checkNR              = .true.
+        my_phys_config%maxdspeed            = 1.0d-9
+        my_phys_config%maxspeed             = 1.0_dp-my_phys_config%maxdspeed
+        my_phys_config%boundary_divbfix     = .true.
+        my_phys_config%boundary_divbfix_skip= 0
 
-        phys_config%chemical_on          = .false.
-        phys_config%chemical_n_species   = 0
-        phys_config%chemical_small_density = 0.0_dp
+        my_phys_config%chemical_on          = .false.
+        my_phys_config%chemical_n_species   = 0
+        my_phys_config%chemical_small_density = 0.0_dp
 
-        phys_config%gravity              = .false.
+        my_phys_config%gravity              = .false.
         !> Whether gravity hydrostatic equilibrum improvement is enabled whereas gravity is enabled
-        phys_config%gravity_hse          = .false.
-        phys_config%gravity_hse_scheme   = 'zerothorder'
-        phys_config%use_gravity_g        = .false.
+        my_phys_config%gravity_hse          = .false.
+        my_phys_config%gravity_hse_scheme   = 'zerothorder'
+        my_phys_config%use_gravity_g        = .false.
   end subroutine phys_default_config
+
 
 
 

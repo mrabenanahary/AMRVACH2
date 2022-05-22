@@ -10,6 +10,8 @@ module mod_usr
   use mod_obj_sn_remnant
   use mod_obj_usr_unit
   use mod_obj_cla_jet
+  use mod_grackle_parameters
+  use mod_grackle_chemistry
   implicit none
   save
   real(dp) :: theta, kx, ly, vc
@@ -20,6 +22,7 @@ module mod_usr
     logical           :: profile_use_hse
     logical           :: cloud_on
     logical           :: jet_yso_on
+    logical           :: grackle_chemistry_on
     logical           :: ism_list_diff
     logical           :: cloud_list_diff
     logical           :: reset_medium
@@ -59,16 +62,21 @@ module mod_usr
   real(dp) :: SUM_MASS   = 0.0_dp
   real(dp) :: SUM_VOLUME = 0.0_dp
 
-  !add type for fluxes here
+  ! add type for fluxes here
+  ! Objects
   type (ISM),allocatable,target      :: ism_surround(:)
   type (cloud),allocatable,target    :: cloud_medium(:)
   type (cla_jet),allocatable,target  :: jet_yso(:)
+  type(gr_objects)                   :: grackle_object
+  type(grackle_type)                 :: grackle_structure
+  !Default objects
   type (ISM),target                  :: ism_default
   type (cloud),target                :: cloud_default
   type (cla_jet),target              :: jet_yso_default
+  type (physconfig),target           :: pre_phys_config_default
   type (dust),target                 :: dust_mialy
   type (dust),allocatable,target     :: the_dust_inuse(:)
-
+  type(gr_objects)                   :: grackle_default
   !type(star) :: star_ms
   !type(star) :: sun
 
@@ -97,7 +105,7 @@ contains
     ! --> initialize_vars() (Initialize (and allocate) simulation and grid variables)
     ! --> bc_data_init()+read_data_init() (Possibly load boundary condition data or initial data)
     ! --> usr_set_parameters (THIS PROCEDURE)
-    usr_init_one_grid   => initonegrid_usr
+    usr_init_one_grid   => initonegrid_usr !> order of call : 3
     usr_special_bc      => specialbound_usr
     usr_aux_output      => specialvar_output
     usr_add_aux_names   => specialvarnames_output
@@ -132,6 +140,9 @@ contains
     ! since jet_yso has no bc, no need here to
     ! also set jet_yso_default%myboundaries%myconfig which does not exist
     call jet_yso_default%set_default !>mod_obj_cla_jet.t
+
+    ! set default values for grackle configuration
+    call grackle_default%set_default_config !>mod_grackle_chemistry
 
     ! read .par parameters for ISMs, then, clouds, then jets
     call usr_params_read(par_files) ! >mod_obj_usr_yso_jet.t
@@ -923,6 +934,7 @@ contains
     usrconfig%profile_use_hse               = .false.
     usrconfig%cloud_on                      = .false.
     usrconfig%jet_yso_on                    = .false.
+    usrconfig%grackle_chemistry_on          = .true.
     usrconfig%cloud_number                  = 1
     usrconfig%ism_number                    = 1
     usrconfig%jet_yso_number                = 1
@@ -961,6 +973,7 @@ contains
   !------------------------------------------------------------------
   !> Read this module s parameters from a file
   subroutine usr_params_read(files)
+    use mod_hd, only : link_hd_pre_phys
     character(len=*), intent(in) :: files(:)
     ! .. local ..
     integer                      :: i_file,i_reason
@@ -993,6 +1006,27 @@ contains
     end do Loop_ifile
 
 
+    ! Must pre-default and rpre-ead mhd/hd_params
+    ! first for Grackle configuration
+    select case(trim(usrconfig%phys_inuse))
+    case('hd')
+     call link_hd_pre_phys()
+    case('mhd')
+     call link_hd_pre_phys()
+    end select
+    call phys_default_pre_config()
+    call phys_pre_read_params(files)
+
+    !link which treatment is made of energy and temperature
+    usrconfig%phys_isotherm_on = pre_phys_config%isotherm_on
+    usrconfig%phys_temperature_isotherm = pre_phys_config%temperature_isotherm
+    usrconfig%phys_adiab = pre_phys_config%adiab
+    !end : link which treatment is made of energy and temperature
+
+
+    !>Link mod_hd use_grackle answer to usrconfig%grackle_chemistry_on:
+    usrconfig%grackle_chemistry_on = pre_phys_config%use_grackle
+    write(*,*) 'usrconfig%grackle_chemistry_on = ',usrconfig%grackle_chemistry_on
 
 
     !1) Read user-defined physical units
@@ -1015,6 +1049,10 @@ contains
        ism_surround(i_ism)%myconfig%myindice=i_ism
        call ism_surround(i_ism)%read_parameters(ism_surround(i_ism)%myconfig,files)
       end do Loop_allism
+    else
+      if(usrconfig%ism_number>0)then
+        usrconfig%ism_number = 0
+      end if
     end if
 
     !3) If cloud on, set all usr clouds parameters to their default values
@@ -1028,6 +1066,10 @@ contains
        !cloud_medium(i_cloud)%myboundaries%myconfig = cloud_default%myboundary%myconfig
        call cloud_medium(i_cloud)%read_parameters(files,cloud_medium(i_cloud)%myconfig)
       end do Loop_allcloud
+    else
+      if(usrconfig%cloud_number>0)then
+        usrconfig%cloud_number = 0
+      end if
     end if
 
     !4) If jet on, set all usr jets parameters to their default values
@@ -1042,7 +1084,94 @@ contains
 
        call jet_yso(i_jet_yso)%read_parameters(files,jet_yso(i_jet_yso)%myconfig)
      end do Loop_alljetagn
+   else
+    if(usrconfig%jet_yso_number>0)then
+     usrconfig%jet_yso_number = 0
     end if
+  end if
+
+  !5) If grackle_chemistry_on on, set all usr grackle config parameters to their default values
+  ! and then read their user-defined parameters
+  if(usrconfig%grackle_chemistry_on)then
+
+    !i)
+    grackle_object%myconfig%use_grackle = 0
+
+    grackle_object%myconfig          = grackle_default%myconfig
+    grackle_object%myparams          = grackle_default%myparams
+    allocate(tstst(4))
+    call grackle_object%read_parameters(grackle_object%myconfig,files)
+
+    !>Link mod_hd answers (phys_config%gr_primordial_chemistry,phys_config%gr_metal_cooling
+    ! phys_config%gr_dust_chemistry,phys_config%gr_with_radiative_cooling) to grackle_object%myconfig:
+
+    !ii)
+    write(*,*) 'pre_phys_config%gr_primordial_chemistry = ',pre_phys_config%gr_primordial_chemistry
+    grackle_object%myconfig%gr_primordial_chemistry = pre_phys_config%gr_primordial_chemistry
+
+    !iii)
+    if(pre_phys_config%gr_with_radiative_cooling)then
+      grackle_object%myconfig%gr_with_radiative_cooling = 1
+    else
+      grackle_object%myconfig%gr_with_radiative_cooling = 0
+    end if
+
+    !iv)
+    if(pre_phys_config%gr_metal_cooling)then
+      grackle_object%myconfig%gr_metal_cooling = 1
+    else
+      grackle_object%myconfig%gr_metal_cooling = 0
+    end if
+
+    !v)
+    if(pre_phys_config%gr_dust_chemistry)then
+      grackle_object%myconfig%gr_dust_chemistry = 1
+    else
+      grackle_object%myconfig%gr_dust_chemistry = 0
+    end if
+
+
+    ! Gamma of grackle defined from hd_list->hd_gamma:
+    grackle_object%myconfig%gr_gamma = pre_phys_config%gamma
+    write(*,*) 'grackle_object%myconfig%gr_gamma = ', grackle_object%myconfig%gr_gamma
+
+    write(*,*) 'grackle_object%myconfig%use_grackle : ', grackle_object%myconfig%use_grackle
+    write(*,*) 'grackle_object%myconfig%gr_primordial_chemistry : ', grackle_object%myconfig%gr_primordial_chemistry
+    write(*,*) 'grackle_object%myconfig%gr_metal_cooling : ', grackle_object%myconfig%gr_metal_cooling
+    write(*,*) 'grackle_object%myconfig%gr_dust_chemistry : ', grackle_object%myconfig%gr_dust_chemistry
+
+
+    write(*,*) 'Test use_grackle == 0 : ',grackle_object%myconfig%use_grackle
+
+    call grackle_object%allocate_fields_parameters(usrconfig%ism_number,usrconfig%jet_yso_number,usrconfig%cloud_number)
+    write(*,*) 'Number of elements:'
+    write(*,*) '> ISM:',usrconfig%ism_number
+    write(*,*) '> Jet:',usrconfig%jet_yso_number
+    write(*,*) '> Cloud:',usrconfig%cloud_number
+    write(*,*) '> Total:',usrconfig%ism_number+usrconfig%jet_yso_number+usrconfig%cloud_number
+    write(*,*) 'Size of grackle fields parameters arrays'
+    write(*,*) '(grackle_object%myparams%number_of_objects):', grackle_object%myparams%number_of_objects
+
+    call grackle_object%set_fields_default(usrconfig%ism_on,usrconfig%jet_yso_on,usrconfig%cloud_on)
+
+    write(*,*) 'Test gr_H2I_density == 2.0 : ', gr_H2I_density
+    write(*,*) 'Test gr_patches_name == ism,jet, or cloud : ', gr_patches_name
+
+    call grackle_object%read_fields_parameters(files)
+
+    write(*,*) 'Test gr_patches_name == ism,jet, or cloud : ', gr_patches_name
+    write(*,*) 'Test gr_patches_name == ism_uniform,jet_uniform, or cloud_uniform : ', gr_density_method
+
+    ! do the following in the source adding subroutine to save performance and memory:
+    !iresult = set_default_chemistry_parameters(gr_struct%grackle_data)
+    !write(*,*) 'Grackle structure configuration defaulting successfully done !'
+   else
+    grackle_object%myconfig%use_grackle = 0
+    grackle_object%myconfig%gr_with_radiative_cooling = 0
+    grackle_object%myconfig%gr_primordial_chemistry = 0
+    grackle_object%myconfig%gr_metal_cooling = 0
+    grackle_object%myconfig%gr_dust_chemistry = 0
+   end if
   end subroutine usr_params_read
 
   !> subroutine to clean memory at the end
@@ -1178,340 +1307,195 @@ contains
    usrconfig%temperature_max = usrconfig%temperature_max/usr_physunit%myconfig%temperature
    cond_iso : if(.not.phys_config%energy) then
       usrconfig%phys_adiab = usrconfig%phys_adiab/usr_physunit%myconfig%velocity**2.0_dp
-      usrconfig%phys_temperature_isotherm = usrconfig%phys_temperature_isotherm &
-         / usr_physunit%myconfig%temperature
-     PRINT*,' is the same ',phys_config%adiab,usrconfig%phys_adiab
-      if(dabs(phys_config%adiab*phys_config%unit_velocity**2.0_dp-&
-      usrconfig%phys_adiab*unit_velocity**2.0_dp)>smalldouble)then
-        write(*,*) 'the constant adiab is not well set in phys or at user site:'
-        write(*,*) 'phys_config%adiab = ', phys_config%adiab*&
-        usr_physunit%myconfig%velocity**2.0_dp
-        write(*,*) 'usr_config%adiab = ', usrconfig%phys_adiab*&
-        phys_config%unit_velocity**2.0_dp
-        write(*,*) 'phys_config%temperature_isotherm = ', phys_config%temperature_isotherm*&
-        phys_config%unit_temperature
-        write(*,*) 'usrconfig%phys_temperature_isotherm = ', usrconfig%phys_temperature_isotherm*&
-        usr_physunit%myconfig%temperature
-        write(*,*) ' mod_usr.t : mean_mup = ', phys_config%mean_mup
-      end if
-      phys_config%adiab = usrconfig%phys_adiab
+      usrconfig%phys_temperature_isotherm = usrconfig%phys_temperature_isotherm / &
+          usr_physunit%myconfig%temperature
    end if cond_iso
   end subroutine usr_normalise_parameters
 
 
 !-------------------------------------------------------------------------
-  subroutine initglobaldata_usr
-   use mod_variables
-   use mod_obj_chemistry
-   implicit none
-   ! .. local ..
-   integer        :: i_cloud,i_ism,i_jet_yso,n_objects,n_object_w_dust
-   real(kind=dp)  :: mp,kB
-   !------------------------------------
-   !/
-
-   call test_chemistry()
- !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
- !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-
- !     Create a grackle chemistry object for parameters and set defaults
-
-       iresult = set_default_chemistry_parameters(grackle_data)
-
- !     Set parameters
-
-       grackle_data%use_grackle = 1            ! chemistry on
-
-       PRINT*, 'on est arrive jusqu ici 1 '
-
- !     Set parameters
-
-       grackle_data%use_grackle = 1            ! chemistry on
-       grackle_data%with_radiative_cooling = 1 ! cooling on
-       grackle_data%primordial_chemistry = 3   ! network with H, He, D
-       grackle_data%dust_chemistry = 1         ! dust processes
-       grackle_data%metal_cooling = 1          ! metal cooling on
-       grackle_data%UVbackground = 1           ! UV background on
- !     cooling data for Haardt & Madau 2012 background
-       filename = "input/CloudyData_UVB=HM2012.h5"//C_NULL_CHAR
-       grackle_data%grackle_data_file = C_LOC(filename(1:1))
-       grackle_data%h2_on_dust = 0             ! no dust
-       grackle_data%cmb_temperature_floor = 1  ! include CMB cooling floor
-       grackle_data%Gamma = 5./3.;          ! monoatomic gas
-
- !     Set units
-
-       my_units%comoving_coordinates = 0
-       my_units%density_units = 1.67d-24
-       my_units%length_units = 1.0d0
-       my_units%time_units = 1.0d12
-       my_units%a_units = 1.0d0
-
- !     Set initial expansion factor (for internal units).
- !     Set expansion factor to 1 for non-cosmological simulation.
-       initial_redshift = 0.;
-       my_units%a_value = 1. / (1. + initial_redshift);
-
-       PRINT*, 'on est arrive jusqu ici 2 '
-
-       call set_velocity_units(my_units)
-
- !     Initialize the Grackle
-
-       write(6,*) "primordial_chemistry:", &
-           grackle_data%primordial_chemistry
-       write(6,*) "metal_cooling:", &
-           grackle_data%metal_cooling
-       iresult = initialize_chemistry_data(my_units)
-
- !     Set field arrays
-
- !     If grid rank is less than 3, set the other dimensions,
- !     start indices, and end indices to 0.
-       grid_rank = 3
-       do i = 1, grid_rank
-          grid_dimension(i) = 1
-          grid_start(i) = 0
-          grid_end(i) = 0
-       enddo
-       grid_dx = 0.0
-       grid_dimension(1) = field_size
- !     0-based
-       grid_end(1) = field_size - 1
-
-       temperature_units = get_temperature_units(my_units)
-
-       do i = 1,field_size
-          density(i) = 1.0
-          HI_density(i) = fH * density(i)
-          HII_density(i) = tiny_number * density(i)
-          HM_density(i) = tiny_number * density(i)
-          HeI_density(i) = (1.0 - fH) * density(i)
-          HeII_density(i) = tiny_number * density(i)
-          HeIII_density(i) = tiny_number * density(i)
-          H2I_density(i) = tiny_number * density(i)
-          H2II_density(i) = tiny_number * density(i)
-          DI_density(i) = 2.0 * 3.4e-5 * density(i)
-          DII_density(i) = tiny_number * density(i)
-          HDI_density(i) = tiny_number * density(i)
-          e_density(i) = tiny_number * density(i)
- !        solar metallicity
-          metal_density(i) = grackle_data%SolarMetalFractionByMass * &
-              density(i)
-          dust_density_ch(i) = grackle_data%local_dust_to_gas_ratio * &
-              density(i)
-
-          x_velocity(i) = 0.0
-          y_velocity(i) = 0.0
-          z_velocity(i) = 0.0
-
- !        initilize internal energy (here 1000 K for no reason)
-          energy(i) = 1000. / temperature_units
-
-          volumetric_heating_rate(i) = 0.0
-          specific_heating_rate(i) = 0.0
-          RT_HI_ionization_rate(i) = 0.0
-          RT_HeI_ionization_rate(i) = 0.0
-          RT_HeII_ionization_rate(i) = 0.0
-          RT_H2_dissociation_rate(i) = 0.0
-          RT_heating_rate(i) = 0.0
-       enddo
- !
- !     Fill in structure to be passed to Grackle
- !
-       my_fields%grid_rank = 1
-       my_fields%grid_dimension = C_LOC(grid_dimension)
-       my_fields%grid_start = C_LOC(grid_start)
-       my_fields%grid_end = C_LOC(grid_end)
-       my_fields%grid_dx  = grid_dx
-
-       my_fields%density = C_LOC(density)
-       my_fields%HI_density = C_LOC(HI_density)
-       my_fields%HII_density = C_LOC(HII_density)
-       my_fields%HM_density = C_LOC(HM_density)
-       my_fields%HeI_density = C_LOC(HeI_density)
-       my_fields%HeII_density = C_LOC(HeII_density)
-       my_fields%HeIII_density = C_LOC(HeIII_density)
-       my_fields%H2I_density = C_LOC(H2I_density)
-       my_fields%H2II_density = C_LOC(H2II_density)
-       my_fields%DI_density = C_LOC(DI_density)
-       my_fields%DII_density = C_LOC(DII_density)
-       my_fields%HDI_density = C_LOC(HDI_density)
-       my_fields%e_density = C_LOC(e_density)
-       my_fields%metal_density = C_LOC(metal_density)
-       my_fields%internal_energy = C_LOC(energy)
-       my_fields%x_velocity = C_LOC(x_velocity)
-       my_fields%y_velocity = C_LOC(y_velocity)
-       my_fields%z_velocity = C_LOC(z_velocity)
-       my_fields%volumetric_heating_rate = &
-                                      C_LOC(volumetric_heating_rate)
-       my_fields%specific_heating_rate = C_LOC(specific_heating_rate)
-       my_fields%RT_HI_ionization_rate = C_LOC(RT_HI_ionization_rate)
-       my_fields%RT_HeI_ionization_rate = C_LOC(RT_HeI_ionization_rate)
-       my_fields%RT_HeII_ionization_rate = &
-                                        C_LOC(RT_HeII_ionization_rate)
-       my_fields%RT_H2_dissociation_rate = C_LOC(RT_H2_dissociation_rate)
-       my_fields%RT_heating_rate = C_LOC(RT_heating_rate)
-
- !
- !     Calling the chemistry solver
- !     These routines can now be called during the simulation.
-
- !     Evolving the chemistry.
-
-       dtchem = 3.15e7 * 1e6 / my_units%time_units    ! some timestep
-
-       !write(*,*) 'HI density before (local,global):',my_fields%density, density
-       iresult = solve_chemistry(my_units, my_fields, dtchem)
-       !write(*,*) 'HI density after (local,global):' ,my_fields%density, density
-
- !     Calculate cooling time.
-
-       iresult = calculate_cooling_time(my_units, my_fields,cooling_time)
-       write(*,*) "Cooling time = ", (cooling_time(1) * &
-           my_units%time_units), "s."
-
- !     Calculate temperature.
-
-       iresult = calculate_temperature(my_units, my_fields, temperature)
-       write(*,*) "Temperature = ", temperature(1), "K."
-
- !     Calcualte pressure.
-
-       pressure_units = my_units%density_units * &
-           my_units%velocity_units**2
-       iresult = calculate_pressure(my_units, my_fields, pressure)
-       write(*,*) "Pressure = ", pressure(1)*pressure_units, "dyne/cm^2."
-
- !     Calculate gamma.
-
-       iresult = calculate_gamma(my_units, my_fields, gamma)
-       write(*,*) "Gamma = ", gamma(1)
-
- !     Calculate dust temperature.
-
-       iresult = calculate_dust_temperature(my_units, my_fields,&
-           dust_temperature)
-       write(*,*) "Dust temperature = ", dust_temperature(1), "K."
-
- !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-
-    n_objects       = 0
-    n_object_w_dust = 0
-    itr             = 1
-
-    ! complet usr configuration
-    cond_isotherm_0 : if(usrconfig%phys_isotherm_on)then
-      if(SI_unit) then
-        mp=mp_SI
-        kB=kB_SI
-      else
-        mp=mp_cgs
-        kB=kB_cgs
-      end if
+subroutine initglobaldata_usr
+ use mod_variables
+ implicit none
+ ! .. local ..
+ integer        :: i_cloud,i_ism,i_jet_yso,n_objects,n_object_w_dust
+ real(kind=dp)  :: mp,kB
+ type(gr_objects) :: gr_obj
+ !------------------------------------
+ !/
 
 
 
-      cond_gamma_1 : if(dabs(phys_config%gamma-1.0_dp)<smalldouble) then
-        if(usrconfig%phys_temperature_isotherm>0.0_dp) then
-          usrconfig%phys_adiab = kB/(phys_config%mean_mup*mp)*usrconfig%phys_temperature_isotherm
-        elseif(usrconfig%phys_adiab>0.0_dp)then
-          usrconfig%phys_temperature_isotherm = usrconfig%phys_adiab*phys_config%mean_mup*mp/kB
-        !else
-          !write(*,*) 'It stops at the mod_usr_yso_jet.t at initglobaldata_usr'
-          !call mpistop('the phys_temperature_isotherm or phys_adiab should be set')
-        end if
-      end if cond_gamma_1
+ call gr_obj%test_chemistry('mod_usr_yso_jet : initglobaldata_usr => usr_set_parameters')
 
-    end if cond_isotherm_0
-   ! complet ism parameters
-   if(usrconfig%ism_on)then
-    Loop_isms : do i_ism=0,usrconfig%ism_number-1
-     ism_surround(i_ism)%myconfig%itr=itr
-     if(ism_surround(i_ism)%myconfig%Mach_number_tomov_obj>0.0_dp) then
-       if(usrconfig%jet_yso_on.and.usrconfig%ind_jet_associate_ism>=0)then
-        ism_surround(i_ism)%myconfig%velocity_ofmov_obj=jet_yso(usrconfig%ind_jet_associate_ism)%myconfig%velocity
-       else if(usrconfig%cloud_on.and.usrconfig%ind_cloud_associate_ism>=0)then
-        ism_surround(i_ism)%myconfig%velocity_ofmov_obj=jet_yso(usrconfig%ind_cloud_associate_ism)%myconfig%velocity
-       end if
+
+
+  n_objects       = 0
+  n_object_w_dust = 0
+  itr             = 1
+
+
+  if(SI_unit) then
+      mp=mp_SI
+      kB=kB_SI
+  else
+      mp=mp_cgs
+      kB=kB_cgs
+  end if
+
+  ! complet usr configuration
+  cond_isotherm_0 : if(usrconfig%phys_isotherm_on)then
+    if(usrconfig%phys_temperature_isotherm>0)then
+      ! isotherm case : need to compute adiab = csound**2
+      usrconfig%phys_adiab = kB/(phys_config%mean_mup*mp)*&
+      usrconfig%phys_temperature_isotherm
+    elseif(usrconfig%phys_adiab>=0)then
+      ! isotherm case : need to compute isotherm temperature T
+      usrconfig%phys_temperature_isotherm = (usrconfig%phys_adiab/kB)*&
+      phys_config%mean_mup*mp
+    end if
+    ! normalise value for isotherm temperature
+    usrconfig%phys_temperature_isotherm = usrconfig%phys_temperature_isotherm/&
+    unit_temperature
+    ! normalise value for adiab
+    usrconfig%phys_adiab  = usrconfig%phys_adiab/&
+    (unit_velocity*unit_velocity)
+
+    PRINT*,' is the same ',phys_config%adiab,usrconfig%phys_adiab
+    if(dabs(phys_config%adiab*phys_config%unit_velocity**2.0_dp-&
+    usrconfig%phys_adiab*unit_velocity**2.0_dp)>smalldouble)then
+      write(*,*) 'the constant adiab is not well set in phys or at user site:'
+      write(*,*) 'phys_config%adiab = ', phys_config%adiab*&
+      usr_physunit%myconfig%velocity**2.0_dp
+      write(*,*) 'usr_config%adiab = ', usrconfig%phys_adiab*&
+      phys_config%unit_velocity**2.0_dp
+      write(*,*) 'phys_config%temperature_isotherm = ', phys_config%temperature_isotherm*&
+      phys_config%unit_temperature
+      write(*,*) 'usrconfig%phys_temperature_isotherm = ', usrconfig%phys_temperature_isotherm*&
+      usr_physunit%myconfig%temperature
+      write(*,*) ' mod_usr.t : mean_mup = ', phys_config%mean_mup
+    end if
+
+    if(dabs(pre_phys_config%gamma-1.0_dp)>smalldouble)then
+     write(*,*) 'pre_phys_config%gamma = ',pre_phys_config%gamma
+     call mpistop('Isothermal perfect gas but hd_gamma/=1')
+    else
+     write(*,*) '*********************************************************'
+     write(*,*) 'MPI-AMRVAC runs HD adiabatic isothermal run (no energy solved)'
+     write(*,*) 'with temperature = ',usrconfig%phys_temperature_isotherm*unit_temperature
+     write(*,*) 'and c_sound**2 = ',usrconfig%phys_adiab*(unit_velocity*unit_velocity)
+     write(*,*) '*********************************************************'
+    end if
+  end if cond_isotherm_0
+
+
+
+ ! complet ism parameters
+ if(usrconfig%ism_on)then
+  Loop_isms : do i_ism=0,usrconfig%ism_number-1
+   ism_surround(i_ism)%myconfig%itr=itr
+   if(ism_surround(i_ism)%myconfig%Mach_number_tomov_obj>0.0_dp) then
+     if(usrconfig%jet_yso_on.and.usrconfig%ind_jet_associate_ism>=0)then
+      ism_surround(i_ism)%myconfig%velocity_ofmov_obj=jet_yso(usrconfig%ind_jet_associate_ism)%myconfig%velocity
+     else if(usrconfig%cloud_on.and.usrconfig%ind_cloud_associate_ism>=0)then
+      ism_surround(i_ism)%myconfig%velocity_ofmov_obj=jet_yso(usrconfig%ind_cloud_associate_ism)%myconfig%velocity
      end if
-     if(usrconfig%phys_isotherm_on) then
-       if(ism_surround(i_ism)%myconfig%temperature>0.0_dp)then
-         write(*,*) ' the ism temperature will reset to the imposed isotherm temperarture:', &
-           usrconfig%phys_temperature_isotherm, ' K'
-       end if
-       ism_surround(i_ism)%myconfig%temperature = usrconfig%phys_temperature_isotherm
+   end if
+   if(usrconfig%phys_isotherm_on) then
+     if(ism_surround(i_ism)%myconfig%temperature>0.0_dp)then
+       write(*,*) ' the ism temperature will reset to the imposed isotherm temperarture:', &
+         usrconfig%phys_temperature_isotherm*unit_temperature, ' K'
      end if
-     call ism_surround(i_ism)%set_complet
-     call ism_surround(i_ism)%normalize(usr_physunit)
-     if(ism_surround(i_ism)%myconfig%dust_on)n_object_w_dust=n_object_w_dust+1
-    end do Loop_isms
-    itr=ism_surround(usrconfig%ism_number-1)%myconfig%itr+1
-    n_objects = n_objects + usrconfig%ism_number
+     ism_surround(i_ism)%myconfig%temperature = usrconfig%phys_temperature_isotherm
    end if
+   call ism_surround(i_ism)%set_complet
+   call ism_surround(i_ism)%normalize(usr_physunit)
+   if(ism_surround(i_ism)%myconfig%dust_on)n_object_w_dust=n_object_w_dust+1
+  end do Loop_isms
+  itr=ism_surround(usrconfig%ism_number-1)%myconfig%itr+1
+  n_objects = n_objects + usrconfig%ism_number
+ end if
 
 
 
-   ! complet cloud parameters
-   cond_cloud_on : if(usrconfig%cloud_on) then
-     Loop_clouds : do i_cloud=0,usrconfig%cloud_number-1
-      cloud_medium(i_cloud)%myconfig%itr=itr
-      if(usrconfig%phys_isotherm_on) then
-        if(cloud_medium(i_cloud)%myconfig%temperature>0.0_dp)then
-         write(*,*) ' the cloud temperature will reset to the imposed isotherm temperarture:', &
-           usrconfig%phys_temperature_isotherm, ' K'
-        end if
-        cloud_medium(i_cloud)%myconfig%temperature = usrconfig%phys_temperature_isotherm
+ ! complet cloud parameters
+ cond_cloud_on : if(usrconfig%cloud_on) then
+   Loop_clouds : do i_cloud=0,usrconfig%cloud_number-1
+    cloud_medium(i_cloud)%myconfig%itr=itr
+    if(usrconfig%phys_isotherm_on) then
+      if(cloud_medium(i_cloud)%myconfig%temperature>0.0_dp)then
+       write(*,*) ' the cloud temperature will reset to the imposed isotherm temperarture:', &
+         usrconfig%phys_temperature_isotherm, ' K'
       end if
-      call cloud_medium(i_cloud)%set_complet
-      call cloud_medium(i_cloud)%normalize(usr_physunit)
-      if(cloud_medium(i_cloud)%myconfig%dust_on)n_object_w_dust=n_object_w_dust+1
-     end do Loop_clouds
-     itr=cloud_medium(usrconfig%cloud_number-1)%myconfig%itr+1
-     n_objects = n_objects + usrconfig%cloud_number
-   end if cond_cloud_on
+      cloud_medium(i_cloud)%myconfig%temperature = usrconfig%phys_temperature_isotherm
+    end if
+    call cloud_medium(i_cloud)%set_complet
+    call cloud_medium(i_cloud)%normalize(usr_physunit)
+    if(cloud_medium(i_cloud)%myconfig%dust_on)n_object_w_dust=n_object_w_dust+1
+   end do Loop_clouds
+   itr=cloud_medium(usrconfig%cloud_number-1)%myconfig%itr+1
+   n_objects = n_objects + usrconfig%cloud_number
+ end if cond_cloud_on
 
 
-   ! complet jet parameters
-   if(usrconfig%jet_yso_on) then
-     Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
-      jet_yso(i_jet_yso)%myconfig%itr=itr
-      jet_yso(i_jet_yso)%myconfig%pressure_associate_ism = ism_surround(0)%myconfig%pressure &
-                                                           *usr_physunit%myconfig%pressure
+ ! complet jet parameters
+ if(usrconfig%jet_yso_on) then
+   Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
+    jet_yso(i_jet_yso)%myconfig%itr=itr
+    jet_yso(i_jet_yso)%myconfig%pressure_associate_ism = ism_surround(0)%myconfig%pressure &
+                                                         *usr_physunit%myconfig%pressure
 
-      jet_yso(i_jet_yso)%myconfig%density_associate_ism  = ism_surround(0)%myconfig%density &
-                                                          *usr_physunit%myconfig%density
-      if(usrconfig%phys_isotherm_on) then
-        if(jet_yso(i_jet_yso)%myconfig%temperature>0.0_dp)then
-         write(*,*) ' the jet temperature will reset to the imposed isotherm temperarture:', &
-           usrconfig%phys_temperature_isotherm, ' K'
-        end if
-        jet_yso(i_jet_yso)%myconfig%temperature = usrconfig%phys_temperature_isotherm
+    jet_yso(i_jet_yso)%myconfig%density_associate_ism  = ism_surround(0)%myconfig%density &
+                                                        *usr_physunit%myconfig%density
+    if(usrconfig%phys_isotherm_on) then
+      if(jet_yso(i_jet_yso)%myconfig%temperature>0.0_dp)then
+       write(*,*) ' the jet temperature will reset to the imposed isotherm temperarture:', &
+         usrconfig%phys_temperature_isotherm, ' K'
       end if
-      call jet_yso(i_jet_yso)%set_complet
-      call jet_yso(i_jet_yso)%normalize(usr_physunit)
-      if(jet_yso(i_jet_yso)%myconfig%dust_on)n_object_w_dust=n_object_w_dust+1
-     end do Loop_jet_yso
-     itr=jet_yso(usrconfig%jet_yso_number-1)%myconfig%itr+1
-     n_objects = n_objects + usrconfig%jet_yso_number
-   else
-     zjet_=min(z_,ndim)
-     thetajet_ = z_
-     rjet_=r_
-   end if
-
-   !Add here the set_complet of the fluxes !!!!<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-   if(phys_config%dust_on)allocate(the_dust_inuse(n_object_w_dust))
-
-   call usr_normalise_parameters
-   if(mype==0)call usr_write_setting
+      jet_yso(i_jet_yso)%myconfig%temperature = usrconfig%phys_temperature_isotherm
+    end if
+    call jet_yso(i_jet_yso)%set_complet
+    call jet_yso(i_jet_yso)%normalize(usr_physunit)
+    if(jet_yso(i_jet_yso)%myconfig%dust_on)n_object_w_dust=n_object_w_dust+1
+   end do Loop_jet_yso
+   itr=jet_yso(usrconfig%jet_yso_number-1)%myconfig%itr+1
+   n_objects = n_objects + usrconfig%jet_yso_number
+ else
+   zjet_=min(z_,ndim)
+   thetajet_ = z_
+   rjet_=r_
+ end if
 
 
+ ! complet grackle units in gr_struct
+ ! do the following in the source adding subroutine to save performance and memory:
+ if(usrconfig%grackle_chemistry_on)then
+   call grackle_object%set_complet
+   write(*,*) 'Grackle usr configuration completing/consistency check successfully done!'
 
-  end subroutine initglobaldata_usr
+ end if
+
+ ! normalize grackle units in gr_struct
+ ! do the following in the source adding subroutine to save performance and memory:
+ !if(usrconfig%grackle_chemistry_on)then
+   !call ism_surround(i_ism)%normalize(usr_physunit)
+   !call grackle_object%normalize(grackle_structure,usr_physunit)
+   !write(*,*) 'Grackle structure normalization successfully done!'
+
+ !end if
+ write(*,*) 'End of non-user normalization/completing successfully done!'
+
+
+ !Add here the set_complet of the fluxes !!!!
+
+ if(phys_config%dust_on)allocate(the_dust_inuse(n_object_w_dust))
+
+ call usr_normalise_parameters
+ if(mype==0)call usr_write_setting
+
+
+
+end subroutine initglobaldata_usr
   !> The initial conditions
   subroutine initonegrid_usr(ixI^L,ixO^L,w,x)
     ! initialize one grid
@@ -1717,10 +1701,16 @@ contains
       if(allocated(the_dust_inuse(i_object_w_dust)%patch))deallocate(the_dust_inuse(i_object_w_dust)%patch)
     end if cond_dust_on
 
+    !Add grackle initialization here :
+
     ! check is if initial setting is correct
     call  phys_check_w(.true., ixI^L, ixO^L, w, flag)
 
     if(any(flag(ixO^S)>0)) PRINT*,' is error',maxval(flag(ixO^S)),minval(w(ixO^S,phys_ind%pressure_))
+
+
+
+
 
 
     ! get conserved variables to be used in the code
@@ -1826,8 +1816,8 @@ contains
             cond_reset_ism0 : if(ism_surround(i_ism)%myconfig%reset_on) then
 
               source_filter(ixI^S) = 0.5_dp*(1.0_dp-&
-                tanh((x(ixI^S,zjet_)-ism_surround(i_ism)%myconfig%reset_distance(zjet_)/4.0)&
-                /(2.0_dp*ism_surround(i_ism)%myconfig%reset_scale(zjet_)/4.0)))/2.0_dp
+                tanh((x(ixI^S,zjet_)-ism_surround(i_ism)%myconfig%reset_distance(zjet_)/4.0)/&
+                (2.0_dp*ism_surround(i_ism)%myconfig%reset_scale(zjet_)/4.0)))/2.0_dp
 
 
               cond_jeton_ism0: if(usrconfig%jet_yso_on)then
@@ -1842,8 +1832,8 @@ contains
                                        (0.1_dp*(jet_yso(i_jet_yso)%myconfig%r_out_impos))))
 
                      source_filter(ixI^S) = source_filter(ixI^S)&
-                      *wCT(ixI^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))&
-                       /merge(ism_surround(i_ism)%myconfig%tracer_init_density, &
+                      *wCT(ixI^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))/&
+                       merge(ism_surround(i_ism)%myconfig%tracer_init_density, &
                           wCT(ixI^S,phys_ind%rho_),                               &
                           ism_surround(i_ism)%myconfig%tracer_init_density>0.0_dp)
 
@@ -1888,14 +1878,14 @@ contains
             cond_mup_on: if(phys_config%mean_mup_on.and.jet_yso(i_jet_yso)%myconfig%tracer_on&
                  .and. jet_yso(i_jet_yso)%myconfig%tracer_init_density>0.0_dp )then
 
-              wjettracer(ixO^S)  = w(ixO^S,phys_ind%tracer(jet_yso(i_jet_yso)%myconfig%itr)) &
-                          / jet_yso(i_jet_yso)%myconfig%tracer_init_density
-              wismtracer(ixO^S)  = w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr)) &
-                          / ism_surround(i_ism)%myconfig%tracer_init_density
+              wjettracer(ixO^S)  = w(ixO^S,phys_ind%tracer(jet_yso(i_jet_yso)%myconfig%itr))/ &
+                           jet_yso(i_jet_yso)%myconfig%tracer_init_density
+              wismtracer(ixO^S)  = w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))/ &
+                           ism_surround(i_ism)%myconfig%tracer_init_density
 
               w(ixO^S,phys_ind%mup_)=(wjettracer(ixO^S)*jet_yso(i_jet_yso)%myconfig%mean_mup &
-                + ism_surround(i_ism)%myconfig%mean_mup*wismtracer(ixO^S))&
-                /(wjettracer(ixO^S)+wismtracer(ixO^S))
+                + ism_surround(i_ism)%myconfig%mean_mup*wismtracer(ixO^S))/&
+                (wjettracer(ixO^S)+wismtracer(ixO^S))
 
             end if cond_mup_on
 
@@ -2331,8 +2321,8 @@ return
 
             if(any(jet_yso(i_jet_yso)%patch(ixO^S)))then
              level_need= nint(dlog((dabs(jet_yso(i_jet_yso)%myconfig%r_out_init&
-                                      -jet_yso(i_jet_yso)%myconfig%r_in_init))&
-                               /domain_nx1)/dlog(2.0_dp))
+                                      -jet_yso(i_jet_yso)%myconfig%r_in_init))/&
+                               domain_nx1)/dlog(2.0_dp))
              level_min = max(jet_yso(i_jet_yso)%myconfig%refine_min_level&
                              ,level_need)
              level_max = jet_yso(i_jet_yso)%myconfig%refine_max_level
@@ -2515,24 +2505,18 @@ return
         else
           call usr_gravity(ixI^L,ixO^L,w,x,gravity_field)
         end if
+
         normconv(nw+igravfield1)     = 1.0_dp
         win(ixO^S,nw+igravfield1)    = 0.0_dp
-        win(ixO^S,nw+igravfield1)    = gravity_field(ixO^S,1)*&
-        usr_physunit%myconfig%mass/&
-        (unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
-        (usr_physunit%myconfig%length*usr_physunit%myconfig%length))
         normconv(nw+igravfield2)     = 1.0_dp
         win(ixO^S,nw+igravfield2)    = 0.0_dp
-        win(ixO^S,nw+igravfield2)    = gravity_field(ixO^S,2)*&
-        usr_physunit%myconfig%mass/&
-        (unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
-        (usr_physunit%myconfig%length*usr_physunit%myconfig%length))
         normconv(nw+igravfield3)     = 1.0_dp
         win(ixO^S,nw+igravfield3)    = 0.0_dp
-        win(ixO^S,nw+igravfield3)    = gravity_field(ixO^S,3)*&
+        {^D&win(ixO^S,nw+igravfield^D)    = gravity_field(ixO^S,^D)*&
         usr_physunit%myconfig%mass/&
         (unit_density*(unit_length/unit_velocity)**(2.0_dp)*&
         (usr_physunit%myconfig%length*usr_physunit%myconfig%length))
+        }
       case(igravphi_)
         if (.not. associated(usr_gravity_potential)) then
           write(*,*) "mod_usr.t: please point usr_gravity to a subroutine"
@@ -2574,8 +2558,8 @@ return
             vgas(ixI^S,idir)=w(ixI^S,phys_ind%mom(idir))/w(ixI^S,phys_ind%rho_)
             idust = 1
             where(w(ixI^S,phys_ind%dust_rho(idust))>phys_config%dust_small_density)
-              vdust(ixI^S,idir,idust)=w(ixI^S,phys_ind%dust_mom(idir, idust))&
-                                  /w(ixI^S,phys_ind%dust_rho(idust))
+              vdust(ixI^S,idir,idust)=w(ixI^S,phys_ind%dust_mom(idir, idust))/&
+                                  w(ixI^S,phys_ind%dust_rho(idust))
               win(ixI^S,nw+ideltav_dust11_) = vgas(ixI^S,idir)  - vdust(ixI^S,idir,idust)
             elsewhere
               vdust(ixI^S,idir,idust)       = 0.0_dp
@@ -2590,8 +2574,8 @@ return
             vgas(ixI^S,idir)=w(ixI^S,phys_ind%mom(idir))/w(ixI^S,phys_ind%rho_)
             idust = 1
             where(w(ixI^S,phys_ind%dust_rho(idust))>phys_config%dust_small_density)
-              vdust(ixI^S,idir,idust)=w(ixI^S,phys_ind%dust_mom(idir, idust))&
-                                  /w(ixI^S,phys_ind%dust_rho(idust))
+              vdust(ixI^S,idir,idust)=w(ixI^S,phys_ind%dust_mom(idir, idust))/&
+                                  w(ixI^S,phys_ind%dust_rho(idust))
               win(ixI^S,nw+ideltav_dust12_) = vgas(ixI^S,idir)  - vdust(ixI^S,idir,idust)
 
             elsewhere
@@ -2649,6 +2633,7 @@ return
         end select
       case default
        write(*,*)'is not implimented at specialvar_output in mod_user'
+       call mpistop('the code stops!')
     end select
   end do Loop_iw
     !----------------------------------------------------
@@ -2919,6 +2904,7 @@ return
     integer,parameter   :: unit_config =12
     character(len=75)   :: filename_config
     integer             :: i_cloud,i_ism,i_jet_yso
+    real(kind=dp)       :: restst
     !-------------------------------------
     filename_config=trim(base_filename)//'.config'
 
@@ -2962,6 +2948,16 @@ return
     end if
     write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
     write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
+    write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
+
+    call grackle_object%write_setting(unit_config)
+
+
+    write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
+    write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
+    write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
+    restst = 7. / 6. / 5.
+    write(unit_config,*)'%%%%%7/6/5 =',restst
     write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
     close(unit_config)
 

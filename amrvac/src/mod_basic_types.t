@@ -19,6 +19,6 @@ module mod_basic_types
   integer, parameter :: std_len = 131
 
   !> Default length for names (of e.g. variables)
-  integer, parameter :: name_len = 16
+  integer, parameter :: name_len = 32
 
 end module mod_basic_types

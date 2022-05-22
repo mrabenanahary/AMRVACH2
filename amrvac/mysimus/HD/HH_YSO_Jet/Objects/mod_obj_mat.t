@@ -1531,7 +1531,7 @@ end subroutine usr_medianvalue_of_array
     character(len=*), intent(in)    ::  objname
     ! .. local ..
     character(len=78)               :: modname
-    character(len=78)               :: thelistname
+    character(len=156)               :: thelistname
     !---------------------------------------------------
     modname='mod_obj_'//trim(objname)//'.t'
     thelistname='usr_'//trim(objname)//'list'
