@@ -8,7 +8,6 @@ module mod_obj_ism
   use mod_obj_usr_unit
   implicit none
 
-    ! ISM features
     type ism_parameters
       character(len=20)    :: unit           !> physical unit at parameter file
       character(len=78)    :: obj_name       !> Obj name that call it
@@ -111,6 +110,9 @@ module mod_obj_ism
       real(kind=dp)        :: mean_nall_to_nH
     end type ism_parameters
 
+
+    ! ISM features
+
     type ISM
       logical, allocatable            :: patch(:^D&)           !> spatial patch
       logical, allocatable            :: escape_patch(:^D&)    !> spatial patch
@@ -138,7 +140,6 @@ module mod_obj_ism
      PROCEDURE, PASS(self) :: add_source           => usr_ism_add_source
 
     end type
-
 
 
 contains
