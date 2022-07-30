@@ -10,32 +10,23 @@ module mod_grackle_parameters
 
 real*8,parameter    :: mh=mp_cgs, kboltz=kB_cgs
 real(kind=gr_rpknd) :: tiny_number= 1.0e-20_gr_RKIND,huge_number= 1.0e+20_gr_RKIND
-
+integer,parameter :: max_num_parameters = 20
+! species weight
+real(kind=gr_rpknd),parameter :: w_HI = 1
+real(kind=gr_rpknd),parameter :: w_HII = 1
+real(kind=gr_rpknd),parameter :: w_HM = 1
+real(kind=gr_rpknd),parameter :: w_HeI = 3.971525936989
+real(kind=gr_rpknd),parameter :: w_HeII = 3.971525936989
+real(kind=gr_rpknd),parameter :: w_HeIII = 3.971525936989
+real(kind=gr_rpknd),parameter :: w_H2I = 2.000000000004
+real(kind=gr_rpknd),parameter :: w_H2II = 2.000000000004
+real(kind=gr_rpknd),parameter :: w_DI = 1.998463735368
+real(kind=gr_rpknd),parameter :: w_DII = 1.998463735368
+real(kind=gr_rpknd),parameter :: w_HDI = 2.998463735326
+real(kind=gr_rpknd),parameter :: w_e = 5.443205831355435e-4
 
 ! Grackle parameters for this solver time step
-type gr_params
-  real*8               :: initial_redshift
-  real*8               :: temperature_units, pressure_units, dtchem
-  real*8               :: grid_dx
-  integer              :: number_of_objects
-  real(kind=dp)   :: He_abundance
-  real(kind=dp)   :: mean_nall_to_nH
-  real(kind=dp)   :: mean_mass
-  real(kind=dp)   :: mean_mup
-  real(kind=dp)   :: mean_ne_to_nH
 
-  !     Grid size and dimension
-  !     grid_start and grid_end are used to ignore ghost zones.
-  !     grid_dx is used in H2 self-shielding approximation only
-  integer                          :: field_size(ndim)
-  !real(kind=gr_rpknd) :: density(1:2)
-  !real(kind=gr_rpknd) :: energy(1:2) !=internal energy
-  !INTEGER                          :: grid_rank(1:2)
-  !INTEGER                          :: grid_dimension(1:2,3)
-  !INTEGER                          :: grid_start(1:2,3)
-  !INTEGER                          :: grid_end(1:2,3)
-  CHARACTER(LEN=257)   :: data_file
-end type gr_params
 
 ! Grackle fields
 type gr_fields

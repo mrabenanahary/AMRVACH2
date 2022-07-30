@@ -1549,4 +1549,16 @@ end subroutine usr_medianvalue_of_array
       if(mype==0)write(*,*) 'End of Reading ' ,thelistname
     end if
   end subroutine usr_mat_read_error_message
+
+
+  function convert_logical_to_integer(mylogical) result(myinteger)
+    logical,intent(in)             :: mylogical
+    integer                        :: myinteger
+    !---------------------
+    if(mylogical)then
+      myinteger=1
+    else
+      myinteger=0
+    end if
+  end function convert_logical_to_integer
 end module mod_obj_mat

@@ -68,4 +68,4 @@ mod_grackle_%.f: mod_grackle_%.t
 # How to generate executables
 amrvac: amrvac.o
 	$(LINK_amrvac) $(F90FLAGS_amrvac) $^ -o $@ $(addprefix -L,$(LIB_DIRS)) $(addprefix -l,$(LIBS)) $(addprefix -L,$(LIB_DIRS77)) $(addprefix -l,$(LIBS77))
-		
+

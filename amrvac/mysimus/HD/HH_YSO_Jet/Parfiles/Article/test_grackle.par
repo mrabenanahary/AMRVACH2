@@ -48,7 +48,7 @@
         !tsave(1,2)=4.73364d9 !save after first end of injection cycle at t=150 yrs
         dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	!ditsave_log =50
-        dtsave_dat=  3.1557600d7! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  3.1557600d6! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !dtsave_dat=  4.73364d9
         !ditsave_dat =1
  /
@@ -61,7 +61,7 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.1715388d8 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !time_max=  4.73364d9
         !it_max=10
 
@@ -460,7 +460,25 @@ ism_config%He_abundance      = 0.1
 /
 
 &grackle_par_list
-!    grackle_config%use_grackle = 0
+    grackle_par%chi_dust(1) = 1.0
+    grackle_par%xi_dust(1)  = 0.5
+    grackle_par%x_HI(1) = 1.0
+    grackle_par%x_HI(2) = 0.5
+    grackle_par%x_DI(2) = 0.5    
+    grackle_par%HydrogenFractionByMass(1) = 0.71
+    grackle_par%HeliumFractionByMass(1) = 0.20
+    grackle_par%chi_Hydrogen(2) = 0.73
+    grackle_par%IonizationFraction(1) = 1d-2
+    grackle_par%Zeta_nH_to_rho(1) = 3d-1
+    grackle_par%He_abundance(2) = 1d-1
+    !grackle_par%IonizationFraction(2) = 1d-3    
+/
+
+&grackle_conf_list
+    grackle_config%use_grackle(2) = 1
+    grackle_config%gr_primordial_chemistry(1) = 2
+    grackle_config%gr_primordial_chemistry(2) = 3
+    
 tstst = 1,2
     
 /

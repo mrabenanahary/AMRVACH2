@@ -67,8 +67,7 @@ module mod_usr
   type (ISM),allocatable,target      :: ism_surround(:)
   type (cloud),allocatable,target    :: cloud_medium(:)
   type (cla_jet),allocatable,target  :: jet_yso(:)
-  type(gr_config)                    :: grackle_configuration_list
-  type(gr_params)                    :: grackle_parameters_list
+  type(gr_objects)                   :: grackle_object
   type(grackle_type)                 :: grackle_structure
   !Default objects
   type (ISM),target                  :: ism_default
@@ -78,7 +77,6 @@ module mod_usr
   type (dust),target                 :: dust_mialy
   type (dust),allocatable,target     :: the_dust_inuse(:)
   type(gr_objects)                   :: grackle_default
-
   !type(star) :: star_ms
   !type(star) :: sun
 
@@ -121,7 +119,6 @@ contains
 
     usr_gravity_potential => special_pointmass_gravity_potential
     usr_gravity_fpotential => special_pointmass_gravity_fpotential
-
     call usr_set_default_parameters ! >mod_obj_usr_yso_jet.t
 
 
@@ -145,10 +142,7 @@ contains
     call jet_yso_default%set_default !>mod_obj_cla_jet.t
 
     ! set default values for grackle configuration
-     call grackle_default%set_default_config !>mod_grackle_chemistry
-
-
-     !write(*,*) 'grackle_default%myconfig%gr_primordial_chemistry : ', grackle_default%myconfig%gr_primordial_chemistry
+    call grackle_default%set_default_config !>mod_grackle_chemistry
 
     ! read .par parameters for ISMs, then, clouds, then jets
     call usr_params_read(par_files) ! >mod_obj_usr_yso_jet.t
@@ -171,8 +165,6 @@ contains
       usr_gravity         => special_pointmass_gravity!special_effective_gravity
     end if
 
-
-
     ! complet all physical unit in use
     if(usrconfig%physunit_on) then
       call usr_physunit%set_complet(trim(usrconfig%phys_inuse))
@@ -189,7 +181,6 @@ contains
     end select
 
     call usr_check_conflict
-
 
 
   end subroutine usr_init
@@ -987,7 +978,7 @@ contains
     ! .. local ..
     integer                      :: i_file,i_reason
     character(len=70)            :: error_message
-    integer                      :: i_cloud,i_ism,i_jet_yso,i_all
+    integer                      :: i_cloud,i_ism,i_jet_yso
     !-------------------------------------
     namelist /usr_list/ usrconfig
     !-------------------------------------
@@ -1103,51 +1094,84 @@ contains
   ! and then read their user-defined parameters
   if(usrconfig%grackle_chemistry_on)then
 
-    !i) Allocate the grackle field parameters
+    !i)
+    grackle_object%myconfig%use_grackle = 0
 
-    call grackle_fields_config_allocate(usrconfig%ism_number,usrconfig%jet_yso_number,usrconfig%cloud_number)
+    grackle_object%myconfig          = grackle_default%myconfig
+    grackle_object%myparams          = grackle_default%myparams
+    allocate(tstst(4))
+    call grackle_object%read_parameters(grackle_object%myconfig,files)
 
+    !>Link mod_hd answers (phys_config%gr_primordial_chemistry,phys_config%gr_metal_cooling
+    ! phys_config%gr_dust_chemistry,phys_config%gr_with_radiative_cooling) to grackle_object%myconfig:
 
-    do i_all=1,gr_objects_list(1)%number_of_objects
-      write(*,*) 'gr_objects_list(',i_all,')%number_of_objects : ', gr_objects_list(i_all)%number_of_objects
+    !ii)
+    write(*,*) 'pre_phys_config%gr_primordial_chemistry = ',pre_phys_config%gr_primordial_chemistry
+    grackle_object%myconfig%gr_primordial_chemistry = pre_phys_config%gr_primordial_chemistry
 
-      call grackle_fields_config_set_default(i_all)
+    !iii)
+    if(pre_phys_config%gr_with_radiative_cooling)then
+      grackle_object%myconfig%gr_with_radiative_cooling = 1
+    else
+      grackle_object%myconfig%gr_with_radiative_cooling = 0
+    end if
 
-      gr_objects_list(i_all)%myconfig%use_grackle(1:max_num_parameters) = 0
+    !iv)
+    if(pre_phys_config%gr_metal_cooling)then
+      grackle_object%myconfig%gr_metal_cooling = 1
+    else
+      grackle_object%myconfig%gr_metal_cooling = 0
+    end if
 
-      gr_objects_list(i_all)%myconfig          = grackle_default%myconfig
-      gr_objects_list(i_all)%myparams          = grackle_default%myparams
-
-      !write(*,*) 'gr_objects_list(',i_all,')%myconfig%gr_primordial_chemistry : ', gr_objects_list(i_all)%myconfig%gr_primordial_chemistry(1)
-    end do
-    write(*,*) 'Grackle fields configuration defaulting successfully done!'
-
-      !ii) read each parameters
-
-      allocate(tstst(4))
-      grackle_configuration_list = grackle_default%myconfig
-      grackle_parameters_list    = grackle_default%myparams
-      call grackle_config_read(grackle_configuration_list,files)
-      call grackle_params_read(grackle_parameters_list,files)
-
-      write(*,*) 'grackle_configuration_list%use_grackle : ', grackle_configuration_list%use_grackle
-
-
-    !iii) Associate the ridden parameters to objects list myparam
-    do i_all=1,gr_objects_list(1)%number_of_objects
-      call grackle_associate_parameters(gr_objects_list(1)%number_of_objects,grackle_configuration_list,&
-                                        grackle_parameters_list,gr_objects_list,i_all)
-      write(*,*) 'gr_objects_list(',i_all,')%myconfig%gr_primordial_chemistry : ', gr_objects_list(i_all)%myconfig%gr_primordial_chemistry(1)
-      write(*,*) 'gr_objects_list(',i_all,')%myparams%data_file : ', gr_objects_list(i_all)%myparams%data_file(1)
-      write(*,*) 'gr_objects_list(',i_all,')%myparams%myindice : ', gr_objects_list(i_all)%myparams%myindice(1)
-      write(*,*) 'gr_objects_list(',i_all,')%myparams%chi_dust : ', gr_objects_list(i_all)%myparams%chi_dust(1)
-      write(*,*) 'gr_objects_list(',i_all,')%myparams%xi_dust : ', gr_objects_list(i_all)%myparams%xi_dust(1)
-    end do
-  end if
+    !v)
+    if(pre_phys_config%gr_dust_chemistry)then
+      grackle_object%myconfig%gr_dust_chemistry = 1
+    else
+      grackle_object%myconfig%gr_dust_chemistry = 0
+    end if
 
 
+    ! Gamma of grackle defined from hd_list->hd_gamma:
+    grackle_object%myconfig%gr_gamma = pre_phys_config%gamma
+    write(*,*) 'grackle_object%myconfig%gr_gamma = ', grackle_object%myconfig%gr_gamma
+
+    write(*,*) 'grackle_object%myconfig%use_grackle : ', grackle_object%myconfig%use_grackle
+    write(*,*) 'grackle_object%myconfig%gr_primordial_chemistry : ', grackle_object%myconfig%gr_primordial_chemistry
+    write(*,*) 'grackle_object%myconfig%gr_metal_cooling : ', grackle_object%myconfig%gr_metal_cooling
+    write(*,*) 'grackle_object%myconfig%gr_dust_chemistry : ', grackle_object%myconfig%gr_dust_chemistry
 
 
+    write(*,*) 'Test use_grackle == 0 : ',grackle_object%myconfig%use_grackle
+
+    call grackle_object%allocate_fields_parameters(usrconfig%ism_number,usrconfig%jet_yso_number,usrconfig%cloud_number)
+    write(*,*) 'Number of elements:'
+    write(*,*) '> ISM:',usrconfig%ism_number
+    write(*,*) '> Jet:',usrconfig%jet_yso_number
+    write(*,*) '> Cloud:',usrconfig%cloud_number
+    write(*,*) '> Total:',usrconfig%ism_number+usrconfig%jet_yso_number+usrconfig%cloud_number
+    write(*,*) 'Size of grackle fields parameters arrays'
+    write(*,*) '(grackle_object%myparams%number_of_objects):', grackle_object%myparams%number_of_objects
+
+    call grackle_object%set_fields_default(usrconfig%ism_on,usrconfig%jet_yso_on,usrconfig%cloud_on)
+
+    write(*,*) 'Test gr_H2I_density == 2.0 : ', gr_H2I_density
+    write(*,*) 'Test gr_patches_name == ism,jet, or cloud : ', gr_patches_name
+
+    call grackle_object%read_fields_parameters(files)
+
+    write(*,*) 'Test gr_patches_name == ism,jet, or cloud : ', gr_patches_name
+    write(*,*) 'Test gr_patches_name == ism_uniform,jet_uniform, or cloud_uniform : ', gr_density_method
+
+    ! do the following in the source adding subroutine to save performance and memory:
+    !iresult = set_default_chemistry_parameters(gr_struct%grackle_data)
+    !write(*,*) 'Grackle structure configuration defaulting successfully done !'
+   else
+    grackle_object%myconfig%use_grackle = 0
+    grackle_object%myconfig%gr_with_radiative_cooling = 0
+    grackle_object%myconfig%gr_primordial_chemistry = 0
+    grackle_object%myconfig%gr_metal_cooling = 0
+    grackle_object%myconfig%gr_dust_chemistry = 0
+   end if
   end subroutine usr_params_read
 
   !> subroutine to clean memory at the end
@@ -1296,13 +1320,13 @@ subroutine initglobaldata_usr
  ! .. local ..
  integer        :: i_cloud,i_ism,i_jet_yso,n_objects,n_object_w_dust
  real(kind=dp)  :: mp,kB
- !type(gr_objects) :: gr_obj
+ type(gr_objects) :: gr_obj
  !------------------------------------
  !/
 
 
 
- !call gr_obj%test_chemistry('mod_usr_yso_jet : initglobaldata_usr => usr_set_parameters')
+ call gr_obj%test_chemistry('mod_usr_yso_jet : initglobaldata_usr => usr_set_parameters')
 
 
 
@@ -1446,8 +1470,8 @@ subroutine initglobaldata_usr
  ! complet grackle units in gr_struct
  ! do the following in the source adding subroutine to save performance and memory:
  if(usrconfig%grackle_chemistry_on)then
-   !call grackle_object%set_complet
-   !write(*,*) 'Grackle usr configuration completing/consistency check successfully done!'
+   call grackle_object%set_complet
+   write(*,*) 'Grackle usr configuration completing/consistency check successfully done!'
 
  end if
 
@@ -2879,7 +2903,7 @@ return
     implicit none
     integer,parameter   :: unit_config =12
     character(len=75)   :: filename_config
-    integer             :: i_cloud,i_ism,i_jet_yso,i_all
+    integer             :: i_cloud,i_ism,i_jet_yso
     real(kind=dp)       :: restst
     !-------------------------------------
     filename_config=trim(base_filename)//'.config'
@@ -2926,26 +2950,14 @@ return
     write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
     write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
 
-    if(usrconfig%grackle_chemistry_on)then
+    call grackle_object%write_setting(unit_config)
 
-      write(unit_config,*)'************************************'
-      write(unit_config,*)'************Grackle settings ************'
-      write(unit_config,*)'************************************'
 
-      do i_all=1,gr_objects_list(1)%number_of_objects
-        call gr_objects_list(i_all)%write_setting(unit_config,i_all)
-      end do
-
-      write(*,*)'************************************'
-      write(*,*)'Finished writing ALL grackle settings'
-      write(*,*)'************************************'
-
-    end if
     write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
     write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
     write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
     restst = 7. / 6. / 5.
-    !write(unit_config,*)'%%%%%7/6/5 =',restst
+    #write(unit_config,*)'%%%%%7/6/5 =',restst
     write(unit_config,*)'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
     close(unit_config)
 
