@@ -461,7 +461,7 @@ ism_config%He_abundance      = 0.1
 
 &grackle_par_list
     grackle_par%chi_dust(1) = 1.0
-    grackle_par%xi_dust(1)  = 0.5
+    grackle_par%xi_dust(2)  = 0.5
     grackle_par%x_HI(1) = 1.0
     grackle_par%x_HI(2) = 0.5
     grackle_par%x_DI(2) = 0.5    

@@ -70,6 +70,7 @@ module mod_usr
   type(gr_config)                    :: grackle_configuration_list
   type(gr_params)                    :: grackle_parameters_list
   type(grackle_type)                 :: grackle_structure
+
   !Default objects
   type (ISM),target                  :: ism_default
   type (cloud),target                :: cloud_default
@@ -78,6 +79,7 @@ module mod_usr
   type (dust),target                 :: dust_mialy
   type (dust),allocatable,target     :: the_dust_inuse(:)
   type(gr_objects)                   :: grackle_default
+
 
   !type(star) :: star_ms
   !type(star) :: sun
@@ -987,7 +989,8 @@ contains
     ! .. local ..
     integer                      :: i_file,i_reason
     character(len=70)            :: error_message
-    integer                      :: i_cloud,i_ism,i_jet_yso,i_all
+    integer                      :: i_cloud,i_ism,i_jet_yso,i_all,i_object
+
     !-------------------------------------
     namelist /usr_list/ usrconfig
     !-------------------------------------
@@ -1098,6 +1101,8 @@ contains
      usrconfig%jet_yso_number = 0
     end if
   end if
+
+
 
   !5) If grackle_chemistry_on on, set all usr grackle config parameters to their default values
   ! and then read their user-defined parameters
@@ -1294,9 +1299,11 @@ subroutine initglobaldata_usr
  use mod_variables
  implicit none
  ! .. local ..
- integer        :: i_cloud,i_ism,i_jet_yso,n_objects,n_object_w_dust
+ integer        :: i_cloud,i_ism,i_jet_yso,i_object,n_objects,n_object_w_dust
  real(kind=dp)  :: mp,kB
  !type(gr_objects) :: gr_obj
+ real(dp),allocatable :: density_list(:)
+ real(dp),allocatable :: densityunit_list(:)
  !------------------------------------
  !/
 
@@ -1442,14 +1449,69 @@ subroutine initglobaldata_usr
    rjet_=r_
  end if
 
+ if(allocated(density_list))deallocate(density_list)
+ if(allocated(densityunit_list))deallocate(densityunit_list)
+ if(.not.allocated(density_list))allocate(density_list(1:usrconfig%ism_number+&
+ usrconfig%jet_yso_number+usrconfig%cloud_number))
+ if(.not.allocated(densityunit_list))allocate(densityunit_list(1:usrconfig%ism_number+&
+ usrconfig%jet_yso_number+usrconfig%cloud_number))
+
+ ! Default reference value of density is 0.0d0
+ density_list(1:size(density_list)) = 0.0d0
+ densityunit_list(1:size(densityunit_list)) = 1.0d0
+ ! complet ism parameters
+ i_object = 0
+ if(usrconfig%ism_on)then
+  do i_ism=1,usrconfig%ism_number
+    i_object=i_object+1
+    density_list(i_object)=ism_surround(i_ism-1)%myconfig%density !already normalized
+    densityunit_list(i_object)=ism_surround(i_ism-1)%myphysunit%myconfig%density
+    density_list(i_object)=density_list(i_object)*&
+    densityunit_list(i_object) !de-normalize first    
+    write(*,*) 'Density of object #',i_object,': ', density_list(i_object)
+    write(*,*) 'Density of ism #',i_ism,': ', ism_surround(i_ism-1)%myconfig%density
+  end do
+ end if
+ ! complet jet parameters
+ if(usrconfig%jet_yso_on) then
+   do i_jet_yso=1,usrconfig%jet_yso_number
+     i_object=i_object+1
+     density_list(i_object)=jet_yso(i_jet_yso-1)%myconfig%density !already normalized
+     densityunit_list(i_object)=jet_yso(i_jet_yso-1)%myphysunit%myconfig%density
+     density_list(i_object)=density_list(i_object)*&
+     densityunit_list(i_object) !de-normalize first
+     write(*,*) 'Density of object #',i_object,': ', density_list(i_object)
+     write(*,*) 'Density of jet #',i_jet_yso,': ', jet_yso(i_jet_yso-1)%myconfig%density
+   end do
+ end if
+ ! complet cloud parameters
+  if(usrconfig%cloud_on) then
+   do i_cloud=1,usrconfig%cloud_number
+     i_object=i_object+1
+     density_list(i_object)=cloud_medium(i_cloud-1)%myconfig%density !already normalized
+     densityunit_list(i_object)=cloud_medium(i_cloud-1)%myphysunit%myconfig%density
+     density_list(i_object)=density_list(i_object)*&
+     densityunit_list(i_object) !de-normalize first
+     write(*,*) 'Density of object #',i_object,': ', density_list(i_object)
+     write(*,*) 'Density of cloud #',i_cloud,': ', cloud_medium(i_cloud-1)%myconfig%density
+   end do
+ end if
 
  ! complet grackle units in gr_struct
  ! do the following in the source adding subroutine to save performance and memory:
  if(usrconfig%grackle_chemistry_on)then
    !call grackle_object%set_complet
+   Loop_through_all : do i_object = 1,n_objects
+    gr_objects_list(i_object)%myparams%density(1)=density_list(i_object)
+    write(*,*) 'Density of object #',i_object,': ', density_list(i_object)
+    call gr_objects_list(i_object)%set_complet(i_object,&
+    gr_objects_list(i_object)%myparams%density(1),.false.)
+   end do Loop_through_all
    !write(*,*) 'Grackle usr configuration completing/consistency check successfully done!'
 
  end if
+
+
 
  ! normalize grackle units in gr_struct
  ! do the following in the source adding subroutine to save performance and memory:

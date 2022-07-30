@@ -443,9 +443,11 @@ type gr_objects
 !=END PREINITIALIZATION PROCESS SUBROUTINES=====================================================================================
  PROCEDURE, PASS(self) :: set_default_config => grackle_set_default
  PROCEDURE, PASS(self) :: write_setting        => grackle_write_setting
+ PROCEDURE, PASS(self) :: set_complet        => grackle_set_complet
 end type gr_objects
 
 type(gr_objects), allocatable,TARGET :: gr_objects_list(:)
+!real(dp),allocatable               :: grackle_ref_density(:)
 
 contains
 
@@ -527,10 +529,10 @@ subroutine grackle_set_default(self)
 
   !Species abundances
   self%myparams%number_of_solved_species(1:max_num_parameters) = 0
-  self%myparams%x_HI(1:max_num_parameters) = 0.0d0
+  self%myparams%x_HI(1:max_num_parameters) = 0.9d0
   self%myparams%x_HII(1:max_num_parameters) = 0.0d0
   self%myparams%x_HM(1:max_num_parameters) = 0.0d0
-  self%myparams%x_HeI(1:max_num_parameters) = 0.0d0
+  self%myparams%x_HeI(1:max_num_parameters) = 0.1d0
   self%myparams%x_HeII(1:max_num_parameters) = 0.0d0
   self%myparams%x_HeIII(1:max_num_parameters) = 0.0d0
   self%myparams%x_H2I(1:max_num_parameters) = 0.0d0
@@ -580,9 +582,12 @@ end subroutine grackle_set_default
 subroutine grackle_fields_config_allocate(number_of_isms,number_of_jets,number_of_clouds)
  implicit none
 
- integer,intent(inout),optional        :: number_of_isms
- integer,intent(inout),optional        :: number_of_jets
- integer,intent(inout),optional        :: number_of_clouds
+ integer,intent(inout)        :: number_of_isms
+ integer,intent(inout)        :: number_of_jets
+ integer,intent(inout)        :: number_of_clouds
+
+
+
  integer        :: default_number_of_isms
  integer        :: default_number_of_jets
  integer        :: default_number_of_clouds
@@ -592,12 +597,12 @@ subroutine grackle_fields_config_allocate(number_of_isms,number_of_jets,number_o
  !-------------------------------------------------------------------------
 
  ! Defaults
- default_number_of_isms = 1
- default_number_of_jets = 0
- default_number_of_clouds = 0
- if(.not.present(number_of_isms))number_of_isms = default_number_of_isms
- if(.not.present(number_of_jets))number_of_jets = default_number_of_jets
- if(.not.present(number_of_clouds))number_of_clouds = default_number_of_clouds
+ !default_number_of_isms = 1
+ !default_number_of_jets = 0
+ !default_number_of_clouds = 0
+ !if(.not.present(number_of_isms))number_of_isms = default_number_of_isms
+ !if(.not.present(number_of_jets))number_of_jets = default_number_of_jets
+ !if(.not.present(number_of_clouds))number_of_clouds = default_number_of_clouds
 
 
  n_total_objects = 0
@@ -643,6 +648,8 @@ subroutine grackle_fields_config_allocate(number_of_isms,number_of_jets,number_o
  if(allocated(gr_epsilon_tol))deallocate(gr_epsilon_tol)
  if(allocated(gr_density_method))deallocate(gr_density_method)
 
+ !if(allocated(grackle_ref_density))deallocate(grackle_ref_density)
+
 
  ! Third, allocate the size of the allocatable arrays
 
@@ -654,10 +661,18 @@ subroutine grackle_fields_config_allocate(number_of_isms,number_of_jets,number_o
  if(.not.allocated(gr_epsilon_tol))allocate(gr_epsilon_tol(1:n_total_objects))
  if(.not.allocated(gr_density_method))allocate(gr_density_method(1:n_total_objects))
 
+
+ !if(.not.allocated(grackle_ref_density))allocate(grackle_ref_density(1:n_total_objects))
+
+
+
  ! Store the total number of objects
  do i_all=1,size(gr_patches_indices_global)
   gr_objects_list(i_all)%number_of_objects = n_total_objects
  end do
+
+ ! Default reference value of density is 0.0d0
+ !grackle_ref_density(1:n_total_objects) = 0.0d0
 
  ! Fourth, fill in specifically for ism
 
@@ -669,6 +684,7 @@ subroutine grackle_fields_config_allocate(number_of_isms,number_of_jets,number_o
      gr_patches_name(i_ism) = 'ism'
      gr_patches_indices_global(i_ism) = i_ism
      gr_patches_indices_local(i_ism) = counter
+
 
    end do Loop_fill_ism
  end if ism_is_present
@@ -683,6 +699,7 @@ subroutine grackle_fields_config_allocate(number_of_isms,number_of_jets,number_o
      gr_patches_indices_global(i_jet) = i_jet
      gr_patches_indices_local(i_jet) = counter
 
+
    end do Loop_fill_jet
  end if jet_is_present
 
@@ -696,6 +713,7 @@ subroutine grackle_fields_config_allocate(number_of_isms,number_of_jets,number_o
      gr_patches_name(i_cloud) = 'cloud'
      gr_patches_indices_global(i_cloud) = i_cloud
      gr_patches_indices_local(i_cloud) = counter
+
 
    end do Loop_fill_cloud
  end if cloud_is_present
@@ -1084,14 +1102,15 @@ end    subroutine grackle_write_setting
 
 !--------------------------------------------------------------------
 !> subroutine check the parfile setting for ism
-subroutine grackle_set_complet(self,ref_density,normalized,mydensityunit)
+subroutine grackle_set_complet(self,i_all,ref_density,normalized,mydensityunit)
   implicit none
   class(gr_objects), TARGET                                :: self
+  integer,intent(in) :: i_all
   real(kind=dp),intent(in) :: ref_density
-  logical,intent(in)       :: normalized
+  logical       :: normalized
   real(kind=dp),optional :: mydensityunit
   ! .. local ..
-  integer :: i_all,icorrect
+  integer :: icorrect
   real(kind=dp) :: physical_ref_density
   logical :: HNotcorrected,HeNotcorrected
   !-----------------------------------
@@ -1118,10 +1137,10 @@ subroutine grackle_set_complet(self,ref_density,normalized,mydensityunit)
   ! * x(He) = 10 %
   ! ==> fix Zeta and n_H
 
-  Loop_through_all : do i_all = 1,self%number_of_objects
 
 
-  do icorrect = 1, 2
+
+  do icorrect = 1,1
   ! Z_solar
   if(self%myparams%SolarMetalFractionByMass(1)<-smalldouble)then
     self%myparams%SolarMetalFractionByMass(1) = 0.01295d0
@@ -1136,11 +1155,14 @@ subroutine grackle_set_complet(self,ref_density,normalized,mydensityunit)
 
 
   ! chi_dust and xi_dust
-  if(self%myparams%chi_dust(1)<-smalldouble.and.self%myparams%xi_dust(1)>=-smalldouble)then
+  if((self%myparams%chi_dust(1)<-smalldouble).and.&
+  (self%myparams%xi_dust(1)>=-smalldouble))then
       self%myparams%chi_dust(1)=DABS(self%myparams%xi_dust(1))
-  elseif(self%myparams%chi_dust(1)>=-smalldouble.and.self%myparams%xi_dust(1)<-smalldouble)then
+  elseif((self%myparams%chi_dust(1)>=-smalldouble).and.&
+  (self%myparams%xi_dust(1)<-smalldouble))then
       self%myparams%xi_dust(1)=DABS(self%myparams%chi_dust(1))
-  else
+  elseif((self%myparams%chi_dust(1)<-smalldouble).and.&
+  (self%myparams%xi_dust(1)<-smalldouble))then
     call return_error(i_all,'chi_dust','xi_dust',&
                       self%myparams%chi_dust(1),&
                       self%myparams%xi_dust(1))
@@ -1462,7 +1484,7 @@ subroutine grackle_set_complet(self,ref_density,normalized,mydensityunit)
        !DO NOTHING TO COMPLETE
      end select
 
-  end do Loop_through_all
+
 
 contains
 
