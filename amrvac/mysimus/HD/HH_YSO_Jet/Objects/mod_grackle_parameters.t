@@ -8,11 +8,17 @@ module mod_grackle_parameters
 
 ! Define constants
 
-real*8,parameter    :: mh_gr=mp_cgs, kboltz_gr=kB_cgs
+real*8,parameter    :: mh_gr=mp_cgs, kboltz_gr=kB_cgs, me_gr=const_me
 real(kind=gr_rpknd) :: tiny_number= 1.0e-20_gr_RKIND,huge_number= 1.0e+20_gr_RKIND
 integer,parameter :: max_num_parameters = 20
 real(kind=gr_rpknd),parameter :: abundance_tolerance = 1.0e-2_gr_RKIND
 real(kind=gr_rpknd),parameter :: abundance_density = 1.0e-2_gr_RKIND
+real(kind=gr_rpknd),parameter :: abundance_relative_density = 5.0e-2_gr_RKIND
+real(kind=gr_rpknd),parameter :: abundance_sum = 1.0e-1_gr_RKIND
+real(kind=gr_rpknd),parameter :: chiD_default = 0.0000340249732407893951507840462224
+real(kind=gr_rpknd),parameter :: xHI_default = 0.999965975041198345221501
+
+
 
 ! species weight
 real(kind=gr_rpknd),parameter :: w_HI = 1

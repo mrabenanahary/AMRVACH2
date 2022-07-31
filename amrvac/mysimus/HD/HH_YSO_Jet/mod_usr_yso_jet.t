@@ -1467,7 +1467,7 @@ subroutine initglobaldata_usr
     density_list(i_object)=ism_surround(i_ism-1)%myconfig%density !already normalized
     densityunit_list(i_object)=ism_surround(i_ism-1)%myphysunit%myconfig%density
     density_list(i_object)=density_list(i_object)*&
-    densityunit_list(i_object) !de-normalize first    
+    densityunit_list(i_object) !de-normalize first
     write(*,*) 'Density of object #',i_object,': ', density_list(i_object)
     write(*,*) 'Density of ism #',i_ism,': ', ism_surround(i_ism-1)%myconfig%density
   end do
@@ -1500,28 +1500,19 @@ subroutine initglobaldata_usr
  ! complet grackle units in gr_struct
  ! do the following in the source adding subroutine to save performance and memory:
  if(usrconfig%grackle_chemistry_on)then
-   !call grackle_object%set_complet
    Loop_through_all : do i_object = 1,n_objects
     gr_objects_list(i_object)%myparams%density(1)=density_list(i_object)
     write(*,*) 'Density of object #',i_object,': ', density_list(i_object)
     call gr_objects_list(i_object)%set_complet(i_object,&
     gr_objects_list(i_object)%myparams%density(1),.false.)
    end do Loop_through_all
-   !write(*,*) 'Grackle usr configuration completing/consistency check successfully done!'
-
+   write(*,*) 'Grackle usr configuration completing/consistency check successfully done!'
+   write(*,*) '==============================='
+   ! No need to normalize for Grackle
  end if
 
 
 
- ! normalize grackle units in gr_struct
- ! do the following in the source adding subroutine to save performance and memory:
- !if(usrconfig%grackle_chemistry_on)then
-   !call ism_surround(i_ism)%normalize(usr_physunit)
-   !call grackle_object%normalize(grackle_structure,usr_physunit)
-   !write(*,*) 'Grackle structure normalization successfully done!'
-
- !end if
- write(*,*) 'End of non-user normalization/completing successfully done!'
 
 
  !Add here the set_complet of the fluxes !!!!
@@ -1741,6 +1732,8 @@ end subroutine initglobaldata_usr
 
     !Add grackle initialization here :
 
+    ! set_w_init for grackle
+
     ! check is if initial setting is correct
     call  phys_check_w(.true., ixI^L, ixO^L, w, flag)
 
@@ -1890,6 +1883,7 @@ end subroutine initglobaldata_usr
 
 
               where(.not.escape_patch(ixI^S))&
+              !here are where the ism tracers are set to >0
               w(ixI^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))=&
                merge(ism_surround(i_ism)%myconfig%tracer_init_density, &
                  wCT(ixI^S,phys_ind%rho_),                               &

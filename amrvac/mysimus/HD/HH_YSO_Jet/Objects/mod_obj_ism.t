@@ -1675,8 +1675,8 @@ contains
        call phys_to_primitive(ixI^L,ixO^L,w,x)
        where(self%patch(ixO^S))
          temperature(ixO^S)      = w(ixO^S,phys_ind%pressure_)/w(ixO^S,phys_ind%rho_)
-         temperature_init(ixO^S) =  w_init(ixO^S,phys_ind%pressure_)&
-                                   / w_init(ixO^S,phys_ind%rho_)
+         temperature_init(ixO^S) =  w_init(ixO^S,phys_ind%pressure_)/&
+                                   w_init(ixO^S,phys_ind%rho_)
         patch_temperature(ixO^S) = dabs(temperature(ixO^S)-&
                                     temperature_init(ixO^S))&
                                     >=self%myconfig%reset_dtemperature
@@ -1716,7 +1716,7 @@ contains
                                    self%myconfig%dust_frac,f_profile,x,w)
        end if cond_dust_on
 
-       !Don't forget to switch back to conservative variables w
+       !Don t forget to switch back to conservative variables w
        call phys_to_conserved(ixI^L,ixO^L,w,x)
 
       end if cond_inside
