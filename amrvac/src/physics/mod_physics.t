@@ -224,6 +224,7 @@ module mod_physics
   procedure(sub_get_aux), pointer         :: phys_get_aux              => null()
   procedure(sub_check_w), pointer         :: phys_check_w              => null()
   procedure(sub_get_pthermal), pointer    :: phys_get_pthermal         => null()
+  procedure(sub_get_kin_en),   pointer    :: phys_get_kin_en         => null()
   procedure(sub_get_csound2), pointer     :: phys_get_csound2          => null()
   procedure(sub_get_comove_B2), pointer   :: phys_get_comove_B2        => null()
   procedure(sub_boundary_adjust), pointer :: phys_boundary_adjust      => null()
@@ -362,6 +363,15 @@ module mod_physics
        real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
        real(kind=dp)      , intent(out)   :: pth(ixI^S)
      end subroutine sub_get_pthermal
+
+
+     function sub_get_kin_en(w, ixI^L, ixO^L, inv_rho) result(ke)
+       use mod_global_parameters
+       integer, intent(in)            :: ixI^L, ixO^L
+       real(dp), intent(in)           :: w(ixI^S, nw)
+       real(dp)                       :: ke(ixO^S)
+       real(dp), intent(in), optional :: inv_rho(ixO^S)
+     end function sub_get_kin_en
 
      subroutine sub_get_csound2(w,x,ixI^L,ixO^L,csound2)
        use mod_global_parameters

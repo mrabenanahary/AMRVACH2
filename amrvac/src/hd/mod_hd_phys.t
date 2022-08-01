@@ -442,6 +442,7 @@ end subroutine hd_default_pre_config
     phys_check_params             => hd_check_params
     phys_check_w                  => hd_check_w
     phys_get_pthermal             => hd_get_pthermal
+    phys_get_kin_en               => hd_kin_en
     phys_get_temperature          => hd_get_temperature
     phys_get_csound2              => hd_get_csound2
     phys_write_info               => hd_write_info

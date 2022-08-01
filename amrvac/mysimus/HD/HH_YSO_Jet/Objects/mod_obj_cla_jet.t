@@ -911,7 +911,7 @@ end subroutine usr_cla_jet_set_patch
   real(kind=dp)                :: x(ixI^S,1:ndim)
   real(kind=dp)                :: w(ixI^S,1:nw)
   class(cla_jet)               :: self
-  type(gr_objects), intent(inout),TARGET   :: gr_obj
+  type(gr_objects)    :: gr_obj
   ! .. local..
   integer                         :: idir
   logical                         :: dust_is_frac
@@ -1203,7 +1203,7 @@ end subroutine usr_cla_add_source
    real(kind=dp), intent(in)      :: qt
    real(kind=dp)                  :: x(ixI^S,1:ndim)
    real(kind=dp)                  :: w(ixI^S,1:nw)
-   type(gr_objects), intent(inout),optional,TARGET   :: gr_obj
+   type(gr_objects), optional   :: gr_obj
    class(cla_jet)                 :: self
    ! .. local ..
 
@@ -1285,7 +1285,7 @@ end subroutine usr_cla_add_source
    logical, intent(in)            :: is_conserved
    real(kind=dp)                  :: x(ixI^S,1:ndim)
    real(kind=dp)                  :: w(ixI^S,1:nw)
-   type(gr_objects), intent(inout),optional,TARGET   :: gr_obj
+   type(gr_objects), optional   :: gr_obj
    class(cla_jet)                 :: self
    ! .. local ..
    integer                        :: iw,n_cells

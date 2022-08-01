@@ -287,12 +287,15 @@ type gr_config
   logical :: normalize_done(max_num_parameters)
   INTEGER :: gr_comoving_coordinates(max_num_parameters)
   REAL(kind=gr_rpknd)    :: gr_a_units(max_num_parameters)
+  REAL(kind=gr_rpknd)    :: gr_density_units(max_num_parameters)
+  REAL(kind=gr_rpknd)    :: gr_length_units(max_num_parameters)
+  REAL(kind=gr_rpknd)    :: gr_time_units(max_num_parameters)
   REAL(kind=gr_rpknd)    :: gr_current_redshift(max_num_parameters)
+    real*8               :: a_value(max_num_parameters)
 end type gr_config
 
 type gr_params
   integer              :: myindice(max_num_parameters)
-  real*8               :: initial_redshift
   real*8               :: temperature_units, pressure_units, dtchem
   real*8               :: grid_dx
 
@@ -455,6 +458,7 @@ type gr_objects
 !=END PREINITIALIZATION PROCESS SUBROUTINES=====================================================================================
  PROCEDURE, PASS(self) :: set_default_config => grackle_set_default
  PROCEDURE, PASS(self) :: write_setting        => grackle_write_setting
+ PROCEDURE, PASS(self) :: write_main_setting        => grackle_write_main_setting
  PROCEDURE, PASS(self) :: set_complet        => grackle_set_complet
  PROCEDURE, PASS(self) :: normalize       => grackle_normalize
  PROCEDURE, PASS(self) :: denormalize       => grackle_denormalize
@@ -463,11 +467,67 @@ type gr_objects
  PROCEDURE, PASS(self) :: check_Xfraction_abundances   => check_Xfraction_abundances_consistency
  PROCEDURE, PASS(self) :: check_densities   => check_densities_consistency
  PROCEDURE, PASS(self) :: check_deviation   => check_deviation_by_density
- PROCEDURE, PASS(self) :: set_w_init   => usr_gr_set_w_init
+ !PROCEDURE, PASS(self) :: set_w_init   => usr_gr_set_w_init
 end type gr_objects
 
-type(gr_objects), allocatable,TARGET :: gr_objects_list(:)
-!real(dp),allocatable               :: grackle_ref_density(:)
+
+type gr_solver
+  type(grackle_type) :: mygrtype
+  integer                    :: field_size(1:ndim) ! grid block size along each physical dimension
+  real(kind=gr_rpknd), allocatable :: gr_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_energy(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_x_velocity(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_y_velocity(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_z_velocity(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_HI_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_HII_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_HM_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_HeI_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_HeII_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_HeIII_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_H2I_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_H2II_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_DI_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_DII_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_HDI_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_e_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_metal_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_dust_density(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_volumetric_heating_rate(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_specific_heating_rate(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_RT_HI_ionization_rate(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_RT_HeI_ionization_rate(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_RT_HeII_ionization_rate(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_RT_H2_dissociation_rate(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_RT_heating_rate(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_cooling_time(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_gamma(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_pressure(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_temperature(:^D&)
+  real(kind=gr_rpknd), allocatable :: gr_dust_temperature(:^D&)
+  !     Grid size and dimension
+  !     grid_start and grid_end are used to ignore ghost zones.
+  !     grid_dx is used in H2 self-shielding approximation only
+  INTEGER                          :: grid_rank
+  INTEGER                          :: grid_dimension(3)
+  INTEGER                          :: grid_start(3)
+  INTEGER                          :: grid_end(3)
+  real*8                           :: grid_dx
+  contains
+  PROCEDURE, PASS(self)        :: clean_grid               => grackle_deallocate_wgr
+  PROCEDURE, PASS(self)        :: set_grid                 => grackle_allocate_wgr
+  PROCEDURE, PASS(self)        :: link_par_to_gr           => grackle_solver_associate
+  PROCEDURE, PASS(self) :: associate_units          => grackle_solver_associate_units
+  PROCEDURE, PASS(self)        :: grackle_source           => grackle_chemistry_static_source
+end type gr_solver
+
+
+type(gr_objects), allocatable :: gr_objects_list(:)
+type(gr_objects) :: gr_main_object
+type(gr_solver), TARGET :: my_grackle_solver
+
+character(len=257), TARGET :: general_grackle_filename
+
 
 contains
 
@@ -475,22 +535,25 @@ contains
 !> subroutine default setting for Grackle
 subroutine grackle_set_default(self)
   implicit none
-  class(gr_objects),TARGET            :: self
+  class(gr_objects)            :: self
+  integer :: istr
   !----------------------------------
+  !TODO: check consistency with set_default_chemistry_parameters.c in grackle /src/clib
   self%myconfig%obj_name(1:max_num_parameters)              = 'grackle_chemistry_config'
   self%myconfig%unit(1:max_num_parameters)                  = 'cgs'
   self%myconfig%myindice(1:max_num_parameters)              = 0
 
-  self%myconfig%use_grackle(1:max_num_parameters) = 1
+  self%myconfig%use_grackle(1:max_num_parameters) = 1 !don t forget to change to 0 after coding
   self%myconfig%gr_with_radiative_cooling(1:max_num_parameters) = 1
   self%myconfig%gr_primordial_chemistry(1:max_num_parameters) = 0
-  self%myconfig%gr_metal_cooling(1:max_num_parameters) = 1
+  self%myconfig%gr_metal_cooling(1:max_num_parameters) = 1 !don t forget to change to 0 after coding
   self%myconfig%gr_UVbackground(1:max_num_parameters) = 0
-  self%myconfig%gr_cmb_temperature_floor(1:max_num_parameters) = 0
+  self%myconfig%gr_cmb_temperature_floor(1:max_num_parameters) = 1
   self%myconfig%gr_h2_on_dust(1:max_num_parameters) = 0
   self%myconfig%gr_dust_chemistry(1:max_num_parameters) = 0
   self%myconfig%gr_use_dust_density_field(1:max_num_parameters) = 0
-  self%myconfig%gr_photoelectric_heating(1:max_num_parameters) = 0
+  self%myconfig%gr_photoelectric_heating(1:max_num_parameters) = -1
+  self%myconfig%gr_photoelectric_heating_rate(1:max_num_parameters) = 8.5D-26
   self%myconfig%gr_use_volumetric_heating_rate(1:max_num_parameters) = 0
   self%myconfig%gr_use_specific_heating_rate(1:max_num_parameters) = 0
   self%myconfig%gr_three_body_rate(1:max_num_parameters) = 0
@@ -509,26 +572,30 @@ subroutine grackle_set_default(self)
   self%myconfig%gr_radiative_transfer_hydrogen_only(1:max_num_parameters) = 0
   self%myconfig%gr_self_shielding_method(1:max_num_parameters) = 0
   self%myconfig%gr_Gamma(1:max_num_parameters) = 5.d0/3.d0
-  self%myconfig%gr_photoelectric_heating_rate(1:max_num_parameters) = 8.5D-26
 
   self%myconfig%TemperatureStart(1:max_num_parameters) = 1.0d0
   self%myconfig%TemperatureEnd(1:max_num_parameters) = 1.0D9
   self%myconfig%DustTemperatureStart(1:max_num_parameters) = 1.0d0
   self%myconfig%DustTemperatureEnd(1:max_num_parameters) = 1500.0d0
   self%myconfig%gr_LWbackground_intensity(1:max_num_parameters) = 0.0d0
-  self%myconfig%gr_UVbackground_redshift_on(1:max_num_parameters) = 7.0d0
-  self%myconfig%gr_UVbackground_redshift_off(1:max_num_parameters) = 0.0d0
-  self%myconfig%gr_UVbackground_redshift_fullon(1:max_num_parameters) = 6.0d0
-  self%myconfig%gr_UVbackground_redshift_drop(1:max_num_parameters) = 0.0d0
+  self%myconfig%gr_UVbackground_redshift_on(1:max_num_parameters) = -99999.0 !=FLOAT_UNDEFINED
+  self%myconfig%gr_UVbackground_redshift_off(1:max_num_parameters) = -99999.0
+  self%myconfig%gr_UVbackground_redshift_fullon(1:max_num_parameters) = -99999.0
+  self%myconfig%gr_UVbackground_redshift_drop(1:max_num_parameters) = -99999.0
   self%myconfig%cloudy_electron_fraction_factor(1:max_num_parameters) = 9.153959D-3
   self%myconfig%data_dir(1:max_num_parameters) = "../../../src/grackle/input/"
   self%myconfig%data_filename(1:max_num_parameters) = "CloudyData_UVB=HM2012.h5"
-  self%myparams%data_file(1:max_num_parameters) = self%myconfig%data_dir(1:max_num_parameters)//&
-  self%myconfig%data_filename(1:max_num_parameters)//C_NULL_CHAR
+
+  self%myparams%data_file(1:max_num_parameters) = "../../../src/grackle/input/"//"CloudyData_UVB=HM2012.h5"//C_NULL_CHAR
+
   self%myconfig%normalize_done(1:max_num_parameters) = .false.
   self%myconfig%gr_comoving_coordinates(1:max_num_parameters) = 0
-  self%myconfig%gr_a_units(1:max_num_parameters) = 0.0d0
+  self%myconfig%gr_a_units(1:max_num_parameters) = 1.0d0
+  self%myconfig%gr_density_units(1:max_num_parameters) = 1.0d0
+  self%myconfig%gr_length_units(1:max_num_parameters) = 1.0d0
+  self%myconfig%gr_time_units(1:max_num_parameters) = 1.0d0
   self%myconfig%gr_current_redshift(1:max_num_parameters) = 0.
+  self%myconfig%a_value(1:max_num_parameters) = 1.0d0
 
   ! Parameters default values
   ! Gas to dust ratios
@@ -818,6 +885,43 @@ subroutine grackle_config_read(grackle_config,files)
   write(*,*) 'Grackle usr configuration reading successfully done !'
 end subroutine grackle_config_read
 
+subroutine grackle_main_config_read(grackle_config,files)
+  implicit none
+
+  character(len=*),intent(in)        :: files(:)
+  type(gr_config), intent(out)  :: grackle_config
+
+  ! .. local ..
+  integer                            :: i_file,i_error_read
+  integer                  :: idim,iside
+  character(len=70)            :: error_message
+  !-------------------------------------------------------------------------
+  namelist /grackle_main_conf_list/  grackle_config
+
+
+  error_message = 'In the procedure : grackle_config_read'
+
+  if(mype==0)write(*,*)'Reading grackle_conf_list'
+  do i_file = 1, size(files)
+     open(unitpar, file=trim(files(i_file)), status="old")
+     read(unitpar, grackle_main_conf_list, iostat=i_error_read)
+     write(*,*) ' ====================== Main configuration : '
+     write(*,*) 'use_grackle : ', grackle_config%use_grackle(1)
+     write(*,*) 'gr_primordial_chemistry : ', grackle_config%gr_primordial_chemistry(1)
+     write(*,*) 'gr_metal_cooling : ', grackle_config%gr_metal_cooling(1)
+     write(*,*) 'gr_dust_chemistry : ', grackle_config%gr_dust_chemistry(1)
+     call usr_mat_read_error_message(i_error_read,grackle_config%myindice(1),&
+                                     'grackle_chemistry_main_config')
+     close(unitpar)
+
+     !add a routine to check that the sum of each density is equal to one times
+     ! the total density in ISM AND JET
+  end do
+
+
+  write(*,*) 'Grackle usr main configuration reading successfully done !'
+end subroutine grackle_main_config_read
+
 subroutine grackle_params_read(grackle_par,files)
   implicit none
 
@@ -865,7 +969,7 @@ subroutine grackle_associate_parameters(n_obj,gr_conf_lst,gr_par_lst,gr_obj_lst,
   integer,intent(in)                            :: n_obj
   type(gr_config),intent(in)                    :: gr_conf_lst
   type(gr_params),intent(in)                    :: gr_par_lst
-  type(gr_objects), intent(inout),TARGET        :: gr_obj_lst(1:n_obj)
+  type(gr_objects)       :: gr_obj_lst(1:n_obj)
   integer,intent(in)                            :: i_all
   !--------------------------------------------------------
 
@@ -915,11 +1019,13 @@ subroutine grackle_associate_parameters(n_obj,gr_conf_lst,gr_par_lst,gr_obj_lst,
   gr_obj_lst(i_all)%myconfig%cloudy_electron_fraction_factor(1) = gr_conf_lst%cloudy_electron_fraction_factor(i_all)
   gr_obj_lst(i_all)%myconfig%data_dir(1) = gr_conf_lst%data_dir(i_all)
   gr_obj_lst(i_all)%myconfig%data_filename(1) = gr_conf_lst%data_filename(i_all)
-  gr_obj_lst(i_all)%myparams%data_file(1) = gr_obj_lst(i_all)%myconfig%data_dir(1)//&
-  gr_obj_lst(i_all)%myconfig%data_filename(1)//C_NULL_CHAR
+  gr_obj_lst(i_all)%myparams%data_file(1) = gr_obj_lst(i_all)%myparams%data_file(1)
   !gr_obj_lst(i_all)%myconfig%normalize_done(1) = gr_conf_lst%normalize_done(i_all)
   gr_obj_lst(i_all)%myconfig%gr_comoving_coordinates(1) = gr_conf_lst%gr_comoving_coordinates(i_all)
   gr_obj_lst(i_all)%myconfig%gr_a_units(1) = gr_conf_lst%gr_a_units(i_all)
+  gr_obj_lst(i_all)%myconfig%gr_density_units(1) = gr_conf_lst%gr_density_units(i_all)
+  gr_obj_lst(i_all)%myconfig%gr_length_units(1) = gr_conf_lst%gr_length_units(i_all)
+  gr_obj_lst(i_all)%myconfig%gr_time_units(1) = gr_conf_lst%gr_time_units(i_all)
   gr_obj_lst(i_all)%myconfig%gr_current_redshift(1) = gr_conf_lst%gr_current_redshift(i_all)
 
   ! Parameters default values
@@ -990,10 +1096,84 @@ subroutine grackle_associate_parameters(n_obj,gr_conf_lst,gr_par_lst,gr_obj_lst,
 
 end subroutine grackle_associate_parameters
 
+subroutine grackle_associate_main_parameters(gr_conf_lst,gr_obj_lst)
+  implicit none
+  type(gr_config),intent(in)                    :: gr_conf_lst
+  type(gr_objects)       :: gr_obj_lst
+  !--------------------------------------------------------
+
+  gr_obj_lst%myconfig%obj_name(1)              = gr_conf_lst%obj_name(1)
+  gr_obj_lst%myconfig%unit(1)                  = gr_conf_lst%unit(1)
+  !gr_obj_lst%myconfig%myindice(1)              = gr_conf_lst%myindice(1)
+
+  gr_obj_lst%myconfig%use_grackle(1) = gr_conf_lst%use_grackle(1)
+  gr_obj_lst%myconfig%gr_with_radiative_cooling(1) = gr_conf_lst%gr_with_radiative_cooling(1)
+  gr_obj_lst%myconfig%gr_primordial_chemistry(1) = gr_conf_lst%gr_primordial_chemistry(1)
+  gr_obj_lst%myconfig%gr_metal_cooling(1) = gr_conf_lst%gr_metal_cooling(1)
+  gr_obj_lst%myconfig%gr_UVbackground(1) = gr_conf_lst%gr_UVbackground(1)
+  gr_obj_lst%myconfig%gr_cmb_temperature_floor(1) = gr_conf_lst%gr_cmb_temperature_floor(1)
+  gr_obj_lst%myconfig%gr_h2_on_dust(1) = gr_conf_lst%gr_h2_on_dust(1)
+  gr_obj_lst%myconfig%gr_dust_chemistry(1) = gr_conf_lst%gr_dust_chemistry(1)
+  gr_obj_lst%myconfig%gr_use_dust_density_field(1) = gr_conf_lst%gr_use_dust_density_field(1)
+  gr_obj_lst%myconfig%gr_photoelectric_heating(1) = gr_conf_lst%gr_photoelectric_heating(1)
+  gr_obj_lst%myconfig%gr_use_volumetric_heating_rate(1) = gr_conf_lst%gr_use_volumetric_heating_rate(1)
+  gr_obj_lst%myconfig%gr_use_specific_heating_rate(1) = gr_conf_lst%gr_use_specific_heating_rate(1)
+  gr_obj_lst%myconfig%gr_three_body_rate(1) = gr_conf_lst%gr_three_body_rate(1)
+  gr_obj_lst%myconfig%gr_cie_cooling(1) = gr_conf_lst%gr_cie_cooling(1)
+  gr_obj_lst%myconfig%gr_h2_optical_depth_approximation(1) = gr_conf_lst%gr_h2_optical_depth_approximation(1)
+  gr_obj_lst%myconfig%gr_ih2co(1) = gr_conf_lst%gr_ih2co(1)
+  gr_obj_lst%myconfig%gr_ipiht(1) = gr_conf_lst%gr_ipiht(1)
+  gr_obj_lst%myconfig%gr_NumberOfTemperatureBins(1) = gr_conf_lst%gr_NumberOfTemperatureBins(1)
+  gr_obj_lst%myconfig%gr_CaseBRecombination(1) = gr_conf_lst%gr_CaseBRecombination(1)
+  gr_obj_lst%myconfig%gr_Compton_xray_heating(1)= gr_conf_lst%gr_Compton_xray_heating(1)
+  gr_obj_lst%myconfig%gr_LWbackground_sawtooth_suppression(1) = gr_conf_lst%gr_LWbackground_sawtooth_suppression(1)
+  gr_obj_lst%myconfig%gr_NumberOfDustTemperatureBins(1) = gr_conf_lst%gr_NumberOfDustTemperatureBins(1)
+  gr_obj_lst%myconfig%gr_use_radiative_transfer(1) = gr_conf_lst%gr_use_radiative_transfer(1)
+  gr_obj_lst%myconfig%gr_radiative_transfer_coupled_rate_solver(1) = gr_conf_lst%gr_radiative_transfer_coupled_rate_solver(1)
+  gr_obj_lst%myconfig%gr_radiative_transfer_intermediate_step(1) = gr_conf_lst%gr_radiative_transfer_intermediate_step(1)
+  gr_obj_lst%myconfig%gr_radiative_transfer_hydrogen_only(1) = gr_conf_lst%gr_radiative_transfer_hydrogen_only(1)
+  gr_obj_lst%myconfig%gr_self_shielding_method(1) = gr_conf_lst%gr_self_shielding_method(1)
+  gr_obj_lst%myconfig%gr_Gamma(1) = gr_conf_lst%gr_Gamma(1)
+  gr_obj_lst%myconfig%gr_photoelectric_heating_rate(1) = gr_conf_lst%gr_photoelectric_heating_rate(1)
+
+  gr_obj_lst%myconfig%TemperatureStart(1) = gr_conf_lst%TemperatureStart(1)
+  gr_obj_lst%myconfig%TemperatureEnd(1) = gr_conf_lst%TemperatureEnd(1)
+  gr_obj_lst%myconfig%DustTemperatureStart(1) = gr_conf_lst%DustTemperatureStart(1)
+  gr_obj_lst%myconfig%DustTemperatureEnd(1) = gr_conf_lst%DustTemperatureEnd(1)
+  gr_obj_lst%myconfig%gr_LWbackground_intensity(1) = gr_conf_lst%gr_LWbackground_intensity(1)
+  gr_obj_lst%myconfig%gr_UVbackground_redshift_on(1) = gr_conf_lst%gr_UVbackground_redshift_on(1)
+  gr_obj_lst%myconfig%gr_UVbackground_redshift_off(1) = gr_conf_lst%gr_UVbackground_redshift_off(1)
+  gr_obj_lst%myconfig%gr_UVbackground_redshift_fullon(1) = gr_conf_lst%gr_UVbackground_redshift_fullon(1)
+  gr_obj_lst%myconfig%gr_UVbackground_redshift_drop(1) = gr_conf_lst%gr_UVbackground_redshift_drop(1)
+  gr_obj_lst%myconfig%cloudy_electron_fraction_factor(1) = gr_conf_lst%cloudy_electron_fraction_factor(1)
+  gr_obj_lst%myconfig%data_dir(1) = gr_conf_lst%data_dir(1)
+  gr_obj_lst%myconfig%data_filename(1) = gr_conf_lst%data_filename(1)
+  gr_obj_lst%myparams%data_file(1) = gr_obj_lst%myparams%data_file(1)
+  !gr_obj_lst%myconfig%normalize_done(1) = gr_conf_lst%normalize_done(1)
+  gr_obj_lst%myconfig%gr_comoving_coordinates(1) = gr_conf_lst%gr_comoving_coordinates(1)
+  gr_obj_lst%myconfig%gr_a_units(1) = gr_conf_lst%gr_a_units(1)
+  gr_obj_lst%myconfig%gr_density_units(1) = gr_conf_lst%gr_density_units(1)
+  gr_obj_lst%myconfig%gr_length_units(1) = gr_conf_lst%gr_length_units(1)
+  gr_obj_lst%myconfig%gr_time_units(1) = gr_conf_lst%gr_time_units(1)
+  gr_obj_lst%myconfig%gr_current_redshift(1) = gr_conf_lst%gr_current_redshift(1)
+  gr_obj_lst%myconfig%a_value(1) = gr_conf_lst%a_value(1)
+
+
+
+
+
+  !Species abundances
+  gr_obj_lst%myparams%number_of_solved_species(1) = &
+   convert_logical_to_integer(gr_obj_lst%myconfig%gr_primordial_chemistry(1)>0)*6&
+  +convert_logical_to_integer(gr_obj_lst%myconfig%gr_primordial_chemistry(1)>1)*3&
+  +convert_logical_to_integer(gr_obj_lst%myconfig%gr_primordial_chemistry(1)>2)*3
+
+end subroutine grackle_associate_main_parameters
+
 
 subroutine grackle_write_setting(self,unit_config,iobj)
   implicit none
-  class(gr_objects),TARGET            :: self
+  class(gr_objects)            :: self
   integer,intent(in)                  :: unit_config
   integer,intent(in)                  :: iobj
   integer                             :: idims2,iside2,iB2
@@ -1060,6 +1240,9 @@ subroutine grackle_write_setting(self,unit_config,iobj)
     !write(unit_config,*) 'normalize_done = ',  self%myconfig%normalize_done(1)
     write(unit_config,*) 'gr_comoving_coordinates = ',  self%myconfig%gr_comoving_coordinates(1)
     write(unit_config,*) 'gr_a_units = ',  self%myconfig%gr_a_units(1)
+    write(unit_config,*) 'gr_density_units = ',  self%myconfig%gr_density_units(1)
+    write(unit_config,*) 'gr_length_units = ',  self%myconfig%gr_length_units(1)
+    write(unit_config,*) 'gr_time_units = ',  self%myconfig%gr_time_units(1)
     write(unit_config,*) 'gr_current_redshift = ',  self%myconfig%gr_current_redshift(1)
 
     write(unit_config,*)'> Physical parameters'
@@ -1160,6 +1343,91 @@ subroutine grackle_write_setting(self,unit_config,iobj)
 end    subroutine grackle_write_setting
 
 
+subroutine grackle_write_main_setting(self,unit_config)
+  implicit none
+  class(gr_objects)            :: self
+  integer,intent(in)                  :: unit_config
+  integer                             :: idims2,iside2,iB2
+  real(kind=dp)                       :: rto_print
+  character(len=64)                   :: sto_print
+  character(len=128)                   :: wto_print
+  integer                             :: idim,iside,idims,iw2,i_all
+  ! .. local ..
+
+  !-----------------------------------
+
+  if(self%myconfig%use_grackle(1)==1)then
+    write(unit_config,*)'      ****** Main Configuration for Grackle******      '
+    write(unit_config,*)'- In Physical Unit'
+
+    write(unit_config,*)'* Grackle parameters'
+    write(unit_config,*) 'use_grackle =',  self%myconfig%use_grackle(1)
+
+    write(unit_config,*)'> Grackle configuration'
+    write(unit_config,*) 'Unit :',  self%myconfig%unit(1)
+    write(unit_config,*) 'gr_with_radiative_cooling = ',  self%myconfig%gr_with_radiative_cooling(1)
+    write(unit_config,*) 'gr_primordial_chemistry = ',  self%myconfig%gr_primordial_chemistry(1)
+    write(unit_config,*) 'gr_metal_cooling = ',  self%myconfig%gr_metal_cooling(1)
+    write(unit_config,*) 'gr_UVbackground = ',  self%myconfig%gr_UVbackground(1)
+    write(unit_config,*) 'gr_cmb_temperature_floor = ',  self%myconfig%gr_cmb_temperature_floor(1)
+    write(unit_config,*) 'gr_h2_on_dust = ',  self%myconfig%gr_h2_on_dust(1)
+    write(unit_config,*) 'gr_dust_chemistry = ',  self%myconfig%gr_dust_chemistry(1)
+    write(unit_config,*) 'gr_use_dust_density_field = ',  self%myconfig%gr_use_dust_density_field(1)
+    write(unit_config,*) 'gr_photoelectric_heating = ',  self%myconfig%gr_photoelectric_heating(1)
+    write(unit_config,*) 'gr_use_volumetric_heating_rate = ',  self%myconfig%gr_use_volumetric_heating_rate(1)
+    write(unit_config,*) 'gr_use_specific_heating_rate = ',  self%myconfig%gr_use_specific_heating_rate(1)
+    write(unit_config,*) 'gr_three_body_rate = ',  self%myconfig%gr_three_body_rate(1)
+    write(unit_config,*) 'gr_cie_cooling = ',  self%myconfig%gr_cie_cooling(1)
+    write(unit_config,*) 'gr_h2_optical_depth_approximation = ',  self%myconfig%gr_h2_optical_depth_approximation(1)
+    write(unit_config,*) 'gr_ih2co = ',  self%myconfig%gr_ih2co(1)
+    write(unit_config,*) 'gr_ipiht = ',  self%myconfig%gr_ipiht(1)
+    write(unit_config,*) 'gr_NumberOfTemperatureBins = ',  self%myconfig%gr_NumberOfTemperatureBins(1)
+    write(unit_config,*) 'gr_CaseBRecombination = ',  self%myconfig%gr_CaseBRecombination(1)
+    write(unit_config,*) 'gr_Compton_xray_heating = ',  self%myconfig%gr_Compton_xray_heating(1)
+    write(unit_config,*) 'gr_LWbackground_sawtooth_suppression = ',  self%myconfig%gr_LWbackground_sawtooth_suppression(1)
+    write(unit_config,*) 'gr_NumberOfDustTemperatureBins = ',  self%myconfig%gr_NumberOfDustTemperatureBins(1)
+    write(unit_config,*) 'gr_use_radiative_transfer = ',  self%myconfig%gr_use_radiative_transfer(1)
+    write(unit_config,*) 'gr_radiative_transfer_coupled_rate_solver = ',  self%myconfig%gr_radiative_transfer_coupled_rate_solver(1)
+    write(unit_config,*) 'gr_radiative_transfer_intermediate_step = ',  self%myconfig%gr_radiative_transfer_intermediate_step(1)
+    write(unit_config,*) 'gr_radiative_transfer_hydrogen_only = ',  self%myconfig%gr_radiative_transfer_hydrogen_only(1)
+    write(unit_config,*) 'gr_self_shielding_method = ',  self%myconfig%gr_self_shielding_method(1)
+    write(unit_config,*) 'gr_Gamma = ',  self%myconfig%gr_Gamma(1)
+    write(unit_config,*) 'gr_photoelectric_heating_rate = ',  self%myconfig%gr_photoelectric_heating_rate(1)
+
+    write(unit_config,*) 'TemperatureStart = ',  self%myconfig%TemperatureStart(1)
+    write(unit_config,*) 'TemperatureEnd = ',  self%myconfig%TemperatureEnd(1)
+    write(unit_config,*) 'DustTemperatureStart = ',  self%myconfig%DustTemperatureStart(1)
+    write(unit_config,*) 'DustTemperatureEnd = ',  self%myconfig%DustTemperatureEnd(1)
+    write(unit_config,*) 'gr_LWbackground_intensity = ',  self%myconfig%gr_LWbackground_intensity(1)
+    write(unit_config,*) 'gr_UVbackground_redshift_on = ',  self%myconfig%gr_UVbackground_redshift_on(1)
+    write(unit_config,*) 'gr_UVbackground_redshift_off = ',  self%myconfig%gr_UVbackground_redshift_off(1)
+    write(unit_config,*) 'gr_UVbackground_redshift_fullon = ',  self%myconfig%gr_UVbackground_redshift_fullon(1)
+    write(unit_config,*) 'gr_UVbackground_redshift_drop = ',  self%myconfig%gr_UVbackground_redshift_drop(1)
+    write(unit_config,*) 'cloudy_electron_fraction_factor = ',  self%myconfig%cloudy_electron_fraction_factor(1)
+    write(unit_config,*) 'data_dir = ',  self%myconfig%data_dir(1)
+    write(unit_config,*) 'data_filename = ',  self%myconfig%data_filename(1)
+    write(unit_config,*) 'data_file = ',  trim(self%myconfig%data_dir(1)//self%myconfig%data_filename(1))
+    !write(unit_config,*) 'normalize_done = ',  self%myconfig%normalize_done(1)
+    write(unit_config,*) 'gr_comoving_coordinates = ',  self%myconfig%gr_comoving_coordinates(1)
+    write(unit_config,*) 'gr_a_units = ',  self%myconfig%gr_a_units(1)
+    write(unit_config,*) 'gr_density_units = ',  self%myconfig%gr_density_units(1)
+    write(unit_config,*) 'gr_length_units = ',  self%myconfig%gr_length_units(1)
+    write(unit_config,*) 'gr_time_units = ',  self%myconfig%gr_time_units(1)
+    write(unit_config,*) 'gr_current_redshift = ',  self%myconfig%gr_current_redshift(1)
+    write(unit_config,*) 'a_value = ',  self%myconfig%a_value(1)
+
+
+    write(unit_config,*) '======================================================='
+    write(unit_config,*)'************************************'
+    write(unit_config,*)'******** END of Grackle main configuration **********'
+    write(unit_config,*)'************************************'
+  else
+    write(unit_config,*)'      ****** Grackle disabled for ',') ******      '
+  end if
+
+
+end    subroutine grackle_write_main_setting
+
 
 
 
@@ -1169,7 +1437,7 @@ end    subroutine grackle_write_setting
 !> subroutine check the parfile setting for ism
 subroutine grackle_set_complet(self,i_all,ref_density,normalized,mydensityunit)
   implicit none
-  class(gr_objects), TARGET                                :: self
+  class(gr_objects)                                :: self
   integer,intent(in) :: i_all
   real(kind=dp),intent(in) :: ref_density
   logical       :: normalized
@@ -1526,7 +1794,7 @@ end subroutine grackle_set_complet
 subroutine grackle_normalize(self,physunit_inuse)
   use mod_obj_usr_unit
   implicit none
-  class(gr_objects), TARGET                      :: self
+  class(gr_objects)                      :: self
   type(usrphysical_unit), target, intent(in)     :: physunit_inuse
   !----------------------------------
 
@@ -1561,7 +1829,7 @@ end subroutine grackle_normalize
 subroutine grackle_denormalize(self,physunit_inuse)
   use mod_obj_usr_unit
   implicit none
-  class(gr_objects), TARGET                      :: self
+  class(gr_objects)                      :: self
   type(usrphysical_unit), target, intent(in)     :: physunit_inuse
   !----------------------------------
 
@@ -2021,80 +2289,305 @@ end subroutine check_deviation_by_density
 
 
 
-!II> SET INITIAL FIELDS FOR GRACKLE
-!-------------------------------------------------------------------------
-subroutine usr_gr_set_w_init(ixI^L,ixO^L,qt,x,w,&
-patch,w_ref_density,normalized,mydensityunit,self)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!III> Subroutines to solve chemistry+cooling+heating through Grackle module
+!----------------------------------------------------------------------------
+
+subroutine grackle_deallocate_wgr(self)
   implicit none
-  integer, intent(in)          :: ixI^L,ixO^L
-  real(kind=dp), intent(in)    :: qt
-  real(kind=dp)                :: x(ixI^S,1:ndim)
-  real(kind=dp),intent(inout)  :: w(ixI^S,1:nw)
-  logical                      :: patch(ixI^S)
-  real(kind=dp),intent(in) :: w_ref_density
-  logical       :: normalized
-  real(kind=dp),optional :: mydensityunit
-  class(gr_objects), TARGET :: self
+  class(gr_solver)                        :: self
+  !------------------------------
+
+  if(allocated(self%gr_density))deallocate(self%gr_density)
+  if(allocated(self%gr_energy))deallocate(self%gr_energy)
+  if(allocated(self%gr_x_velocity))deallocate(self%gr_x_velocity)
+  if(allocated(self%gr_y_velocity))deallocate(self%gr_y_velocity)
+  if(allocated(self%gr_z_velocity))deallocate(self%gr_z_velocity)
+  if(allocated(self%gr_HI_density))deallocate(self%gr_HI_density)
+  if(allocated(self%gr_HII_density))deallocate(self%gr_HII_density)
+  if(allocated(self%gr_HM_density))deallocate(self%gr_HM_density)
+  if(allocated(self%gr_HeI_density))deallocate(self%gr_HeI_density)
+  if(allocated(self%gr_HeII_density))deallocate(self%gr_HeII_density)
+  if(allocated(self%gr_HeIII_density))deallocate(self%gr_HeIII_density)
+  if(allocated(self%gr_H2I_density))deallocate(self%gr_H2I_density)
+  if(allocated(self%gr_H2II_density))deallocate(self%gr_H2II_density)
+  if(allocated(self%gr_DI_density))deallocate(self%gr_DI_density)
+  if(allocated(self%gr_DII_density))deallocate(self%gr_DII_density)
+  if(allocated(self%gr_HDI_density))deallocate(self%gr_HDI_density)
+  if(allocated(self%gr_e_density))deallocate(self%gr_e_density)
+  if(allocated(self%gr_metal_density))deallocate(self%gr_metal_density)
+  if(allocated(self%gr_dust_density))deallocate(self%gr_dust_density)
+  if(allocated(self%gr_volumetric_heating_rate))deallocate(self%gr_volumetric_heating_rate)
+  if(allocated(self%gr_specific_heating_rate))deallocate(self%gr_specific_heating_rate)
+  if(allocated(self%gr_RT_HI_ionization_rate))deallocate(self%gr_RT_HI_ionization_rate)
+  if(allocated(self%gr_RT_HeI_ionization_rate))deallocate(self%gr_RT_HeI_ionization_rate)
+  if(allocated(self%gr_RT_HeII_ionization_rate))deallocate(self%gr_RT_HeII_ionization_rate)
+  if(allocated(self%gr_RT_H2_dissociation_rate))deallocate(self%gr_RT_H2_dissociation_rate)
+  if(allocated(self%gr_RT_heating_rate))deallocate(self%gr_RT_heating_rate)
+  if(allocated(self%gr_cooling_time))deallocate(self%gr_cooling_time)
+  if(allocated(self%gr_gamma))deallocate(self%gr_gamma)
+  if(allocated(self%gr_pressure))deallocate(self%gr_pressure)
+  if(allocated(self%gr_temperature))deallocate(self%gr_temperature)
+  if(allocated(self%gr_dust_temperature))deallocate(self%gr_dust_temperature)
+
+end subroutine grackle_deallocate_wgr
+
+subroutine grackle_allocate_wgr(self,ixI^L)
+  implicit none
+  integer, intent(in)                     :: ixI^L
+  class(gr_solver)                        :: self
+  !------------------------------
+
+  if(.not.allocated(self%gr_density))allocate(self%gr_density(ixI^S))
+  if(.not.allocated(self%gr_energy))allocate(self%gr_energy(ixI^S))
+  if(.not.allocated(self%gr_x_velocity))allocate(self%gr_x_velocity(ixI^S))
+  if(.not.allocated(self%gr_y_velocity))allocate(self%gr_y_velocity(ixI^S))
+  if(.not.allocated(self%gr_z_velocity))allocate(self%gr_z_velocity(ixI^S))
+  if(.not.allocated(self%gr_HI_density))allocate(self%gr_HI_density(ixI^S))
+  if(.not.allocated(self%gr_HII_density))allocate(self%gr_HII_density(ixI^S))
+  if(.not.allocated(self%gr_HM_density))allocate(self%gr_HM_density(ixI^S))
+  if(.not.allocated(self%gr_HeI_density))allocate(self%gr_HeI_density(ixI^S))
+  if(.not.allocated(self%gr_HeII_density))allocate(self%gr_HeII_density(ixI^S))
+  if(.not.allocated(self%gr_HeIII_density))allocate(self%gr_HeIII_density(ixI^S))
+  if(.not.allocated(self%gr_H2I_density))allocate(self%gr_H2I_density(ixI^S))
+  if(.not.allocated(self%gr_H2II_density))allocate(self%gr_H2II_density(ixI^S))
+  if(.not.allocated(self%gr_DI_density))allocate(self%gr_DI_density(ixI^S))
+  if(.not.allocated(self%gr_DII_density))allocate(self%gr_DII_density(ixI^S))
+  if(.not.allocated(self%gr_HDI_density))allocate(self%gr_HDI_density(ixI^S))
+  if(.not.allocated(self%gr_e_density))allocate(self%gr_e_density(ixI^S))
+  if(.not.allocated(self%gr_metal_density))allocate(self%gr_metal_density(ixI^S))
+  if(.not.allocated(self%gr_dust_density))allocate(self%gr_dust_density(ixI^S))
+  if(.not.allocated(self%gr_volumetric_heating_rate))allocate(self%gr_volumetric_heating_rate(ixI^S))
+  if(.not.allocated(self%gr_specific_heating_rate))allocate(self%gr_specific_heating_rate(ixI^S))
+  if(.not.allocated(self%gr_RT_HI_ionization_rate))allocate(self%gr_RT_HI_ionization_rate(ixI^S))
+  if(.not.allocated(self%gr_RT_HeI_ionization_rate))allocate(self%gr_RT_HeI_ionization_rate(ixI^S))
+  if(.not.allocated(self%gr_RT_HeII_ionization_rate))allocate(self%gr_RT_HeII_ionization_rate(ixI^S))
+  if(.not.allocated(self%gr_RT_H2_dissociation_rate))allocate(self%gr_RT_H2_dissociation_rate(ixI^S))
+  if(.not.allocated(self%gr_RT_heating_rate))allocate(self%gr_RT_heating_rate(ixI^S))
+  if(.not.allocated(self%gr_cooling_time))allocate(self%gr_cooling_time(ixI^S))
+  if(.not.allocated(self%gr_gamma))allocate(self%gr_gamma(ixI^S))
+  if(.not.allocated(self%gr_pressure))allocate(self%gr_pressure(ixI^S))
+  if(.not.allocated(self%gr_temperature))allocate(self%gr_temperature(ixI^S))
+  if(.not.allocated(self%gr_dust_temperature))allocate(self%gr_dust_temperature(ixI^S))
+
+end subroutine grackle_allocate_wgr
+
+
+subroutine grackle_solver_associate(gr_obj,self)
+  implicit none
+  class(gr_solver)                        :: self
+  type(gr_objects)  :: gr_obj
+  integer :: iresult
+  !------------------------------
+  !     Create a grackle chemistry object for parameters and set defaults
+
+  iresult = set_default_chemistry_parameters(self%mygrtype%grackle_data)
+
+
+    !     Set parameters
+
+  general_grackle_filename = "../../../src/grackle/input/"//"CloudyData_UVB=HM2012.h5"//C_NULL_CHAR
+  self%mygrtype%grackle_data%use_grackle = gr_obj%myconfig%use_grackle(1)
+  self%mygrtype%grackle_data%primordial_chemistry = gr_obj%myconfig%gr_primordial_chemistry(1)
+  self%mygrtype%grackle_data%with_radiative_cooling = gr_obj%myconfig%gr_with_radiative_cooling(1)
+  self%mygrtype%grackle_data%dust_chemistry = gr_obj%myconfig%gr_dust_chemistry(1)
+  self%mygrtype%grackle_data%metal_cooling = gr_obj%myconfig%gr_metal_cooling(1)
+  self%mygrtype%grackle_data%grackle_data_file = C_LOC(general_grackle_filename(1:1))
+  self%mygrtype%grackle_data%h2_on_dust = gr_obj%myconfig%gr_h2_on_dust(1)
+  self%mygrtype%grackle_data%cmb_temperature_floor = gr_obj%myconfig%gr_cmb_temperature_floor(1)
+  self%mygrtype%grackle_data%Gamma = gr_obj%myconfig%gr_Gamma(1)
+  self%mygrtype%grackle_data%use_dust_density_field = gr_obj%myconfig%gr_use_dust_density_field(1)
+  self%mygrtype%grackle_data%three_body_rate = gr_obj%myconfig%gr_three_body_rate(1)
+  self%mygrtype%grackle_data%cie_cooling                    = gr_obj%myconfig%gr_cie_cooling(1)
+  self%mygrtype%grackle_data%h2_optical_depth_approximation = gr_obj%myconfig%gr_h2_optical_depth_approximation(1)
+  self%mygrtype%grackle_data%photoelectric_heating = gr_obj%myconfig%gr_photoelectric_heating(1)
+  ! epsilon=0.05, G_0=1.7 (in erg s -1 cm-3)
+  self%mygrtype%grackle_data%photoelectric_heating_rate     = gr_obj%myconfig%gr_photoelectric_heating_rate(1)
+  self%mygrtype%grackle_data%use_volumetric_heating_rate    = gr_obj%myconfig%gr_use_volumetric_heating_rate(1)
+  self%mygrtype%grackle_data%use_specific_heating_rate      = gr_obj%myconfig%gr_use_specific_heating_rate(1)
+  self%mygrtype%grackle_data%UVbackground                   = gr_obj%myconfig%gr_UVbackground(1)
+  self%mygrtype%grackle_data%UVbackground_redshift_on      = gr_obj%myconfig%gr_UVbackground_redshift_on(1)
+  self%mygrtype%grackle_data%UVbackground_redshift_off     = gr_obj%myconfig%gr_UVbackground_redshift_off(1)
+  self%mygrtype%grackle_data%UVbackground_redshift_fullon  = gr_obj%myconfig%gr_UVbackground_redshift_fullon(1)
+  self%mygrtype%grackle_data%UVbackground_redshift_drop    = gr_obj%myconfig%gr_UVbackground_redshift_drop(1)
+  self%mygrtype%grackle_data%Compton_xray_heating   = gr_obj%myconfig%gr_Compton_xray_heating(1)
+  self%mygrtype%grackle_data%LWbackground_intensity = gr_obj%myconfig%gr_LWbackground_intensity(1)
+  self%mygrtype%grackle_data%LWbackground_sawtooth_suppression = gr_obj%myconfig%gr_LWbackground_sawtooth_suppression(1)
+  self%mygrtype%grackle_data%NumberOfTemperatureBins      = gr_obj%myconfig%gr_NumberOfTemperatureBins(1)
+  self%mygrtype%grackle_data%ih2co                        = gr_obj%myconfig%gr_ih2co(1)
+  self%mygrtype%grackle_data%ipiht                        = gr_obj%myconfig%gr_ipiht(1)
+  self%mygrtype%grackle_data%TemperatureStart             = gr_obj%myconfig%TemperatureStart(1)
+  self%mygrtype%grackle_data%TemperatureEnd               = gr_obj%myconfig%TemperatureEnd(1)
+  self%mygrtype%grackle_data%CaseBRecombination           = gr_obj%myconfig%gr_CaseBRecombination(1)
+  self%mygrtype%grackle_data%NumberOfDustTemperatureBins  = gr_obj%myconfig%gr_NumberOfDustTemperatureBins(1)
+  self%mygrtype%grackle_data%DustTemperatureStart         = gr_obj%myconfig%DustTemperatureStart(1)
+  self%mygrtype%grackle_data%DustTemperatureEnd           = gr_obj%myconfig%DustTemperatureEnd(1)
+  self%mygrtype%grackle_data%cloudy_electron_fraction_factor = gr_obj%myconfig%cloudy_electron_fraction_factor(1)
+  ! radiative transfer parameters
+  self%mygrtype%grackle_data%use_radiative_transfer = gr_obj%myconfig%gr_use_radiative_transfer(1)
+  self%mygrtype%grackle_data%radiative_transfer_coupled_rate_solver = gr_obj%myconfig%gr_radiative_transfer_coupled_rate_solver(1)
+  self%mygrtype%grackle_data%radiative_transfer_intermediate_step   = gr_obj%myconfig%gr_radiative_transfer_intermediate_step(1)
+  self%mygrtype%grackle_data%radiative_transfer_hydrogen_only       = gr_obj%myconfig%gr_radiative_transfer_hydrogen_only(1)
+  ! approximate self-shielding
+  self%mygrtype%grackle_data%self_shielding_method                  = gr_obj%myconfig%gr_self_shielding_method(1)
+end subroutine grackle_solver_associate
+
+
+subroutine grackle_solver_associate_units(self,gr_obj)
+  implicit none
+  class(gr_solver)      :: self
+  type(gr_objects)  :: gr_obj
+  !----------------------------------
+
+
+   self%mygrtype%units%comoving_coordinates = gr_obj%myconfig%gr_comoving_coordinates(1)
+   self%mygrtype%units%density_units = gr_obj%myconfig%gr_density_units(1)
+   self%mygrtype%units%length_units = gr_obj%myconfig%gr_length_units(1)
+   self%mygrtype%units%time_units = gr_obj%myconfig%gr_time_units(1)
+   self%mygrtype%units%a_units = gr_obj%myconfig%gr_a_units(1)
+   !     Set initial expansion factor (for internal units).
+   !     Set expansion factor to 1 for non-cosmological simulation.
+   self%mygrtype%units%a_value = gr_obj%myconfig%a_value(1)
+   call set_velocity_units(self%mygrtype%units)
+
+end subroutine grackle_solver_associate_units
+
+subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w,gr_obj,grid_dx,self)
+  implicit none
+  integer, intent(in)                     :: ixI^L,ixO^L,iw^LIM
+  real(kind=dp), intent(in)               :: qdt,qtC,qt
+  real(kind=dp), intent(in)               :: x(ixI^S,1:ndim)
+  real(kind=dp), intent(in)               :: wCT(ixI^S,1:nw)
+  real(kind=dp), intent(in)               :: grid_dx(1:ndim)
+  real(kind=dp), intent(inout)            :: w(ixI^S,1:nw)
+  class(gr_solver),TARGET                        :: self
+  type(gr_objects), intent(inout)  :: gr_obj
   ! .. local ..
-  real(kind=dp) :: w_physical_ref_density
-  !---------------------------
+  integer                                 :: idim,iresult,ifield,level,iw
+  type(grackle_field_data)                :: my_gr_fields
+  real(kind=dp), TARGET                   :: w_gr(ixI^S,1:nw)
+  !---------------------------------------------------------
+  !w is normalized in this context: don t forget to denormalize it
+  !before use
+  w_gr(ixI^S,1:nw)=w(ixI^S,1:nw)
+  do iw=1,nw
+    w_gr(ixI^S,iw)=w_gr(ixI^S,iw)*w_convert_factor(iw)
+  end do
+  if(DABS(gr_obj%myconfig%gr_density_units(1)-1.0_dp)>abundance_tolerance)then
+    do iw=1,nw
+      w_gr(ixI^S,iw)=w_gr(ixI^S,iw)/gr_obj%myconfig%gr_density_units(1)
+    end do
+  end if
+  call self%clean_grid
+
+  call self%set_grid(ixI^L)
+  !set field_size(i) along each dimension
+  {self%field_size(^D)=ixOmax^D-ixOmin^D+1|\}
+
+  call self%link_par_to_gr(gr_obj)
+  call self%associate_units(gr_obj)
 
 
 
-  ! w(X_i) = gr_ref_value*(w_stratified/w_ref_density)
+  !iresult = initialize_chemistry_data(self%mygrtype%units)
+  self%grid_rank = 3
+  do ifield = 1,self%grid_rank
+    self%grid_dimension(ifield) = 1
+    self%grid_start(ifield) = 0
+    self%grid_end(ifield) = 0
+  end do
+  self%grid_dx = grid_dx(1)
+  {^D&
+  self%grid_dimension(^D) = self%field_size(^D)
+  !     1-based
+  self%grid_start(^D) = ixOmin^D
+  self%grid_end(^D) = self%grid_start(^D)+self%field_size(^D)-1
+  }
 
-    where(patch(ixO^S))
-      !HI
-      w(ixO^S,phys_ind%HI_density_)=self%myparams%densityHI(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-      !HII
-      w(ixO^S,phys_ind%HII_density_)=self%myparams%densityHII(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-      !HeI
-      w(ixO^S,phys_ind%HeI_density_)=self%myparams%densityHeI(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-      !HeII
-      w(ixO^S,phys_ind%HeII_density_)=self%myparams%densityHeII(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-      !HeIII
-      w(ixO^S,phys_ind%HeIII_density_)=self%myparams%densityHeIII(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-      !electrons
-      w(ixO^S,phys_ind%e_density_)=self%myparams%densityElectrons(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-    end where
-    where(patch(ixO^S))
-      !HM
-      w(ixO^S,phys_ind%HM_density_)=self%myparams%densityHM(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-      !H2I
-      w(ixO^S,phys_ind%H2I_density_)=self%myparams%densityH2I(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-      !H2II
-      w(ixO^S,phys_ind%H2II_density_)=self%myparams%densityH2II(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-    end where
-    where(patch(ixO^S))
-      !DI
-      w(ixO^S,phys_ind%DI_density_)=self%myparams%densityDI(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-      !DII
-      w(ixO^S,phys_ind%DII_density_)=self%myparams%densityDII(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-      !HDI
-      w(ixO^S,phys_ind%HDI_density_)=self%myparams%densityHDI(1)*&
-      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-    end where
-  where(patch(ixO^S))
-    !metal
-    w(ixO^S,phys_ind%metal_density_)=self%myparams%density_Z(1)*&
-    w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-    !dust
-    w(ixO^S,phys_ind%dust_density_)=self%myparams%density_dust(1)*&
-    w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
-  end where
+  gr_obj%myparams%temperature_units = get_temperature_units(self%mygrtype%units)
 
-end subroutine usr_gr_set_w_init
-!-------------------------------------------------------------------------
+
+
+  my_gr_fields%grid_rank = ndim
+  my_gr_fields%grid_dimension = C_LOC(self%grid_dimension)
+  my_gr_fields%grid_start= C_LOC(self%grid_start)
+  my_gr_fields%grid_end= C_LOC(self%grid_end)
+  my_gr_fields%grid_dx= C_LOC(self%grid_dx)
+
+  my_gr_fields%density = C_LOC(w_gr(ixO^S,phys_ind%rho_))
+  my_gr_fields%HI_density = C_LOC(w_gr(ixO^S,phys_ind%HI_density_))
+  my_gr_fields%HII_density = C_LOC(w_gr(ixO^S,phys_ind%HII_density_))
+  my_gr_fields%HeI_density = C_LOC(w_gr(ixO^S,phys_ind%HeI_density_))
+  my_gr_fields%HeII_density = C_LOC(w_gr(ixO^S,phys_ind%HeII_density_))
+  my_gr_fields%HeIII_density = C_LOC(w_gr(ixO^S,phys_ind%HeIII_density_))
+  my_gr_fields%e_density = C_LOC(w_gr(ixO^S,phys_ind%e_density_))
+  my_gr_fields%H2I_density = C_LOC(w_gr(ixO^S,phys_ind%H2I_density_))
+  my_gr_fields%HM_density = C_LOC(w_gr(ixO^S,phys_ind%HM_density_))
+  my_gr_fields%H2II_density = C_LOC(w_gr(ixO^S,phys_ind%H2II_density_))
+  my_gr_fields%DI_density = C_LOC(w_gr(ixO^S,phys_ind%DI_density_))
+  my_gr_fields%DII_density = C_LOC(w_gr(ixO^S,phys_ind%DII_density_))
+  my_gr_fields%HDI_density = C_LOC(w_gr(ixO^S,phys_ind%HDI_density_))
+  my_gr_fields%metal_density = C_LOC(w_gr(ixO^S,phys_ind%metal_density_))
+  my_gr_fields%dust_density = C_LOC(w_gr(ixO^S,phys_ind%dust_density_))
+  !w is conservative in this context
+  !transform AMRVAC specific energy ti GRACKLE internal energy:
+  w_gr(ixI^S,phys_ind%e_) = w_gr(ixI^S,phys_ind%e_) - phys_get_kin_en(w_gr,ixI^L,ixI^L)
+  my_gr_fields%internal_energy = C_LOC(w_gr(ixI^S,phys_ind%e_))
+  ! nullify x,y,z velocities in Grackle:
+  self%gr_x_velocity(ixI^S)= 0.0
+  self%gr_y_velocity(ixI^S)= 0.0
+  self%gr_z_velocity(ixI^S)= 0.0
+  !assign them
+  my_gr_fields%x_velocity = C_LOC(self%gr_x_velocity)
+  my_gr_fields%y_velocity = C_LOC(self%gr_y_velocity)
+  my_gr_fields%z_velocity = C_LOC(self%gr_z_velocity)
+  !01-07-22: For instance, put to zero the fields
+  ! volumetric_heating_rate,specific_heating_rate,
+  ! RT_HI_ionization_rate,RT_HeI_ionization_rate,RT_HeII_ionization_rate,
+  ! RT_H2_dissociation_rate,RT_heating_rate
+  self%gr_volumetric_heating_rate(ixI^S)=0.0
+  my_gr_fields%volumetric_heating_rate = C_LOC(self%gr_volumetric_heating_rate)
+  self%gr_specific_heating_rate(ixI^S)=0.0
+  my_gr_fields%specific_heating_rate = C_LOC(self%gr_specific_heating_rate)
+  self%gr_RT_HI_ionization_rate(ixI^S)=0.0
+  my_gr_fields%RT_HI_ionization_rate = C_LOC(self%gr_RT_HI_ionization_rate)
+  self%gr_RT_HeI_ionization_rate(ixI^S)=0.0
+  my_gr_fields%RT_HeI_ionization_rate = C_LOC(self%gr_RT_HeI_ionization_rate)
+  self%gr_RT_HeII_ionization_rate(ixI^S)=0.0
+  my_gr_fields%RT_HeII_ionization_rate = C_LOC(self%gr_RT_HeII_ionization_rate)
+  self%gr_RT_H2_dissociation_rate(ixI^S)=0.0
+  my_gr_fields%RT_H2_dissociation_rate = C_LOC(self%gr_RT_H2_dissociation_rate)
+  self%gr_RT_heating_rate(ixI^S)=0.0
+  my_gr_fields%RT_heating_rate = C_LOC(self%gr_RT_heating_rate)
+
+  ! here, time is also normalize so beware !
+  gr_obj%myparams%dtchem = qdt*time_convert_factor
+  !write(*,*) 'Time step for Grackle before grackle normalisation= ', gr_obj%myparams%dtchem
+  gr_obj%myparams%dtchem = gr_obj%myparams%dtchem / self%mygrtype%units%time_units
+  !write(*,*) 'Time step for Grackle after grackle normalisation= ', gr_obj%myparams%dtchem
+
+
+   !iresult = solve_chemistry(self%mygrtype%units, my_gr_fields, gr_obj%myparams%dtchem)
+
+   !write(*,*) 'Chemistry solving step passed ! '
+
+  !at the end of this subroutine, clean all grids
+  call self%clean_grid
+end subroutine grackle_chemistry_static_source
+!-------------------------------------------------------------------------------------------
 
 end module mod_grackle_chemistry

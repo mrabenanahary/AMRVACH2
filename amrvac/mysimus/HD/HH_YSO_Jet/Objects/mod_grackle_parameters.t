@@ -39,7 +39,7 @@ real(kind=gr_rpknd),parameter :: w_e = 5.443205831355435e-4
 
 ! Grackle fields
 type gr_fields
-  character(len=80):: filename
+  character(len=257):: filename
   integer          :: field_size(ndim)
   real(kind=gr_rpknd), allocatable :: gr_density(:^D&)
   real(kind=gr_rpknd), allocatable :: gr_energy(:^D&)

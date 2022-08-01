@@ -949,7 +949,7 @@ contains
     real(kind=dp),allocatable     :: w_tmp(:^D&,:)
     class(ism)                    :: self
     integer,             optional :: isboundary_iB(2)
-    type(gr_objects), intent(inout),optional,TARGET   :: gr_obj
+    type(gr_objects), optional   :: gr_obj
     ! .. local..
     integer                    :: idir,iB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
     real(kind=dp)              :: fprofile(ixI^S)

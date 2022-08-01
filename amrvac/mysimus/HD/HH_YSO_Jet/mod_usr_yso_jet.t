@@ -69,6 +69,8 @@ module mod_usr
   type (cla_jet),allocatable,target  :: jet_yso(:)
   type(gr_config)                    :: grackle_configuration_list
   type(gr_params)                    :: grackle_parameters_list
+  type(gr_config)                    :: grackle_main_configuration_list
+  !type(gr_params)                    :: grackle_main_parameters_list
   type(grackle_type)                 :: grackle_structure
 
   !Default objects
@@ -1132,10 +1134,13 @@ contains
       allocate(tstst(4))
       grackle_configuration_list = grackle_default%myconfig
       grackle_parameters_list    = grackle_default%myparams
+      grackle_main_configuration_list = grackle_default%myconfig
       call grackle_config_read(grackle_configuration_list,files)
       call grackle_params_read(grackle_parameters_list,files)
+      call grackle_main_config_read(grackle_main_configuration_list,files)
 
-      write(*,*) 'grackle_configuration_list%use_grackle : ', grackle_configuration_list%use_grackle
+
+      write(*,*) 'grackle_main_configuration_list%use_grackle : ', grackle_main_configuration_list%use_grackle
 
 
     !iii) Associate the ridden parameters to objects list myparam
@@ -1148,6 +1153,7 @@ contains
       write(*,*) 'gr_objects_list(',i_all,')%myparams%chi_dust : ', gr_objects_list(i_all)%myparams%chi_dust(1)
       write(*,*) 'gr_objects_list(',i_all,')%myparams%xi_dust : ', gr_objects_list(i_all)%myparams%xi_dust(1)
     end do
+    call grackle_associate_main_parameters(grackle_main_configuration_list,gr_main_object)
   end if
 
 
@@ -1773,7 +1779,7 @@ end subroutine initglobaldata_usr
       Loop_isms_gr : do i_ism=1,usrconfig%ism_number
       iobj=iobj+1
       density_ref_lst(iobj)=ism_surround(i_ism-1)%myconfig%density
-      gr_objects_list(iobj)%patch(ixI^S)=.false. ! default everywhere
+      gr_objects_list(iobj)%patch(ixO^S)=.false. ! default everywhere
       where(ism_surround(i_ism-1)%patch(ixO^S))
         gr_objects_list(iobj)%patch(ixO^S)=.true.
       end where
@@ -1784,7 +1790,7 @@ end subroutine initglobaldata_usr
       Loop_jet_yso_gr : do i_jet_yso=1,usrconfig%jet_yso_number
       iobj=iobj+1
       density_ref_lst(iobj)=jet_yso(i_jet_yso-1)%myconfig%density
-      gr_objects_list(iobj)%patch(ixI^S)=.false. ! default everywhere
+      gr_objects_list(iobj)%patch(ixO^S)=.false. ! default everywhere
       where(jet_yso(i_jet_yso-1)%patch(ixO^S))
         gr_objects_list(iobj)%patch(ixO^S)=.true.
       end where
@@ -1795,7 +1801,7 @@ end subroutine initglobaldata_usr
       Loop_clouds_gr : do i_cloud=1,usrconfig%cloud_number
       iobj=iobj+1
       density_ref_lst(iobj)=cloud_medium(i_cloud-1)%myconfig%density
-      gr_objects_list(iobj)%patch(ixI^S)=.false. ! default everywhere
+      gr_objects_list(iobj)%patch(ixO^S)=.false. ! default everywhere
       where(cloud_medium(i_cloud-1)%patch(ixO^S))
         gr_objects_list(iobj)%patch(ixO^S)=.true.
       end where
@@ -1849,13 +1855,13 @@ end subroutine initglobaldata_usr
     real(dp), intent(in)            :: wCT(ixI^S,1:nw), x(ixI^S,1:ndim)
     real(dp), intent(inout)         :: w(ixI^S,1:nw)
     ! .. local ..
-    integer                         :: i_cloud,i_ism,i_jet_yso
+    integer                         :: i_cloud,i_ism,i_jet_yso,i_object
     logical, dimension(ixI^S)       :: escape_patch
     real(kind=dp), dimension(ixI^S) :: source_filter,density_ratio,pressure_ism
     real(kind=dp), dimension(ixI^S) :: wjettracer,wismtracer
     real(kind=dp)                   :: usr_loc_tracer_small_density
-
-    integer                         :: idir,idust,ix^D,ixL^D,ixR^L
+    real(kind=dp)                   :: dx_local(1:ndim)
+    integer                         :: idir,idust,ix^D,ixL^D,ixR^L,level
     integer                         :: patch_back_cloud(ixI^S)
     !----------------------------------------------------------
 
@@ -2040,6 +2046,16 @@ end subroutine initglobaldata_usr
      end do Loop_idir2
     end do Loop_idust
    end if cond_dust_on
+
+
+
+   cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
+   !Add Grackle chemistry+heating+cooling module treatment here :
+   level = node(plevel_,saveigrid)
+      ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
+      call my_grackle_solver%grackle_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w,&
+      gr_main_object,dx_local)
+   end if cond_grackle_on
 
 !  call usr_check_w(ixI^L,ixO^L,.true.,'specialsource_usr',qt,x,w)
   end subroutine specialsource_usr
@@ -3085,6 +3101,8 @@ return
         call gr_objects_list(i_all)%write_setting(unit_config,i_all)
         call gr_objects_list(i_all)%normalize(usr_physunit)
       end do
+
+      call gr_main_object%write_main_setting(unit_config)
 
       write(*,*)'************************************'
       write(*,*)'Finished writing ALL grackle settings'
