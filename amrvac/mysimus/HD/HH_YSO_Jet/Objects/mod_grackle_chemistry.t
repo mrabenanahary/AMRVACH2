@@ -2384,6 +2384,8 @@ subroutine grackle_allocate_wgr(self,ixI^L)
   if(.not.allocated(self%gr_temperature))allocate(self%gr_temperature(ixI^S))
   if(.not.allocated(self%gr_dust_temperature))allocate(self%gr_dust_temperature(ixI^S))
 
+
+
 end subroutine grackle_allocate_wgr
 
 
@@ -2492,18 +2494,24 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
       w_gr(ixI^S,iw)=w_gr(ixI^S,iw)/gr_obj%myconfig%gr_density_units(1)
     end do
   end if
-  call self%clean_grid
 
+
+  ! need to reset the grid and redo Grackle griding at each timestep  since AMR is possible
+  call self%clean_grid
   call self%set_grid(ixI^L)
   !set field_size(i) along each dimension
   {self%field_size(^D)=ixOmax^D-ixOmin^D+1|\}
 
-  call self%link_par_to_gr(gr_obj)
-  call self%associate_units(gr_obj)
-
-
-
+  !move the next part to initonegrid_usr since it only needs to be done once and for all
+  ! during the whole run! This way you will save a huge amount of computation time
+  ! If you don t do it, you lost 10-100 of computation time at each timestep
+  ! call self%link_par_to_gr(gr_obj)
+  ! call self%associate_units(gr_obj)
   !iresult = initialize_chemistry_data(self%mygrtype%units)
+  !gr_obj%myparams%temperature_units = get_temperature_units(self%mygrtype%units)
+
+
+  ! need to reset the grid and redo Grackle griding at each timestep since AMR is possible
   self%grid_rank = 3
   do ifield = 1,self%grid_rank
     self%grid_dimension(ifield) = 1
@@ -2518,7 +2526,6 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
   self%grid_end(^D) = self%grid_start(^D)+self%field_size(^D)-1
   }
 
-  gr_obj%myparams%temperature_units = get_temperature_units(self%mygrtype%units)
 
 
 

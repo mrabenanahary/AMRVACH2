@@ -1584,7 +1584,7 @@ end subroutine initglobaldata_usr
     logical       :: patch_all(ixI^S)
     logical       :: patch_inuse(ixI^S)
     type(dust)    :: dust_dummy
-    integer       :: i_object_w_dust,i_patch,iobj
+    integer       :: i_object_w_dust,i_patch,iobj,iresult
     real(dp)      :: cloud_profile(ixI^S,1:nw)
     real(kind=dp), dimension(ixI^S) :: theta_profile,d_profile,r_normalized
     real(kind=dp), dimension(ixI^S) :: cos_theta_zero, theta_zero
@@ -1832,8 +1832,15 @@ end subroutine initglobaldata_usr
     if(any(flag(ixO^S)>0)) PRINT*,' is error',maxval(flag(ixO^S)),minval(w(ixO^S,phys_ind%pressure_))
 
 
+    ! init Grackle parameters and units only once in the whole run
 
-
+    ! mod_grackle_chemistry.t -> call self%link_par_to_gr(gr_obj):
+    call my_grackle_solver%link_par_to_gr(gr_main_object)
+    ! mod_grackle_chemistry.t -> call self%associate_units(gr_obj):
+    call my_grackle_solver%associate_units(gr_main_object)
+    gr_main_object%myparams%temperature_units = get_temperature_units(my_grackle_solver%mygrtype%units)
+    ! only initialize this block/s Grackle chemistry data once:
+    iresult = initialize_chemistry_data(my_grackle_solver%mygrtype%units)
 
 
     ! get conserved variables to be used in the code
