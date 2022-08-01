@@ -6,6 +6,8 @@ module mod_obj_ism
   use mod_obj_global_parameters
   use mod_obj_mat
   use mod_obj_usr_unit
+  use mod_grackle_parameters
+  use mod_grackle_chemistry
   implicit none
 
     type ism_parameters
@@ -910,7 +912,7 @@ contains
    end subroutine usr_ism_normalize
   !--------------------------------------------------------------------
    !> subroutine setting for ISM
-   subroutine usr_ism_set_w(ixI^L,ixO^L,qt,x,w,self,isboundary_iB)
+   subroutine usr_ism_set_w(ixI^L,ixO^L,qt,x,w,self,isboundary_iB,gr_obj)
    ! * According to subroutine initonegrid_usr in which it is called once in mod_obj_usr_yso_jet.t :
    ! in the src code amrini.t, ixI^L = ixG^LL = ixGlo1,ixGlo2,ixGhi1,ixGhi2
    ! = range delimiting the whole domain (including boundary ghost cells), i.e. between integers
@@ -947,6 +949,7 @@ contains
     real(kind=dp),allocatable     :: w_tmp(:^D&,:)
     class(ism)                    :: self
     integer,             optional :: isboundary_iB(2)
+    type(gr_objects), intent(inout),optional,TARGET   :: gr_obj
     ! .. local..
     integer                    :: idir,iB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
     real(kind=dp)              :: fprofile(ixI^S)
@@ -1013,6 +1016,25 @@ contains
                    w(ixO^S,phys_ind%pressure_)   =  self%myconfig%pressure
                end where
              end if
+           end if
+
+           if(present(gr_obj))then
+            where(self%patch(ixO^S))
+              w(ixO^S,phys_ind%HI_density_)=gr_obj%myparams%densityHI(1)
+              w(ixO^S,phys_ind%HII_density_)=gr_obj%myparams%densityHII(1)
+              w(ixO^S,phys_ind%HeI_density_)=gr_obj%myparams%densityHeI(1)
+              w(ixO^S,phys_ind%HeII_density_)=gr_obj%myparams%densityHeII(1)
+              w(ixO^S,phys_ind%HeIII_density_)=gr_obj%myparams%densityHeIII(1)
+              w(ixO^S,phys_ind%e_density_)=gr_obj%myparams%densityElectrons(1)
+              w(ixO^S,phys_ind%HM_density_)=gr_obj%myparams%densityHM(1)
+              w(ixO^S,phys_ind%H2I_density_)=gr_obj%myparams%densityH2I(1)
+              w(ixO^S,phys_ind%H2II_density_)=gr_obj%myparams%densityH2II(1)
+              w(ixO^S,phys_ind%DI_density_)=gr_obj%myparams%densityDI(1)
+              w(ixO^S,phys_ind%DII_density_)=gr_obj%myparams%densityDII(1)
+              w(ixO^S,phys_ind%HDI_density_)=gr_obj%myparams%densityHDI(1)
+              w(ixO^S,phys_ind%metal_density_)=gr_obj%myparams%density_Z(1)
+              w(ixO^S,phys_ind%dust_density_)=gr_obj%myparams%density_dust(1)
+            end where
            end if
 
 
@@ -1245,6 +1267,25 @@ contains
         end where
       end if
     end if
+
+
+     where(self%patch(ixO^S))
+       w(ixO^S,phys_ind%HI_density_)=w(ixO^S,phys_ind%HI_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%HII_density_)=w(ixO^S,phys_ind%HII_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%HeI_density_)=w(ixO^S,phys_ind%HeI_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%HeII_density_)=w(ixO^S,phys_ind%HeII_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%HeIII_density_)=w(ixO^S,phys_ind%HeIII_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%e_density_)=w(ixO^S,phys_ind%e_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%HM_density_)=w(ixO^S,phys_ind%HM_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%H2I_density_)=w(ixO^S,phys_ind%H2I_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%H2II_density_)=w(ixO^S,phys_ind%H2II_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%DI_density_)=w(ixO^S,phys_ind%DI_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%DII_density_)=w(ixO^S,phys_ind%DII_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%HDI_density_)=w(ixO^S,phys_ind%HDI_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%metal_density_)=w(ixO^S,phys_ind%metal_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%dust_density_)=w(ixO^S,phys_ind%dust_density_)*p_profile(ixO^S)
+     end where
+
 
 
    end subroutine usr_ism_set_profile

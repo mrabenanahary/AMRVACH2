@@ -891,7 +891,7 @@ end subroutine hd_default_pre_config
 
     using_grackle : if(hd_config%use_grackle)then
       prim_chem : if(hd_config%gr_primordial_chemistry>0.and.hd_config%gr_primordial_chemistry<=3)then
-        if(hd_config%gr_primordial_chemistry>=1)then
+        !if(hd_config%gr_primordial_chemistry>=1)then
           !six species: H, H+, He, He+, He++, e- (in this order)
           iw_HI_density = var_set_extravar('HI', 'HI')
           iw_HII_density = var_set_extravar('HII', 'HII')
@@ -899,19 +899,19 @@ end subroutine hd_default_pre_config
           iw_HeII_density = var_set_extravar('HeII', 'HeII')
           iw_HeIII_density = var_set_extravar('HeIII', 'HeIII')
           iw_e_density = var_set_extravar('electron_density', 'electron_density')
-          if(hd_config%gr_primordial_chemistry>=2)then
+          !if(hd_config%gr_primordial_chemistry>=2)then
             ! + 3 species : H2, H-, H2+ (in this order)
             iw_H2I_density = var_set_extravar('H2I', 'H2I')
             iw_HM_density = var_set_extravar('HM', 'HM')
             iw_H2II_density = var_set_extravar('H2II', 'H2II')
-            if(hd_config%gr_primordial_chemistry>=3)then
+            !if(hd_config%gr_primordial_chemistry>=3)then
             ! + 3 species : D, D+, HD.
               iw_DI_density = var_set_extravar('DI', 'DI')
               iw_DII_density = var_set_extravar('DII', 'DII')
               iw_HDI_density = var_set_extravar('HDI', 'HDI')
-            end if
-          end if
-        end if
+            !end if
+          !end if
+        !end if
       elseif(hd_config%gr_primordial_chemistry==0)then
         !DO NOTHING
       else
@@ -919,13 +919,13 @@ end subroutine hd_default_pre_config
         call mpistop('You must set hd_gr_primordial_chemistry to  0,1,2 or 3!')
       end if prim_chem
       !metal cooling
-      if(hd_config%gr_metal_cooling)then
+      !if(hd_config%gr_metal_cooling)then
         iw_metal_density = var_set_extravar('metal_density', 'metal_density')
-      end if
+      !end if
       !dust chemistry
-      if(hd_config%gr_dust_chemistry)then
+      !if(hd_config%gr_dust_chemistry)then
         iw_dust_density = var_set_extravar('dust_density', 'dust_density')
-      end if
+      !end if
     end if using_grackle
 
 
@@ -1074,6 +1074,36 @@ end subroutine hd_get_aux
      else
       w_convert_factor(mom(:))  = unit_density*unit_velocity
      end if
+
+    !HI
+    w_convert_factor(iw_HI_density)=unit_density
+    !HII
+    w_convert_factor(iw_HII_density)=unit_density
+    !HeI
+    w_convert_factor(iw_HeI_density)=unit_density
+    !HeII
+    w_convert_factor(iw_HeII_density)=unit_density
+    !HeIII
+    w_convert_factor(iw_HeIII_density)=unit_density
+    !electrons
+    w_convert_factor(iw_e_density)=unit_density
+    !HM
+    w_convert_factor(iw_HM_density)=unit_density
+    !H2I
+    w_convert_factor(iw_H2I_density)=unit_density
+    !H2II
+    w_convert_factor(iw_H2II_density)=unit_density
+    !DI
+    w_convert_factor(iw_DI_density)=unit_density
+    !DII
+    w_convert_factor(iw_DII_density)=unit_density
+    !HDI
+    w_convert_factor(iw_HDI_density)=unit_density
+    !metal
+    w_convert_factor(iw_metal_density)=unit_density
+    !dust
+    w_convert_factor(iw_dust_density)=unit_density
+
 
      if (hd_config%dust_on) call dust_physical_units
      if (hd_config%radiative_cooling) call rad_cooling_physical_units

@@ -401,6 +401,36 @@ end subroutine usr_physical_unit_set_unit
       end if
    end if
 
+   !HI
+   w_convert_factor(phys_ind%HI_density_) = self%myconfig%density
+   !HII
+   w_convert_factor(phys_ind%HII_density_) = self%myconfig%density
+   !HeI
+   w_convert_factor(phys_ind%HeI_density_) = self%myconfig%density
+   !HeII
+   w_convert_factor(phys_ind%HeII_density_) = self%myconfig%density
+   !HeIII
+   w_convert_factor(phys_ind%HeIII_density_) = self%myconfig%density
+   !electrons
+   w_convert_factor(phys_ind%e_density_) = self%myconfig%density
+   !HM
+   w_convert_factor(phys_ind%HM_density_) = self%myconfig%density
+   !H2I
+   w_convert_factor(phys_ind%H2I_density_) = self%myconfig%density
+   !H2II
+   w_convert_factor(phys_ind%H2II_density_) = self%myconfig%density
+   !DI
+   w_convert_factor(phys_ind%DI_density_) = self%myconfig%density
+   !DII
+   w_convert_factor(phys_ind%DII_density_) = self%myconfig%density
+   !HDI
+   w_convert_factor(phys_ind%HDI_density_) = self%myconfig%density
+   !metal
+   w_convert_factor(phys_ind%metal_density_) = self%myconfig%density
+   !dust
+   w_convert_factor(phys_ind%dust_density_) = self%myconfig%density
+
+
    !write(*,*) ' mod_obj_usr_unit.t--> usr_physical_unit_fillphysunit'
    !write(*,*) 'phys_config (before change): chemical_composition | ',&
    !'xHe | mean_nall_to_nH |',&

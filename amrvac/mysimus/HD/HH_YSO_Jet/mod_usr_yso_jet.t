@@ -79,7 +79,7 @@ module mod_usr
   type (dust),target                 :: dust_mialy
   type (dust),allocatable,target     :: the_dust_inuse(:)
   type(gr_objects)                   :: grackle_default
-
+  logical, allocatable               :: strat_profile(:^D&)
 
   !type(star) :: star_ms
   !type(star) :: sun
@@ -1113,7 +1113,7 @@ contains
     call grackle_fields_config_allocate(usrconfig%ism_number,usrconfig%jet_yso_number,usrconfig%cloud_number)
 
 
-    do i_all=1,gr_objects_list(1)%number_of_objects
+    do i_all=1,usrconfig%ism_number+usrconfig%jet_yso_number+usrconfig%cloud_number
       write(*,*) 'gr_objects_list(',i_all,')%number_of_objects : ', gr_objects_list(i_all)%number_of_objects
 
       call grackle_fields_config_set_default(i_all)
@@ -1139,9 +1139,9 @@ contains
 
 
     !iii) Associate the ridden parameters to objects list myparam
-    do i_all=1,gr_objects_list(1)%number_of_objects
-      call grackle_associate_parameters(gr_objects_list(1)%number_of_objects,grackle_configuration_list,&
-                                        grackle_parameters_list,gr_objects_list,i_all)
+    do i_all=1,usrconfig%ism_number+usrconfig%jet_yso_number+usrconfig%cloud_number
+      call grackle_associate_parameters(usrconfig%ism_number+usrconfig%jet_yso_number+usrconfig%cloud_number,&
+      grackle_configuration_list, grackle_parameters_list,gr_objects_list,i_all)
       write(*,*) 'gr_objects_list(',i_all,')%myconfig%gr_primordial_chemistry : ', gr_objects_list(i_all)%myconfig%gr_primordial_chemistry(1)
       write(*,*) 'gr_objects_list(',i_all,')%myparams%data_file : ', gr_objects_list(i_all)%myparams%data_file(1)
       write(*,*) 'gr_objects_list(',i_all,')%myparams%myindice : ', gr_objects_list(i_all)%myparams%myindice(1)
@@ -1256,6 +1256,36 @@ contains
     end if
     time_convert_factor                                   = unit_time
     length_convert_factor                                 = unit_length
+
+
+    !HI
+    w_convert_factor(phys_ind%HI_density_) = unit_density
+    !HII
+    w_convert_factor(phys_ind%HII_density_) = unit_density
+    !HeI
+    w_convert_factor(phys_ind%HeI_density_) = unit_density
+    !HeII
+    w_convert_factor(phys_ind%HeII_density_) = unit_density
+    !HeIII
+    w_convert_factor(phys_ind%HeIII_density_) = unit_density
+    !electrons
+    w_convert_factor(phys_ind%e_density_) = unit_density
+    !HM
+    w_convert_factor(phys_ind%HM_density_) = unit_density
+    !H2I
+    w_convert_factor(phys_ind%H2I_density_) = unit_density
+    !H2II
+    w_convert_factor(phys_ind%H2II_density_) = unit_density
+    !DI
+    w_convert_factor(phys_ind%DI_density_) = unit_density
+    !DII
+    w_convert_factor(phys_ind%DII_density_) = unit_density
+    !HDI
+    w_convert_factor(phys_ind%HDI_density_) = unit_density
+    !metal
+    w_convert_factor(phys_ind%metal_density_) = unit_density
+    !dust
+    w_convert_factor(phys_ind%dust_density_) = unit_density
 
 
     if(trim(usrconfig%reset_flux_scheme_old_method)=='none')then
@@ -1504,7 +1534,8 @@ subroutine initglobaldata_usr
     gr_objects_list(i_object)%myparams%density(1)=density_list(i_object)
     write(*,*) 'Density of object #',i_object,': ', density_list(i_object)
     call gr_objects_list(i_object)%set_complet(i_object,&
-    gr_objects_list(i_object)%myparams%density(1),.false.)
+    gr_objects_list(i_object)%myparams%density(1),.false.,ism_surround(0)%myphysunit%myconfig%density)
+    call gr_objects_list(i_object)%normalize(usr_physunit)
    end do Loop_through_all
    write(*,*) 'Grackle usr configuration completing/consistency check successfully done!'
    write(*,*) '==============================='
@@ -1542,17 +1573,21 @@ end subroutine initglobaldata_usr
     real(dp)      :: res
     integer       :: ix^D,na,flag(ixI^S)
     integer       :: i_cloud,i_ism,i_jet_yso,i_dust,i_start,i_end
+    integer       :: i_object,n_objects
     logical, save :: first=.true.
     logical       :: patch_all(ixI^S)
     logical       :: patch_inuse(ixI^S)
     type(dust)    :: dust_dummy
-    integer       :: i_object_w_dust
+    integer       :: i_object_w_dust,i_patch,iobj
     real(dp)      :: cloud_profile(ixI^S,1:nw)
     real(kind=dp), dimension(ixI^S) :: theta_profile,d_profile,r_normalized
     real(kind=dp), dimension(ixI^S) :: cos_theta_zero, theta_zero
     ! .. only test ..
     real(dp)      ::old_w(ixO^S,1:nw)
+    real(dp), allocatable :: density_ref_lst(:)
     !-----------------------------------------/
+    !write(*,*) 'combient vaut HI ? ', gr_objects_list(1)%myparams%densityHI(1)
+
     patch_all(ixO^S) = .true.
     if(first)then
       if(mype==0) then
@@ -1576,12 +1611,19 @@ end subroutine initglobaldata_usr
 
       end if
     end if
+
+
+
+
+
     i_object_w_dust=0
     ! set the ism
+    iobj = 0
     cond_ism_on : if(usrconfig%ism_on) then
       Loop_isms : do i_ism=0,usrconfig%ism_number-1
+       iobj = iobj+1
        ism_surround(i_ism)%subname='initonegrid_usr'
-       call ism_surround(i_ism)%set_w(ixI^L,ixO^L,global_time,x,w)
+       call ism_surround(i_ism)%set_w(ixI^L,ixO^L,global_time,x,w,gr_obj=gr_objects_list(iobj))
        patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.ism_surround(i_ism)%patch(ixO^S)
        if(ism_surround(i_ism)%myconfig%dust_on)then
          i_object_w_dust = i_object_w_dust +1
@@ -1598,10 +1640,12 @@ end subroutine initglobaldata_usr
 
 
     ! set jet agn
+
     cond_jet_on : if(usrconfig%jet_yso_on)then
       Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
+       iobj=iobj+1
        jet_yso(i_jet_yso)%subname='initonegrid_usr'
-       call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,global_time,x,w)
+       call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,global_time,x,w,gr_objects_list(iobj))
 
        patch_inuse(ixO^S) = jet_yso(i_jet_yso)%patch(ixO^S)
        cond_ism_onjet : if(usrconfig%ism_on)then
@@ -1712,12 +1756,54 @@ end subroutine initglobaldata_usr
     end if cloud_on
 
 
+    !set the grid for patches for Grackle:
+
+    do i_patch=1,usrconfig%ism_number+usrconfig%jet_yso_number+usrconfig%cloud_number
+       if(allocated(gr_objects_list(i_patch)%patch))deallocate(gr_objects_list(i_patch)%patch)
+       if(.not.allocated(gr_objects_list(i_patch)%patch))allocate(gr_objects_list(i_patch)%patch(ixI^S))
+    end do
+    if(allocated(density_ref_lst))deallocate(density_ref_lst)
+    if(.not.allocated(density_ref_lst))allocate(density_ref_lst(1:usrconfig%ism_number+&
+    usrconfig%jet_yso_number+usrconfig%cloud_number))
+
+    !fill patches for grackle:
+    ! set the ism
+    iobj = 0
+    cond_ism_on_gr : if(usrconfig%ism_on) then
+      Loop_isms_gr : do i_ism=1,usrconfig%ism_number
+      iobj=iobj+1
+      density_ref_lst(iobj)=ism_surround(i_ism-1)%myconfig%density
+      gr_objects_list(iobj)%patch(ixI^S)=.false. ! default everywhere
+      where(ism_surround(i_ism-1)%patch(ixO^S))
+        gr_objects_list(iobj)%patch(ixO^S)=.true.
+      end where
+      end do Loop_isms_gr
+    end if cond_ism_on_gr
+    ! set jet agn
+    cond_jet_on_gr : if(usrconfig%jet_yso_on)then
+      Loop_jet_yso_gr : do i_jet_yso=1,usrconfig%jet_yso_number
+      iobj=iobj+1
+      density_ref_lst(iobj)=jet_yso(i_jet_yso-1)%myconfig%density
+      gr_objects_list(iobj)%patch(ixI^S)=.false. ! default everywhere
+      where(jet_yso(i_jet_yso-1)%patch(ixO^S))
+        gr_objects_list(iobj)%patch(ixO^S)=.true.
+      end where
+     end do Loop_jet_yso_gr
+    end if cond_jet_on_gr
+    ! set one cloud
+    cloud_on_gr : if(usrconfig%cloud_on)then
+      Loop_clouds_gr : do i_cloud=1,usrconfig%cloud_number
+      iobj=iobj+1
+      density_ref_lst(iobj)=cloud_medium(i_cloud-1)%myconfig%density
+      gr_objects_list(iobj)%patch(ixI^S)=.false. ! default everywhere
+      where(cloud_medium(i_cloud-1)%patch(ixO^S))
+        gr_objects_list(iobj)%patch(ixO^S)=.true.
+      end where
+      end do Loop_clouds_gr
+    end if cloud_on_gr
 
 
 
-    if(any(patch_all(ixO^S)))then
-      call usr_fill_empty_region(ixI^L,ixO^L,0.0_dp,patch_all,x,w)
-    end if
 
 
   ! put dust to zero in all other zones
@@ -1730,9 +1816,9 @@ end subroutine initglobaldata_usr
       if(allocated(the_dust_inuse(i_object_w_dust)%patch))deallocate(the_dust_inuse(i_object_w_dust)%patch)
     end if cond_dust_on
 
-    !Add grackle initialization here :
 
-    ! set_w_init for grackle
+
+
 
     ! check is if initial setting is correct
     call  phys_check_w(.true., ixI^L, ixO^L, w, flag)
@@ -1992,10 +2078,12 @@ end subroutine initglobaldata_usr
      end if cond_check_T_high
     end if  cond_no_isotherm
 return
+     i_object = usrconfig%ism_number
      jet_is_on_var : if(usrconfig%jet_yso_on)then
        Loop_jet_yso_var : do i_jet_yso=0,usrconfig%jet_yso_number-1
+         i_object=i_object+1
          cond_var_on : if(jet_yso(i_jet_yso)%myconfig%variation_on)then
-           call jet_yso(i_jet_yso)%process_grid(ixI^L,ixO^L,qt,x,w)
+           call jet_yso(i_jet_yso)%process_grid(ixI^L,ixO^L,qt,x,w,gr_objects_list(i_object))
          end if cond_var_on
        end do Loop_jet_yso_var
      end if jet_is_on_var
@@ -2102,7 +2190,7 @@ return
     real(dp), intent(inout) :: w(ixI^S,1:nw)
     ! .. local ..
     integer                 :: flag(ixI^S)
-    integer                 :: i_cloud,i_ism,i_jet_yso
+    integer                 :: i_cloud,i_ism,i_jet_yso,iobj
     integer                 :: i_object_w_dust
     integer                 :: idims,iside,idims2,iside2,iw2
     integer                 :: i_start,i_end,i_dust
@@ -2155,11 +2243,13 @@ return
     !if(mype==0)then
     !  write(*,*) '==========User-defined special boundary conditions initialized=============='
     !end if
+    iobj=0
   ! set the ism
     cond_ism_on: if(usrconfig%ism_on)then
      Loop_isms : do i_ism=0,usrconfig%ism_number-1
+      iobj=iobj+1
       ism_surround(i_ism)%subname='specialbound_usr'
-        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,isboundary_iB=(/idims,iside/))
+        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,isboundary_iB=(/idims,iside/),gr_obj=gr_objects_list(iobj))
         patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.ism_surround(i_ism)%patch(ixO^S)
 
         !Here we set the user-defined boundary conditions already read from .par parameters files
@@ -2432,18 +2522,20 @@ return
      real(kind=dp)   , intent(inout) :: w(ixI^S,1:nw)
      real(kind=dp)   , intent(in)    :: x(ixI^S,1:ndim)
      ! .. local ..
-     integer                         :: i_jet_yso
+     integer                         :: i_jet_yso,i_obj
      !--------------------------------------------------------------
 
     cond_jet_on : if(usrconfig%jet_yso_on)then
 
+      i_obj = usrconfig%ism_number
       Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
+        i_obj=i_obj+1
         cond_jet_start : if(qt>jet_yso(i_jet_yso)%myconfig%time_cla_jet_on)then
          cond_jet_impose : if(jet_yso(i_jet_yso)%myconfig%z_impos>box_limit(1,zjet_))then
           call jet_yso(i_jet_yso)%set_patch(ixI^L,ixO^L,qt,x)
           cond_insid_jet : if(any(jet_yso(i_jet_yso)%patch(ixI^S)))then
             call phys_to_primitive(ixI^L,ixO^L,w,x)
-            call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,qt,x,w)
+            call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,qt,x,w,gr_objects_list(i_obj))
             ! get conserved variables to be used in the code
             call phys_to_conserved(ixI^L,ixO^L,w,x)
           end if cond_insid_jet
@@ -2988,8 +3080,10 @@ return
       write(unit_config,*)'************Grackle settings ************'
       write(unit_config,*)'************************************'
 
-      do i_all=1,gr_objects_list(1)%number_of_objects
+      do i_all=1,usrconfig%ism_number+usrconfig%jet_yso_number+usrconfig%cloud_number
+        call gr_objects_list(i_all)%denormalize(usr_physunit)
         call gr_objects_list(i_all)%write_setting(unit_config,i_all)
+        call gr_objects_list(i_all)%normalize(usr_physunit)
       end do
 
       write(*,*)'************************************'

@@ -1075,6 +1075,8 @@ end subroutine hd_get_aux
       w_convert_factor(mom(:))  = unit_density*unit_velocity
      end if
 
+     
+
      if (hd_config%dust_on) call dust_physical_units
      if (hd_config%radiative_cooling) call rad_cooling_physical_units
      if(hd_config%mean_mup_on)w_convert_factor(hd_ind%mup_) = hd_config%mean_mup

@@ -438,7 +438,7 @@ real(kind=gr_rpknd), allocatable :: gr_epsilon_tol(:) !density fraction toleranc
 CHARACTER(LEN=30), allocatable :: gr_density_method(:)
 
 type gr_objects
-  logical, allocatable            :: patch(:,:^D&)           !> spatial patch
+  logical, allocatable            :: patch(:^D&)           !> spatial patch
   character(len=78)               :: subname                 !> subroutine name that call it
   !> let s not define too much derived type to store
   !> gr_objects list parameters (number of objects, etc...)
@@ -456,11 +456,14 @@ type gr_objects
  PROCEDURE, PASS(self) :: set_default_config => grackle_set_default
  PROCEDURE, PASS(self) :: write_setting        => grackle_write_setting
  PROCEDURE, PASS(self) :: set_complet        => grackle_set_complet
+ PROCEDURE, PASS(self) :: normalize       => grackle_normalize
+ PROCEDURE, PASS(self) :: denormalize       => grackle_denormalize
  PROCEDURE, PASS(self) :: check_nH_abundances   => check_nH_abundances_consistency
  PROCEDURE, PASS(self) :: check_xHe_abundances   => check_xhe_abundances_consistency
  PROCEDURE, PASS(self) :: check_Xfraction_abundances   => check_Xfraction_abundances_consistency
  PROCEDURE, PASS(self) :: check_densities   => check_densities_consistency
  PROCEDURE, PASS(self) :: check_deviation   => check_deviation_by_density
+ PROCEDURE, PASS(self) :: set_w_init   => usr_gr_set_w_init
 end type gr_objects
 
 type(gr_objects), allocatable,TARGET :: gr_objects_list(:)
@@ -619,7 +622,7 @@ subroutine grackle_fields_config_allocate(number_of_isms,number_of_jets,number_o
  integer        :: default_number_of_clouds
  ! .. local ..
  integer                  :: n_total_objects
- integer                  :: i_ism,i_jet,i_cloud,i_all,counter
+ integer                  :: i_ism,i_jet,i_cloud,i_all,counter,i_patch
  !-------------------------------------------------------------------------
 
  ! Defaults
@@ -914,7 +917,7 @@ subroutine grackle_associate_parameters(n_obj,gr_conf_lst,gr_par_lst,gr_obj_lst,
   gr_obj_lst(i_all)%myconfig%data_filename(1) = gr_conf_lst%data_filename(i_all)
   gr_obj_lst(i_all)%myparams%data_file(1) = gr_obj_lst(i_all)%myconfig%data_dir(1)//&
   gr_obj_lst(i_all)%myconfig%data_filename(1)//C_NULL_CHAR
-  gr_obj_lst(i_all)%myconfig%normalize_done(1) = gr_conf_lst%normalize_done(i_all)
+  !gr_obj_lst(i_all)%myconfig%normalize_done(1) = gr_conf_lst%normalize_done(i_all)
   gr_obj_lst(i_all)%myconfig%gr_comoving_coordinates(1) = gr_conf_lst%gr_comoving_coordinates(i_all)
   gr_obj_lst(i_all)%myconfig%gr_a_units(1) = gr_conf_lst%gr_a_units(i_all)
   gr_obj_lst(i_all)%myconfig%gr_current_redshift(1) = gr_conf_lst%gr_current_redshift(i_all)
@@ -948,24 +951,24 @@ subroutine grackle_associate_parameters(n_obj,gr_conf_lst,gr_par_lst,gr_obj_lst,
    convert_logical_to_integer(gr_obj_lst(i_all)%myconfig%gr_primordial_chemistry(1)>0)*6&
   +convert_logical_to_integer(gr_obj_lst(i_all)%myconfig%gr_primordial_chemistry(1)>1)*3&
   +convert_logical_to_integer(gr_obj_lst(i_all)%myconfig%gr_primordial_chemistry(1)>2)*3
-  if(gr_obj_lst(i_all)%myconfig%gr_primordial_chemistry(1)>0)then
+  !if(gr_obj_lst(i_all)%myconfig%gr_primordial_chemistry(1)>0)then
     gr_obj_lst(i_all)%myparams%x_HI(1) = gr_par_lst%x_HI(i_all)
     gr_obj_lst(i_all)%myparams%x_HII(1) = gr_par_lst%x_HII(i_all)
     gr_obj_lst(i_all)%myparams%x_HeI(1) = gr_par_lst%x_HeI(i_all)
     gr_obj_lst(i_all)%myparams%x_HeII(1) = gr_par_lst%x_HeII(i_all)
     gr_obj_lst(i_all)%myparams%x_HeIII(1) = gr_par_lst%x_HeIII(i_all)
     gr_obj_lst(i_all)%myparams%x_e(1) = gr_par_lst%x_e(i_all)
-    if(gr_obj_lst(i_all)%myconfig%gr_primordial_chemistry(1)>1)then
+    !if(gr_obj_lst(i_all)%myconfig%gr_primordial_chemistry(1)>1)then
       gr_obj_lst(i_all)%myparams%x_HM(1) = gr_par_lst%x_HM(i_all)
       gr_obj_lst(i_all)%myparams%x_H2I(1) = gr_par_lst%x_H2I(i_all)
       gr_obj_lst(i_all)%myparams%x_H2II(1) = gr_par_lst%x_H2II(i_all)
-      if(gr_obj_lst(i_all)%myconfig%gr_primordial_chemistry(1)>2)then
+      !if(gr_obj_lst(i_all)%myconfig%gr_primordial_chemistry(1)>2)then
         gr_obj_lst(i_all)%myparams%x_DI(1) = gr_par_lst%x_DI(i_all)
         gr_obj_lst(i_all)%myparams%x_DII(1) = gr_par_lst%x_DII(i_all)
         gr_obj_lst(i_all)%myparams%x_HDI(1) = gr_par_lst%x_HDI(i_all)
-      end if
-    end if
-  end if
+      !end if
+    !end if
+  !end if
 
   gr_obj_lst(i_all)%myparams%density(1) = gr_par_lst%density(i_all)
   gr_obj_lst(i_all)%myparams%number_H_density(1) = gr_par_lst%number_H_density(i_all)
@@ -1054,7 +1057,7 @@ subroutine grackle_write_setting(self,unit_config,iobj)
     write(unit_config,*) 'data_dir = ',  self%myconfig%data_dir(1)
     write(unit_config,*) 'data_filename = ',  self%myconfig%data_filename(1)
     write(unit_config,*) 'data_file = ',  trim(self%myconfig%data_dir(1)//self%myconfig%data_filename(1))
-    write(unit_config,*) 'normalize_done = ',  self%myconfig%normalize_done(1)
+    !write(unit_config,*) 'normalize_done = ',  self%myconfig%normalize_done(1)
     write(unit_config,*) 'gr_comoving_coordinates = ',  self%myconfig%gr_comoving_coordinates(1)
     write(unit_config,*) 'gr_a_units = ',  self%myconfig%gr_a_units(1)
     write(unit_config,*) 'gr_current_redshift = ',  self%myconfig%gr_current_redshift(1)
@@ -1084,46 +1087,41 @@ subroutine grackle_write_setting(self,unit_config,iobj)
     write(unit_config,*)'>> ',self%myparams%number_of_solved_species(1),' solved species abundances : '
     !Species abundances
     write(unit_config,*) 'Abundances : '
-    if(self%myconfig%gr_primordial_chemistry(1)>0)then
-      write(unit_config,*)' + [HI/H] : ' , self%myparams%x_HI(1)
-      write(unit_config,*)' + [HII/H] : ' , self%myparams%x_HII(1)
-      write(unit_config,*)' + [HeI/H] : ' , self%myparams%x_HeI(1)
-      write(unit_config,*)' + [HeII/H] : ' , self%myparams%x_HeII(1)
-      write(unit_config,*)' + [HeIII/H] : ' , self%myparams%x_HeIII(1)
-      write(unit_config,*)' + [e-/H] : ' , self%myparams%x_e(1)
-    end if
-    if(self%myconfig%gr_primordial_chemistry(1)>1)then
-        write(unit_config,*)' + [HM/H] : ' , self%myparams%x_HM(1)
-        write(unit_config,*)' + [H2I/H] : ' , self%myparams%x_H2I(1)
-        write(unit_config,*)' + [H2II/H] : ' , self%myparams%x_H2II(1)
-    end if
-    if((self%myconfig%gr_primordial_chemistry(1)>2).or.&
-    (self%myparams%DeuteriumToHydrogenRatio(1)>-smalldouble))then
-          write(unit_config,*)' + [DI/H] : ' , self%myparams%x_DI(1)
-          write(unit_config,*)' + [DII/H] : ' , self%myparams%x_DII(1)
-          write(unit_config,*)' + [HDI/H] : ' , self%myparams%x_HDI(1)
-    end if
+
+    write(unit_config,*)' + [HI/H] : ' , self%myparams%x_HI(1)
+    write(unit_config,*)' + [HII/H] : ' , self%myparams%x_HII(1)
+    write(unit_config,*)' + [HeI/H] : ' , self%myparams%x_HeI(1)
+    write(unit_config,*)' + [HeII/H] : ' , self%myparams%x_HeII(1)
+    write(unit_config,*)' + [HeIII/H] : ' , self%myparams%x_HeIII(1)
+    write(unit_config,*)' + [e-/H] : ' , self%myparams%x_e(1)
+
+    write(unit_config,*)' + [HM/H] : ' , self%myparams%x_HM(1)
+    write(unit_config,*)' + [H2I/H] : ' , self%myparams%x_H2I(1)
+    write(unit_config,*)' + [H2II/H] : ' , self%myparams%x_H2II(1)
+
+
+    write(unit_config,*)' + [DI/H] : ' , self%myparams%x_DI(1)
+    write(unit_config,*)' + [DII/H] : ' , self%myparams%x_DII(1)
+    write(unit_config,*)' + [HDI/H] : ' , self%myparams%x_HDI(1)
+
     !Species densities
     write(unit_config,*) 'Densities : '
-    if(self%myconfig%gr_primordial_chemistry(1)>0)then
-      write(unit_config,*)' + rho[HI] : ' , self%myparams%densityHI(1)
-      write(unit_config,*)' + rho[HII] : ' , self%myparams%densityHII(1)
-      write(unit_config,*)' + rho[HeI] : ' , self%myparams%densityHeI(1)
-      write(unit_config,*)' + rho[HeII] : ' , self%myparams%densityHeII(1)
-      write(unit_config,*)' + rho[HeIII] : ' , self%myparams%densityHeIII(1)
-      write(unit_config,*)' + rho[e-] : ' , self%myparams%densityelectrons(1)
-    end if
-    if(self%myconfig%gr_primordial_chemistry(1)>1)then
-        write(unit_config,*)' + rho[HM] : ' , self%myparams%densityHM(1)
-        write(unit_config,*)' + rho[H2I] : ' , self%myparams%densityH2I(1)
-        write(unit_config,*)' + rho[H2II] : ' , self%myparams%densityH2II(1)
-    end if
-    if((self%myconfig%gr_primordial_chemistry(1)>2).or.&
-    (self%myparams%DeuteriumToHydrogenRatio(1)>-smalldouble))then
-          write(unit_config,*)' + rho[DI] : ' , self%myparams%densityDI(1)
-          write(unit_config,*)' + rho[DII] : ' , self%myparams%densityDII(1)
-          write(unit_config,*)' + rho[HDI] : ' , self%myparams%densityHDI(1)
-    end if
+
+    write(unit_config,*)' + rho[HI] : ' , self%myparams%densityHI(1)
+    write(unit_config,*)' + rho[HII] : ' , self%myparams%densityHII(1)
+    write(unit_config,*)' + rho[HeI] : ' , self%myparams%densityHeI(1)
+    write(unit_config,*)' + rho[HeII] : ' , self%myparams%densityHeII(1)
+    write(unit_config,*)' + rho[HeIII] : ' , self%myparams%densityHeIII(1)
+    write(unit_config,*)' + rho[e-] : ' , self%myparams%densityelectrons(1)
+    write(unit_config,*)' + rho[HM] : ' , self%myparams%densityHM(1)
+    write(unit_config,*)' + rho[H2I] : ' , self%myparams%densityH2I(1)
+    write(unit_config,*)' + rho[H2II] : ' , self%myparams%densityH2II(1)
+
+
+    write(unit_config,*)' + rho[DI] : ' , self%myparams%densityDI(1)
+    write(unit_config,*)' + rho[DII] : ' , self%myparams%densityDII(1)
+    write(unit_config,*)' + rho[HDI] : ' , self%myparams%densityHDI(1)
+
 
     write(unit_config,*) 'density = ',  self%myparams%density(1)
     write(unit_config,*) 'number_H_density = ',  self%myparams%number_H_density(1)
@@ -1510,8 +1508,6 @@ subroutine grackle_set_complet(self,i_all,ref_density,normalized,mydensityunit)
 
 
 
-
-
      select case(gr_density_method(gr_patches_indices_global(i_all)))
      !TO DO: other cases than chemical_coefficient
 
@@ -1523,9 +1519,79 @@ subroutine grackle_set_complet(self,i_all,ref_density,normalized,mydensityunit)
 
 
 
+
+
 end subroutine grackle_set_complet
 
+subroutine grackle_normalize(self,physunit_inuse)
+  use mod_obj_usr_unit
+  implicit none
+  class(gr_objects), TARGET                      :: self
+  type(usrphysical_unit), target, intent(in)     :: physunit_inuse
+  !----------------------------------
 
+  self%myphysunit =>physunit_inuse
+  if(trim(self%myconfig%unit(1))=='code'.or.self%myconfig%normalize_done(1))then
+     if(self%myconfig%normalize_done(1))then
+      write(*,*) 'WARNING: Second call for cloud normalisation', &
+                   'no new normalisation will be done'
+     end if
+     return
+  end if
+  self%myparams%density(1)=self%myparams%density(1)/self%myphysunit%myconfig%density
+  self%myparams%densityDI(1)=self%myparams%densityDI(1)/self%myphysunit%myconfig%density
+  self%myparams%densityDII(1)=self%myparams%densityDII(1)/self%myphysunit%myconfig%density
+  self%myparams%densityHDI(1)=self%myparams%densityHDI(1)/self%myphysunit%myconfig%density
+  self%myparams%densityHI(1)=self%myparams%densityHI(1)/self%myphysunit%myconfig%density
+  self%myparams%densityHII(1)=self%myparams%densityHII(1)/self%myphysunit%myconfig%density
+  self%myparams%densityHM(1)=self%myparams%densityHM(1)/self%myphysunit%myconfig%density
+  self%myparams%densityH2I(1)=self%myparams%densityH2I(1)/self%myphysunit%myconfig%density
+  self%myparams%densityH2II(1)=self%myparams%densityH2II(1)/self%myphysunit%myconfig%density
+  self%myparams%densityHeI(1)=self%myparams%densityHeI(1)/self%myphysunit%myconfig%density
+  self%myparams%densityHeII(1)=self%myparams%densityHeII(1)/self%myphysunit%myconfig%density
+  self%myparams%densityHeIII(1)=self%myparams%densityHeIII(1)/self%myphysunit%myconfig%density
+  self%myparams%densityElectrons(1)=self%myparams%densityElectrons(1)/self%myphysunit%myconfig%density
+  self%myparams%density_Z(1)=self%myparams%density_Z(1)/self%myphysunit%myconfig%density
+  self%myparams%density_dust(1)=self%myparams%density_dust(1)/self%myphysunit%myconfig%density
+
+  self%myconfig%normalize_done(1)=.true.
+
+end subroutine grackle_normalize
+
+subroutine grackle_denormalize(self,physunit_inuse)
+  use mod_obj_usr_unit
+  implicit none
+  class(gr_objects), TARGET                      :: self
+  type(usrphysical_unit), target, intent(in)     :: physunit_inuse
+  !----------------------------------
+
+  self%myphysunit =>physunit_inuse
+  if(trim(self%myconfig%unit(1))=='code'.or.(.not.self%myconfig%normalize_done(1)))then
+     if(.not.self%myconfig%normalize_done(1))then
+      write(*,*) 'WARNING: Second call for cloud denormalisation', &
+                   'no new denormalisation will be done'
+     end if
+     return
+  end if
+  self%myparams%density(1)=self%myparams%density(1)*self%myphysunit%myconfig%density
+  self%myparams%densityDI(1)=self%myparams%densityDI(1)*self%myphysunit%myconfig%density
+  self%myparams%densityDII(1)=self%myparams%densityDII(1)*self%myphysunit%myconfig%density
+  self%myparams%densityHDI(1)=self%myparams%densityHDI(1)*self%myphysunit%myconfig%density
+  self%myparams%densityHI(1)=self%myparams%densityHI(1)*self%myphysunit%myconfig%density
+  self%myparams%densityHII(1)=self%myparams%densityHII(1)*self%myphysunit%myconfig%density
+  self%myparams%densityHM(1)=self%myparams%densityHM(1)*self%myphysunit%myconfig%density
+  self%myparams%densityH2I(1)=self%myparams%densityH2I(1)*self%myphysunit%myconfig%density
+  self%myparams%densityH2II(1)=self%myparams%densityH2II(1)*self%myphysunit%myconfig%density
+  self%myparams%densityHeI(1)=self%myparams%densityHeI(1)*self%myphysunit%myconfig%density
+  self%myparams%densityHeII(1)=self%myparams%densityHeII(1)*self%myphysunit%myconfig%density
+  self%myparams%densityHeIII(1)=self%myparams%densityHeIII(1)*self%myphysunit%myconfig%density
+  self%myparams%densityElectrons(1)=self%myparams%densityElectrons(1)*self%myphysunit%myconfig%density
+  self%myparams%density_Z(1)=self%myparams%density_Z(1)*self%myphysunit%myconfig%density
+  self%myparams%density_dust(1)=self%myparams%density_dust(1)*self%myphysunit%myconfig%density
+
+  self%myconfig%normalize_done(1)=.false.
+
+end subroutine grackle_denormalize
 
 
 subroutine return_error(iobj,name1,name2,&
@@ -1956,8 +2022,79 @@ end subroutine check_deviation_by_density
 
 
 !II> SET INITIAL FIELDS FOR GRACKLE
+!-------------------------------------------------------------------------
+subroutine usr_gr_set_w_init(ixI^L,ixO^L,qt,x,w,&
+patch,w_ref_density,normalized,mydensityunit,self)
+  implicit none
+  integer, intent(in)          :: ixI^L,ixO^L
+  real(kind=dp), intent(in)    :: qt
+  real(kind=dp)                :: x(ixI^S,1:ndim)
+  real(kind=dp),intent(inout)  :: w(ixI^S,1:nw)
+  logical                      :: patch(ixI^S)
+  real(kind=dp),intent(in) :: w_ref_density
+  logical       :: normalized
+  real(kind=dp),optional :: mydensityunit
+  class(gr_objects), TARGET :: self
+  ! .. local ..
+  real(kind=dp) :: w_physical_ref_density
+  !---------------------------
 
 
 
+  ! w(X_i) = gr_ref_value*(w_stratified/w_ref_density)
+
+    where(patch(ixO^S))
+      !HI
+      w(ixO^S,phys_ind%HI_density_)=self%myparams%densityHI(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+      !HII
+      w(ixO^S,phys_ind%HII_density_)=self%myparams%densityHII(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+      !HeI
+      w(ixO^S,phys_ind%HeI_density_)=self%myparams%densityHeI(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+      !HeII
+      w(ixO^S,phys_ind%HeII_density_)=self%myparams%densityHeII(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+      !HeIII
+      w(ixO^S,phys_ind%HeIII_density_)=self%myparams%densityHeIII(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+      !electrons
+      w(ixO^S,phys_ind%e_density_)=self%myparams%densityElectrons(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+    end where
+    where(patch(ixO^S))
+      !HM
+      w(ixO^S,phys_ind%HM_density_)=self%myparams%densityHM(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+      !H2I
+      w(ixO^S,phys_ind%H2I_density_)=self%myparams%densityH2I(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+      !H2II
+      w(ixO^S,phys_ind%H2II_density_)=self%myparams%densityH2II(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+    end where
+    where(patch(ixO^S))
+      !DI
+      w(ixO^S,phys_ind%DI_density_)=self%myparams%densityDI(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+      !DII
+      w(ixO^S,phys_ind%DII_density_)=self%myparams%densityDII(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+      !HDI
+      w(ixO^S,phys_ind%HDI_density_)=self%myparams%densityHDI(1)*&
+      w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+    end where
+  where(patch(ixO^S))
+    !metal
+    w(ixO^S,phys_ind%metal_density_)=self%myparams%density_Z(1)*&
+    w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+    !dust
+    w(ixO^S,phys_ind%dust_density_)=self%myparams%density_dust(1)*&
+    w(ixO^S,phys_ind%rho_)/self%myparams%density(1)
+  end where
+
+end subroutine usr_gr_set_w_init
+!-------------------------------------------------------------------------
 
 end module mod_grackle_chemistry
