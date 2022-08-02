@@ -2425,7 +2425,6 @@ subroutine grackle_solver_associate(self)
   grackle_data%h2_on_dust = gr_main_object%myconfig%gr_h2_on_dust(1)
   grackle_data%cmb_temperature_floor = gr_main_object%myconfig%gr_cmb_temperature_floor(1)
   grackle_data%Gamma = gr_main_object%myconfig%gr_Gamma(1)
-return
   grackle_data%use_dust_density_field = gr_main_object%myconfig%gr_use_dust_density_field(1)
   grackle_data%three_body_rate = gr_main_object%myconfig%gr_three_body_rate(1)
   grackle_data%cie_cooling                    = gr_main_object%myconfig%gr_cie_cooling(1)
@@ -2502,7 +2501,7 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
   class(gr_solver),TARGET                        :: self
   !type(gr_objects), intent(inout)  :: gr_obj
   ! .. local ..
-  integer                                 :: idim,iresult,ifield^D,level,iw,i
+  integer                                 :: idim,iresult,ifield^D,level,iw,idir,i
   character(len=150), TARGET :: filename
   real(kind=dp) :: temperature_units, pressure_units, dtchem
   type(grackle_field_data)                :: my_gr_fields
@@ -2534,6 +2533,7 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
 
       INTEGER, TARGET :: grid_rank, grid_dimension(3), grid_start(3), grid_end(3)
 
+      logical :: logicndir,logicenergy
 
 
       real(kind=dp) :: grid_dx
@@ -2579,6 +2579,31 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
   grid_end(^D) = field_size(^D)-1|\}
 
   temperature_units = get_temperature_units(my_units)
+
+
+  ! prepare AMRVAC w fields for Grackle :
+  w_gr(ixI^S,1:nw)=w(ixI^S,1:nw)
+  do iw=1,nw
+    logicndir=.false.
+    do idir=1,ndir
+      logicndir = logicndir .or. (iw==phys_ind%mom(idir))
+    end do
+    if(logicndir)then
+      ! conservative variable
+      w_gr(ixI^S,iw)=w_gr(ixI^S,iw)*unit_density*unit_velocity
+    elseif(iw==phys_ind%e_)then
+      ! conservative variable
+      w_gr(ixI^S,iw)=w_gr(ixI^S,iw)*unit_density*unit_velocity**2.0
+    else
+      w_gr(ixI^S,iw)=w_gr(ixI^S,iw)*w_convert_factor(iw)
+    end if
+  end do
+  if(DABS(gr_main_object%myconfig%gr_density_units(1)-1.0_dp)>abundance_tolerance)then
+    do iw=1,nw
+      w_gr(ixI^S,iw)=w_gr(ixI^S,iw)/gr_main_object%myconfig%gr_density_units(1)
+    end do
+  end if
+
 
   {do ifield^D = 1,field_size(^D)|\}
      density(ifield^D) = 1.0
@@ -2638,6 +2663,7 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
   my_fields%HDI_density = C_LOC(HDI_density)
   my_fields%e_density = C_LOC(e_density)
   my_fields%metal_density = C_LOC(metal_density)
+  my_fields%dust_density = C_LOC(dust_density)
   my_fields%internal_energy = C_LOC(energy)
   my_fields%x_velocity = C_LOC(x_velocity)
   my_fields%y_velocity = C_LOC(y_velocity)
@@ -2658,11 +2684,13 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
   !Evolving the chemistry.
 
 
+  write(*,*) 'density_units = ', my_units%density_units
+  write(*,*) 'length_units = ', my_units%length_units
   write(*,*) 'temperature_units = ', temperature_units
-  write(*,*) " Before chemistry solving", my_fields%H2I_density, H2I_density,e_density,energy
+  write(*,*) " Before chemistry solving", my_fields%H2I_density, H2I_density,HI_density,e_density,energy
   dtchem = 3.15e7 * 1e6 / my_units%time_units    ! some timestep
   iresult = solve_chemistry(my_units, my_fields, dtchem)
-  write(*,*) " After chemistry solving", my_fields%H2I_density, H2I_density,e_density,energy
+  write(*,*) " After chemistry solving", my_fields%H2I_density, H2I_density,HI_density,e_density,energy
 
 
 
