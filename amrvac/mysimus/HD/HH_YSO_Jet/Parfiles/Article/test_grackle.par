@@ -465,25 +465,14 @@ ism_config%He_abundance      = 0.1
     grackle_par%xi_dust(2)  = 0.05
     grackle_par%correctdensities(1)  = .true.   
     grackle_par%deviation_to_density_limit(1)  = 5.0d0
-    ! fully molecular ism
-    grackle_par%x_HI(1)  =  0.49998298751d0!0.99996597502831719d0
-    grackle_par%x_H2I(1)  = 0.24999149375d0!0.99996597502831719d0
-    ! fully atomic jet
-    grackle_par%x_H2I(2) =  0.0d0!0.49998298751d0!0.99996597502831719d0
-    grackle_par%x_HI(2)  = 0.99996597502831719d0
+    grackle_par%HydrogenFractionByMass(1) = 0.76
+    grackle_par%IonizationFraction(1) = 0.0d0
+   
 
  
-    grackle_par%x_HeI(1) = 9.5004063249181592d-2 !value =9.5004063249181592d-2 if Y = 0.2704
-    grackle_par%x_DI(1) = 0.00001701248
-    grackle_par%x_DII(1) = 0.00001701248
-    grackle_par%HydrogenFractionByMass(1) = 0.71
-    grackle_par%HeliumFractionByMass(1) = 0.2704
-    grackle_par%He_abundance(2) = 0.1    
-    grackle_par%chi_Hydrogen(2) = 0.73
-    grackle_par%IonizationFraction(1) = 1d-1
-    !grackle_par%Zeta_nH_to_rho(1) = 3d-1
-    grackle_par%He_abundance(2) = 1d-1
-    !grackle_par%IonizationFraction(2) = 1d-3    
+
+
+
 /
 
 &grackle_conf_list
@@ -506,7 +495,7 @@ tstst = 1,2
   grackle_config%gr_UVbackground(1) = 1
   grackle_config%gr_comoving_coordinates(1) = 0
   grackle_config%gr_cmb_temperature_floor(1) = 1
-  grackle_config%gr_density_units(1) = 1.672621777d-24!1.67d-24
+  grackle_config%gr_density_units(1) = 1.672621777d-18!1.67d-24
   grackle_config%gr_length_units(1) = 1.0d0
   grackle_config%gr_time_units(1) = 1.0d0
   grackle_config%gr_a_units(1) = 1.0d0

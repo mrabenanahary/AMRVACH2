@@ -389,7 +389,7 @@ type gr_params
   real(dp)        :: density(max_num_parameters)        !rho=rho_total
   real(dp)        :: number_H_density(max_num_parameters) !> n_H
   real(dp)        :: density_dust(max_num_parameters)        !rhodust
-  real(dp)        :: density_tot(max_num_parameters)        !rhogas
+  real(dp)        :: density_gas(max_num_parameters)        !rhogas
   real(dp)        :: density_bar(max_num_parameters)        !rhobaryonic
   real(dp)        :: density_X(max_num_parameters)        !rhoX
   real(dp)        :: density_Y(max_num_parameters)        !rhoY
@@ -634,18 +634,18 @@ subroutine grackle_set_default(self)
 
   !Species abundances
   self%myparams%number_of_solved_species(1:max_num_parameters) = 0
-  self%myparams%x_HI(1:max_num_parameters) = 1.0d0
+  self%myparams%x_HI(1:max_num_parameters) = 1.0d0-chiD_default
   self%myparams%x_HII(1:max_num_parameters) = 0.0d0
   self%myparams%x_HM(1:max_num_parameters) = 0.0d0
-  self%myparams%x_H2I(1:max_num_parameters) = 0.0d0
-  self%myparams%x_H2II(1:max_num_parameters) = 0.0d0
-  self%myparams%x_HeI(1:max_num_parameters) = 1.0d0
+  self%myparams%x_HeI(1:max_num_parameters) = 0.1d0
   self%myparams%x_HeII(1:max_num_parameters) = 0.0d0
   self%myparams%x_HeIII(1:max_num_parameters) = 0.0d0
-  self%myparams%x_DI(1:max_num_parameters) = 1.0d0
+  self%myparams%x_H2I(1:max_num_parameters) = 0.0d0
+  self%myparams%x_H2II(1:max_num_parameters) = 0.0d0
+  self%myparams%x_DI(1:max_num_parameters) = chiD_default
   self%myparams%x_DII(1:max_num_parameters) = 0.0d0
   self%myparams%x_HDI(1:max_num_parameters) = 0.0d0
-  self%myparams%x_e(1:max_num_parameters) = 1.0d0
+  self%myparams%x_e(1:max_num_parameters) = 1.0d-3
   self%myparams%densityDI(1:max_num_parameters) = 0.0d0
   self%myparams%densityDII(1:max_num_parameters) = 0.0d0
   self%myparams%densityHDI(1:max_num_parameters) = 0.0d0
@@ -661,7 +661,7 @@ subroutine grackle_set_default(self)
   self%myparams%density(1:max_num_parameters) = -1.0d0 ! 0.0d0
   self%myparams%number_H_density(1:max_num_parameters) = -1.0d0 ! 0.0d0
   self%myparams%density_dust(1:max_num_parameters) = -1.0d0 ! 0.0d0
-  self%myparams%density_tot(1:max_num_parameters) = -1.0d0 ! 0.0d0
+  self%myparams%density_gas(1:max_num_parameters) = -1.0d0 ! 0.0d0
   self%myparams%density_bar(1:max_num_parameters) = -1.0d0 ! 0.0d0
   self%myparams%density_X(1:max_num_parameters) = -1.0d0 ! 0.0d0
   self%myparams%density_Y(1:max_num_parameters) = -1.0d0 ! 0.0d0
@@ -1088,7 +1088,7 @@ subroutine grackle_associate_parameters(n_obj,gr_conf_lst,gr_par_lst,gr_obj_lst,
   gr_obj_lst(i_all)%myparams%density(1) = gr_par_lst%density(i_all)
   gr_obj_lst(i_all)%myparams%number_H_density(1) = gr_par_lst%number_H_density(i_all)
   gr_obj_lst(i_all)%myparams%density_dust(1) = gr_par_lst%density_dust(i_all)
-  gr_obj_lst(i_all)%myparams%density_tot(1) = gr_par_lst%density_tot(i_all)
+  gr_obj_lst(i_all)%myparams%density_gas(1) = gr_par_lst%density_gas(i_all)
   gr_obj_lst(i_all)%myparams%density_bar(1) = gr_par_lst%density_bar(i_all)
   gr_obj_lst(i_all)%myparams%density_X(1) = gr_par_lst%density_X(i_all)
   gr_obj_lst(i_all)%myparams%density_Y(1) = gr_par_lst%density_Y(i_all)
@@ -1318,7 +1318,7 @@ subroutine grackle_write_setting(self,unit_config,iobj)
     write(unit_config,*) 'density = ',  self%myparams%density(1)
     write(unit_config,*) 'number_H_density = ',  self%myparams%number_H_density(1)
     write(unit_config,*) 'density_dust = ',  self%myparams%density_dust(1)
-    write(unit_config,*) 'density_tot = ',  self%myparams%density_tot(1)
+    write(unit_config,*) 'density_gas = ',  self%myparams%density_gas(1)
     write(unit_config,*) 'density_bar = ',  self%myparams%density_bar(1)
     write(unit_config,*) 'density_X = ',  self%myparams%density_X(1)
     write(unit_config,*) 'density_Y = ',  self%myparams%density_Y(1)
@@ -1496,8 +1496,6 @@ subroutine grackle_set_complet(self,i_all,ref_density,normalized,mydensityunit)
   end if
 
 
-
-
   ! chi_dust and xi_dust
   if((self%myparams%chi_dust(1)<-smalldouble).and.&
   (self%myparams%xi_dust(1)>=-smalldouble))then
@@ -1507,20 +1505,24 @@ subroutine grackle_set_complet(self,i_all,ref_density,normalized,mydensityunit)
       self%myparams%xi_dust(1)=DABS(self%myparams%chi_dust(1))
   elseif((self%myparams%chi_dust(1)<-smalldouble).and.&
   (self%myparams%xi_dust(1)<-smalldouble))then
-    self%myparams%xi_dust(1)=0.009387d0
-    self%myparams%chi_dust(1)=0.009387d0
+    call return_error(i_all,'chi_dust','xi_dust',&
+                      self%myparams%chi_dust(1),&
+                      self%myparams%xi_dust(1))
   end if
+
+  !fix rhogas
+  self%myparams%density_gas(1) = physical_ref_density/(1.0_dp+self%myparams%chi_dust(1))  !checked
 
   !fix rho_dust:
   self%myparams%density_dust(1) = physical_ref_density*&
-  self%myparams%chi_dust(1)
+  self%myparams%chi_dust(1)/(1.0_dp+self%myparams%chi_dust(1)) !checked
 
+  call self%check_nH_abundances(i_all)
 
-  !call self%check_nH_abundances(i_all)
 
   ! x_ion
   if(self%myparams%IonizationFraction(1)<-smalldouble)then
-     self%myparams%IonizationFraction(1) = 0.0d0
+     self%myparams%IonizationFraction(1) = 1.0d-3
   end if
 
   ! chi_D
@@ -1529,125 +1531,256 @@ subroutine grackle_set_complet(self,i_all,ref_density,normalized,mydensityunit)
   end if
 
 
-  !X by default
-  if(self%myparams%HydrogenFractionByMass(1)<-smalldouble)then
-    self%myparams%HydrogenFractionByMass(1) = 0.76_dp
+  if((self%myparams%HeliumFractionByMass(1)<-smalldouble).and.&
+  (self%myparams%He_abundance(1)>=-smalldouble))then
+    ! x(He) is given
+
+    ! x(He)
+    !if(self%myparams%He_abundance(1)<-smalldouble)then
+      !self%myparams%He_abundance(1)= 0.1_dp
+    !end if
+
+    !Fix reference Zeta:
+    self%myparams%Zeta_nH_to_rho(1) = &
+    ((1.0_dp+self%myparams%DeuteriumToHydrogenRatio(1))/(1.0_dp-self%myparams%MetalFractionByMass(1)))*&
+    (w_HI*self%myparams%x_HI(1) + w_HII*self%myparams%x_HII(1) + w_HM*self%myparams%x_HM(1)+&
+    w_H2I*self%myparams%x_H2I(1) + w_H2II*self%myparams%x_H2II(1))+&
+    (self%myparams%He_abundance(1)*w_HeI/(1.0_dp-self%myparams%MetalFractionByMass(1)))+&
+    w_e*self%myparams%IonizationFraction(1)
+
+
+    !Fix reference n_H:
+    self%myparams%number_H_density(1) = (physical_ref_density - self%myparams%density_dust(1))/&
+    (self%myparams%Zeta_nH_to_rho(1)*mh_gr)
+
+    !TODO: complete and check the species abundances
+
+    !rho_Electrons
+    self%myparams%densityElectrons(1) = w_e*self%myparams%IonizationFraction(1)*&
+    self%myparams%number_H_density(1)*mh_gr !checked
+
+    !fix rhobar = rho - rhodust - rho_electrons
+    self%myparams%density_bar(1) = self%myparams%density_gas(1) - &
+    self%myparams%densityElectrons(1) !checked
+
+    !Y
+    self%myparams%HeliumFractionByMass(1) = &
+    (self%myparams%He_abundance(1)/self%myparams%Zeta_nH_to_rho(1))*&
+    w_HeI/(1.0_dp-(self%myparams%densityElectrons(1)/(physical_ref_density-&
+    self%myparams%density_dust(1))))
+
+    call self%check_xHe_abundances(i_all)
+
+
+  elseif((self%myparams%HeliumFractionByMass(1)>=-smalldouble).and.&
+    (self%myparams%He_abundance(1)<-smalldouble))then
+    ! x(He) is not given, but Y is given
+
+    ! Y
+    !if(self%myparams%HeliumFractionByMass(1)<-smalldouble)then
+      !self%myparams%HeliumFractionByMass(1)= 0.2704_dp
+    !end if
+
+
+    !Fix reference Varsigma:
+    self%myparams%Varsigma_nH_to_rho(1) = &
+    ((1.0_dp+self%myparams%DeuteriumToHydrogenRatio(1))/(1.0_dp-self%myparams%MetalFractionByMass(1)))*&
+    (w_HI*self%myparams%x_HI(1) + w_HII*self%myparams%x_HII(1) + w_HM*self%myparams%x_HM(1)+&
+    w_H2I*self%myparams%x_H2I(1) + w_H2II*self%myparams%x_H2II(1))+&
+    ((1.0_dp-self%myparams%MetalFractionByMass(1)-self%myparams%HeliumFractionByMass(1))/&
+    (1.0_dp-self%myparams%MetalFractionByMass(1)))*&
+    w_e*self%myparams%IonizationFraction(1)
+
+    !Fix reference n_H:
+    self%myparams%number_H_density(1) = (physical_ref_density - self%myparams%density_dust(1)-&
+    self%myparams%HeliumFractionByMass(1)*self%myparams%density_gas(1)/&
+    (1.0_dp-self%myparams%MetalFractionByMass(1)))/&
+    (self%myparams%Varsigma_nH_to_rho(1)*mh_gr)
+
+    !Fix reference Zeta:
+    self%myparams%Zeta_nH_to_rho(1) = &
+    self%myparams%density_gas(1)/(self%myparams%number_H_density(1)*mh_gr)
+
+    !TODO: complete and check the species abundances
+
+    !rho_Electrons
+    self%myparams%densityElectrons(1) = w_e*self%myparams%IonizationFraction(1)*&
+    self%myparams%number_H_density(1)*mh_gr !checked
+
+    !fix rhobar = rho - rhodust - rho_electrons
+    self%myparams%density_bar(1) = self%myparams%density_gas(1) - &
+    self%myparams%densityElectrons(1) !checked
+
+    !get x(He)
+    self%myparams%He_abundance(1)=&
+    self%myparams%HeliumFractionByMass(1)*self%myparams%Varsigma_nH_to_rho(1)*&
+    (self%myparams%density_gas(1)-self%myparams%densityElectrons(1))/&
+    (w_HeI*(physical_ref_density-self%myparams%density_dust(1)-&
+    self%myparams%HeliumFractionByMass(1)*self%myparams%density_gas(1)/&
+    (1.0_dp-self%myparams%MetalFractionByMass(1))))
+
+    call self%check_xHe_abundances(i_all)
+
   end if
 
-  !Y
-  self%myparams%HeliumFractionByMass(1) = 1.0_dp - &
-  self%myparams%HydrogenFractionByMass(1)
+  !x_e
+  self%myparams%x_e(1) = self%myparams%densityElectrons(1)/&
+  (w_e*self%myparams%number_H_density(1)*mh_gr)
 
+  !Fix reference Zeta Prime:
+  self%myparams%ZetaPrime_nH_to_rho(1) = &
+  self%myparams%Zeta_nH_to_rho(1) -&
+  self%myparams%He_abundance(1)*w_HeI/(1.0_dp -&
+  self%myparams%MetalFractionByMass(1))
 
-  !rhodeut
-  self%myparams%density_deut(1) = self%myparams%DeuteriumToHydrogenRatio(1)*& !checked
-  physical_ref_density
+  !rho_He = rho_Y
 
-  !rhoHplusH2
-  self%myparams%densityHplusH2(1)=self%myparams%HydrogenFractionByMass(1)*&
-  physical_ref_density
-
-  !rhoY
   self%myparams%densityHe(1) = self%myparams%HeliumFractionByMass(1)*&
-  physical_ref_density !checked
-  self%myparams%density_Y(1)=self%myparams%densityHe(1)
+  self%myparams%density_bar(1) !checked
 
   !rhoZ
   self%myparams%density_Z(1) = self%myparams%MetalFractionByMass(1)*&
-  physical_ref_density !checked
+  self%myparams%density_bar(1) !checked
 
-  !rhoX = rhoD + rhoHD + rhoH + rhoH2
-  self%myparams%density_X(1) = self%myparams%HydrogenFractionByMass(1)*&
-  physical_ref_density !checked
+  write(*,*) '>In object #',i_all,', we get: '
+  write(*,*) ' * rhoY = ', self%myparams%densityHe(1)
+  write(*,*) ' * Y = ', self%myparams%HeliumFractionByMass(1)
+  write(*,*) ' ==> x(He) = ', self%myparams%densityHe(1)/(w_HeI*&
+  self%myparams%number_H_density(1)*mh_gr)
+
+
+  if(DABS(self%myparams%densityHe(1)-&
+  (self%myparams%HeliumFractionByMass(1)*&
+  self%myparams%density_bar(1)))/self%myparams%densityHe(1)>abundance_density)then
+    WRITE(*,*) 'Error: we have rho(He) /= Y*rho'
+    WRITE(*,*) 'Please debug this : '
+
+    call return_error(i_all,'rho(He)','Y*rho',&
+                      self%myparams%densityHe(1),&
+                      self%myparams%HeliumFractionByMass(1)*&
+                      self%myparams%density_bar(1))
+  end if
+
+  self%myparams%density_Y(1)=self%myparams%densityHe(1)
+
+
+
+
+  ! X, chiH
+  !if(self%myparams%chi_Hydrogen(1)>=-smalldouble)then
+
+    !X
+    !self%myparams%HydrogenFractionByMass(1)=&
+    !(DABS(self%myparams%chi_Hydrogen(1))*(1.0_dp+&
+    !self%myparams%DeuteriumToHydrogenRatio(1))*&
+    !(w_HI*self%myparams%x_HI(1) + w_HII*self%myparams%x_HII(1) + w_HM*self%myparams%x_HM(1)+&
+    !w_H2I*self%myparams%x_H2I(1) + w_H2II*self%myparams%x_H2II(1)+&
+    !(1.0_dp-self%myparams%MetalFractionByMass(1))/&
+    !(1.0_dp-(self%myparams%HeliumFractionByMass(1)+&
+    !self%myparams%MetalFractionByMass(1))/&
+    !(1.0_dp-self%myparams%densityElectrons(1)/&
+    !(physical_ref_density-self%myparams%density_dust(1)))))*&
+    !self%myparams%number_H_density(1)*mh_gr)/&
+    !(physical_ref_density-self%myparams%density_dust(1)-&
+    !self%myparams%densityElectrons(1))
+
+  !Infer X from Y and Z
+
+  !X+Y+Z=1
+  self%myparams%HydrogenFractionByMass(1)=&
+  1.0_dp-self%myparams%HeliumFractionByMass(1)-&
+  self%myparams%MetalFractionByMass(1) !checked
+
+
+  if(self%myparams%HydrogenFractionByMass(1)>=-smalldouble)then
+
+
+    !chi_H
+    self%myparams%chi_Hydrogen(1)=&
+    DABS(self%myparams%HydrogenFractionByMass(1))*&
+    (physical_ref_density-self%myparams%density_dust(1)-&
+    self%myparams%densityElectrons(1))/&
+    ((1.0_dp+&
+    self%myparams%DeuteriumToHydrogenRatio(1))*&
+    (w_HI*self%myparams%x_HI(1) + w_HII*self%myparams%x_HII(1) + w_HM*self%myparams%x_HM(1)+&
+    w_H2I*self%myparams%x_H2I(1) + w_H2II*self%myparams%x_H2II(1)+&
+    self%myparams%ZetaPrime_nH_to_rho(1)*self%myparams%HeliumFractionByMass(1)*&
+    (1.0_dp-self%myparams%MetalFractionByMass(1))/&
+    (1.0_dp-(self%myparams%HeliumFractionByMass(1)+&
+    self%myparams%MetalFractionByMass(1))/&
+    (1.0_dp-self%myparams%densityElectrons(1)/&
+    (physical_ref_density-self%myparams%density_dust(1)))))*&
+    self%myparams%number_H_density(1)*mh_gr)
+
+
+  else
+    call return_error(i_all,'chi_H','X',&
+                      self%myparams%chi_Hydrogen(1),&
+                      self%myparams%HydrogenFractionByMass(1))
+  end if
 
   call self%check_Xfraction_abundances(i_all)
 
+  !rhoX = rhoD + rhoHD + rhoH + rhoH2
+  self%myparams%density_X(1) = self%myparams%HydrogenFractionByMass(1)*&
+  self%myparams%density_bar(1) !checked
 
+  !rhometalfree = rhoX/(1+chiD)+rhoY
+  self%myparams%density_metal_free(1) = self%myparams%density_X(1)/&
+  (1.0_dp + self%myparams%DeuteriumToHydrogenRatio(1))+&
+  self%myparams%density_Y(1) !checked
 
+  !intermediate rhoHpH2=rhoH + rhoH2 = chiH * rhometalfree
+  self%myparams%densityHplusH2(1) = self%myparams%chi_Hydrogen(1)*&
+  self%myparams%density_metal_free(1) !checked
+
+  !intermediate rhoDpHD=rhoD + rhoHD = chiD * rhoHpH2
+  self%myparams%densityDplusHD(1) = self%myparams%DeuteriumToHydrogenRatio(1)*&
+  self%myparams%densityHplusH2(1) !checked
+
+  !rhodeut =rhoDpHD
+  self%myparams%density_deut(1) = self%myparams%densityDplusHD(1) !checked
+
+  !rhonotdeut
+  self%myparams%density_not_deut(1) = self%myparams%density_bar(1)-&
+  self%myparams%density_deut(1) !checked
 
   ! Parameters default values
   ! Gas to dust ratios
   self%myparams%myindice(1:max_num_parameters) = 0
 
-  !Finalyy compute values from abundances
-  self%myparams%densityDI(1) = self%myparams%x_DI(1)*&
-  self%myparams%density_deut(1)
-  self%myparams%densityDII(1) = self%myparams%x_DII(1)*&
-  self%myparams%density_deut(1)
-  self%myparams%densityHDI(1) = self%myparams%x_HDI(1)*&
-  self%myparams%density_deut(1)
-
-  self%myparams%densityHI(1) = self%myparams%x_HI(1)*&
-  self%myparams%densityHplusH2(1)
-  self%myparams%densityHII(1) = self%myparams%x_HII(1)*&
-  self%myparams%densityHplusH2(1)
-  self%myparams%densityHM(1) = self%myparams%x_HM(1)*&
-  self%myparams%densityHplusH2(1)
-  self%myparams%densityH2I(1) = self%myparams%x_H2I(1)*&
-  self%myparams%densityHplusH2(1)
-  self%myparams%densityH2II(1) = self%myparams%x_H2II(1)*&
-  self%myparams%densityHplusH2(1)
-
-  self%myparams%densityHeI(1) = w_HeI*self%myparams%x_HeI(1)*&
-  self%myparams%density_Y(1)
-  self%myparams%densityHeII(1) = self%myparams%x_HeII(1)*&
-  self%myparams%density_Y(1)
-  self%myparams%densityHeIII(1) = self%myparams%x_HeIII(1)*&
-  self%myparams%density_Y(1)
-
   !rhoD,rhoHD
-  self%myparams%densityD(1)=self%myparams%densityDI(1)+&
-  self%myparams%densityDII(1)+self%myparams%densityHDI(1)
+  self%myparams%densityD(1)=(w_DI*self%myparams%x_DI(1)+&
+  w_DII*self%myparams%x_DII(1))*self%myparams%number_H_density(1)*mh_gr
 
   self%myparams%densityHD(1)=w_HDI*self%myparams%x_HDI(1)*&
   self%myparams%number_H_density(1)*mh_gr
 
-  !rhonotdeut
-  self%myparams%density_not_deut(1) = self%myparams%densityD(1)+&
-  self%myparams%densityHD(1) !checked
-
 
   !same for rhoH and rhoH2
-  self%myparams%densityH(1)=self%myparams%densityHI(1) +&
-  self%myparams%densityHII(1) + self%myparams%densityHM(1)
+  self%myparams%densityH(1)=((w_HI*self%myparams%x_HI(1)+&
+  w_HII*self%myparams%x_HII(1)+w_HM*self%myparams%x_HM(1))*&
+  self%myparams%number_H_density(1)*mh_gr)
 
-  self%myparams%densityHtwo(1)=  self%myparams%densityH2I(1) +&
-    self%myparams%densityH2II(1)
+  self%myparams%densityHtwo(1)=((w_H2I*self%myparams%x_H2I(1)+&
+  w_H2II*self%myparams%x_H2II(1))*&
+  self%myparams%number_H_density(1)*mh_gr)
 
-  !nH
-  self%myparams%number_H_density(1) = &
-  self%myparams%densityHI(1)/(w_HI*mh_gr)+&
-  self%myparams%densityHII(1)/(w_HII*mh_gr)+&
-  self%myparams%densityHM(1)/(w_HM*mh_gr)+&
-  2.0_dp * self%myparams%densityDI(1)/(w_DI*mh_gr)+&
-  2.0_dp * self%myparams%densityDII(1)/(w_DII*mh_gr)+&
-  2.0_dp * self%myparams%densityH2I(1)/(w_H2I*mh_gr)+&
-  2.0_dp * self%myparams%densityH2II(1)/(w_H2II*mh_gr)+&
-  3.0_dp * self%myparams%densityHDI(1)/(w_HDI*mh_gr)
 
-  !rho_Electrons
-  self%myparams%densityElectrons(1) = w_e *&
-  self%myparams%IonizationFraction(1)*& !checked
-  self%myparams%number_H_density(1)*mh_gr
+  !Finalyy compute values from abundances
+  self%myparams%densityDI(1) = w_DI*self%myparams%x_DI(1)*self%myparams%number_H_density(1)*mh_gr
+  self%myparams%densityDII(1) = w_DII*self%myparams%x_DII(1)*self%myparams%number_H_density(1)*mh_gr
+  self%myparams%densityHDI(1) = w_HDI*self%myparams%x_HDI(1)*self%myparams%number_H_density(1)*mh_gr
+  self%myparams%densityHI(1) = w_HI*self%myparams%x_HI(1)*self%myparams%number_H_density(1)*mh_gr
+  self%myparams%densityHII(1) = w_HII*self%myparams%x_HII(1)*self%myparams%number_H_density(1)*mh_gr
+  self%myparams%densityHM(1) = w_HM*self%myparams%x_HM(1)*self%myparams%number_H_density(1)*mh_gr
+  self%myparams%densityH2I(1) = w_H2I*self%myparams%x_H2I(1)*self%myparams%number_H_density(1)*mh_gr
+  self%myparams%densityH2II(1) = w_H2II*self%myparams%x_H2II(1)*self%myparams%number_H_density(1)*mh_gr
+  self%myparams%densityHeI(1) = w_HeI*self%myparams%x_HeI(1)*self%myparams%number_H_density(1)*mh_gr
+  self%myparams%densityHeII(1) = w_HeII*self%myparams%x_HeII(1)*self%myparams%number_H_density(1)*mh_gr
+  self%myparams%densityHeIII(1) = w_HeIII*self%myparams%x_HeIII(1)*self%myparams%number_H_density(1)*mh_gr
 
-  !fix rhotot
-  self%myparams%density_tot(1) = &
-  self%myparams%densityHI(1)+&
-  self%myparams%densityHII(1)+&
-  self%myparams%densityHM(1)+&
-  self%myparams%densityDI(1)+&
-  self%myparams%densityDII(1)+&
-  self%myparams%densityH2I(1)+&
-  self%myparams%densityH2II(1)+&
-  self%myparams%densityHDI(1)+&
-  self%myparams%densityHeI(1)+&
-  self%myparams%densityHeII(1)+&
-  self%myparams%densityHeIII(1)+&
-  self%myparams%densityElectrons(1)+&
-  self%myparams%density_Z(1)+&
-  self%myparams%density_dust(1)
-
-  !call self%check_densities(i_all)
+  call self%check_densities(i_all)
 
 
 
@@ -2092,7 +2225,7 @@ subroutine check_deviation_by_density(self,i_all)
     self%myparams%densityHeII(1)+self%myparams%densityHeIII(1)+&
     self%myparams%density_Z(1)+&
     self%myparams%densityElectrons(1)
-    deviation = compute_dev(i_all,self%myparams%density_tot(1),sum_densities_to_check)
+    deviation = compute_dev(i_all,self%myparams%density_gas(1),sum_densities_to_check)
     max_deviation=max(DABS(max_deviation),DABS(deviation))
     call error_message(i_all,deviation,self%myparams%deviation_to_density_limit(1),'rhoGas')
 
@@ -2368,12 +2501,12 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
   class(gr_solver),TARGET                        :: self
   !type(gr_objects), intent(inout)  :: gr_obj
   ! .. local ..
-  integer                                 :: idim,iresult,ifield^D,imesh^D,level,iw,idir,i
+  integer                                 :: idim,iresult,ifield^D,level,iw,idir,i
   character(len=150), TARGET :: filename
   real(kind=dp) :: temperature_units, pressure_units, dtchem
   type(grackle_field_data)                :: my_gr_fields
-  real(kind=dp)                   :: w_gr(ixI^S,1:nw)
-  real(kind=dp)                   :: temperature(ixI^S)
+  real(kind=dp), TARGET                   :: w_gr(ixI^S,1:nw)
+  real(kind=dp)                   :: w_prim(ixI^S,1:nw)
   real(kind=dp)                           :: dt_old
   integer         :: field_size(1:ndim)
   real :: initial_redshift
@@ -2424,10 +2557,10 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
 
   !Initialize the Grackle
 
-  !write(*,*) "primordial_chemistry:",&
-  !     grackle_data%primordial_chemistry
-  !write(*,*) "metal_cooling:",&
-  !     grackle_data%metal_cooling
+  write(*,*) "primordial_chemistry:",&
+       grackle_data%primordial_chemistry
+  write(*,*) "metal_cooling:",&
+       grackle_data%metal_cooling
   iresult = initialize_chemistry_data(my_units)
 
   !Set field arrays
@@ -2450,10 +2583,6 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
 
   ! prepare AMRVAC w fields for Grackle :
   w_gr(ixI^S,1:nw)=w(ixI^S,1:nw)
-  call phys_get_temperature(ixI^L,ixI^L,w_gr,x,temperature)
-  !win(ixO^S,nw+itemperature_) = temperature(ixO^S)*unit_temperature
-   temperature(ixI^S)=temperature(ixI^S)*unit_temperature
-
   do iw=1,nw
     logicndir=.false.
     do idir=1,ndir
@@ -2470,21 +2599,15 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
     end if
   end do
   if(DABS(gr_main_object%myconfig%gr_density_units(1)-1.0_dp)>abundance_tolerance)then
-    w_gr(ixI^S,phys_ind%rho_)=w_gr(ixI^S,phys_ind%rho_)/gr_main_object%myconfig%gr_density_units(1)
-    w_gr(ixI^S,phys_ind%HI_density_)=w_gr(ixI^S,phys_ind%HI_density_)/gr_main_object%myconfig%gr_density_units(1)
+    do iw=1,nw
+      w_gr(ixI^S,iw)=w_gr(ixI^S,iw)/gr_main_object%myconfig%gr_density_units(1)
+    end do
   end if
-
-  !convert to Grackle internal energy in units of velocity_units^2:
-  w_gr(ixI^S,phys_ind%e_)=temperature(ixI^S)/temperature_units
-
-
-
 
 
   {do ifield^D = 1,field_size(^D)|\}
-     {imesh^D=ixOmin^D+ifield^D-1|\}
-     density(ifield^D) = w_gr(imesh^D,phys_ind%rho_)
-     HI_density(ifield^D) = w_gr(imesh^D,phys_ind%HI_density_)
+     density(ifield^D) = 1.0
+     HI_density(ifield^D) = fH * density(ifield^D)
      HII_density(ifield^D) = tiny_number * density(ifield^D)
      HM_density(ifield^D) = tiny_number * density(ifield^D)
      HeI_density(ifield^D) = (1.0 - fH) * density(ifield^D)
@@ -2517,18 +2640,6 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
      RT_H2_dissociation_rate(ifield^D) = 0.0
      RT_heating_rate(ifield^D) = 0.0
   {enddo^D&|\}
-
-  {field_size(^D) = ixImax^D-ixImin^D+1|\}
-
-  !{do ifield^D = 1,field_size(^D)|\}
-     !{imesh^D=ixImin^D+ifield^D-1|\}
-     !{if(imesh^D>ixImax^D)then
-     !write(*,*)'found imesh>ixOmax^',^D,': imesh^',^D,' = ', &
-     !imesh^D,' and ixOmax^',^D,' =', ixImax^D
-     !end if|\}
-     !write(*,*) w_gr(imesh^D,phys_ind%e_)
-
-  !{enddo^D&|\}
 
   !Fill in structure to be passed to Grackle
 
@@ -2573,13 +2684,13 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w
   !Evolving the chemistry.
 
 
-  !write(*,*) 'density_units = ', my_units%density_units
-  !write(*,*) 'length_units = ', my_units%length_units
-  !write(*,*) 'temperature_units = ', temperature_units
-  write(*,*) " Before chemistry solving", HI_density*my_units%density_units!,H2I_density,HI_density!,e_density,energy
-  dtchem = 3.15e8 / my_units%time_units    ! some timestep
+  write(*,*) 'density_units = ', my_units%density_units
+  write(*,*) 'length_units = ', my_units%length_units
+  write(*,*) 'temperature_units = ', temperature_units
+  write(*,*) " Before chemistry solving", my_fields%H2I_density, H2I_density,HI_density,e_density,energy
+  dtchem = 3.15e7 * 1e6 / my_units%time_units    ! some timestep
   iresult = solve_chemistry(my_units, my_fields, dtchem)
-  write(*,*) " After chemistry solving", HI_density*my_units%density_units!,H2I_density,HI_density!,e_density,energy
+  write(*,*) " After chemistry solving", my_fields%H2I_density, H2I_density,HI_density,e_density,energy
 
 
 
