@@ -1834,14 +1834,14 @@ end subroutine initglobaldata_usr
 
     ! init Grackle parameters and units only once in the whole run
 
-    ! mod_grackle_chemistry.t -> call self%link_par_to_gr(gr_obj):
-    call my_grackle_solver%link_par_to_gr(gr_main_object)
-    ! mod_grackle_chemistry.t -> call self%associate_units(gr_obj):
-    call my_grackle_solver%associate_units(gr_main_object)
-    gr_main_object%myparams%temperature_units = get_temperature_units(my_grackle_solver%mygrtype%units)
-    ! only initialize this block/s Grackle chemistry data once:
-    iresult = initialize_chemistry_data(my_grackle_solver%mygrtype%units)
+    iresult = set_default_chemistry_parameters(grackle_data)
 
+    call my_grackle_solver%link_par_to_gr !<oddly this needs to be called again to avoid segmentation issue
+
+    call my_grackle_solver%associate_units(gr_main_object)
+
+
+    iresult = set_default_chemistry_parameters(grackle_data)
 
     ! get conserved variables to be used in the code
     patch_all=.true.
@@ -2055,13 +2055,13 @@ end subroutine initglobaldata_usr
    end if cond_dust_on
 
 
-
+   !write(*,*) 'II> Grackle source adding <II'
    cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
    !Add Grackle chemistry+heating+cooling module treatment here :
    level = node(plevel_,saveigrid)
       ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
       call my_grackle_solver%grackle_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w,&
-      gr_main_object,dx_local)
+      dx_local)
    end if cond_grackle_on
 
 !  call usr_check_w(ixI^L,ixO^L,.true.,'specialsource_usr',qt,x,w)
@@ -2529,6 +2529,8 @@ return
             end if   cond_cloud_on
           end do Loop_clouds
         end if cond_usr_cloud
+
+
 
      end subroutine special_get_dt
    !> This subroutine can be used to artificially overwrite ALL conservative

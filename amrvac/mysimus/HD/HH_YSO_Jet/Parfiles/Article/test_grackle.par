@@ -48,9 +48,9 @@
         !tsave(1,2)=4.73364d8 !save after first end of injection cycle at t=150 yrs
         !dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	ditsave_log =5
-        !dtsave_dat=  3.1557600d7! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !dtsave_dat=  4.73364d9
-        ditsave_dat =1
+        !ditsave_dat =1
  /
 
         ditsave_log = 1
@@ -59,11 +59,11 @@
 
  &stoplist
 
-        dtmin=1.0d-13
+        dtmin=1.0d-6
         !time_max= 99d15 ! years
-        !time_max=  3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.1715388d10 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !time_max=  4.73364d9
-        it_max=30
+        !it_max=30
 
 
 /
@@ -116,13 +116,13 @@
  &meshlist
         ! grid at level 1
         xprobmin1 =  0.0d0    ! cm
-        xprobmax1 =  3.0d17! <--- r_max=3.0d17
+        xprobmax1 =  1.0d17! <--- r_max=3.0d17
         xprobmin2 =  0.0d0    ! cm
-        xprobmax2 =  3.0d17! <--- z_max=3.0d17
+        xprobmax2 =  1.0d17! <--- z_max=3.0d17
 
         ! total cell at level 1
-        domain_nx1= 96! <---dr=1.25e15 cm at lvl 1
-        domain_nx2= 96! <---dr=1.25e15 cm at lvl 1
+        domain_nx1= 8! <---dr=1.25e15 cm at lvl 1
+        domain_nx2= 8! <---dr=1.25e15 cm at lvl 1
         ! number of cell by block
         block_nx1 = 8!8!
         block_nx2 = 8!8!
@@ -461,34 +461,35 @@ ism_config%He_abundance      = 0.1
 /
 
 &grackle_par_list
-    grackle_par%chi_dust(1) = 0.35
-    grackle_par%xi_dust(2)  = 0.5
+    grackle_par%chi_dust(1) = 0.05
+    grackle_par%xi_dust(2)  = 0.05
     grackle_par%correctdensities(1)  = .true.   
     grackle_par%deviation_to_density_limit(1)  = 5.0d0
     ! fully molecular ism
-    grackle_par%x_HI(1)  =  0.0d0!0.49998298751d0!0.99996597502831719d0
-    grackle_par%x_H2I(1)  = 0.49998298751d0!0.24999149375d0!0.99996597502831719d0
+    grackle_par%x_HI(1)  =  0.49998298751d0!0.99996597502831719d0
+    grackle_par%x_H2I(1)  = 0.24999149375d0!0.99996597502831719d0
     ! fully atomic jet
     grackle_par%x_H2I(2) =  0.0d0!0.49998298751d0!0.99996597502831719d0
     grackle_par%x_HI(2)  = 0.99996597502831719d0
 
  
     grackle_par%x_HeI(1) = 9.5004063249181592d-2 !value =9.5004063249181592d-2 if Y = 0.2704
-    !grackle_par%x_DI(2) = 0.5    
+    grackle_par%x_DI(1) = 0.00001701248
+    grackle_par%x_DII(1) = 0.00001701248
     grackle_par%HydrogenFractionByMass(1) = 0.71
     grackle_par%HeliumFractionByMass(1) = 0.2704
     grackle_par%He_abundance(2) = 0.1    
     grackle_par%chi_Hydrogen(2) = 0.73
-    !grackle_par%IonizationFraction(1) = 1d-2
+    grackle_par%IonizationFraction(1) = 1d-1
     !grackle_par%Zeta_nH_to_rho(1) = 3d-1
-    !grackle_par%He_abundance(2) = 1d-1
+    grackle_par%He_abundance(2) = 1d-1
     !grackle_par%IonizationFraction(2) = 1d-3    
 /
 
 &grackle_conf_list
     grackle_config%use_grackle(2) = 1
     grackle_config%gr_primordial_chemistry(1) = 2
-    grackle_config%gr_primordial_chemistry(2) = 3
+    grackle_config%gr_primordial_chemistry(2) = 2
     
 tstst = 1,2
     
@@ -500,12 +501,17 @@ tstst = 1,2
   grackle_config%gr_primordial_chemistry(1) = 3   ! network with H, He, D
   grackle_config%gr_dust_chemistry(1) = 1         ! dust processes
   grackle_config%gr_metal_cooling(1) = 1          ! metal cooling on
+  grackle_config%gr_h2_on_dust(1) = 0                ! metal cooling on
+  !grackle_config%gr_use_dust_density_field(1) = 1
+  grackle_config%gr_UVbackground(1) = 1
   grackle_config%gr_comoving_coordinates(1) = 0
-  grackle_config%gr_density_units(1) = 1.0d0
+  grackle_config%gr_cmb_temperature_floor(1) = 1
+  grackle_config%gr_density_units(1) = 1.67d-24
   grackle_config%gr_length_units(1) = 1.0d0
   grackle_config%gr_time_units(1) = 1.0d0
   grackle_config%gr_a_units(1) = 1.0d0
   grackle_config%a_value(1) = 1.0d0
+  grackle_config%gr_Gamma(1) = 1.66666666667d0
 /
 
 
