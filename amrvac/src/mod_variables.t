@@ -61,6 +61,9 @@ module mod_variables
   integer              :: iw_metal_density
   integer              :: iw_dust_density
 
+  integer              :: iw_rhoX
+  integer              :: iw_rhoY
+
   !> Index of the gravity potential
   integer, protected :: iw_grav_phi = -1
 

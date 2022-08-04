@@ -890,6 +890,9 @@ end subroutine hd_default_pre_config
     iw_metal_density = -1
     iw_dust_density = -1
 
+    iw_rhoX = -1
+    iw_rhoY = -1
+
     using_grackle : if(hd_config%use_grackle)then
       prim_chem : if(hd_config%gr_primordial_chemistry>0.and.hd_config%gr_primordial_chemistry<=3)then
         !if(hd_config%gr_primordial_chemistry>=1)then
@@ -913,6 +916,8 @@ end subroutine hd_default_pre_config
             !end if
           !end if
         !end if
+
+
       elseif(hd_config%gr_primordial_chemistry==0)then
         !DO NOTHING
       else
@@ -927,6 +932,8 @@ end subroutine hd_default_pre_config
       !if(hd_config%gr_dust_chemistry)then
         iw_dust_density = var_set_extravar('dust_density', 'dust_density')
       !end if
+      iw_rhoX = var_set_extravar('rhoX', 'rhoX')
+      iw_rhoY = var_set_extravar('rhoY', 'rhoY')
     end if using_grackle
 
 
@@ -949,6 +956,9 @@ end subroutine hd_default_pre_config
     hd_ind%metal_density_ = iw_metal_density
     !dust chemistry
     hd_ind%dust_density_ = iw_dust_density
+
+    hd_ind%rhoX_=iw_rhoX
+    hd_ind%rhoY_=iw_rhoY
 
     !End of Grackle part
 
@@ -1104,6 +1114,9 @@ end subroutine hd_get_aux
     w_convert_factor(iw_metal_density)=unit_density
     !dust
     w_convert_factor(iw_dust_density)=unit_density
+
+    w_convert_factor(iw_rhoX)=unit_density
+    w_convert_factor(iw_rhoY)=unit_density
 
 
      if (hd_config%dust_on) call dust_physical_units

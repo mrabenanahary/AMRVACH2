@@ -67,6 +67,9 @@ module mod_physics
     integer              :: metal_density_
     integer              :: dust_density_
 
+    integer              :: rhoX_
+    integer              :: rhoY_
+
 
     integer, allocatable :: epsinf_rho(:)
     integer, allocatable :: epsinf_rho0(:)

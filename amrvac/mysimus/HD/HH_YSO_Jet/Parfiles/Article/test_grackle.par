@@ -236,7 +236,7 @@
         usrconfig%profile_use_hse     = .false.
         usrconfig%cloud_on            = .false.                      !> set cloud
         usrconfig%cloud_structure     = 2                           !> cloud structure type
-        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+        usrconfig%jet_yso_on          = .false. !>>HH4647.false.!.false.!.false.!                      !> set a jet
         usrconfig%physunit_on         = .true.                      !> set the normalisation in use
         usrconfig%reset_medium        = .true.                      !> set on the reset
         usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
@@ -245,7 +245,7 @@
 	 usrconfig%grackle_chemistry_on = .true. ! Use Grackle extra module
         usrconfig%phys_isotherm_on              = .true.!>>HH4647.true. ! use isotherme
         usrconfig%phys_temperature_isotherm     = 100.0d0 ! Le 2001
-        !usrconfig%temperature_max  = 5d4
+        !usrconfig%temperature_max  = 1d5
         usrconfig%reset_flux_scheme_on          = .true.
         usrconfig%reset_flux_scheme_diffuse     = 'tvdlf'
         usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
@@ -467,7 +467,8 @@ ism_config%He_abundance      = 0.1
     grackle_par%deviation_to_density_limit(1)  = 5.0d0
     grackle_par%HydrogenFractionByMass(1) = 0.76
     grackle_par%IonizationFraction(1) = 0.0d0
-   
+    grackle_par%HydrogenFractionByMass(2) = 0.76
+    grackle_par%IonizationFraction(2) = 0.0d0   
 
  
 
@@ -495,7 +496,7 @@ tstst = 1,2
   grackle_config%gr_UVbackground(1) = 1
   grackle_config%gr_comoving_coordinates(1) = 0
   grackle_config%gr_cmb_temperature_floor(1) = 1
-  grackle_config%gr_density_units(1) = 1.672621777d-18!1.67d-24
+  grackle_config%gr_density_units(1) = 1.672621777d-24!1.67d-24
   grackle_config%gr_length_units(1) = 1.0d0
   grackle_config%gr_time_units(1) = 1.0d0
   grackle_config%gr_a_units(1) = 1.0d0

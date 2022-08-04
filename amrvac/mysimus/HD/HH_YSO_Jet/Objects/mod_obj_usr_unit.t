@@ -430,6 +430,9 @@ end subroutine usr_physical_unit_set_unit
    !dust
    w_convert_factor(phys_ind%dust_density_) = self%myconfig%density
 
+   w_convert_factor(phys_ind%rhoX_) = self%myconfig%density
+   w_convert_factor(phys_ind%rhoY_) = self%myconfig%density
+
 
    !write(*,*) ' mod_obj_usr_unit.t--> usr_physical_unit_fillphysunit'
    !write(*,*) 'phys_config (before change): chemical_composition | ',&

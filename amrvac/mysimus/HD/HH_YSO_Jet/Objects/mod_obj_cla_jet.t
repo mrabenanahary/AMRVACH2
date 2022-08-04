@@ -1073,6 +1073,17 @@ end subroutine usr_cla_jet_set_patch
         w(ixO^S,phys_ind%dust_density_)=w(ixO^S,phys_ind%dust_density_)*fprofile(ixO^S)
       end where
 
+
+      where(self%patch(ixO^S))
+        w(ixO^S,phys_ind%rhoX_)=w(ixO^S,phys_ind%HI_density_)+&
+        w(ixO^S,phys_ind%HII_density_)+w(ixO^S,phys_ind%HM_density_)+&
+        w(ixO^S,phys_ind%H2I_density_)+w(ixO^S,phys_ind%H2II_density_)+&
+        w(ixO^S,phys_ind%DI_density_)+w(ixO^S,phys_ind%DII_density_)+&
+        w(ixO^S,phys_ind%HDI_density_)
+        w(ixO^S,phys_ind%rhoY_)=w(ixO^S,phys_ind%HeI_density_)+&
+        w(ixO^S,phys_ind%HeII_density_)!+w(ixO^S,phys_ind%HeIII_density_)
+      end where
+
       if(phys_config%energy)then
         where(self%patch(ixO^S))
           w(ixO^S,phys_ind%pressure_)  = w(ixO^S,phys_ind%pressure_) * fprofile(ixO^S)
@@ -1161,11 +1172,9 @@ end subroutine usr_cla_jet_set_patch
   real(kind=dp)                   :: intermediate_jet_mflux
   !----------------------------------
 
-  intermediate_jet_mflux = densityref*self%myconfig%jet_surface_init*&
-  dabs(self%myconfig%velocity_poloidal)
+  intermediate_jet_mflux = densityref*self%myconfig%jet_surface_init
   where(self%patch(ixO^S))
-    w(ixO^S,rho_ind)       = intermediate_jet_mflux/(jet_srfce(ixO^S)*  &
-                             dabs(self%myconfig%velocity_poloidal))
+    w(ixO^S,rho_ind)       = intermediate_jet_mflux/jet_srfce(ixO^S)
   end where
 
   end subroutine gr_compute_w_rho

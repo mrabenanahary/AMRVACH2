@@ -1293,6 +1293,9 @@ contains
     !dust
     w_convert_factor(phys_ind%dust_density_) = unit_density
 
+    w_convert_factor(phys_ind%rhoX_) = unit_density
+    w_convert_factor(phys_ind%rhoY_) = unit_density
+
 
     if(trim(usrconfig%reset_flux_scheme_old_method)=='none')then
       usrconfig%reset_flux_scheme_old_method='hllc'
@@ -2061,7 +2064,7 @@ end subroutine initglobaldata_usr
    level = node(plevel_,saveigrid)
       ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
       call my_grackle_solver%grackle_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w,&
-      dx_local)
+      dx_local,phys_config%mean_mup_on)
    end if cond_grackle_on
 
 !  call usr_check_w(ixI^L,ixO^L,.true.,'specialsource_usr',qt,x,w)
@@ -2885,7 +2888,22 @@ return
     integer                     :: idir
     !------------------------------------------------
     where(patchw_empty(ixO^S))
-      w(ixO^S,phys_ind%rho_)      = 1.0_DP
+      w(ixO^S,phys_ind%rho_)      = 1.0d-2
+      w(ixO^S,phys_ind%HI_density_)=1.0d-2
+      w(ixO^S,phys_ind%HII_density_)=1.0d-2
+      w(ixO^S,phys_ind%HM_density_)=1.0d-2
+      w(ixO^S,phys_ind%H2I_density_)=1.0d-2
+      w(ixO^S,phys_ind%H2II_density_)=1.0d-2
+      w(ixO^S,phys_ind%HeI_density_)=1.0d-2
+      w(ixO^S,phys_ind%HeII_density_)=1.0d-2
+      w(ixO^S,phys_ind%HeIII_density_)=1.0d-2
+      w(ixO^S,phys_ind%DI_density_)=1.0d-2
+      w(ixO^S,phys_ind%DII_density_)=1.0d-2
+      w(ixO^S,phys_ind%HDI_density_)=1.0d-2
+      w(ixO^S,phys_ind%e_density_)=1.0d-2
+      w(ixO^S,phys_ind%metal_density_)=1.0d-2
+      w(ixO^S,phys_ind%rhoX_)=1.0d-2
+      w(ixO^S,phys_ind%rhoY_)=1.0d-2
     end where
     cond_no_isotherm : if(phys_config%energy)then
       where(patchw_empty(ixO^S))

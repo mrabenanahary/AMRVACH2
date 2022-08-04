@@ -1022,16 +1022,16 @@ contains
             where(self%patch(ixO^S))
               w(ixO^S,phys_ind%HI_density_)=gr_obj%myparams%densityHI(1)
               w(ixO^S,phys_ind%HII_density_)=gr_obj%myparams%densityHII(1)
-              w(ixO^S,phys_ind%HeI_density_)=gr_obj%myparams%densityHeI(1)
-              w(ixO^S,phys_ind%HeII_density_)=gr_obj%myparams%densityHeII(1)
-              w(ixO^S,phys_ind%HeIII_density_)=gr_obj%myparams%densityHeIII(1)
-              w(ixO^S,phys_ind%e_density_)=gr_obj%myparams%densityElectrons(1)
               w(ixO^S,phys_ind%HM_density_)=gr_obj%myparams%densityHM(1)
               w(ixO^S,phys_ind%H2I_density_)=gr_obj%myparams%densityH2I(1)
               w(ixO^S,phys_ind%H2II_density_)=gr_obj%myparams%densityH2II(1)
+              w(ixO^S,phys_ind%HeI_density_)=gr_obj%myparams%densityHeI(1)
+              w(ixO^S,phys_ind%HeII_density_)=gr_obj%myparams%densityHeII(1)
+              w(ixO^S,phys_ind%HeIII_density_)=gr_obj%myparams%densityHeIII(1)
               w(ixO^S,phys_ind%DI_density_)=gr_obj%myparams%densityDI(1)
               w(ixO^S,phys_ind%DII_density_)=gr_obj%myparams%densityDII(1)
               w(ixO^S,phys_ind%HDI_density_)=gr_obj%myparams%densityHDI(1)
+              w(ixO^S,phys_ind%e_density_)=gr_obj%myparams%densityElectrons(1)
               w(ixO^S,phys_ind%metal_density_)=gr_obj%myparams%density_Z(1)
               w(ixO^S,phys_ind%dust_density_)=gr_obj%myparams%density_dust(1)
             end where
@@ -1073,6 +1073,15 @@ contains
                 call self%set_profile(ixI^L,ixO^L,x,w,isboundary)
              end if
 
+              where(self%patch(ixO^S))
+                w(ixO^S,phys_ind%rhoX_)=w(ixO^S,phys_ind%HI_density_)+&
+                w(ixO^S,phys_ind%HII_density_)+w(ixO^S,phys_ind%HM_density_)+&
+                w(ixO^S,phys_ind%H2I_density_)+w(ixO^S,phys_ind%H2II_density_)+&
+                w(ixO^S,phys_ind%DI_density_)+w(ixO^S,phys_ind%DII_density_)+&
+                w(ixO^S,phys_ind%HDI_density_)
+                w(ixO^S,phys_ind%rhoY_)=w(ixO^S,phys_ind%HeI_density_)+&
+                w(ixO^S,phys_ind%HeII_density_)!+w(ixO^S,phys_ind%HeIII_density_)
+              end where
 
 
 
