@@ -2451,7 +2451,7 @@ mean_mup_on,self)
      grid_start(i) = 0
      grid_end(i) = 0
   enddo
-  grid_dx = 0.0
+  grid_dx = grid_dx22(1)*unit_length/my_units%length_units
   {grid_dimension(^D) = field_size(^D)
   !0-based is necessary for grid_start and grid_end
   grid_end(^D) = field_size(^D)-1|\}
@@ -2623,8 +2623,8 @@ mean_mup_on,self)
   !write(*,*) 'saveigrid = ', saveigrid
   !write(*,*) 'dt = ', qdt
   !write(*,*) 'dt*unit = ', qdt*time_convert_factor
-  write(*,*) " Before chemistry solving, HeI = ", HeI_density*my_units%density_units
-  write(*,*) " Before chemistry solving, e- =", e_density*my_units%density_units
+  !write(*,*) " Before chemistry solving, HeI = ", HeI_density*my_units%density_units
+  !write(*,*) " Before chemistry solving, e- =", e_density*my_units%density_units
   dtchem = qdt*time_convert_factor / my_units%time_units
   !write(*,*) " Before chemistry dt =", dtchem
   !3.15e7 * 1e0 / my_units%time_units    ! some timestep
@@ -2634,8 +2634,8 @@ mean_mup_on,self)
   pressure_units = my_units%density_units * my_units%velocity_units**2.0_dp
   iresult = calculate_pressure(my_units, my_fields, pressure)
   iresult = calculate_gamma(my_units, my_fields, gamma)
-  write(*,*) " After chemistry solving, HeI = ", HeI_density*my_units%density_units
-  write(*,*) " After chemistry solving, e- =", e_density*my_units%density_units
+  !write(*,*) " After chemistry solving, HeI = ", HeI_density*my_units%density_units
+  !write(*,*) " After chemistry solving, e- =", e_density*my_units%density_units
   !write(*,*) " After chemistry dt =", dtchem
 
   {do ifield^D = 1,field_size(^D)|\}

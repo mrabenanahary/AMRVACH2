@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=Lee2001_s_300yrs_1e4yrs
-#SBATCH --nodes=1 --ntasks-per-node=48
+#SBATCH --job-name=Lee2001_s_300yrs_1e4yrs_1
+#SBATCH --nodes=1 --ntasks-per-node=4
 #SBATCH --nodelist=tycho70
 #SBATCH --time=7200
 #SBATCH --partition=long
 #SBATCH --mail-user=mialy.rabenanahary@gmail.com
-#SBATCH --output=slurm-Lee2001_s_300yrs_1e4yrs-%j.out
+#SBATCH --output=slurm-Lee2001_s_300yrs_1e4yrs_1-%j.out
 #SBATCH --mail-type=ALL
 #SBATCH --mem=64gb
 #SBATCH --tmp=200gb
@@ -42,21 +42,19 @@ pwd
 
 export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
 
-
 echo $SLURM_CPUS_ON_NODE
 
-
 srun --ntasks=$SLURM_JOB_NUM_NODES more Parfiles/Article/${SLURM_JOB_NAME}.par
-mpiexec -np $SLURM_CPUS_ON_NODE amrvac -i Parfiles/Article/${SLURM_JOB_NAME}.par
-srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jobs/slurm-${SLURM_JOB_NAME}-${SLURM_JOBID}.out /data/$USER/Output/${SLURM_JOB_NAME}/.
+mpiexec -np 1 amrvac -i Parfiles/Article/${SLURM_JOB_NAME}.par
+srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jobs/parallelization_test/slurm-${SLURM_JOB_NAME}-${SLURM_JOBID}.out /data/$USER/Output/${SLURM_JOB_NAME}/.
 
 #srun --ntasks=$SLURM_JOB_NUM_NODES cp Output/${SLURM_JOB_NAME}/Jet_CC_0100.dat .
 srun --ntasks=$SLURM_JOB_NUM_NODES more Parfiles/Article/uniform/${SLURM_JOB_NAME}.par
-mpiexec -np $SLURM_CPUS_ON_NODE amrvac -i Parfiles/Article/uniform/${SLURM_JOB_NAME}.par
+mpiexec -np 1 amrvac -i Parfiles/Article/uniform/${SLURM_JOB_NAME}.par
 
 srun --ntasks=$SLURM_JOB_NUM_NODES mv Output/${SLURM_JOB_NAME}/* /data/$USER/Output/${SLURM_JOB_NAME}/.
 srun --ntasks=$SLURM_JOB_NUM_NODES mv uniform /data/$USER/Output/${SLURM_JOB_NAME}/.
-srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jobs/slurm-${SLURM_JOB_NAME}-${SLURM_JOBID}.out /data/$USER/Output/${SLURM_JOB_NAME}/uniform/.
+srun --ntasks=$SLURM_JOB_NUM_NODES cp $AMRVAC_DIR/mysimus/HD/HH_YSO_Jet/Jobs/parallelization_test/slurm-${SLURM_JOB_NAME}-${SLURM_JOBID}.out /data/$USER/Output/${SLURM_JOB_NAME}/uniform/.
 cd ${SLURM_SUBMIT_DIR}
 #mv ${SCRATCH}/MonProg.out .
 #srun --ntasks=$SLURM_JOB_NUM_NODES rm -rf ${SCRATCH}
