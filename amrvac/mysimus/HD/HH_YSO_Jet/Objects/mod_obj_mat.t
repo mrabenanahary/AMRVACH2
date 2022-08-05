@@ -611,35 +611,6 @@ subroutine usr_fluxes_set_line_field(ixI^L,ixO^L,&
 
 end subroutine usr_fluxes_set_line_field
 
-subroutine WHEREINDEXNDIM(MASK,ixI^L,MASKCOUNT,INDEXES)
-  implicit none
-  integer,intent(in)                     :: ixI^L
-  integer,intent(in)                     :: MASKCOUNT
-  logical,intent(in)                     :: MASK(ixI^S)
-  integer, intent(out)                   :: INDEXES(1:MASKCOUNT,1:ndim)
-  ! ... local ...
-  logical, allocatable                   :: MASKTMP(:^D&)
-  integer                                :: ix
-  !--------------------------------------------------------------------
-  IF(MASKCOUNT/=COUNT(MASK))&
-    write(*,*) 'Inconsistent COUNT(MASK) /= MASKCOUNT'
-    call mpistop('in WHEREINDEXNDIM(MASK,MASKCOUNT,INDEXES)')
-
-  IF(.NOT.allocated(MASKTMP))&
-    allocate(MASKTMP(ixI^S))
-
-  MASKTMP(ixI^S)=MASK(ixI^S)
-
-
-  INDEXES(1:MASKCOUNT,1:ndim)=1
-  DO ix=1,MASKCOUNT
-    INDEXES(ix,1:ndim)=FINDLOC(MASKTMP,.true.)
-    MASKTMP({INDEXES(ix,^D)})=.false.
-  END DO
-
-  DEALLOCATE(MASKTMP)
-end subroutine WHEREINDEXNDIM
-
 
 !--------------------------------------------------------------------
 !> Subtroutine for power law distribution,here the dust sizes are defined. Ndust bins, with all bins having equal total mass.

@@ -1,4 +1,4 @@
-F90=mpif90.openmpi
+F90=mpifort
 FFLAGS = -c
 F90FLAGS =  -ffree-form -O1 -finit-real=snan -finit-integer=-2147483648 \
 -fimplicit-none -g -fbacktrace -fcheck=all -ffpe-trap=invalid,zero,overflow \
