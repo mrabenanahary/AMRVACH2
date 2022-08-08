@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        !restart_from_file='Output/test_grackle/Lee2001_s_0001.dat'                
+        !restart_from_file='Lee2001_s_0059.dat'                
         nwauxio = 10
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -47,7 +47,7 @@
 	!tsave(1,2)=0.0d0
         !tsave(1,2)=4.73364d8 !save after first end of injection cycle at t=150 yrs
         !dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
-	ditsave_log =5
+	!ditsave_log =5
         dtsave_dat=  3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !dtsave_dat=  4.73364d9
         !ditsave_dat =1
@@ -63,7 +63,7 @@
         !time_max= 99d15 ! years
         time_max=  3.1715388d10 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !time_max=  4.73364d9
-        !it_max=30
+        !it_max=100
 
 
 /
@@ -103,9 +103,9 @@
         internalboundary  = .true.
         nghostcells       = 4
         !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
-        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!'symm','asymm','symm','asymm',2*'symm'!, ! C.L. gauche <=> rmin
+        typeboundary_min1 =  7*'cont'!'symm','asymm','symm','asymm','symm',2*'symm'!'symm','asymm','symm','asymm',2*'symm'!, ! C.L. gauche <=> rmin
         typeboundary_max1 =  7*'cont'!6*'cont'!                                    ! C.L. droite <=> rmax
-        typeboundary_min2 = 7*'special'!6*'special'!'symm','symm','asymm','symm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
+        typeboundary_min2 = 7*'cont'!7*'special'!6*'special'!'symm','symm','asymm','symm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
         typeboundary_max2 =  7*'cont'!6*'cont'!                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
 
 /
@@ -243,7 +243,7 @@
         usrconfig%phys_inuse          = 'hd' !'mhd' ! set physique want to be used
 
 	 usrconfig%grackle_chemistry_on = .true. ! Use Grackle extra module
-        usrconfig%phys_isotherm_on              = .true.!>>HH4647.true. ! use isotherme
+        usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
         usrconfig%phys_temperature_isotherm     = 100.0d0 ! Le 2001
         !usrconfig%temperature_max  = 1d5
         usrconfig%reset_flux_scheme_on          = .true.
@@ -357,7 +357,7 @@ ism_config%weight_mean_variable = 'default'!'minus_density_grad'
 ism_config%profile_rw_force = 2.5d16
 ism_config%weight_num_index = 1.0d0
 ism_config%weight_analy_index = 1.0d0
-ism_config%profile_density    = 'Lee2001'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_density    = 'cabrit1997'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
 ism_config%profile_jspec = 8.0782850178d20!20       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
@@ -461,48 +461,39 @@ ism_config%He_abundance      = 0.1
 
 /
 
-&grackle_par_list
-    grackle_par%chi_dust(1) = 0.05
-    grackle_par%xi_dust(2)  = 0.05
-    grackle_par%correctdensities(1)  = .true.   
-    grackle_par%deviation_to_density_limit(1)  = 5.0d0
-    grackle_par%HydrogenFractionByMass(1) = 0.76
-    grackle_par%IonizationFraction(1) = 0.0d0
-    grackle_par%HydrogenFractionByMass(2) = 0.76
-    grackle_par%IonizationFraction(2) = 0.0d0   
-
- 
-
-
-
-/
-
 &grackle_conf_list
-    grackle_config%use_grackle(2) = 1
-    grackle_config%gr_primordial_chemistry(1) = 2
-    grackle_config%gr_primordial_chemistry(2) = 2
-    
-tstst = 1,2
-    
-/
+	grackle_config%chi_dust(1) = 0.05
+	grackle_config%xi_dust(2)  = 0.05
+	grackle_config%correctdensities(1)  = .true.   
+	!grackle_config%x_HI(1)  = 0.5d0
+	!grackle_config%x_HI(2)  = 0.5d0
+	!grackle_config%x_H2I(1)  = 0.25d0
+	!grackle_config%x_H2I(2)  = 0.25d0	
+	grackle_config%deviation_to_density_limit(1)  = 5.0d0
+	grackle_config%HydrogenFractionByMass(1) = 0.76
+	grackle_config%IonizationFraction(1) = 0.0d0
+	grackle_config%HydrogenFractionByMass(2) = 0.76
+	grackle_config%IonizationFraction(2) = 0.0d0   
+	grackle_config%TemperatureStart(1) = 101.0d0   	
+	grackle_config%TemperatureStart(2) = 101.0d0   	
 
-&grackle_main_conf_list
-  grackle_config%use_grackle(1) = 1            ! chemistry on
-  grackle_config%gr_with_radiative_cooling(1) = 1 ! cooling on
-  grackle_config%gr_primordial_chemistry(1) = 1   ! network with H, He, D
-  grackle_config%gr_dust_chemistry(1) = 1         ! dust processes
-  grackle_config%gr_metal_cooling(1) = 1          ! metal cooling on
-  grackle_config%gr_h2_on_dust(1) = 0                ! metal cooling on
-  grackle_config%gr_use_dust_density_field(1) = 0
-  grackle_config%gr_UVbackground(1) = 1
-  grackle_config%gr_comoving_coordinates(1) = 0
-  grackle_config%gr_cmb_temperature_floor(1) = 1
-  grackle_config%gr_density_units(1) = 1.672621777d-24!1.67d-24
-  grackle_config%gr_length_units(1) = 1.0d0
-  grackle_config%gr_time_units(1) = 1.0d0
-  grackle_config%gr_a_units(1) = 1.0d0
-  grackle_config%a_value(1) = 1.0d0
-  grackle_config%gr_Gamma(1) = 1.66666666667d0
+
+	grackle_config%use_grackle(1) = 1            ! chemistry on
+	grackle_config%gr_with_radiative_cooling(1) = 1 ! cooling on
+	grackle_config%gr_primordial_chemistry(1) = 3   ! network with H, He, D
+	grackle_config%gr_dust_chemistry(1) = 0         ! dust processes
+	grackle_config%gr_metal_cooling(1) = 0          ! metal cooling on
+	grackle_config%gr_h2_on_dust(1) = 0                ! metal cooling on
+	grackle_config%gr_use_dust_density_field(1) = 1
+	grackle_config%gr_UVbackground(1) = 1
+	grackle_config%gr_comoving_coordinates(1) = 0
+	grackle_config%gr_cmb_temperature_floor(1) = 1
+	grackle_config%gr_density_units(1) = 1.672621777d-24!1.67d-24
+	grackle_config%gr_length_units(1) = 1.0d0
+	grackle_config%gr_time_units(1) = 1.0d0
+	grackle_config%gr_a_units(1) = 1.0d0
+	grackle_config%a_value(1) = 1.0d0
+	grackle_config%gr_Gamma(1) = 1.66666666667d0
 /
 
 

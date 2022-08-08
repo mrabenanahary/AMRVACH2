@@ -651,8 +651,9 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
   self%myconfig%density          = self%myconfig%density       /physunit_inuse%myconfig%density
   ! massflux = rho*v*S
   ! ==> S = mass/(rho*v)
-  self%myconfig%jet_surface_init = self%myconfig%jet_surface_init / (unit_user%mass_flux/&
-  (physunit_inuse%myconfig%density*physunit_inuse%myconfig%velocity))
+  self%myconfig%jet_surface_init = self%myconfig%jet_surface_init / (physunit_inuse%myconfig%length**2.0_dp)
+  !(unit_user%mass_flux/&
+  !(physunit_inuse%myconfig%density*physunit_inuse%myconfig%velocity))
   self%myconfig%number_density   = self%myconfig%number_density/physunit_inuse%myconfig%number_density
   self%myconfig%temperature      = self%myconfig%temperature   /physunit_inuse%myconfig%temperature
   self%myconfig%pressure         = self%myconfig%pressure      /physunit_inuse%myconfig%pressure
@@ -904,16 +905,17 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
 end subroutine usr_cla_jet_set_patch
 !--------------------------------------------------------------------
  !> subroutine setting for cla_jet
- subroutine usr_cla_jet_set_w(ixI^L,ixO^L,qt,x,w,gr_obj,self)
+ subroutine usr_cla_jet_set_w(ixI^L,ixO^L,qt,x,w,gr_solv,self)
   implicit none
   integer, intent(in)          :: ixI^L,ixO^L
   real(kind=dp), intent(in)    :: qt
   real(kind=dp)                :: x(ixI^S,1:ndim)
   real(kind=dp)                :: w(ixI^S,1:nw)
+  type(gr_solver), optional :: gr_solv
   class(cla_jet)               :: self
-  type(gr_objects)    :: gr_obj
+  !type(gr_objects)    :: gr_obj
   ! .. local..
-  integer                         :: idir
+  integer                         :: idir,iobject
   logical                         :: dust_is_frac
   real(kind=dp), dimension(ixI^S) :: fprofile,angle_theta,&
                                     jet_surface,&
@@ -999,34 +1001,36 @@ end subroutine usr_cla_jet_set_patch
   end where
 
 
+  iobject = self%myconfig%myindice+1
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%DI_density_,&
-  gr_obj%myparams%densityDI(1),jet_surface)
+  gr_solv%myconfig%densityDI(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%DII_density_,&
-  gr_obj%myparams%densityDII(1),jet_surface)
+  gr_solv%myconfig%densityDII(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HDI_density_,&
-  gr_obj%myparams%densityHDI(1),jet_surface)
+  gr_solv%myconfig%densityHDI(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HI_density_,&
-  gr_obj%myparams%densityHI(1),jet_surface)
+  gr_solv%myconfig%densityHI(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HII_density_,&
-  gr_obj%myparams%densityHII(1),jet_surface)
+  gr_solv%myconfig%densityHII(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HM_density_,&
-  gr_obj%myparams%densityHM(1),jet_surface)
+  gr_solv%myconfig%densityHM(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%H2I_density_,&
-  gr_obj%myparams%densityH2I(1),jet_surface)
+  gr_solv%myconfig%densityH2I(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%H2II_density_,&
-  gr_obj%myparams%densityH2II(1),jet_surface)
+  gr_solv%myconfig%densityH2II(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HeI_density_,&
-  gr_obj%myparams%densityHeI(1),jet_surface)
+  gr_solv%myconfig%densityHeI(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HeII_density_,&
-  gr_obj%myparams%densityHeII(1),jet_surface)
+  gr_solv%myconfig%densityHeII(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HeIII_density_,&
-  gr_obj%myparams%densityHeIII(1),jet_surface)
+  gr_solv%myconfig%densityHeIII(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%e_density_,&
-  gr_obj%myparams%densityElectrons(1),jet_surface)
+  gr_solv%myconfig%densityElectrons(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%metal_density_,&
-  gr_obj%myparams%density_Z(1),jet_surface)
+  gr_solv%myconfig%density_Z(iobject),jet_surface)
   call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%dust_density_,&
-  gr_obj%myparams%density_dust(1),jet_surface)
+  gr_solv%myconfig%density_dust(iobject),jet_surface)
+
 
 
   if(phys_config%energy)then
@@ -1109,7 +1113,7 @@ end subroutine usr_cla_jet_set_patch
     !     (floor((self%myconfig%z_impos-box_limit(1,zjet_))/dxlevel(zjet_))+0.5_dp)&
     !     *dxlevel(zjet_)
 
-     call self%add_ejecta(ixI^L,ixO^L,qt,.false.,x,w,gr_obj)
+     call self%add_ejecta(ixI^L,ixO^L,qt,.false.,x,w)
 
    end if cond_var_0
 
@@ -1179,6 +1183,7 @@ end subroutine usr_cla_jet_set_patch
 
   end subroutine gr_compute_w_rho
 
+
  !--------------------------------------------------------------------
  subroutine usr_cla_add_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w,self,&
                                use_tracer,escape_patch,source_filter)
@@ -1206,13 +1211,13 @@ end subroutine usr_cla_add_source
 
  !--------------------------------------------------------------------
  !> Subroutine to process variables in cloud object
-  subroutine usr_cla_process_grid(ixI^L,ixO^L,qt,x,w,gr_obj,self)
+  subroutine usr_cla_process_grid(ixI^L,ixO^L,qt,x,w,self)
    implicit none
    integer, intent(in)            :: ixI^L,ixO^L
    real(kind=dp), intent(in)      :: qt
    real(kind=dp)                  :: x(ixI^S,1:ndim)
    real(kind=dp)                  :: w(ixI^S,1:nw)
-   type(gr_objects), optional   :: gr_obj
+   !type(gr_objects), optional   :: gr_obj
    class(cla_jet)                 :: self
    ! .. local ..
 
@@ -1221,7 +1226,7 @@ end subroutine usr_cla_add_source
    cond_var_0 : if(self%myconfig%variation_on)then
     !.and.&
     !               self%myconfig%variation_position(zjet_)>self%myconfig%z_impos)then
-     call self%add_ejecta(ixI^L,ixO^L,qt,.true.,x,w,gr_obj)
+     call self%add_ejecta(ixI^L,ixO^L,qt,.true.,x,w)
    end if cond_var_0
 
 
@@ -1288,13 +1293,13 @@ end subroutine usr_cla_add_source
       end if cond_time_var
   end subroutine usr_cla_ejecta_set_patch
 
- subroutine usr_cla_add_ejecta(ixI^L,ixO^L,qt,is_conserved,x,w,gr_obj,self)
+ subroutine usr_cla_add_ejecta(ixI^L,ixO^L,qt,is_conserved,x,w,self)
    integer, intent(in)            :: ixI^L,ixO^L
    real(kind=dp), intent(in)      :: qt
    logical, intent(in)            :: is_conserved
    real(kind=dp)                  :: x(ixI^S,1:ndim)
    real(kind=dp)                  :: w(ixI^S,1:nw)
-   type(gr_objects), optional   :: gr_obj
+   !type(gr_objects), optional   :: gr_obj
    class(cla_jet)                 :: self
    ! .. local ..
    integer                        :: iw,n_cells
@@ -1381,22 +1386,7 @@ end subroutine usr_cla_add_source
             end where
 
 
-            where(self%ejecta_patch(ixO^S))
-              w(ixO^S,phys_ind%HI_density_)=gr_obj%myparams%densityHI(1)*h_time
-              w(ixO^S,phys_ind%HII_density_)=gr_obj%myparams%densityHII(1)*h_time
-              w(ixO^S,phys_ind%HeI_density_)=gr_obj%myparams%densityHeI(1)*h_time
-              w(ixO^S,phys_ind%HeII_density_)=gr_obj%myparams%densityHeII(1)*h_time
-              w(ixO^S,phys_ind%HeIII_density_)=gr_obj%myparams%densityHeIII(1)*h_time
-              w(ixO^S,phys_ind%e_density_)=gr_obj%myparams%densityElectrons(1)*h_time
-              w(ixO^S,phys_ind%HM_density_)=gr_obj%myparams%densityHM(1)*h_time
-              w(ixO^S,phys_ind%H2I_density_)=gr_obj%myparams%densityH2I(1)*h_time
-              w(ixO^S,phys_ind%H2II_density_)=gr_obj%myparams%densityH2II(1)*h_time
-              w(ixO^S,phys_ind%DI_density_)=gr_obj%myparams%densityDI(1)*h_time
-              w(ixO^S,phys_ind%DII_density_)=gr_obj%myparams%densityDII(1)*h_time
-              w(ixO^S,phys_ind%HDI_density_)=gr_obj%myparams%densityHDI(1)*h_time
-              w(ixO^S,phys_ind%metal_density_)=gr_obj%myparams%density_Z(1)*h_time
-              w(ixO^S,phys_ind%dust_density_)=gr_obj%myparams%density_dust(1)*h_time
-            end where
+
 
             !----------------------------------------------------
             ! If switched on, enabling constant temperature in the jet inlet by changing the pressure

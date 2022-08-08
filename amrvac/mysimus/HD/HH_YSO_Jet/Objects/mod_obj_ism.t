@@ -491,7 +491,10 @@ contains
     integer                  :: idim,iside,idims,iB2,iw2
     !-----------------------------------
 
-
+    write(*,*) '======================Beginning of ism_set_w settings======================='
+    print*, '* at (R,z) = (r_j,0) : '
+    print*, '** The ism base temperature is = ',self%myconfig%temperature
+    write(*,*) '========================================================'
 
 
     ! original :
@@ -818,14 +821,21 @@ contains
 
     call self%myboundaries%set_complet
 
+
+
     if(mype==0)then
       write(*,*) '======================ISM settings======================='
       print*, '* at (R,z) = (r_j,0) : '
       print*, '** The ism base temperature is = ',self%myconfig%temperature
       print*, '** The ism base density is =', self%myconfig%density
+      print*, '** The ism base meanmum is =', self%myconfig%mean_mup
+      print*, '** The ism base mp is =', mp
+      print*, '** The ism base kB is =', kB
+      print*, '** The ism base pressure is =', self%myconfig%pressure
       print*, '** The ism base number density nH is ', self%myconfig%number_density
       write(*,*) '========================================================='
     end if
+
 
 
 
@@ -912,7 +922,7 @@ contains
    end subroutine usr_ism_normalize
   !--------------------------------------------------------------------
    !> subroutine setting for ISM
-   subroutine usr_ism_set_w(ixI^L,ixO^L,qt,x,w,self,isboundary_iB,gr_obj)
+   subroutine usr_ism_set_w(ixI^L,ixO^L,qt,x,w,isboundary_iB,gr_solv,self)
    ! * According to subroutine initonegrid_usr in which it is called once in mod_obj_usr_yso_jet.t :
    ! in the src code amrini.t, ixI^L = ixG^LL = ixGlo1,ixGlo2,ixGhi1,ixGhi2
    ! = range delimiting the whole domain (including boundary ghost cells), i.e. between integers
@@ -949,9 +959,11 @@ contains
     real(kind=dp),allocatable     :: w_tmp(:^D&,:)
     class(ism)                    :: self
     integer,             optional :: isboundary_iB(2)
-    type(gr_objects), optional   :: gr_obj
+    type(gr_solver), optional :: gr_solv
+
     ! .. local..
     integer                    :: idir,iB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
+    integer                    :: iobject
     real(kind=dp)              :: fprofile(ixI^S)
     logical                    :: isboundary,to_fix,bc_to_fix,some_unfixed
     character(len=30)          :: myboundary_cond
@@ -1018,25 +1030,25 @@ contains
              end if
            end if
 
-           if(present(gr_obj))then
+           iobject = self%myconfig%myindice + 1
+           if(present(gr_solv))then
             where(self%patch(ixO^S))
-              w(ixO^S,phys_ind%HI_density_)=gr_obj%myparams%densityHI(1)
-              w(ixO^S,phys_ind%HII_density_)=gr_obj%myparams%densityHII(1)
-              w(ixO^S,phys_ind%HM_density_)=gr_obj%myparams%densityHM(1)
-              w(ixO^S,phys_ind%H2I_density_)=gr_obj%myparams%densityH2I(1)
-              w(ixO^S,phys_ind%H2II_density_)=gr_obj%myparams%densityH2II(1)
-              w(ixO^S,phys_ind%HeI_density_)=gr_obj%myparams%densityHeI(1)
-              w(ixO^S,phys_ind%HeII_density_)=gr_obj%myparams%densityHeII(1)
-              w(ixO^S,phys_ind%HeIII_density_)=gr_obj%myparams%densityHeIII(1)
-              w(ixO^S,phys_ind%DI_density_)=gr_obj%myparams%densityDI(1)
-              w(ixO^S,phys_ind%DII_density_)=gr_obj%myparams%densityDII(1)
-              w(ixO^S,phys_ind%HDI_density_)=gr_obj%myparams%densityHDI(1)
-              w(ixO^S,phys_ind%e_density_)=gr_obj%myparams%densityElectrons(1)
-              w(ixO^S,phys_ind%metal_density_)=gr_obj%myparams%density_Z(1)
-              w(ixO^S,phys_ind%dust_density_)=gr_obj%myparams%density_dust(1)
+              w(ixO^S,phys_ind%HI_density_)=gr_solv%myconfig%densityHI(iobject)
+              w(ixO^S,phys_ind%HII_density_)=gr_solv%myconfig%densityHII(iobject)
+              w(ixO^S,phys_ind%HM_density_)=gr_solv%myconfig%densityHM(iobject)
+              w(ixO^S,phys_ind%H2I_density_)=gr_solv%myconfig%densityH2I(iobject)
+              w(ixO^S,phys_ind%H2II_density_)=gr_solv%myconfig%densityH2II(iobject)
+              w(ixO^S,phys_ind%HeI_density_)=gr_solv%myconfig%densityHeI(iobject)
+              w(ixO^S,phys_ind%HeII_density_)=gr_solv%myconfig%densityHeII(iobject)
+              w(ixO^S,phys_ind%HeIII_density_)=gr_solv%myconfig%densityHeIII(iobject)
+              w(ixO^S,phys_ind%DI_density_)=gr_solv%myconfig%densityDI(iobject)
+              w(ixO^S,phys_ind%DII_density_)=gr_solv%myconfig%densityDII(iobject)
+              w(ixO^S,phys_ind%HDI_density_)=gr_solv%myconfig%densityHDI(iobject)
+              w(ixO^S,phys_ind%e_density_)=gr_solv%myconfig%densityElectrons(iobject)
+              w(ixO^S,phys_ind%metal_density_)=gr_solv%myconfig%density_Z(iobject)
+              w(ixO^S,phys_ind%dust_density_)=gr_solv%myconfig%density_dust(iobject)
             end where
            end if
-
 
            if(trim(self%myconfig%profile_density)=='Ulrich1976')then
               !----------------------------------------------------

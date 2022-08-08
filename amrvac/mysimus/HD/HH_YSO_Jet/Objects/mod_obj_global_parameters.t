@@ -37,7 +37,7 @@ contains
 
      unit_user%volum          = unit_length**3.0_dp
      unit_user%mass           = unit_density*unit_user%volum
-     unit_user%energy         = unit_length**5.0_dp*unit_density
+     unit_user%energy         = unit_velocity**2.0_dp*unit_density
      unit_user%luminosity     = unit_length**2.0_dp*unit_user%mass&
                                 *unit_time**(-3.0_dp)!*2.81166770085091
      unit_user%mass_flux      = unit_user%mass/ unit_time

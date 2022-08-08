@@ -19,9 +19,5 @@ contains
     call hd_ppm_init()
   end subroutine hd_activate
 
-  subroutine link_hd_pre_phys()
-    use mod_hd_phys
-    call hd_pre_read()
-  end subroutine link_hd_pre_phys
 
 end module mod_hd
