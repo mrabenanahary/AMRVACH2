@@ -476,8 +476,8 @@ ism_config%He_abundance      = 0.1
 	!grackle_config%MetalFractionByMass(1) = 0.0d0
 	grackle_config%HydrogenFractionByMass(2) = 0.76
 	grackle_config%IonizationFraction(2) = 0.0d0   
-	!grackle_config%TemperatureStart(1) = 101.0d0   	
-	!grackle_config%TemperatureStart(2) = 101.0d0   	
+	grackle_config%TemperatureStart(1) = 101.0d0   	
+	grackle_config%TemperatureStart(2) = 101.0d0   	
 
 
 	grackle_config%use_grackle(1) = 1            ! chemistry on
@@ -487,9 +487,9 @@ ism_config%He_abundance      = 0.1
 	grackle_config%gr_metal_cooling(1) = 0          ! metal cooling on
 	grackle_config%gr_h2_on_dust(1) = 1                ! metal cooling on
 	grackle_config%gr_use_dust_density_field(1) = 1
-	grackle_config%gr_UVbackground(1) = 1
+	grackle_config%gr_UVbackground(1) = 0
 	grackle_config%gr_comoving_coordinates(1) = 0
-	grackle_config%gr_cmb_temperature_floor(1) = 1
+	grackle_config%gr_cmb_temperature_floor(1) = 0
 	grackle_config%gr_density_units(1) = 1.672621777d-24!1.67d-24
 	grackle_config%gr_length_units(1) = 1.0d0
 	grackle_config%gr_time_units(1) = 3.0d8

@@ -1123,6 +1123,9 @@ contains
 
   !> subroutine to clean memory at the end
   subroutine usr_clean_memory_final
+    intent :: iresult
+    TYPE (grackle_units) :: my_units
+    TYPE (grackle_field_data) :: my_fields
     if(usrconfig%ism_on)then
       if(allocated(ism_surround))deallocate(ism_surround)
     end if
@@ -1130,6 +1133,10 @@ contains
       if(allocated(cloud_medium))deallocate(cloud_medium)
     end if
     if(allocated(the_dust_inuse))deallocate(the_dust_inuse)
+
+    if(phys_config%use_grackle)then
+      iresult = gr_free_memory(my_units, my_fields)
+    end if
   end subroutine usr_clean_memory_final
 
 !-------------------------------------------------------------------

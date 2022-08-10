@@ -1310,10 +1310,10 @@ end subroutine hd_get_aux
     real(dp), intent(out)        :: pth(ixI^S)
     !----------------------------------------------------
     if (hd_config%energy) then
-      !pth(ixO^S) = (w(ixO^S,gamma_)-1.0_dp) * (w(ixO^S, e_) - &
-      !     hd_kin_en(w, ixI^L, ixO^L))
-      pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
-          hd_kin_en(w, ixI^L, ixO^L))
+      pth(ixO^S) = (w(ixO^S,gamma_)-1.0_dp) * (w(ixO^S, e_) - &
+           hd_kin_en(w, ixI^L, ixO^L))
+      !pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
+      !    hd_kin_en(w, ixI^L, ixO^L))
     else
        pth(ixO^S) = hd_config%adiab * w(ixO^S, rho_)**hd_config%gamma
     end if
