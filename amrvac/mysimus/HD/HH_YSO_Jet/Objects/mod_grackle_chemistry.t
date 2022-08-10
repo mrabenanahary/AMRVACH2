@@ -1276,7 +1276,7 @@ end subroutine grackle_set_complet
 
 
 subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_dx22,&
-solver_activated,pressure_field,self)
+solver_activated,pressure_field,gamma_field,temperature_field,self)
   implicit none
   integer, intent(in)                     :: ixI^L,ixO^L
   real(kind=dp), intent(in)               :: qdt,qtC,qt
@@ -1285,15 +1285,17 @@ solver_activated,pressure_field,self)
   real(kind=dp), intent(in)               :: grid_dx22(1:ndim)
   logical, intent(in) :: solver_activated
   real(kind=dp), intent(inout),optional   :: pressure_field(ixI^S)
+  real(kind=dp), intent(inout),optional   :: temperature_field(ixI^S)
+  real(kind=dp), intent(inout),optional   :: gamma_field(ixI^S)
   !type(usrphysical_unit), target     :: physunit_inuse
   !real(kind=dp), intent(in)               :: gamma
-  real(kind=dp)           :: w(ixI^S,1:nw)
+  real(kind=dp),intent(inout)             :: w(ixI^S,1:nw)
   class(gr_solver),TARGET                        :: self
   !type(gr_objects), intent(inout)  :: gr_obj
   ! .. local ..
   integer                                 :: idim,iresult,ifield^D,imesh^D,level,iw,idir,i
   character(len=150), TARGET :: filename
-  real(kind=dp) :: temperature_units, pressure_units, dtchem
+  real(kind=dp) :: temperature_units, pressure_units, dtchem, velocity_units
   type(grackle_field_data)                :: my_gr_fields
   real(kind=dp), target                   :: w_gr(ixI^S,1:nw)
   real(kind=dp)                   :: temperature(ixI^S)
@@ -1352,6 +1354,7 @@ solver_activated,pressure_field,self)
   !0-based is necessary for grid_start and grid_end
   grid_end(^D) = field_size(^D)-1|\}
   temperature_units = get_temperature_units(my_units)
+  velocity_units = get_velocity_units(my_units)
 
   w_gr=w
   call phys_get_temperature(ixI^L,ixI^L,w_gr,x,temperature)
@@ -1370,6 +1373,12 @@ solver_activated,pressure_field,self)
 
   ! conservative variable
   w_gr(ixI^S,phys_ind%e_)=temperature(ixI^S)*unit_temperature/temperature_units
+
+  !w_gr(ixI^S,phys_ind%e_) = w_gr(ixI^S,phys_ind%e_)*velocity_units**2.0_dp
+
+  !write(*,*) ' temperature_units == ', velocity_units**2.0_dp
+  !w(ixO^S,phys_ind%gamma_) = w_gr(ixI^S,phys_ind%e_)*velocity_units**2.0_dp
+
 
   w_gr(ixO^S,phys_ind%rho_) = w_gr(ixO^S,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)/&
   my_units%density_units
@@ -1550,7 +1559,7 @@ solver_activated,pressure_field,self)
 
     !do iw=1,nw
       !logicndir=.false.
-      !do idir=1,ndir
+      !do idir=1,ndim+1
         !logicndir = logicndir .or. (iw==phys_ind%mom(idir))
       !end do
       !if(logicndir)then
@@ -1559,18 +1568,28 @@ solver_activated,pressure_field,self)
       !end if
     !end do
 
-
-
-
+    if(present(gamma_field))then
     {do ifield^D = 1,field_size(^D)|\}
        {imesh^D=ixOmin^D+ifield^D-1|\}
        ! Beware : in Grackle, rho*internal_energy_gr = pressure/(Gamma-1)
        ! whereas in MPI-AMRVAC : total_energy_amrvac = pressure/(Gamma-1) + 0.5rho*v^2
        ! so that internal_energy_amrvac =  rho*internal_energy_gr
        ! e = p/(gamma-1) = nk_b T/((gamma-1)*mu*mH)
-       w(imesh^D,phys_ind%gamma_) = gamma(ifield^D)
-       w(imesh^D,phys_ind%temperature_) = temperature_gr(ifield^D)/unit_temperature
+       gamma_field(imesh^D) = gamma(ifield^D)
     {enddo^D&|\}
+    end if
+
+
+    if(present(temperature_field))then
+    {do ifield^D = 1,field_size(^D)|\}
+       {imesh^D=ixOmin^D+ifield^D-1|\}
+       ! Beware : in Grackle, rho*internal_energy_gr = pressure/(Gamma-1)
+       ! whereas in MPI-AMRVAC : total_energy_amrvac = pressure/(Gamma-1) + 0.5rho*v^2
+       ! so that internal_energy_amrvac =  rho*internal_energy_gr
+       ! e = p/(gamma-1) = nk_b T/((gamma-1)*mu*mH)
+       temperature_field(imesh^D) = temperature_gr(ifield^D)/unit_temperature
+    {enddo^D&|\}
+    end if
 
 
     !write(*,*) " gamma = ", w(ixO^S,phys_ind%gamma_)
@@ -1587,17 +1606,19 @@ solver_activated,pressure_field,self)
           pressure_field(imesh^D) = pressure(ifield^D)*pressure_units/&
           w_convert_factor(phys_ind%pressure_)
       {enddo^D&|\}
-    else
-      {do ifield^D = 1,field_size(^D)|\}
-         {imesh^D=ixOmin^D+ifield^D-1|\}
-         w_gr(imesh^D,phys_ind%e_) = pressure(ifield^D)*pressure_units/&
-         w_convert_factor(phys_ind%pressure_)
-      {enddo^D&|\}
-      !w(ixO^S,phys_ind%e_) = (w_gr(ixO^S,phys_ind%e_)/&
-      !(grackle_data%gamma-1.0_dp))+&
-      !0.5_dp * sum(w_gr(ixO^S,phys_ind%mom(1:ndir))**2.0_dp,dim=ndim+1) / &
-      !(w_gr(ixO^S,phys_ind%rho_)*my_units%density_units/&
-      !w_convert_factor(phys_ind%rho_)) ! AMRVAC cgs denormalized specific energy
+    end if
+    if(solver_activated)then
+        !{do ifield^D = 1,field_size(^D)|\}
+           !{imesh^D=ixOmin^D+ifield^D-1|\}
+           !w_gr(imesh^D,phys_ind%e_) = pressure(ifield^D)*pressure_units/&
+           !w_convert_factor(phys_ind%pressure_)
+        !{enddo^D&|\}
+
+        !w(ixO^S,phys_ind%e_) = (w_gr(ixO^S,phys_ind%e_)/&
+        !(grackle_data%gamma-1.0_dp))+&
+        !0.5_dp * sum(w_gr(ixO^S,phys_ind%mom(:))**2.0_dp,dim=ndim+1) / &
+        !(w_gr(ixO^S,phys_ind%rho_)*my_units%density_units/&
+        !w_convert_factor(phys_ind%rho_)) ! AMRVAC cgs denormalized specific energy
     end if
 
   !call self%normalize()
