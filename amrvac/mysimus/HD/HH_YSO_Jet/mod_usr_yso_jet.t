@@ -1256,6 +1256,10 @@ contains
     w_convert_factor(phys_ind%rhoX_) = unit_density
     w_convert_factor(phys_ind%rhoY_) = unit_density
 
+    w_convert_factor(phys_ind%gamma_) = 1.0_dp
+
+    w_convert_factor(phys_ind%temperature_) = unit_temperature
+
 
     if(trim(usrconfig%reset_flux_scheme_old_method)=='none')then
       usrconfig%reset_flux_scheme_old_method='hllc'
@@ -1364,10 +1368,15 @@ subroutine initglobaldata_usr
   end if cond_isotherm_0
 
 
+  ! Default reference value of density is 0.0d0
+  density_list(1:size(density_list)) = 0.0d0
+  densityunit_list(1:size(densityunit_list)) = 1.0d0
 
  ! complet ism parameters
+ i_object = 0
  if(usrconfig%ism_on)then
   Loop_isms : do i_ism=0,usrconfig%ism_number-1
+   i_object = i_object+1
    ism_surround(i_ism)%myconfig%itr=itr
    if(ism_surround(i_ism)%myconfig%Mach_number_tomov_obj>0.0_dp) then
      if(usrconfig%jet_yso_on.and.usrconfig%ind_jet_associate_ism>=0)then
@@ -1384,7 +1393,9 @@ subroutine initglobaldata_usr
      end if
    end if
 
-   call ism_surround(i_ism)%set_complet
+   call ism_surround(i_ism)%set_complet(i_object,gr_solv=grackle_solver)
+   !write(*,*) ' gr_solv%myconfig%densityHI after ISM', i_object, ' == ', grackle_solver%myconfig%densityHI
+   !grackle_solver%myconfig%density(i_object) = ism_surround(i_ism)%myconfig%density
    call ism_surround(i_ism)%normalize(usr_physunit)
    if(ism_surround(i_ism)%myconfig%dust_on)n_object_w_dust=n_object_w_dust+1
   end do Loop_isms
@@ -1392,6 +1403,41 @@ subroutine initglobaldata_usr
   n_objects = n_objects + usrconfig%ism_number
  end if
 
+
+
+
+
+
+ ! complet jet parameters
+ if(usrconfig%jet_yso_on) then
+   Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
+    i_object = i_object+1
+    jet_yso(i_jet_yso)%myconfig%itr=itr
+    jet_yso(i_jet_yso)%myconfig%pressure_associate_ism = ism_surround(0)%myconfig%pressure &
+                                                         *usr_physunit%myconfig%pressure
+
+    jet_yso(i_jet_yso)%myconfig%density_associate_ism  = ism_surround(0)%myconfig%density &
+                                                        *usr_physunit%myconfig%density
+    if(usrconfig%phys_isotherm_on) then
+      if(jet_yso(i_jet_yso)%myconfig%temperature>0.0_dp)then
+       write(*,*) ' the jet temperature will reset to the imposed isotherm temperarture:', &
+         usrconfig%phys_temperature_isotherm, ' K'
+      end if
+      jet_yso(i_jet_yso)%myconfig%temperature = usrconfig%phys_temperature_isotherm
+    end if
+    call jet_yso(i_jet_yso)%set_complet(i_object,gr_solv=grackle_solver)
+
+    !grackle_solver%myconfig%density(i_object) = jet_yso(i_jet_yso)%myconfig%density
+    call jet_yso(i_jet_yso)%normalize(usr_physunit)
+    if(jet_yso(i_jet_yso)%myconfig%dust_on)n_object_w_dust=n_object_w_dust+1
+   end do Loop_jet_yso
+   itr=jet_yso(usrconfig%jet_yso_number-1)%myconfig%itr+1
+   n_objects = n_objects + usrconfig%jet_yso_number
+ else
+   zjet_=min(z_,ndim)
+   thetajet_ = z_
+   rjet_=r_
+ end if
 
 
  ! complet cloud parameters
@@ -1414,37 +1460,8 @@ subroutine initglobaldata_usr
  end if cond_cloud_on
 
 
- ! complet jet parameters
- if(usrconfig%jet_yso_on) then
-   Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
-    jet_yso(i_jet_yso)%myconfig%itr=itr
-    jet_yso(i_jet_yso)%myconfig%pressure_associate_ism = ism_surround(0)%myconfig%pressure &
-                                                         *usr_physunit%myconfig%pressure
 
-    jet_yso(i_jet_yso)%myconfig%density_associate_ism  = ism_surround(0)%myconfig%density &
-                                                        *usr_physunit%myconfig%density
-    if(usrconfig%phys_isotherm_on) then
-      if(jet_yso(i_jet_yso)%myconfig%temperature>0.0_dp)then
-       write(*,*) ' the jet temperature will reset to the imposed isotherm temperarture:', &
-         usrconfig%phys_temperature_isotherm, ' K'
-      end if
-      jet_yso(i_jet_yso)%myconfig%temperature = usrconfig%phys_temperature_isotherm
-    end if
-    call jet_yso(i_jet_yso)%set_complet
-    call jet_yso(i_jet_yso)%normalize(usr_physunit)
-    if(jet_yso(i_jet_yso)%myconfig%dust_on)n_object_w_dust=n_object_w_dust+1
-   end do Loop_jet_yso
-   itr=jet_yso(usrconfig%jet_yso_number-1)%myconfig%itr+1
-   n_objects = n_objects + usrconfig%jet_yso_number
- else
-   zjet_=min(z_,ndim)
-   thetajet_ = z_
-   rjet_=r_
- end if
-
-
-
- ! Default reference value of density is 0.0d0
+ ! Display and check densities
  density_list(1:size(density_list)) = 0.0d0
  densityunit_list(1:size(densityunit_list)) = 1.0d0
  ! complet ism parameters
@@ -1452,24 +1469,26 @@ subroutine initglobaldata_usr
  if(usrconfig%ism_on)then
   do i_ism=1,usrconfig%ism_number
     i_object=i_object+1
-    density_list(i_object)=ism_surround(i_ism-1)%myconfig%density !already normalized
+    density_list(i_object)=grackle_solver%myconfig%density(i_object) !already normalized
     densityunit_list(i_object)=ism_surround(i_ism-1)%myphysunit%myconfig%density
     density_list(i_object)=density_list(i_object)*&
     densityunit_list(i_object) !de-normalize first
     write(*,*) 'Density of object #',i_object,': ', density_list(i_object)
-    write(*,*) 'Density of ism #',i_ism,': ', ism_surround(i_ism-1)%myconfig%density
+    write(*,*) 'Density of ism #',i_ism,': ', ism_surround(i_ism-1)%myconfig%density*&
+    ism_surround(i_ism-1)%myphysunit%myconfig%density
   end do
  end if
  ! complet jet parameters
  if(usrconfig%jet_yso_on) then
    do i_jet_yso=1,usrconfig%jet_yso_number
      i_object=i_object+1
-     density_list(i_object)=jet_yso(i_jet_yso-1)%myconfig%density !already normalized
+     density_list(i_object)=grackle_solver%myconfig%density(i_object) !already normalized
      densityunit_list(i_object)=jet_yso(i_jet_yso-1)%myphysunit%myconfig%density
      density_list(i_object)=density_list(i_object)*&
      densityunit_list(i_object) !de-normalize first
      write(*,*) 'Density of object #',i_object,': ', density_list(i_object)
-     write(*,*) 'Density of jet #',i_jet_yso,': ', jet_yso(i_jet_yso-1)%myconfig%density
+     write(*,*) 'Density of jet #',i_jet_yso,': ', jet_yso(i_jet_yso-1)%myconfig%density*&
+     jet_yso(i_jet_yso-1)%myphysunit%myconfig%density
    end do
  end if
  ! complet cloud parameters
@@ -1481,18 +1500,14 @@ subroutine initglobaldata_usr
      density_list(i_object)=density_list(i_object)*&
      densityunit_list(i_object) !de-normalize first
      write(*,*) 'Density of object #',i_object,': ', density_list(i_object)
-     write(*,*) 'Density of cloud #',i_cloud,': ', cloud_medium(i_cloud-1)%myconfig%density
+     write(*,*) 'Density of cloud #',i_cloud,': ', cloud_medium(i_cloud-1)%myconfig%density*&
+     cloud_medium(i_cloud-1)%myphysunit%myconfig%density
    end do
  end if
 
  ! complet grackle units in gr_struct
  ! do the following in the source adding subroutine to save performance and memory:
  if(usrconfig%grackle_chemistry_on)then
-   Loop_through_all : do i_object = 1,grackle_solver%number_of_objects
-    grackle_solver%myconfig%density(i_object)=density_list(i_object)
-   end do Loop_through_all
-   call grackle_solver%set_complet(grackle_solver%myconfig%density,&
-   .false.,densityunit_list)
    call grackle_solver%normalize(usr_physunit)
    write(*,*) 'Grackle usr configuration completing/consistency check successfully done!'
    write(*,*) '==============================='
@@ -1534,13 +1549,14 @@ end subroutine initglobaldata_usr
     logical       :: patch_all(ixI^S)
     logical       :: patch_inuse(ixI^S)
     type(dust)    :: dust_dummy
-    integer       :: i_object_w_dust,i_patch,iobj,iresult
-    real(dp)      :: cloud_profile(ixI^S,1:nw)
+    integer       :: i_object_w_dust,i_patch,iobj,iresult,level
+    real(dp)      :: cloud_profile(ixI^S,1:nw),dx_local(1:ndim)
     real(kind=dp), dimension(ixI^S) :: theta_profile,d_profile,r_normalized
     real(kind=dp), dimension(ixI^S) :: cos_theta_zero, theta_zero
     ! .. only test ..
     real(dp)      ::old_w(ixO^S,1:nw)
     real(dp), allocatable :: density_ref_lst(:)
+    real(dp)                   :: tmp_int_f(ixI^S),tmp_ratio_f(ixI^S),pth_field(ixI^S)
     !-----------------------------------------/
     !write(*,*) 'combient vaut HI ? ', gr_objects_list(1)%myparams%densityHI(1)
 
@@ -1568,7 +1584,8 @@ end subroutine initglobaldata_usr
       end if
     end if
 
-
+    level = node(plevel_,saveigrid)
+    ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
 
 
 
@@ -1581,6 +1598,16 @@ end subroutine initglobaldata_usr
        ism_surround(i_ism)%subname='initonegrid_usr'
 
        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,global_time,x,w,gr_solv=grackle_solver)
+       tmp_int_f(ixO^S) = w(ixO^S,phys_ind%temperature_)
+       call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
+       dx_local,solver_activated=.false.)
+       tmp_ratio_f(ixO^S) = tmp_int_f(ixO^S)/w(ixO^S,phys_ind%temperature_)
+       w(ixO^S,phys_ind%temperature_) = tmp_int_f(ixO^S) * tmp_ratio_f(ixO^S)
+       call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
+       dx_local,solver_activated=.false.,pressure_field=pth_field)
+       w(ixO^S,phys_ind%pressure_) = pth_field(ixO^S)
+       !write(*,*) 'temperature field ==== ', w(ixO^S,phys_ind%temperature_)*unit_temperature
+       call ism_surround(i_ism)%set_w_2(ixI^L,ixO^L,global_time,x,w,gr_solv=grackle_solver)
        patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.ism_surround(i_ism)%patch(ixO^S)
        if(ism_surround(i_ism)%myconfig%dust_on)then
          i_object_w_dust = i_object_w_dust +1
@@ -1603,6 +1630,14 @@ end subroutine initglobaldata_usr
        iobj=iobj+1
        jet_yso(i_jet_yso)%subname='initonegrid_usr'
        call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,global_time,x,w,grackle_solver)
+       tmp_int_f(ixO^S) = w(ixO^S,phys_ind%temperature_)
+       call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
+       dx_local,solver_activated=.false.)
+       tmp_ratio_f(ixO^S) = tmp_int_f(ixO^S)/w(ixO^S,phys_ind%temperature_)
+       w(ixO^S,phys_ind%temperature_) = tmp_int_f(ixO^S) * tmp_ratio_f(ixO^S)
+       call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
+       dx_local,solver_activated=.false.,pressure_field=pth_field)
+       w(ixO^S,phys_ind%pressure_) = pth_field(ixO^S)
 
        patch_inuse(ixO^S) = jet_yso(i_jet_yso)%patch(ixO^S)
        cond_ism_onjet : if(usrconfig%ism_on)then
@@ -1966,8 +2001,8 @@ cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
 !Add Grackle chemistry+heating+cooling module treatment here :
 level = node(plevel_,saveigrid)
    ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
-   call grackle_solver%grackle_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w,&
-   dx_local,phys_config%mean_mup_on,usr_physunit)
+   call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,&
+   dx_local,solver_activated=.true.)
 end if cond_grackle_on
 
 !  call usr_check_w(ixI^L,ixO^L,.true.,'specialsource_usr',qt,x,w)
@@ -2122,13 +2157,14 @@ return
     integer                 :: i_cloud,i_ism,i_jet_yso,iobj
     integer                 :: i_object_w_dust
     integer                 :: idims,iside,idims2,iside2,iw2
-    integer                 :: i_start,i_end,i_dust
+    integer                 :: i_start,i_end,i_dust,level
     logical                 :: patch_all(ixI^S),patch_inuse(ixI^S)
-    real(dp)                :: cloud_profile(ixI^S,1:nw)
+    real(dp)                :: cloud_profile(ixI^S,1:nw),dx_local(1:ndim)
     real(dp),allocatable    :: wp(:^D&,:)
     logical                    :: isboundary,to_fix,bc_to_fix,some_unfixed
     character(len=30)          :: myboundary_cond
     logical,allocatable        :: mynotmixed_fixed_bound(:,:,:)
+    real(dp)                   :: tmp_int_f(ixI^S),tmp_ratio_f(ixI^S),pth_field(ixI^S)
     !-------------------------------------
     ! * According to subroutine bc_phys in which it is called by mod_ghostcells_update.t twice:
     ! The input integers are ixI^L=ixG^L=ixG^LL=ixGlo1,ixGlo2,ixGhi1,ixGhi2
@@ -2143,6 +2179,9 @@ return
     ! ==> ixImin1=ixBmin1;ixImin2=ixBmin2;ixImax1=ixBmax1;ixImax2=ixBmin2-1+nghostcells;
     ! to sum up, the range delimiting each boundary individually
     !TO MODIFY
+
+    level = node(plevel_,saveigrid)
+    ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1.0_dp));
 
     if(.not.allocated(mynotmixed_fixed_bound))&
      allocate(mynotmixed_fixed_bound(1:ndim,1:2,1:nwfluxbc))
@@ -2178,7 +2217,19 @@ return
      Loop_isms : do i_ism=0,usrconfig%ism_number-1
       iobj=iobj+1
       ism_surround(i_ism)%subname='specialbound_usr'
-        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,isboundary_iB=(/idims,iside/),gr_solv=grackle_solver)
+        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,&
+        isboundary_iB=(/idims,iside/),gr_solv=grackle_solver)
+        tmp_int_f(ixO^S) = w(ixO^S,phys_ind%temperature_)
+        call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
+        dx_local,solver_activated=.false.)
+        tmp_ratio_f(ixO^S) = tmp_int_f(ixO^S)/w(ixO^S,phys_ind%temperature_)
+        w(ixO^S,phys_ind%temperature_) = tmp_int_f(ixO^S) * tmp_ratio_f(ixO^S)
+        call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
+        dx_local,solver_activated=.false.,pressure_field=pth_field)
+        w(ixO^S,phys_ind%pressure_) = pth_field(ixO^S)
+        !write(*,*) 'temperature field ==== ', w(ixO^S,phys_ind%temperature_)*unit_temperature
+        call ism_surround(i_ism)%set_w_2(ixI^L,ixO^L,qt,x,w,&
+        isboundary_iB=(/idims,iside/),gr_solv=grackle_solver)
         patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.ism_surround(i_ism)%patch(ixO^S)
 
         !Here we set the user-defined boundary conditions already read from .par parameters files
@@ -2314,7 +2365,9 @@ return
   subroutine usr_clean_memory
     implicit none
     ! .. local ..
-    integer   :: i_cloud,i_ism,i_jet_yso
+    integer   :: i_cloud,i_ism,i_jet_yso,iresult
+    TYPE (grackle_units) :: my_units
+    TYPE (grackle_field_data) :: my_fields
     !------------------------------
         if(usrconfig%ism_on)then
           Loop_isms : do i_ism=0,usrconfig%ism_number-1
@@ -2334,7 +2387,9 @@ return
          end do Loop_jet_yso
         end if
 
-
+        if(phys_config%use_grackle)then
+          iresult = gr_free_memory(my_units, my_fields)
+        end if
   end subroutine usr_clean_memory
 
 
@@ -2453,7 +2508,11 @@ return
      real(kind=dp)   , intent(in)    :: x(ixI^S,1:ndim)
      ! .. local ..
      integer                         :: i_jet_yso,i_obj
+     real(kind=dp)                   :: dx_local(1:ndim)
+     real(dp)                   :: tmp_int_f(ixI^S),tmp_ratio_f(ixI^S),pth_field(ixI^S)
      !--------------------------------------------------------------
+     !level = node(plevel_,saveigrid)
+     ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1.0_dp));
 
     cond_jet_on : if(usrconfig%jet_yso_on)then
 
@@ -2466,6 +2525,14 @@ return
           cond_insid_jet : if(any(jet_yso(i_jet_yso)%patch(ixI^S)))then
             call phys_to_primitive(ixI^L,ixO^L,w,x)
             call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,qt,x,w,gr_solv=grackle_solver)
+            tmp_int_f(ixO^S) = w(ixO^S,phys_ind%temperature_)
+            call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
+            dx_local,solver_activated=.false.)
+            tmp_ratio_f(ixO^S) = tmp_int_f(ixO^S)/w(ixO^S,phys_ind%temperature_)
+            w(ixO^S,phys_ind%temperature_) = tmp_int_f(ixO^S) * tmp_ratio_f(ixO^S)
+            call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
+            dx_local,solver_activated=.false.,pressure_field=pth_field)
+            w(ixO^S,phys_ind%pressure_) = pth_field(ixO^S)
             ! get conserved variables to be used in the code
             call phys_to_conserved(ixI^L,ixO^L,w,x)
           end if cond_insid_jet
@@ -2504,20 +2571,21 @@ return
     integer, parameter         :: igravfield2         = 6
     integer, parameter         :: igravfield3         = 7
     integer, parameter         :: igravphi_         = 8
-    integer, parameter         :: ierror_lohner_rho_ = 9
-    integer, parameter         :: ierror_lohner_p_   = 10
-    integer, parameter         :: ideltav_dust11_    = 11
-    integer, parameter         :: ideltav_dust12_    = 12
-    integer, parameter         :: ipos_rCC_           = 13
-    integer, parameter         :: ipos_zCC_           = 14
-    integer, parameter         :: irelerr_rho_           = 15
-    integer, parameter         :: irelerr_p_           = 16
-    integer, parameter         :: irelerr_v1_          = 17
-    integer, parameter         :: irelerr_v2_          = 18
-    integer, parameter         :: irelerr_v3_          = 19
-    integer, parameter         :: irhod1torho_       = 20
+    integer, parameter         :: ipressure_usr_      = 9
+    integer, parameter         :: ierror_lohner_rho_ = 10
+    integer, parameter         :: ierror_lohner_p_   = 11
+    integer, parameter         :: ideltav_dust11_    = 12
+    integer, parameter         :: ideltav_dust12_    = 13
+    integer, parameter         :: ipos_rCC_           = 14
+    integer, parameter         :: ipos_zCC_           = 15
+    integer, parameter         :: irelerr_rho_           = 16
+    integer, parameter         :: irelerr_p_           = 17
+    integer, parameter         :: irelerr_v1_          = 18
+    integer, parameter         :: irelerr_v2_          = 19
+    integer, parameter         :: irelerr_v3_          = 20
+    integer, parameter         :: irhod1torho_       = 21
 
-    real(dp),dimension(ixI^S)                                  :: csound2,temperature
+    real(dp),dimension(ixI^S)                                  :: csound2,temperature, pressure_th
     real(dp),dimension(ixI^S,ndir)                             :: vgas
     real(dp),dimension(ixI^S,ndir,phys_config%dust_n_species)  :: vdust
     double precision :: gravity_field(ixI^S,ndim)
@@ -2544,6 +2612,10 @@ return
         call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
         win(ixO^S,nw+itemperature_) = temperature(ixO^S)*unit_temperature
         normconv(nw+itemperature_)  = 1.0_dp
+      case(ipressure_usr_)
+        call phys_get_pthermal(w, x, ixI^L, ixO^L, pressure_th)
+        win(ixO^S,nw+ipressure_usr_) = pressure_th(ixO^S)*unit_pressure
+        normconv(nw+ipressure_usr_)  = 1.0_dp
       case(ilevel_)
         normconv(nw+ilevel_)     = 1.0_dp
         win(ixO^S,nw+ilevel_) = node(plevel_,saveigrid)
@@ -2715,18 +2787,19 @@ return
     integer, parameter         :: igravfield2         = 6
     integer, parameter         :: igravfield3         = 7
     integer, parameter         :: igravphi_         = 8
-    integer, parameter         :: ierror_lohner_rho_ = 9
-    integer, parameter         :: ierror_lohner_p_   = 10
-    integer, parameter         :: ideltav_dust11_    = 11
-    integer, parameter         :: ideltav_dust12_    = 12
-    integer, parameter         :: ipos_rCC_           = 13
-    integer, parameter         :: ipos_zCC_           = 14
-    integer, parameter         :: irelerr_rho_           = 15
-    integer, parameter         :: irelerr_p_           = 16
-    integer, parameter         :: irelerr_v1_          = 17
-    integer, parameter         :: irelerr_v2_          = 18
-    integer, parameter         :: irelerr_v3_          = 19
-    integer, parameter         :: irhod1torho_       = 20
+    integer, parameter         :: ipressure_usr_      = 9
+    integer, parameter         :: ierror_lohner_rho_ = 10
+    integer, parameter         :: ierror_lohner_p_   = 11
+    integer, parameter         :: ideltav_dust11_    = 12
+    integer, parameter         :: ideltav_dust12_    = 13
+    integer, parameter         :: ipos_rCC_           = 14
+    integer, parameter         :: ipos_zCC_           = 15
+    integer, parameter         :: irelerr_rho_           = 16
+    integer, parameter         :: irelerr_p_           = 17
+    integer, parameter         :: irelerr_v1_          = 18
+    integer, parameter         :: irelerr_v2_          = 19
+    integer, parameter         :: irelerr_v3_          = 20
+    integer, parameter         :: irhod1torho_       = 21
     character(len=30)          :: strint
     !----------------------------------------------------
 
@@ -2735,7 +2808,7 @@ return
       case(icsound_)
         varnames(icsound_)               = 'csound2'
       case(itemperature_)
-        varnames(itemperature_)        ='temperature'
+        varnames(itemperature_)        ='temperature_usr'
       case(ilevel_)
         varnames(ilevel_)              = 'level'
       case(indensity_)
@@ -2746,6 +2819,8 @@ return
         varnames(igravfield3)           = 'gravfield3'
       case(igravphi_)
         varnames(igravphi_)           = 'grav_phi'
+      case(ipressure_usr_)
+        varnames(ipressure_usr_)           = 'pressure_usr'
       case(ierror_lohner_rho_)
         varnames(ierror_lohner_rho_)   = 'erroramrrho'
       case(ierror_lohner_p_)

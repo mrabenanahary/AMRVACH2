@@ -171,6 +171,9 @@ int _calculate_temperature(chemistry_data *my_chemistry,
 
 int _free_chemistry_data(chemistry_data *my_chemistry, chemistry_data_storage *my_rates);
 
+int gr_free_memory(code_units *my_units,
+                       grackle_field_data *my_fields);
+
 grackle_version get_grackle_version(void);
 
 #endif

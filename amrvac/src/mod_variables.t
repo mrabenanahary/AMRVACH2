@@ -64,6 +64,9 @@ module mod_variables
   integer              :: iw_rhoX
   integer              :: iw_rhoY
 
+  integer              :: iw_gamma
+  integer              :: iw_temperature
+
   !> Index of the gravity potential
   integer, protected :: iw_grav_phi = -1
 

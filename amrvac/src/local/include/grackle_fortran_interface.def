@@ -239,3 +239,12 @@ c     The following define the fortran interfaces to the C routines
             REAL(C_DOUBLE), INTENT(OUT) :: dust_temperature(*)
          END FUNCTION calculate_dust_temperature
       END INTERFACE
+      
+      INTERFACE
+         INTEGER(C_INT) FUNCTION gr_free_memory(my_units, my_fields) 
+     &      bind(C)
+            IMPORT
+            TYPE(grackle_units), INTENT(IN) :: my_units
+            TYPE(grackle_field_data), INTENT(IN) :: my_fields
+         END FUNCTION gr_free_memory
+      END INTERFACE

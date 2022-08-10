@@ -70,6 +70,8 @@ module mod_physics
     integer              :: rhoX_
     integer              :: rhoY_
 
+    integer              :: gamma_
+    integer              :: temperature_
 
     integer, allocatable :: epsinf_rho(:)
     integer, allocatable :: epsinf_rho0(:)

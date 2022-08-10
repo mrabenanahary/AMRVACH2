@@ -67,6 +67,9 @@ module mod_hd_phys
   !> Index of the gas pressure (-1 if not present) should equal e_
   integer, public, protected              :: p_
 
+  integer, public, protected              :: gamma_
+  integer, public, protected              :: temperature_
+
   !> Index of the gravity potential (-1 if not present)
   integer, public, protected              :: grav_phi_
 
@@ -770,6 +773,9 @@ contains
     iw_rhoX = -1
     iw_rhoY = -1
 
+    iw_gamma = -1
+    iw_temperature = -1
+
     using_grackle : if(hd_config%use_grackle)then
       prim_chem : if(hd_config%gr_primordial_chemistry>=0.and.hd_config%gr_primordial_chemistry<=3)then
         !six species: H, H+, He, He+, He++, e- (in this order)
@@ -800,6 +806,9 @@ contains
       iw_rhoX = var_set_extravar('rhoX', 'rhoX')
       iw_rhoY = var_set_extravar('rhoY', 'rhoY')
 
+      iw_gamma = var_set_extravar('gamma', 'gamma')
+      iw_temperature = var_set_extravar('temperature', 'temperature')
+
       !six species: H, H+, He, He+, He++, e- (in this order)
       hd_ind%HI_density_ = iw_HI_density
       hd_ind%HII_density_ = iw_HII_density
@@ -822,6 +831,12 @@ contains
 
       hd_ind%rhoX_=iw_rhoX
       hd_ind%rhoY_=iw_rhoY
+
+      hd_ind%gamma_ =iw_gamma
+      gamma_ = iw_gamma
+      hd_ind%temperature_ = iw_temperature
+      temperature_ = iw_temperature
+
     end if using_grackle
 
 
@@ -996,6 +1011,8 @@ end subroutine hd_get_aux
      if (hd_config%dust_on) call dust_physical_units
      if (hd_config%radiative_cooling) call rad_cooling_physical_units
      if(hd_config%mean_mup_on)w_convert_factor(hd_ind%mup_) = hd_config%mean_mup
+     w_convert_factor(hd_ind%gamma_) = 1.0_dp
+     w_convert_factor(hd_ind%temperature_) = unit_temperature
      time_convert_factor   = unit_time
      length_convert_factor = unit_length
 
@@ -1293,6 +1310,7 @@ end subroutine hd_get_aux
     real(dp), intent(out)        :: pth(ixI^S)
     !----------------------------------------------------
     if (hd_config%energy) then
+
        pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
             hd_kin_en(w, ixI^L, ixO^L))
     else
@@ -1322,6 +1340,24 @@ end subroutine hd_get_aux
         mp=mp_cgs
         kB=kB_cgs
     end if
+
+
+    if (hd_config%energy) then
+      temperature(ixO^S) = w(ixO^S,phys_ind%temperature_)
+    else
+      Temperature(ixO^S) = hd_config%temperature_isotherm !necessarilly isotherm
+      if(hd_config%mean_mup_on)then
+        patch_mult_mup(ixO^S) = dabs(w(ixO^S, phys_ind%mup_)-1.0_dp)>smalldouble &
+             .or. w(ixO^S, phys_ind%mup_)>smalldouble
+        if(any(patch_mult_mup(ixO^S)))then
+          where(patch_mult_mup(ixO^S))
+            temperature(ixO^S) =temperature(ixO^S)*w(ixO^S,phys_ind%mup_)
+          end where
+        end if
+      end if
+    end if
+
+    return
 
     if (hd_config%energy) then
       call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)

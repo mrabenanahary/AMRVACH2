@@ -17,6 +17,7 @@ module mod_obj_ism
       real(dp)             :: density        !> ISM density  (g/cm^3)
       real(dp)             :: number_density !> ISM number density (1/cm^3)
       real(dp)             :: temperature    !> ISM temperature  (K)
+      real(dp)             :: gamma
       real(dp)             :: pressure       !> ISM pressure
       real(dp)             :: pressure_Ulrich !> ISM pressure in case of Ulrich model
       real(dp)             :: Mach_number    !> ISM mach number
@@ -129,6 +130,7 @@ module mod_obj_ism
      PROCEDURE, PASS(self) :: set_complet          => usr_ism_set_complet
      PROCEDURE, PASS(self) :: normalize            => usr_ism_normalize
      PROCEDURE, PASS(self) :: set_w                => usr_ism_set_w
+     PROCEDURE, PASS(self) :: set_w_2              => usr_ism_set_w_2
      PROCEDURE, PASS(self) :: process_grid         => usr_ism_process_grid
      PROCEDURE, PASS(self) :: read_parameters      => usr_ism_read_p
      PROCEDURE, PASS(self) :: write_setting        => usr_ism_write_setting
@@ -236,6 +238,7 @@ contains
      write(unit_config,*) 'Density  at (R,z)=(R_j,0) = ',  self%myconfig%density, '  code unit'
      write(unit_config,*) 'Pressure    = ',  self%myconfig%pressure, '  code unit'
      write(unit_config,*) 'Temperature = ',  self%myconfig%temperature, '  code unit'
+     write(unit_config,*) 'Gamma = ',  self%myconfig%gamma
      if(trim(self%myconfig%profile_density)=='Ulrich1976')then
       write(unit_config,*) 'Ulrich1976 model used !'
       write(unit_config,*) 'jspec = ',  self%myconfig%profile_jspec, '  code unit'
@@ -254,6 +257,7 @@ contains
                                              '  ',self%myphysunit%myunit%pressure
      write(unit_config,*) 'Temperature = ',  self%myconfig%temperature*self%myphysunit%myconfig%temperature,&
                                              '  ',self%myphysunit%myunit%temperature
+     write(unit_config,*) 'Gamma = ',  self%myconfig%gamma
      if(trim(self%myconfig%profile_density)=='Ulrich1976')then
 
       write(unit_config,*) 'Ulrich1976 model used !'
@@ -368,6 +372,7 @@ contains
      self%myconfig%density               = 0.0_dp
      self%myconfig%number_density        = 0.0_dp
      self%myconfig%temperature           = 0.0_dp
+     self%myconfig%gamma                 = 0.0_dp
      self%myconfig%pressure              = 0.0_dp
      self%myconfig%pressure_Ulrich       = 0.0_dp
      self%myconfig%Mach_number_tomov_obj = 0.0_dp
@@ -481,14 +486,16 @@ contains
    end subroutine usr_ism_set_default
   !--------------------------------------------------------------------
   !> subroutine check the parfile setting for ism
-  subroutine usr_ism_set_complet(self)
-
+  subroutine usr_ism_set_complet(i_obj,gr_solv,self)
     implicit none
     class(ism)                                :: self
+    type(gr_solver), optional :: gr_solv
+    integer                   :: i_obj
     ! .. local ..
     logical                  :: dust_is_frac
     real(dp)                 :: mp,kb,Ggrav,r_normalized,costhetazero
     integer                  :: idim,iside,idims,iB2,iw2
+    real(dp)                 :: temperature_intermediate, temperature_ratio
     !-----------------------------------
 
     write(*,*) '======================Beginning of ism_set_w settings======================='
@@ -672,15 +679,17 @@ contains
     ! 19-03-21 : added the missing setting of temperature accordingly
     ! Priority is for c_sound
     !----------------------------------------------------
+    if(.not.phys_config%use_grackle)then
+    self%myconfig%gamma = phys_config%gamma
     cond_csound_set : if(self%myconfig%c_sound>0.0_dp) then
        self%myconfig%pressure = self%myconfig%c_sound**2.0_dp * self%myconfig%density /&
-                                phys_config%gamma
+                                self%myconfig%gamma
        if(trim(self%myconfig%profile_density)=='Ulrich1976')then
          self%myconfig%pressure_Ulrich = self%myconfig%c_sound**2.0_dp *&
-                        self%myconfig%profile_rho_0 / phys_config%gamma
+                        self%myconfig%profile_rho_0 / self%myconfig%gamma
        end if
        self%myconfig%temperature = self%myconfig%c_sound**2.0_dp*mp*&
-                                self%myconfig%mean_mup/(kB*phys_config%gamma)
+                                self%myconfig%mean_mup/(kB*self%myconfig%gamma)
     !----------------------------------------------------
     ! *If not yet provided or input,
     ! *set the pressure parameter of the ambient medium
@@ -700,16 +709,61 @@ contains
                               kB* self%myconfig%temperature/(self%myconfig%mean_mup*mp)
       end if
      else if(dabs(self%myconfig%pressure)>0.0_dp) then
-      self%myconfig%temperature = self%myconfig%mean_mup*mp*self%myconfig%pressure&
-                            /(kB*self%myconfig%density)
+      self%myconfig%temperature = self%myconfig%mean_mup*mp*self%myconfig%pressure/&
+                            (kB*self%myconfig%density)
      end if
      if(trim(self%myconfig%profile_density)=='Ulrich1976')then
-       self%myconfig%c_sound = sqrt(phys_config%gamma*self%myconfig%pressure/&
+       self%myconfig%c_sound = sqrt(self%myconfig%gamma*self%myconfig%pressure_Ulrich/&
             self%myconfig%profile_rho_0)
      else
-        self%myconfig%c_sound = sqrt(phys_config%gamma*self%myconfig%pressure/self%myconfig%density)
+        self%myconfig%c_sound = sqrt(self%myconfig%gamma*self%myconfig%pressure/self%myconfig%density)
      end if
     end if cond_csound_set
+    else
+      !write(*,*) ' ISM TEMPERTAURE BEFORE GRACKLE === ', self%myconfig%temperature
+      !write(*,*) ' ISM PRESSURE BEFORE GRACKLE === ', self%myconfig%pressure
+      !write(*,*) ' ISM DENSITY BEFORE GRACKLE === ', self%myconfig%density
+      if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+        gr_solv%myconfig%density(i_obj) = self%myconfig%profile_rho_0
+        call gr_solv%set_complet(self%myconfig%profile_rho_0,i_obj,.false.)
+        temperature_intermediate = self%myconfig%temperature
+        call gr_solv%set_parameters(temperature_intermediate,&
+        self%myconfig%pressure_Ulrich,self%myconfig%gamma,i_obj)
+        temperature_ratio = self%myconfig%temperature/temperature_intermediate
+        self%myconfig%temperature = self%myconfig%temperature*temperature_ratio
+        call gr_solv%set_parameters(self%myconfig%temperature,&
+        self%myconfig%pressure_Ulrich,self%myconfig%gamma,i_obj)
+      else
+        gr_solv%myconfig%density(i_obj) = self%myconfig%density
+        call gr_solv%set_complet(self%myconfig%density,i_obj,.false.)
+        !write(*,*) ' gr_solv%myconfig%densityHI in ISM', i_obj, ' == ', gr_solv%myconfig%densityHI
+        temperature_intermediate = self%myconfig%temperature
+        call gr_solv%set_parameters(temperature_intermediate,&
+        self%myconfig%pressure,self%myconfig%gamma,i_obj)
+        temperature_ratio = self%myconfig%temperature/temperature_intermediate
+        !write(*,*) ' 1)ISM TEMPERTAURE AFTER GRACKLE === ', temperature_intermediate
+        !write(*,*) ' 1)ISM PRESSURE AFTER GRACKLE === ', self%myconfig%pressure
+        !write(*,*) ' 1)ISM DENSITY AFTER GRACKLE === ', self%myconfig%density
+        self%myconfig%temperature = self%myconfig%temperature*temperature_ratio
+        !write(*,*) ' 2)ISM TEMPERTAURE BEFORE GRACKLE === ', self%myconfig%temperature
+        !write(*,*) ' 2)ISM PRESSURE BEFORE GRACKLE === ', self%myconfig%pressure
+        !write(*,*) ' 2)ISM DENSITY BEFORE GRACKLE === ', self%myconfig%density
+        call gr_solv%set_parameters(self%myconfig%temperature,&
+        self%myconfig%pressure,self%myconfig%gamma,i_obj)
+        !write(*,*) ' 2)ISM TEMPERTAURE AFTER GRACKLE === ', self%myconfig%temperature
+        !write(*,*) ' 2)ISM PRESSURE AFTER GRACKLE === ', self%myconfig%pressure
+        !write(*,*) ' 2)ISM DENSITY AFTER GRACKLE === ', self%myconfig%density
+      end if
+
+      if(trim(self%myconfig%profile_density)=='Ulrich1976')then
+        self%myconfig%c_sound = sqrt(self%myconfig%gamma*self%myconfig%pressure_Ulrich/&
+             self%myconfig%profile_rho_0)
+      else
+         self%myconfig%c_sound = sqrt(self%myconfig%gamma*self%myconfig%pressure/self%myconfig%density)
+      end if
+    end if
+
+    !set here pressure and temperature parameters according to grackle
 
     !----------------------------------------------------
     ! End of the ISM physical parameters initialization
@@ -956,7 +1010,9 @@ contains
     real(kind=dp), intent(in)     :: qt
     real(kind=dp), intent(in)     :: x(ixI^S,1:ndim)
     real(kind=dp)                 :: w(ixI^S,1:nw)
+    real(kind=dp)                 :: w_copy(ixI^S,1:nw)
     real(kind=dp),allocatable     :: w_tmp(:^D&,:)
+    real(kind=dp)                 :: grid_local(1:ndim)
     class(ism)                    :: self
     integer,             optional :: isboundary_iB(2)
     type(gr_solver), optional :: gr_solv
@@ -965,6 +1021,7 @@ contains
     integer                    :: idir,iB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
     integer                    :: iobject
     real(kind=dp)              :: fprofile(ixI^S)
+
     logical                    :: isboundary,to_fix,bc_to_fix,some_unfixed
     character(len=30)          :: myboundary_cond
     character(len=64)          :: aString
@@ -1030,6 +1087,12 @@ contains
              end if
            end if
 
+           if(phys_config%energy)then
+             where(self%patch(ixO^S))
+               w(ixO^S,phys_ind%temperature_) = self%myconfig%temperature
+             end where
+           end if
+
            iobject = self%myconfig%myindice + 1
            if(present(gr_solv))then
             where(self%patch(ixO^S))
@@ -1047,6 +1110,7 @@ contains
               w(ixO^S,phys_ind%e_density_)=gr_solv%myconfig%densityElectrons(iobject)
               w(ixO^S,phys_ind%metal_density_)=gr_solv%myconfig%density_Z(iobject)
               w(ixO^S,phys_ind%dust_density_)=gr_solv%myconfig%density_dust(iobject)
+              w(ixO^S,phys_ind%gamma_) = gr_solv%myconfig%gr_gamma(iobject)
             end where
            end if
 
@@ -1085,6 +1149,85 @@ contains
                 call self%set_profile(ixI^L,ixO^L,x,w,isboundary)
              end if
 
+             ! if Grackle, need to recompute pressure such as done in set_complet
+             ! but on each grid s cell
+             !if(phys_config%use_grackle)then
+               !w_copy(ixO^S,1:nw) = w(ixO^S,1:nw)
+               grid_local(1:ndim) = 0.0d0
+               !gr_solv%myconfig%density(i_obj) = self%myconfig%density
+
+               !tmp_int_f(ixO^S) = w(ixO^S,phys_ind%temperature_)
+               !call gr_solv%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w_copy,0.0d0,w_copy,&
+               !grid_local,solver_activated=.false.)
+
+               !tmp_ratio_f(ixO^S) = tmp_int_f(ixO^S)/w(ixO^S,phys_ind%temperature_)
+               !self%myconfig%temperature/temperature_intermediate
+
+               !self%myconfig%temperature = self%myconfig%temperature*temperature_ratio
+               !w(ixO^S,phys_ind%temperature_) = tmp_int_f(ixO^S)*tmp_ratio_f(ixO^S)
+
+               !call gr_solv%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
+               !solver_activated=.false.)
+
+             !end if
+
+
+
+   end subroutine usr_ism_set_w
+
+   subroutine usr_ism_set_w_2(ixI^L,ixO^L,qt,x,w,isboundary_iB,gr_solv,self)
+   ! * According to subroutine initonegrid_usr in which it is called once in mod_obj_usr_yso_jet.t :
+   ! in the src code amrini.t, ixI^L = ixG^LL = ixGlo1,ixGlo2,ixGhi1,ixGhi2
+   ! = range delimiting the whole domain (including boundary ghost cells), i.e. between integers
+   ! 1 and the highest possible indices for the coordinates for the grid for each dimension
+   ! and ixO^L = ixM^LL = ixMlo1,ixMlo2,ixMhi1,ixMhi2 =
+   ! = range delimiting the mesh (i.e. the grid without boundary layers)
+   ! * According to subroutine bc_phys in which it is also called once from
+   ! usr_special_bc ==> specialbound_usr by mod_ghostcells_update.t twice:
+   ! in this case, the integers are
+   ! ixG^L = ixGmin1,ixGmin2,ixGmax1,ixGmax2 (or ixCoGmin1,ixCoGmin2,ixCoGmax1,ixCoGmax2
+   ! when working with a coarsened grid)
+   ! = the range delimiting the whole domain (including boundary ghost cells), i.e. between integers
+   ! 1 and the highest possible indices for the coordinates for the grid for each dimension
+   ! ,ixB^L = ixBmin1,ixBmin2,ixBmax1,ixBmax2 =
+   ! the range delimiting the boundary
+   ! As for the input integers, they are ixI^L=ixG^L
+   ! and ixO^L=ixI^L defined from ixB^L as :
+   ! > idims = 1, iside==2 (maximal boundary)
+   ! ==> ixImin1=ixBmax1+1-nghostcells;ixImin2=ixBmin2;ixImax1=ixBmax1;ixImax2=ixBmax2;
+   ! > idims = 1, iside==1 (minimal boundary)
+   ! ==> ixImin1=ixBmin1;ixImin2=ixBmin2;ixImax1=ixBmin1-1+nghostcells;ixImax2=ixBmax2;
+   ! > idims = 2, iside==2 (maximal boundary)
+   ! ==> ixImin1=ixBmin1;ixImin2=ixBmax2+1-nghostcells;ixImax1=ixBmax1;ixImax2=ixBmax2;
+   ! > idims = 2, iside==1 (minimal boundary)
+   ! ==> ixImin1=ixBmin1;ixImin2=ixBmin2;ixImax1=ixBmax1;ixImax2=ixBmin2-1+nghostcells;
+   ! to sum up, the range delimiting each boundary individually
+
+
+    implicit none
+    integer, intent(in)           :: ixI^L,ixO^L
+    real(kind=dp), intent(in)     :: qt
+    real(kind=dp), intent(in)     :: x(ixI^S,1:ndim)
+    real(kind=dp)                 :: w(ixI^S,1:nw)
+    real(kind=dp)                 :: w_copy(ixI^S,1:nw)
+    real(kind=dp),allocatable     :: w_tmp(:^D&,:)
+    real(kind=dp)                 :: grid_local(1:ndim)
+    class(ism)                    :: self
+    integer,             optional :: isboundary_iB(2)
+    type(gr_solver), optional :: gr_solv
+
+    ! .. local..
+    integer                    :: idir,iB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
+    integer                    :: iobject
+    real(kind=dp)              :: fprofile(ixI^S)
+
+    logical                    :: isboundary,to_fix,bc_to_fix,some_unfixed
+    character(len=30)          :: myboundary_cond
+    character(len=64)          :: aString
+    !----------------------------------
+
+
+
               where(self%patch(ixO^S))
                 w(ixO^S,phys_ind%rhoX_)=w(ixO^S,phys_ind%HI_density_)+&
                 w(ixO^S,phys_ind%HII_density_)+w(ixO^S,phys_ind%HM_density_)+&
@@ -1097,11 +1240,23 @@ contains
 
 
 
+
+
+
              if(phys_config%mean_mup_on) then
                where(self%patch(ixO^S))
                 w(ixO^S,phys_ind%mup_) = self%myconfig%mean_mup
                end where
              end if
+
+             !if(phys_config%energy)then
+              !if(phys_config%mean_mup_on)then
+               !where(self%patch(ixO^S))
+                 !w(ixO^S,phys_ind%temperature_) = w(ixO^S,phys_ind%temperature_)*&
+                 !w(ixO^S,phys_ind%mup_)
+               !end where
+              !end if
+             !end if
 
              cond_tracer_on :if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
                                 .and.self%myconfig%itr<=phys_config%n_tracer)then
@@ -1148,9 +1303,7 @@ contains
 
 
 
-   end subroutine usr_ism_set_w
-
-
+   end subroutine usr_ism_set_w_2
 
    !--------------------------------------------------------------------
   subroutine usr_ism_set_profile_distance(ixI^L,ixO^L,x,d_profile,self)
@@ -1574,6 +1727,7 @@ contains
     patch_tosave(ixI^S)=self%patch(ixI^S)
     self%patch(ixI^S)  =.true.
     call self%set_w(ixI^L, ixI^L,qt,x,w_init)
+    call self%set_w_2(ixI^L, ixI^L,qt,x,w_init)
     self%patch(ixI^S)=patch_tosave(ixI^S)
 
     call phys_to_conserved(ixI^L,ixI^L,w_init,x)
@@ -1709,7 +1863,7 @@ contains
           end where
         end do Loop_idim_force_m
           if(phys_config%energy) then
-            coef_eos = 1.0_dp!phys_config%gamma/(phys_config%gamma-1.0_dp)
+            coef_eos = 1.0_dp!self%myconfig%gamma/(self%myconfig%gamma-1.0_dp)
 
             where(self%patch(ixO^S))
             ! This subroutine implicitly uses conservative variables
@@ -1733,6 +1887,7 @@ contains
 
 
        call self%set_w(ixI^L,ixO^L,qt,x,w_init)
+       call self%set_w_2(ixI^L,ixO^L,qt,x,w_init)
        !Here the codes needs to pass from conservative to primitive variables w
        call phys_to_primitive(ixI^L,ixO^L,w,x)
        where(self%patch(ixO^S))

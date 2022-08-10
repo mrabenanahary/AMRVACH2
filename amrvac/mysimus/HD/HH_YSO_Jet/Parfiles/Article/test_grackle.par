@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        !restart_from_file='Lee2001_s_0059.dat'                
+        !restart_from_file='Lee2001_s_0027.dat'                
         nwauxio = 10
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -140,8 +140,8 @@
       !  w_refine_weight(12)=1.0d0
       
       ! user-proof and user-friendly style:
-      	w_refine_weight_wnames = 'L1','rho'
-      	w_refine_weight_wvalues = 1.0d0,0.0d0
+      	w_refine_weight_wnames = 'rho'
+      	w_refine_weight_wvalues = 1.0d0
 
         max_blocks = 200000
         ! can be added when is needed
@@ -183,8 +183,8 @@
 	  hd_gr_dust_chemistry = .true.
 	  hd_gr_with_radiative_cooling = .true. 	  
          hd_dust              = .false.   ! dust off
-         hd_radiative_cooling = .true. !>>HH4647 .false.!.true.    ! cooling on
-         hd_gravity	       = .true. !>>HH4647 .false.!.true.    ! gravity on
+         hd_radiative_cooling = .false. !>>HH4647 .false.!.true.    ! cooling on
+         hd_gravity	       = .false. !>>HH4647 .false.!.true.    ! gravity on
          hd_gravity_hse       = .false. !>>HH4647 .false.!.true.    ! gravity on         
          hd_gravity_hse_scheme= 'twoorderpert'!options:'zerothorder','firstorder','twoordernohse','twoordernopert','twoorderpert','twoorderpert2'
          hd_use_gravity_g = .false.
@@ -236,7 +236,7 @@
         usrconfig%profile_use_hse     = .false.
         usrconfig%cloud_on            = .false.                      !> set cloud
         usrconfig%cloud_structure     = 2                           !> cloud structure type
-        usrconfig%jet_yso_on          = .false. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
         usrconfig%physunit_on         = .true.                      !> set the normalisation in use
         usrconfig%reset_medium        = .true.                      !> set on the reset
         usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
@@ -339,7 +339,7 @@
 !  ism_config%debug        	 = .false. ! use it as .true. to debug user module mod_obj_ism.t
 
 
-ism_config%profile_typeaxial  = 'spherical'!'projection_direction'
+ism_config%profile_typeaxial  = 'spherical'!'spherical'!'projection_direction'
 ism_config%profile_idir       = 1.0,0.0,0.0       !z=2,r=1  !  ism profile direction
 
 ism_config%profile_center     = 0,0,0
@@ -423,10 +423,10 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%open_angle            = 3.0d0 !>>HH4647 !>  cla_jet initial open angle  (degre): 0.0d0 = jet droit cylindrique
     cla_jet_config%z_in                  =  -46.275d18 !> cla_jet inner boundary position
     cla_jet_config%variation_n_cells     = 2
-    cla_jet_config%z_impos               =  8.22d14 !
-    cla_jet_config%z_out_init            =  8.30d14 !
-    cla_jet_config%r_out_init            =  7.47d14! <--- 50 UA
-    cla_jet_config%r_out_impos           =  7.47d14! <--- 50 UA
+    cla_jet_config%z_impos               =  8.22d15 !
+    cla_jet_config%z_out_init            =  8.30d15 !
+    cla_jet_config%r_out_init            =  7.47d15! <--- 50 UA
+    cla_jet_config%r_out_impos           =  7.47d15! <--- 50 UA
 
     cla_jet_config%r_in_init             =  0.0 !-7.48d14 !> cla_jet inner jet  region : position de la limite gauche du jet en coordonnées cylindriques : à tenir compte dans le calcul de la surface d'éjection du jet et donc du calcul du flux de masse ejectée
 
@@ -449,7 +449,7 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%variation_velocity(2) =  6.0d6 !<------ variation de la norme du vecteur vitesse du jet
     cla_jet_config%variation_velocity(3) =  0.0d0
     cla_jet_config%variation_time        =  9.46728d9!<---- 300 ans
-    cla_jet_config%variation_position    =  0.0d0,8.22d14 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
+    cla_jet_config%variation_position    =  0.0d0,8.22d15 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
     cla_jet_config%variation_type        =  'sawtooth2' !
     cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation
     cla_jet_config%variation_phys_variable(1) =  3 ! 3 mean the velocity in Z direction
@@ -465,17 +465,18 @@ ism_config%He_abundance      = 0.1
 	grackle_config%chi_dust(1) = 0.05
 	grackle_config%xi_dust(2)  = 0.05
 	grackle_config%correctdensities(1)  = .true.   
-	!grackle_config%x_HI(1)  = 0.5d0
+	grackle_config%x_HI(1)  = 1.0d0
 	!grackle_config%x_HI(2)  = 0.5d0
-	!grackle_config%x_H2I(1)  = 0.25d0
+	grackle_config%x_H2I(1)  = 0.0d0
 	!grackle_config%x_H2I(2)  = 0.25d0	
 	grackle_config%deviation_to_density_limit(1)  = 5.0d0
-	grackle_config%HydrogenFractionByMass(1) = 0.76
+	grackle_config%HydrogenFractionByMass(1) = 0.76d0
 	grackle_config%IonizationFraction(1) = 0.0d0
+	!grackle_config%MetalFractionByMass(1) = 0.0d0
 	grackle_config%HydrogenFractionByMass(2) = 0.76
 	grackle_config%IonizationFraction(2) = 0.0d0   
-	grackle_config%TemperatureStart(1) = 101.0d0   	
-	grackle_config%TemperatureStart(2) = 101.0d0   	
+	!grackle_config%TemperatureStart(1) = 101.0d0   	
+	!grackle_config%TemperatureStart(2) = 101.0d0   	
 
 
 	grackle_config%use_grackle(1) = 1            ! chemistry on

@@ -16,9 +16,26 @@ module mod_obj_cla_jet
 
     integer              :: myindice               !> cla_jet associated indice
     real(dp)             :: density                !> cla_jet density  (g/cm^3)
+
+    real(dp)             :: HI_density
+    real(dp)             :: HII_density
+    real(dp)             :: HeI_density
+    real(dp)             :: HeII_density
+    real(dp)             :: HeIII_density
+    real(dp)             :: e_density
+    real(dp)             :: HM_density
+    real(dp)             :: H2I_density
+    real(dp)             :: H2II_density
+    real(dp)             :: DI_density
+    real(dp)             :: DII_density
+    real(dp)             :: HDI_density
+    real(dp)             :: metal_density
+    real(dp)             :: dust_density
+
     real(dp)             :: jet_surface_init
     real(dp)             :: number_density         !> cla_jet number density (1/cm^3)
     real(dp)             :: temperature            !> cla_jet temperature  (K)
+    real(dp)             :: gamma
     real(dp)             :: pressure               !> cla_jet pressure
     real(dp)             :: pressure_toism         !> cla_jet pressure relative to ism pressure
     real(dp)             :: pressure_associate_ism !> cla_jet pressure of associated ism pressure
@@ -190,6 +207,7 @@ contains
     write(unit_config,*) 'Jet surface init     = ', self%myconfig%jet_surface_init
     write(unit_config,*) 'Pressure    = ', self%myconfig%pressure
     write(unit_config,*) 'Temperature = ', self%myconfig%temperature
+    write(unit_config,*) 'Gamma = '      , self%myconfig%gamma
     write(unit_config,*) 'Speed       = ', self%myconfig%velocity
     write(unit_config,*) 'magnetic    = ', self%myconfig%magnetic
     write(unit_config,*) 'sound speed = ', self%myconfig%c_sound
@@ -240,6 +258,7 @@ contains
   self%myconfig%jet_surface_init       = 0.0_dp
   self%myconfig%number_density         = 0.0_dp
   self%myconfig%temperature            = 0.0_dp
+  self%myconfig%gamma                  = 0.0_dp
   self%myconfig%pressure               = 0.0_dp
   self%myconfig%pressure_toism         = 0.0_dp
   self%myconfig%pressure_associate_ism = 0.0_dp
@@ -315,9 +334,11 @@ contains
  end subroutine usr_cla_jet_set_default
  !--------------------------------------------------------------------
  !> subroutine check the parfile setting for cla_jet
- subroutine usr_cla_jet_set_complet(self)
+ subroutine usr_cla_jet_set_complet(i_obj,gr_solv,self)
    implicit none
    class(cla_jet)             :: self
+   type(gr_solver), optional :: gr_solv
+   integer                   :: i_obj
    ! .. local ..
    logical                    :: dust_is_frac
    real(dp)                   :: mp,kb, jet_surface_init,&
@@ -325,6 +346,7 @@ contains
    real(kind=dp)              :: jet_radius_out_init, jet_radius_in_init
    real(kind=dp)              :: open_angle_in,z0
    integer                    :: idims
+   real(dp)                   :: temperature_intermediate,temperature_ratio
    !-----------------------------------
    zjet_     = min(zjet_,ndim)
    thetajet_ = zjet_
@@ -503,23 +525,62 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
      self%myconfig%mach_number = dsqrt(sum(self%myconfig%velocity**2.0_dp))/self%myconfig%c_sound
    end if cond_Mach_set
 
+   if(.not.phys_config%use_grackle)then
+     self%myconfig%gamma = phys_config%gamma
+     cond_csound_set : if(self%myconfig%c_sound>0.0_dp) then
+        self%myconfig%pressure = self%myconfig%c_sound**2.0_dp * self%myconfig%density /&
+                                 self%myconfig%gamma
+        self%myconfig%temperature = self%myconfig%mean_mup*mp*self%myconfig%pressure/&
+         (kB*self%myconfig%density)
+     else  cond_csound_set
 
-   cond_csound_set : if(self%myconfig%c_sound>0.0_dp) then
-      self%myconfig%pressure = self%myconfig%c_sound**2.0_dp * self%myconfig%density /&
-                               phys_config%gamma
-      self%myconfig%temperature = self%myconfig%mean_mup*mp*self%myconfig%pressure &
-       /(kB*self%myconfig%density)
-   else  cond_csound_set
-
-    if(dabs(self%myconfig%pressure)<=0.0_dp) then
-    self%myconfig%pressure = self%myconfig%density*&
-                            kB* self%myconfig%temperature/(self%myconfig%mean_mup*mp)
+      if(dabs(self%myconfig%pressure)<=0.0_dp) then
+      self%myconfig%pressure = self%myconfig%density*&
+                              kB* self%myconfig%temperature/(self%myconfig%mean_mup*mp)
+      else
+       self%myconfig%temperature = self%myconfig%mean_mup*mp*self%myconfig%pressure/&
+         (kB*self%myconfig%density)
+      end if
+      self%myconfig%c_sound = sqrt(self%myconfig%gamma*self%myconfig%pressure/self%myconfig%density)
+     end if cond_csound_set
     else
-     self%myconfig%temperature = self%myconfig%mean_mup*mp*self%myconfig%pressure &
-       /(kB*self%myconfig%density)
+      gr_solv%myconfig%density(i_obj) = self%myconfig%density
+      call gr_solv%set_complet(self%myconfig%density,i_obj,.false.)
+
+      self%myconfig%HI_density = gr_solv%myconfig%densityHI(i_obj)
+      self%myconfig%HII_density = gr_solv%myconfig%densityHII(i_obj)
+      self%myconfig%HM_density = gr_solv%myconfig%densityHM(i_obj)
+      self%myconfig%HeI_density = gr_solv%myconfig%densityHeI(i_obj)
+      self%myconfig%HeII_density = gr_solv%myconfig%densityHeII(i_obj)
+      self%myconfig%HeIII_density = gr_solv%myconfig%densityHeIII(i_obj)
+      self%myconfig%H2I_density = gr_solv%myconfig%densityH2I(i_obj)
+      self%myconfig%H2II_density = gr_solv%myconfig%densityH2II(i_obj)
+      self%myconfig%HDI_density = gr_solv%myconfig%densityHDI(i_obj)
+      self%myconfig%DI_density = gr_solv%myconfig%densityDI(i_obj)
+      self%myconfig%DII_density = gr_solv%myconfig%densityDII(i_obj)
+      self%myconfig%e_density = gr_solv%myconfig%densityElectrons(i_obj)
+      self%myconfig%metal_density = gr_solv%myconfig%density_Z(i_obj)
+      self%myconfig%dust_density  = gr_solv%myconfig%density_dust(i_obj)
+
+      temperature_intermediate = self%myconfig%temperature
+      call gr_solv%set_parameters(temperature_intermediate,&
+      self%myconfig%pressure,self%myconfig%gamma,i_obj)
+      temperature_ratio = self%myconfig%temperature/temperature_intermediate
+      write(*,*) ' 1)ISM TEMPERTAURE AFTER GRACKLE === ', temperature_intermediate
+      write(*,*) ' 1)ISM PRESSURE AFTER GRACKLE === ', self%myconfig%pressure
+      write(*,*) ' 1)ISM DENSITY AFTER GRACKLE === ', self%myconfig%density
+      self%myconfig%temperature = self%myconfig%temperature*temperature_ratio
+      write(*,*) ' 2)ISM TEMPERTAURE BEFORE GRACKLE === ', self%myconfig%temperature
+      write(*,*) ' 2)ISM PRESSURE BEFORE GRACKLE === ', self%myconfig%pressure
+      write(*,*) ' 2)ISM DENSITY BEFORE GRACKLE === ', self%myconfig%density
+      call gr_solv%set_parameters(self%myconfig%temperature,&
+      self%myconfig%pressure,self%myconfig%gamma,i_obj)
+      write(*,*) ' 2)ISM TEMPERTAURE AFTER GRACKLE === ', self%myconfig%temperature
+      write(*,*) ' 2)ISM PRESSURE AFTER GRACKLE === ', self%myconfig%pressure
+      write(*,*) ' 2)ISM DENSITY AFTER GRACKLE === ', self%myconfig%density
+      self%myconfig%c_sound = sqrt(self%myconfig%gamma*self%myconfig%pressure/self%myconfig%density)
     end if
-    self%myconfig%c_sound = sqrt(phys_config%gamma*self%myconfig%pressure/self%myconfig%density)
-   end if cond_csound_set
+
 
 
 
@@ -648,7 +709,21 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
   end if
 
 
-  self%myconfig%density          = self%myconfig%density       /physunit_inuse%myconfig%density
+  self%myconfig%density          = self%myconfig%density/physunit_inuse%myconfig%density
+  self%myconfig%HI_density = self%myconfig%HI_density/physunit_inuse%myconfig%density
+  self%myconfig%HII_density = self%myconfig%HII_density/physunit_inuse%myconfig%density
+  self%myconfig%HM_density = self%myconfig%HM_density/physunit_inuse%myconfig%density
+  self%myconfig%HeI_density = self%myconfig%HeI_density/physunit_inuse%myconfig%density
+  self%myconfig%HeII_density = self%myconfig%HeII_density/physunit_inuse%myconfig%density
+  self%myconfig%HeIII_density = self%myconfig%HeIII_density/physunit_inuse%myconfig%density
+  self%myconfig%H2I_density = self%myconfig%H2I_density/physunit_inuse%myconfig%density
+  self%myconfig%H2II_density = self%myconfig%H2II_density/physunit_inuse%myconfig%density
+  self%myconfig%HDI_density = self%myconfig%HDI_density/physunit_inuse%myconfig%density
+  self%myconfig%DI_density = self%myconfig%DI_density/physunit_inuse%myconfig%density
+  self%myconfig%DII_density = self%myconfig%DII_density/physunit_inuse%myconfig%density
+  self%myconfig%e_density = self%myconfig%e_density/physunit_inuse%myconfig%density
+  self%myconfig%metal_density = self%myconfig%metal_density/physunit_inuse%myconfig%density
+  self%myconfig%dust_density  = self%myconfig%dust_density/physunit_inuse%myconfig%density
   ! massflux = rho*v*S
   ! ==> S = mass/(rho*v)
   self%myconfig%jet_surface_init = self%myconfig%jet_surface_init / (physunit_inuse%myconfig%length**2.0_dp)
@@ -1033,9 +1108,15 @@ end subroutine usr_cla_jet_set_patch
 
 
 
+  where(self%patch(ixO^S))
+    w(ixO^S,phys_ind%gamma_) = gr_solv%myconfig%gr_gamma(iobject)
+  end where
+
+
   if(phys_config%energy)then
     where(self%patch(ixO^S))
-      w(ixO^S,phys_ind%pressure_)   = self%myconfig%pressure
+      w(ixO^S,phys_ind%pressure_)   = self%myconfig%pressure*self%myconfig%jet_surface_init/&
+      jet_surface(ixO^S)
     end where
   end if
    cond_mhd0 : if(phys_config%ismhd)then
@@ -1095,6 +1176,13 @@ end subroutine usr_cla_jet_set_patch
       end if
   end if cond_profile
 
+  if(phys_config%energy)then
+    where(self%patch(ixO^S))
+      w(ixO^S,phys_ind%temperature_) = self%myconfig%temperature
+    end where
+  end if
+
+
 
   cond_mhd : if(phys_config%ismhd.and.phys_config%energy)then
     where(self%patch(ixO^S))
@@ -1123,6 +1211,16 @@ end subroutine usr_cla_jet_set_patch
         w(ixO^S,phys_ind%mup_) = self%myconfig%mean_mup
      end where
    end if
+
+   !if(phys_config%energy)then
+    !if(phys_config%mean_mup_on)then
+     !where(self%patch(ixO^S))
+       !w(ixO^S,phys_ind%temperature_) = w(ixO^S,phys_ind%temperature_)*&
+       !w(ixO^S,phys_ind%mup_)
+     !end where
+    !end if
+   !end if
+
    cond_tracer_on :if(self%myconfig%tracer_on.and.phys_config%n_tracer>0&
                       .and.self%myconfig%itr<=phys_config%n_tracer)then
      cond_jet_on : if(qt< self%myconfig%time_cla_jet_on)then
@@ -1383,6 +1481,20 @@ end subroutine usr_cla_add_source
              end select
             where(self%ejecta_patch(ixO^S))
              w(ixO^S,phys_ind%rho_) =  self%myconfig%density*h_time
+             w(ixO^S,phys_ind%HI_density_)=self%myconfig%HI_density*h_time
+             w(ixO^S,phys_ind%HII_density_)=self%myconfig%HII_density*h_time
+             w(ixO^S,phys_ind%HeI_density_)=self%myconfig%HeI_density*h_time
+             w(ixO^S,phys_ind%HeII_density_)=self%myconfig%HeII_density*h_time
+             w(ixO^S,phys_ind%HeIII_density_)=self%myconfig%HeIII_density*h_time
+             w(ixO^S,phys_ind%e_density_)=self%myconfig%e_density*h_time
+             w(ixO^S,phys_ind%HM_density_)=self%myconfig%HM_density*h_time
+             w(ixO^S,phys_ind%H2I_density_)=self%myconfig%H2I_density*h_time
+             w(ixO^S,phys_ind%H2II_density_)=self%myconfig%H2II_density*h_time
+             w(ixO^S,phys_ind%DI_density_)=self%myconfig%DI_density*h_time
+             w(ixO^S,phys_ind%DII_density_)=self%myconfig%DII_density*h_time
+             w(ixO^S,phys_ind%HDI_density_)=self%myconfig%HDI_density*h_time
+             w(ixO^S,phys_ind%metal_density_)=self%myconfig%metal_density*h_time
+             w(ixO^S,phys_ind%dust_density_)=self%myconfig%dust_density*h_time
             end where
 
 

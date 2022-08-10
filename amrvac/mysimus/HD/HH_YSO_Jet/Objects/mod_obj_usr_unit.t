@@ -13,6 +13,7 @@ module mod_obj_usr_unit
    real(kind=dp)     :: density
    real(kind=dp)     :: pressure
    real(kind=dp)     :: temperature
+   !real(kind=dp)     :: gamma
 
 
    real(kind=dp)     :: velocity
@@ -119,6 +120,7 @@ module mod_obj_usr_unit
     write(unit_config,*) 'Number Density= ', self%myconfig%number_density,'   ',  self%myunit%number_density
     write(unit_config,*) 'Pressure      = ', self%myconfig%pressure, '   ', self%myunit%pressure
     write(unit_config,*) 'Temperature   = ', self%myconfig%temperature, '   ',  self%myunit%temperature
+    !write(unit_config,*) 'gamma (initial) = ', self%myconfig%gamma, '   '
     write(unit_config,*) 'Energy        = ', self%myconfig%energy, '   ',  self%myunit%energy
     write(unit_config,*) 'Mass          = ', self%myconfig%mass, '   ', self%myunit%mass
     write(unit_config,*) 'Speed         = ', self%myconfig%velocity, '   ', self%myunit%velocity
@@ -144,6 +146,7 @@ module mod_obj_usr_unit
   self%myconfig%number_density          = 0.0_DP
   self%myconfig%pressure                = 0.0_dp
   self%myconfig%temperature             = 0.0_dp
+  !self%myconfig%gamma                   = 1.666666667d0
   self%myconfig%velocity                = 0.0_dp
   self%myconfig%angular_velocity        = 0.0_dp
   self%myconfig%momentum                = 0.0_dp
@@ -432,6 +435,12 @@ end subroutine usr_physical_unit_set_unit
 
    w_convert_factor(phys_ind%rhoX_) = self%myconfig%density
    w_convert_factor(phys_ind%rhoY_) = self%myconfig%density
+
+   w_convert_factor(phys_ind%gamma_) = 1.0_dp
+
+   w_convert_factor(phys_ind%temperature_) = self%myconfig%temperature
+
+   !write(*,*) 'w_convert_factor(phys_ind%gamma_) = ', w_convert_factor(phys_ind%gamma_)
 
 
    !write(*,*) ' mod_obj_usr_unit.t--> usr_physical_unit_fillphysunit'
