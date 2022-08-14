@@ -24,6 +24,13 @@ module mod_hd_grackle_phys
   !> Whether viscosity is added
   logical, public, protected              :: hd_viscosity = .false.
 
+  !> Whether grackle chemistry is added
+  logical                   :: hd_use_grackle
+  integer                   :: hd_gr_primordial_chemistry
+  logical                   :: hd_gr_metal_cooling
+  logical                   :: hd_gr_dust_chemistry
+  logical                   :: hd_gr_with_radiative_cooling
+
   !> Whether gravity is added
   logical, public, protected              :: hd_gravity = .false.
 
@@ -48,6 +55,9 @@ module mod_hd_grackle_phys
   !> Indices of the momentum density
   integer, allocatable, public, protected :: mom(:)
 
+  !> Indices of grackle chemistry species
+  integer, allocatable, public, protected :: gr_species(:)
+
   !> Indices of the tracers
   integer, allocatable, public, protected :: tracer(:)
 
@@ -57,11 +67,27 @@ module mod_hd_grackle_phys
   !> Index of the gas pressure (-1 if not present) should equal e_
   integer, public, protected              :: p_
 
+  integer, public, protected              :: gamma_
+  integer, public, protected              :: temperature_
+
   !> Index of the gravity potential (-1 if not present)
   integer, public, protected              :: grav_phi_
 
-  !> Index of the gravity potential (-1 if not present)
-  {integer, public, protected              :: grav_g^D_\}
+ integer, public, protected              :: rhoHI_
+  integer, public, protected              :: rhoHII_
+  integer, public, protected              :: rhoHeI_
+  integer, public, protected              :: rhoHeII_
+  integer, public, protected              :: rhoHeIII_
+  integer, public, protected              :: rhoe_
+  integer, public, protected              :: rhoH2I_
+  integer, public, protected              :: rhoHM_
+  integer, public, protected              :: rhoH2II_
+  integer, public, protected              :: rhoDI_
+  integer, public, protected              :: rhoDII_
+  integer, public, protected              :: rhoHDI_
+  integer, public, protected              :: rhometal_
+  integer, public, protected              :: rhodust_
+
 
   !> The adiabatic index
   real(dp), public                :: hd_gamma = 5.d0/3.0d0
@@ -69,6 +95,7 @@ module mod_hd_grackle_phys
   !> The adiabatic constant
   real(dp), public                :: hd_adiab = 1.0_dp
 
+  logical, public                :: hd_isotherm_on = .false.
   !> The isotherm temperature constant
   real(dp), public                :: hd_temperature_isotherm = 1.0_dp
 
@@ -91,6 +118,7 @@ module mod_hd_grackle_phys
   logical, allocatable,target    :: hd_iw_average(:)
 
   type(physconfig),target,public                 :: hd_config
+  type(physconfig),target,public                 :: pre_hd_config
   type(phys_variables_indices),target,public     :: hd_ind
   ! for local use
   real(kind=dp), private         :: gamma_1
@@ -104,7 +132,9 @@ module mod_hd_grackle_phys
   public :: hd_small_values_floor
 contains
 
-  !> Read this module's parameters from a file
+
+
+  !> Read this module s parameters from a file
   subroutine hd_read_params(files)
     use mod_global_parameters
     character(len=*), intent(in) :: files(:)
@@ -114,9 +144,13 @@ contains
     namelist /hd_list/ hd_energy, hd_n_tracer, hd_unit_velocity, hd_unit_temperature, &
     hd_gamma, hd_adiab, &
     hd_dust, hd_thermal_conduction, hd_radiative_cooling, hd_viscosity, &
-    hd_gravity, hd_gravity_hse, hd_gravity_hse_scheme,hd_use_gravity_g,&
+    hd_gravity, hd_gravity_hse, hd_gravity_hse_scheme,hd_use_gravity_g, &
     He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure,&
-    hd_chemical,hd_chemical_gas_type,hd_mean_mup_on,hd_temperature_isotherm
+    hd_chemical,hd_chemical_gas_type,hd_mean_mup_on,hd_temperature_isotherm,&
+    hd_use_grackle, hd_gr_primordial_chemistry, hd_gr_metal_cooling,&
+    hd_gr_with_radiative_cooling,&
+    hd_gr_dust_chemistry,hd_isotherm_on
+
     !---------------------------------------------------------
     error_message = 'At '//' mod_hd_grackle_phys.t'//'  in the procedure : hd_read_params'
     Loop_iparfile : do i_file = 1, size(files)
@@ -144,7 +178,11 @@ contains
 
   end subroutine hd_read_params
 
-  !> Write this module's parameters to a snapshot
+
+
+
+
+  !> Write this module s parameters to a snapshot
   subroutine hd_write_info(fh)
     use mod_global_parameters
     integer, intent(in)                 :: fh
@@ -240,6 +278,7 @@ contains
   hd_config%unit_temperature     = hd_unit_temperature
   hd_config%gamma                = hd_gamma
   hd_config%adiab                = hd_adiab
+  hd_config%isotherm_on          = hd_isotherm_on
   hd_config%temperature_isotherm = hd_temperature_isotherm
 
   gamma_1 = hd_config%gamma   - 1.0_dp
@@ -249,14 +288,32 @@ contains
     hd_config%small_energy       = hd_config%small_pressure/gamma_1
   end if
   hd_config%radiative_cooling    = hd_radiative_cooling
+  hd_config%use_grackle          = hd_use_grackle
+  hd_config%gr_primordial_chemistry = hd_gr_primordial_chemistry
+  hd_config%gr_metal_cooling     = hd_gr_metal_cooling
+  hd_config%gr_dust_chemistry    = hd_gr_dust_chemistry
+  hd_config%gr_with_radiative_cooling = hd_gr_with_radiative_cooling
   hd_config%thermal_conduction   = hd_thermal_conduction
   hd_config%viscosity            = hd_viscosity
   hd_config%particles            = hd_particles
 
   phys_energy                    = hd_config%energy
 
+  if(hd_config%isotherm_on)then
+    if(hd_config%energy)then
+      write(*,*) 'hd_energy=T & hd_isotherm_on=T,...'
+      call mpistop('.. but isothermal case incompatible with energy equation')
+    end if
+  end if
+  if(hd_config%isotherm_on)then
+    if(dabs(hd_config%gamma-1.0_dp)>smalldouble)then
+      call mpistop('Isothermal gas but hd_gamma/=1')
+    end if
+  end if
 
   end subroutine hd_phys_set_config
+
+
 
   subroutine hd_phys_to_phys
 
@@ -280,6 +337,9 @@ contains
     phys_check_params             => hd_check_params
     phys_check_w                  => hd_check_w
     phys_get_pthermal             => hd_get_pthermal
+    phys_get_gamma                => hd_get_gamma
+    phys_get_mup                  => hd_get_mmw
+    phys_get_kin_en               => hd_kin_en
     phys_get_temperature          => hd_get_temperature
     phys_get_csound2              => hd_get_csound2
     phys_write_info               => hd_write_info
@@ -306,6 +366,7 @@ contains
     real(kind=dp)  :: mp,kB
     !------------------------------------------------------
     physics_type = "hd"
+    call phys_default_config(hd_config)
     call hd_read_params(par_files)
     call hd_phys_set_config()
     call hd_fill_phys_indices()
@@ -323,7 +384,7 @@ contains
     ! derive units from basic units
     call hd_physical_units
     !isotherm case
-    if(dabs(gamma_1)<smalldouble)then
+    if(hd_config%isotherm_on)then
       if(SI_unit) then
           mp=mp_SI
           kB=kB_SI
@@ -332,31 +393,54 @@ contains
           kB=kB_cgs
       end if
 
-      ! the adiab value set from temperature is gamma==1
-      if(hd_config%adiab<0)then
-        write(*,*) " mod_usr.t : non-physical hd_adiab < 0 set "
-        call mpistop(" .par parameter file : hd_list parameters uncorrect")
+      if(hd_config%temperature_isotherm>0)then
+        ! isotherm case : need to compute adiab = csound**2
+        hd_config%adiab = kB/(hd_config%mean_mup*mp)*hd_config%temperature_isotherm
+      elseif(hd_config%adiab>=0)then
+        ! isotherm case : need to compute isotherm temperature T
+        hd_config%temperature_isotherm = (hd_config%adiab/kB)*hd_config%mean_mup*mp
       end if
-       if(hd_config%temperature_isotherm>0)then
-            ! isotherm case : need to compute adiab = csound**2
-            hd_config%adiab = kB/(hd_config%mean_mup*mp)*hd_config%temperature_isotherm
-            ! normalise value for adiab
-            hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
-            ! normalise value for isotherm temperature
-            hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
 
-        elseif(hd_config%adiab>=0)then
-          ! isotherm case : need to compute isotherm temperature T
-          hd_config%temperature_isotherm = (hd_config%adiab/kB)*hd_config%mean_mup*mp
-          ! normalise value for isotherm temperature
-          hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
-          ! normalise value for adiab
-          hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
-        end if
+      ! normalise value for isotherm temperature
+      hd_config%temperature_isotherm=hd_config%temperature_isotherm/unit_temperature
+      ! normalise value for adiab
+      hd_config%adiab  = hd_config%adiab/(unit_velocity*unit_velocity)
 
-        ! save in local hd paramteres
-        hd_adiab= hd_config%adiab
-        hd_temperature_isotherm = hd_config%temperature_isotherm
+      ! save in local hd paramteres
+      hd_adiab= hd_config%adiab
+      hd_temperature_isotherm = hd_config%temperature_isotherm
+
+      if(hd_config%energy)then
+        write(*,*) 'hd_config%isotherm_on = T but hd_config%energy = T'
+        call mpistop('Isothermal gas : must have hd_config%isotherm_on=T,hd_config%energy=F')
+      end if
+
+      if(dabs(pre_hd_config%gamma-1.0_dp)>smalldouble)then
+        call mpistop('Isothermal gas but hd_gamma/=1')
+      else
+        write(*,*) '*********************************************************'
+        write(*,*) 'MPI-AMRVAC runs HD adiabatic isothermal run (no energy solved)'
+        write(*,*) 'with temperature = ',hd_config%temperature_isotherm*unit_temperature
+        write(*,*) 'and c_sound**2 = ',hd_config%adiab*(unit_velocity*unit_velocity)
+        write(*,*) '*********************************************************'
+      end if
+
+    else
+      if(.not.hd_config%energy)then
+        write(*,*) 'hd_config%isotherm_on = F but hd_config%energy = F'
+        call mpistop('Isothermal gas : must have hd_config%isotherm_on=T,hd_config%energy=F')
+      else
+        write(*,*) '*********************************************************'
+        write(*,*) 'MPI-AMRVAC runs HD run (gamma/=1) with energy solved'
+        write(*,*) 'temperature can be variable, and we have'
+        write(*,*) 'gamma =',hd_config%gamma
+        write(*,*) '*********************************************************'
+      end if
+    end if
+
+    if(hd_config%adiab<0)then
+      write(*,*) " mod_usr.t : non-physical hd_adiab < 0 set "
+      call mpistop(" .par parameter file : hd_list parameters uncorrect")
     end if
 
     if (hd_config%dust_on) call dust_init(hd_ind,hd_config,rho_, mom(:), e_)
@@ -412,19 +496,11 @@ contains
     !automatically_
     if(hd_config%gravity)then
       if(hd_config%gravity_hse)then
-        if(hd_config%energy)then
-          if(.not.hd_config%use_gravity_g)then
             phys_modify_wLR => improve_gravity_hse
-          else
-            phys_modify_wLR => improve_gravity_hse_exact
-          end if
-        else
-          write(*,*) 'Hydrostatic equilibrum well-balancing schemes'
-          write(*,*) 'not [yet] available for adiabatic HD physics'
-          call mpistop('The code stops in mod_hd_grackle_phys.t:hd_phys_init')
-        end if
       end if
     end if
+
+
     phys_iw_average => hd_iw_average
 
     hd_config%energy = hd_config%energy
@@ -436,6 +512,159 @@ contains
     call hd_fill_convert_factor
   end subroutine hd_phys_init
 
+  subroutine improve_gravity_hse(wLp, wRp, wCT, x, ixI^L, ixO^L, idir,&
+  qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
+    use mod_global_parameters
+    use mod_usr_methods, only: usr_reset_solver,usr_gravity_potential
+    use mod_finite_volume, only: reconstruct_LR, reconstruct_LR3
+    character(len=*), intent(in)                         :: method
+    integer, intent(in)             :: ixI^L, ixO^L, idir
+    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
+    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
+    real(kind=dp)      , intent(inout) :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
+    type(walloc)       , intent(inout)    :: local_block
+    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
+    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
+    ! ..........local...........
+    ! primitive w at cell center
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim,wpert,wpertLp,wpertRp
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wpertLC, wpertRC
+    integer                                 :: ixOfinite^L
+    real(kind=dp)   , dimension(1:ndim)     :: dxinv
+    character(len=len(method))              :: method_loc
+    integer :: iw, ix^L, hxO^L, ixC^L, ixCR^L, kxL^L, kxC^L, kxR^L
+    real(kind=dp)   , dimension(ixI^S,1:ndim) ::  xhalfR,xhalfL
+    real(kind=dp)   , dimension(ixI^S) ::  gravity_potential
+    real(kind=dp)   , dimension(ixI^S) ::  gravity_potentialR, gravity_potentialL
+
+    !Recompute output part of the indexes from mod_finite_volume.t:finite_volume
+    ixOfinitemax^D=ixOmax^D;
+    ixOfinitemin^D=ixOmin^D+kr(idir,^D);
+
+
+
+    wprim=wCT
+    call phys_to_primitive(ixI^L,ixI^L,wprim,x)
+
+
+    ^D&dxinv(^D)=-qdt/dx^D;
+
+    ! initialise the flux scheme
+    method_loc=trim(method)
+
+    !allow the user to change localy the numerical method
+    !Mialy : this should be at the end of the finite volume treatment
+    !after cooling source term and then L1 is being properly computed
+    !so that solver is changed for the next time step
+    call usr_reset_solver(ixI^L,ixI^L,idir,qt,wprim,x,method,&
+      type_limiter(node(plevel_,saveigrid)),method_loc,typelimiter)
+
+
+    ! use interface value of w0 at idir=finite_volume:idim
+    local_block%iw0=idir
+
+    hxO^L=ixOfinite^L-kr(idir,^D);
+    ! ixC is centered index in the idir=finite_volume:idim
+    ! direction from ixOmin-1/2 to ixOmax+1/2
+    ixCmax^D=ixOfinitemax^D; ixCmin^D=hxOmin^D;
+
+    kxCmin^D=ixImin^D; kxCmax^D=ixImax^D-kr(idir,^D);!i or j
+    kxR^L=kxC^L+kr(idir,^D);! i+1 or j+1
+    kxL^L=kxC^L-kr(idir,^D);! i-1 or j-1
+
+
+
+    ! wRp and wLp are defined at the same locations, and will correspond to
+    ! the left and right reconstructed values at a cell face. Their indexing
+    ! is similar to cell-centered values, but in direction idir=finite_volume:idim they are
+    ! shifted half a cell towards the 'lower' direction.
+    !reconstruction or not of the left and right state variables
+    !at the cell interfaces and their conservative variables
+     wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
+     wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
+     !Recompute pressure for hydrostatic equilibrum:
+     xhalfR(ixI^S,1:ndim)=x(ixI^S,1:ndim)
+     xhalfL(ixI^S,1:ndim)=x(ixI^S,1:ndim)
+     xhalfR(ixI^S,idir)=x(ixI^S,idir)-half*local_block%dx(ixI^S,idir)
+     xhalfL(ixI^S,idir)=x(ixI^S,idir)+half*local_block%dx(ixI^S,idir)
+
+     !where(DABS(xhalfR(ixI^S,r_))<=smalldouble)
+       !xhalfR(ixI^S,r_)=x(ixI^S,idir)-half*local_block%dx(ixI^S,idir)+smalldouble
+     !end where
+     !where(DABS(xhalfL(ixI^S,r_))<=smalldouble)
+       !xhalfL(ixI^S,r_)=x(ixI^S,idir)+half*local_block%dx(ixI^S,idir)-smalldouble
+     !end where
+
+     call usr_gravity_potential(ixI^L,ixO^L,wCT,xhalfR,gravity_potentialR)
+     call usr_gravity_potential(ixI^L,ixO^L,wCT,x,gravity_potential)
+     call usr_gravity_potential(ixI^L,ixO^L,wCT,xhalfL,gravity_potentialL)
+
+
+     wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-wprim(kxR^S,iw_rho)*&
+                     (gravity_potentialR(kxR^S)-gravity_potential(kxR^S))
+     wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-wprim(kxC^S,iw_rho)*&
+                     (gravity_potentialL(kxC^S)-gravity_potential(kxC^S))
+
+
+    ! Determine stencil size
+    ! phys_wider_stencil from mod_physics and set in each physics mod_..._phys.t module
+    {ixCRmin^D = ixCmin^D - phys_wider_stencil\}
+    {ixCRmax^D = ixCmax^D + phys_wider_stencil\}
+
+
+
+    ! apply limited reconstruction for left and right status at cell interfaces
+    select case (typelimited)
+    case ('previous')
+    call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
+    case ('predictor')
+    call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
+    case default
+    call mpistop("Error in reconstruction: no such base for limiter")
+    end select
+
+    !write(*,*) 'phys_modify_wLR called until end !!'
+
+  end subroutine improve_gravity_hse
+
+  subroutine improve_gravity_hse_exact(wLp, wRp, wCT, x, ixI^L, ixO^L, idir,&
+  qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
+    use mod_global_parameters
+    use mod_usr_methods, only: usr_reset_solver, usr_gravity_fpotential
+    use mod_finite_volume, only: reconstruct_LR, reconstruct_LR3
+    character(len=*), intent(in)                         :: method
+    integer, intent(in)             :: ixI^L, ixO^L, idir
+    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
+    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
+    real(kind=dp)      , intent(inout) :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
+    type(walloc)       , intent(inout)    :: local_block
+    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
+    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
+    ! ..........local...........
+    ! primitive w at cell center
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim,wpert,wpertLp,wpertRp
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: wpertLC, wpertRC
+    real(kind=dp)   , dimension(ixI^S)      :: wphikR,wphikC,wphikL
+    real(kind=dp)   , dimension(ixI^S,1:nw) :: xhalfR,xhalfL
+    integer                                 :: ixOfinite^L
+    real(kind=dp)   , dimension(1:ndim)     :: dxinv
+    character(len=len(method))              :: method_loc
+    integer :: iw, ix^L, hxO^L, ixC^L, ixCR^L, kxL^L, kxC^L, kxR^L, myidim
+
+
+
+    write(*,*) 'improve_gravity_hse_exact in mod_hd_grackle_phys.t:'
+    write(*,*) 'use_gravity_g is true but'
+    write(*,*) 'but this part is not yet implemented'
+    call mpistop('Code part not yet implemented')
+
+
+    !write(*,*) 'phys_modify_wLR called until end !!'
+
+
+
+
+  end subroutine improve_gravity_hse_exact
 
 
   subroutine hd_fill_chemical_ionisation(He_abundance_sub,hd_chemical_gas_type,mean_nall_to_nH &
@@ -481,7 +710,6 @@ contains
     implicit none
     ! .. local ..
     integer :: itr, idir
-    character(len=30) :: varstr^D
     !-------------------------------------
 
     ! Determine flux variables
@@ -501,6 +729,84 @@ contains
     end if
 
 
+    !>Grackle:
+    iw_HI_density = -1
+    iw_HII_density = -1
+    iw_HeI_density = -1
+    iw_HeII_density = -1
+    iw_HeIII_density = -1
+    iw_e_density = -1
+    iw_H2I_density = -1
+    iw_HM_density = -1
+    iw_H2II_density = -1
+    iw_DI_density = -1
+    iw_DII_density = -1
+    iw_HDI_density = -1
+    iw_metal_density = -1
+    iw_dust_density = -1
+
+    using_grackle : if(hd_config%use_grackle)then
+      prim_chem : if(hd_config%gr_primordial_chemistry>=0.and.hd_config%gr_primordial_chemistry<=3)then
+        !six species: H, H+, He, He+, He++, e- (in this order)
+        iw_HI_density = var_set_fluxvar('HI', 'HI', need_bc=.true.)
+        iw_HII_density = var_set_fluxvar('HII', 'HII', need_bc=.true.)
+        iw_HeI_density = var_set_fluxvar('HeI', 'HeI', need_bc=.true.)
+        iw_HeII_density = var_set_fluxvar('HeII', 'HeII', need_bc=.true.)
+        iw_HeIII_density = var_set_fluxvar('HeIII', 'HeIII', need_bc=.true.)
+        iw_e_density = var_set_fluxvar('electron_density', 'electron_density', need_bc=.true.)
+        ! + 3 species : H2, H-, H2+ (in this order)
+        iw_H2I_density = var_set_fluxvar('H2I', 'H2I', need_bc=.true.)
+        iw_HM_density = var_set_fluxvar('HM', 'HM', need_bc=.true.)
+        iw_H2II_density = var_set_fluxvar('H2II', 'H2II', need_bc=.true.)
+        ! + 3 species : D, D+, HD.
+        iw_DI_density = var_set_fluxvar('DI', 'DI', need_bc=.true.)
+        iw_DII_density = var_set_fluxvar('DII', 'DII', need_bc=.true.)
+        iw_HDI_density = var_set_fluxvar('HDI', 'HDI', need_bc=.true.)
+      else
+        write(*,*) 'Unknown primordial chemistry network'
+        call mpistop('You must set hd_gr_primordial_chemistry to  0,1,2 or 3!')
+      end if prim_chem
+      !metal cooling
+      iw_metal_density = var_set_fluxvar('metal_density', 'metal_density', need_bc=.true.)
+
+      !dust chemistry
+      iw_dust_density = var_set_fluxvar('dust_density', 'dust_density', need_bc=.true.)
+
+      !six species: H, H+, He, He+, He++, e- (in this order)
+      hd_ind%HI_density_ = iw_HI_density
+      hd_ind%HII_density_ = iw_HII_density
+      hd_ind%HeI_density_ = iw_HeI_density
+      hd_ind%HeII_density_ = iw_HeII_density
+      hd_ind%HeIII_density_ = iw_HeIII_density
+      hd_ind%e_density_ = iw_e_density
+      ! + 3 species : H2, H-, H2+ (in this order)
+      hd_ind%H2I_density_ = iw_H2I_density
+      hd_ind%HM_density_ = iw_HM_density
+      hd_ind%H2II_density_ = iw_H2II_density
+      ! + 3 species : D, D+, HD.
+      hd_ind%DI_density_ = iw_DI_density
+      hd_ind%DII_density_ = iw_DII_density
+      hd_ind%HDI_density_ = iw_HDI_density
+      !metal cooling
+      hd_ind%metal_density_ = iw_metal_density
+      !dust chemistry
+      hd_ind%dust_density_ = iw_dust_density
+      rhoHI_ = iw_HI_density
+      rhoHII_ = iw_HII_density
+      rhoHeI_ = iw_HeI_density
+      rhoHeII_ = iw_HeII_density
+      rhoHeIII_ = iw_HeIII_density
+      rhoe_ = iw_e_density
+      rhoH2I_ = iw_H2I_density
+      rhoH2II_ = iw_H2II_density
+      rhoHM_ = iw_HM_density
+      rhoDI_ = iw_DI_density
+      rhoDII_ = iw_DII_density
+      rhoHDI_ = iw_HDI_density
+      rhometal_ = iw_metal_density
+      rhodust_ = iw_dust_density
+
+    end if using_grackle
 
 
     if(hd_config%n_tracer>0) then
@@ -514,17 +820,9 @@ contains
 
     ! Set index(es) of gravity variable(s)
     if (hd_config%gravity) then
-      if(.not. hd_config%use_gravity_g)then
-        grav_phi_=var_set_grav_phi('Gphi')
-        {grav_g^D_=-1\}
-      else
-        {write(varstr^D,'(I5)') ^D\}
-        call var_set_grav_g({trim('Gphi' // varstr^D)},grav_g^D_)
-        grav_phi_=-1
-      end if
+      grav_phi_=var_set_grav_phi('Gphi')
     else
       grav_phi_=-1
-      {grav_g^D_=-1\}
     end if
 
 
@@ -536,7 +834,6 @@ contains
     hd_ind%e_          =e_
     hd_ind%pressure_   =p_
     hd_ind%grav_phi_   =grav_phi_
-    {hd_ind%grav_g^D_   =grav_g^D_\}
     hd_ind%lfac_       =-1
     hd_ind%xi_         =-1
     hd_ind%psi_        =-1
@@ -550,14 +847,40 @@ contains
     hd_ind%mythetafield_ = var_set_extravar('theta', 'theta')
     hd_ind%mytheta_zero_ = var_set_extravar('thetazero', 'thetazero')
 
-    ! Set index of energy variable
-    !if (hd_config%gravity) then
-      !grav_phi_=var_set_extravar('Gphi','Gphi')
-    !else
-      !grav_phi_=-1
-    !end if
 
-    !hd_ind%grav_phi_   =grav_phi_
+    !>Grackle:
+
+
+
+    iw_rhoX = -1
+    iw_rhoY = -1
+
+    iw_gamma = -1
+    iw_temperature = -1
+
+    if(hd_config%use_grackle)then
+
+      iw_rhoX = var_set_extravar('rhoX', 'rhoX')
+      iw_rhoY = var_set_extravar('rhoY', 'rhoY')
+
+      iw_gamma = var_set_extravar('gamma', 'gamma')
+      iw_temperature = var_set_extravar('temperature', 'temperature')
+
+      hd_ind%rhoX_=iw_rhoX
+      hd_ind%rhoY_=iw_rhoY
+
+      hd_ind%gamma_ =iw_gamma
+      gamma_ = iw_gamma
+      hd_ind%temperature_ = iw_temperature
+      temperature_ = iw_temperature
+
+    end if
+
+
+
+
+    !End of Grackle part
+
 
     if(hd_config%n_tracer>0)then
       allocate(hd_ind%tracer(hd_config%n_tracer))
@@ -570,13 +893,46 @@ contains
 
   end subroutine hd_fill_phys_indices
 
+  subroutine hd_get_aux(clipping,w,x,ixI^L,ixO^L,subname,use_oldaux,sqrB,SdotB)
+    use mod_global_parameters
+    use mod_usr_methods
+    integer, intent(in)                :: ixI^L, ixO^L
+    real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
+    real(kind=dp)      , intent(inout) :: w(ixI^S,nw)
+    logical, intent(in)                :: clipping
+    character(len=*), intent(in)       :: subname
+    logical         , intent(in), target, optional :: use_oldaux(ixI^S)
+    real(kind=dp)   , intent(in), target, optional :: sqrB(ixI^S),SdotB(ixI^S)
+
+    !---local------
+    double precision, allocatable :: gravity_potential(:^D&)
+    integer :: iw_g_dir,idim
+    !---------------------------------------------------------------------------
+    if (.not. associated(usr_gravity_potential)) then
+      write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"
+      write(*,*) "like the phys_gravity_potential in mod_usr_methods.t"
+      call mpistop("hd_get_aux: usr_gravity_potential not defined")
+    else
+    if(.not.allocated(gravity_potential))allocate(gravity_potential(ixI^S))
+      gravity_potential(ixO^S)=1.0_dp
+      call usr_gravity_potential(ixI^L,ixO^L,w,x,gravity_potential)
+      !==========================================
+      w(ixO^S,grav_phi_)=gravity_potential(ixO^S)
+      !==========================================
+    if(allocated(gravity_potential))deallocate(gravity_potential)
+  end if
+
+
+
+end subroutine hd_get_aux
+
   subroutine hd_check_params
     use mod_global_parameters
     use mod_dust, only: dust_check_params
 
     if (.not. hd_config%energy) then
        if (hd_config%gamma <= 0.0_dp) call mpistop ("Error: hd_gamma <= 0")
-       if (hd_config%adiab <= 0.0_dp) call mpistop ("Error: hd_adiab <= 0")
+       if (hd_config%adiab < 0.0_dp) call mpistop ("Error: hd_adiab < 0")
        hd_config%small_pressure= hd_config%adiab*hd_config%small_density**hd_config%gamma
     else
        if (hd_config%gamma <= 0.0_dp .or. hd_config%gamma == 1.0_dp) &
@@ -614,6 +970,10 @@ contains
       unit_pressure=unit_density*unit_velocity**2.0_dp
       unit_temperature=phys_config%mean_mup*mp*unit_pressure/(unit_density*kB)
       unit_time=unit_length/unit_velocity
+
+
+
+
     end if
 
     hd_config%unit_velocity = unit_velocity
@@ -646,9 +1006,47 @@ contains
       w_convert_factor(mom(:))  = unit_density*unit_velocity
      end if
 
+
+     if(hd_config%use_grackle)then
+      !HI
+      w_convert_factor(rhoHI_)=unit_density
+      !HII
+      w_convert_factor(rhoHII_)=unit_density
+      !HeI
+      w_convert_factor(rhoHeI_)=unit_density
+      !HeII
+      w_convert_factor(rhoHeII_)=unit_density
+      !HeIII
+      w_convert_factor(rhoHeIII_)=unit_density
+      !electrons
+      w_convert_factor(rhoe_)=unit_density
+      !HM
+      w_convert_factor(rhoe_)=unit_density
+      !H2I
+      w_convert_factor(rhoH2I_)=unit_density
+      !H2II
+      w_convert_factor(rhoH2II_)=unit_density
+      !DI
+      w_convert_factor(rhoDI_)=unit_density
+      !DII
+      w_convert_factor(rhoDII_)=unit_density
+      !HDI
+      w_convert_factor(rhoHDI_)=unit_density
+      !metal
+      w_convert_factor(rhometal_)=unit_density
+      !dust
+      w_convert_factor(rhodust_)=unit_density
+
+      w_convert_factor(iw_rhoX)=unit_density
+      w_convert_factor(iw_rhoY)=unit_density
+     end if
+
+
      if (hd_config%dust_on) call dust_physical_units
      if (hd_config%radiative_cooling) call rad_cooling_physical_units
      if(hd_config%mean_mup_on)w_convert_factor(hd_ind%mup_) = hd_config%mean_mup
+     w_convert_factor(hd_ind%gamma_) = 1.0_dp
+     w_convert_factor(hd_ind%temperature_) = unit_temperature
      time_convert_factor   = unit_time
      length_convert_factor = unit_length
 
@@ -674,7 +1072,23 @@ contains
     if(hd_config%dust_on)call dust_check_w(primitive, ixI^L, ixO^L, flag, w)
     if(hd_config%chemical_on)call chemical_check_w(primitive, ixI^L, ixO^L, flag, w)
 
-    where(w(ixO^S, rho_) < hd_config%small_density) flag(ixO^S) = rho_
+    if(hd_config%use_grackle)then
+      where(w(ixO^S, rho_) < hd_config%small_density) flag(ixO^S) = rho_
+      where(w(ixO^S, rhoHI_) < hd_config%small_density) flag(ixO^S) = rhoHI_
+      where(w(ixO^S, rhoHII_) < hd_config%small_density) flag(ixO^S) = rhoHII_
+      where(w(ixO^S, rhoHM_) < hd_config%small_density) flag(ixO^S) = rhoHM_
+      where(w(ixO^S, rhoHeI_) < hd_config%small_density) flag(ixO^S) = rhoHeI_
+      where(w(ixO^S, rhoHeII_) < hd_config%small_density) flag(ixO^S) = rhoHeII_
+      where(w(ixO^S, rhoHeIII_) < hd_config%small_density) flag(ixO^S) = rhoHeIII_
+      where(w(ixO^S, rhoH2I_) < hd_config%small_density) flag(ixO^S) = rhoH2I_
+      where(w(ixO^S, rhoH2II_) < hd_config%small_density) flag(ixO^S) = rhoH2II_
+      where(w(ixO^S, rhoDI_) < hd_config%small_density) flag(ixO^S) = rhoDI_
+      where(w(ixO^S, rhoDII_) < hd_config%small_density) flag(ixO^S) = rhoDII_
+      where(w(ixO^S, rhoHDI_) < hd_config%small_density) flag(ixO^S) = rhoHDI_
+      where(w(ixO^S, rhoe_) < hd_config%small_density) flag(ixO^S) = rhoe_
+      where(w(ixO^S, rhometal_) < hd_config%small_density) flag(ixO^S) = rhometal_
+      where(w(ixO^S, rhodust_) < hd_config%small_density) flag(ixO^S) = rhodust_
+    end if
 
     if (hd_config%energy) then
        if (primitive) then
@@ -946,8 +1360,10 @@ contains
     real(dp), intent(out)        :: pth(ixI^S)
     !----------------------------------------------------
     if (hd_config%energy) then
-       pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
-            hd_kin_en(w, ixI^L, ixO^L))
+      !pth(ixO^S) = (w(ixO^S,gamma_)-1.0_dp) * (w(ixO^S, e_) - &
+      !     hd_kin_en(w, ixI^L, ixO^L))
+      pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
+          hd_kin_en(w, ixI^L, ixO^L))
     else
        pth(ixO^S) = hd_config%adiab * w(ixO^S, rho_)**hd_config%gamma
     end if
@@ -955,6 +1371,96 @@ contains
     !if (check_small_values)call hd_handle_small_values_pressure(ixI^L,ixO^L,x,&
     !                                                            'ptherm',pth,w)
   end subroutine hd_get_pthermal
+
+  !> Calculate adiabatic index
+  subroutine hd_get_gamma(w, x, ixI^L, ixO^L, gammaeff)
+    use mod_global_parameters
+
+    integer, intent(in)          :: ixI^L, ixO^L
+    real(dp), intent(in)         :: w(ixI^S, nw)
+    real(dp), intent(in)         :: x(ixI^S, 1:ndim)
+    real(dp), intent(out)        :: gammaeff(ixI^S)
+    real(kind=dp), dimension(ixI^S ):: nH2, nother
+    real(kind=dp), dimension(ixI^S ):: gammaoth
+    real(kind=dp), dimension(ixI^S ):: inv_gammaH2_1, inv_gammaoth_1
+    real(kind=dp)                :: tvar
+    !real(kind=dp), dimension(ixI^S ):: tvar
+    integer :: imesh^D
+    !----------------------------------------------------
+    !write(*,*) 'temperature field = ', w(ixO^S,temperature_)*w_convert_factor(temperature_)
+    if (hd_config%use_grackle) then
+      nH2(ixO^S) = 0.5d0*(w(ixO^S,rhoH2I_) + &
+      w(ixO^S,rhoH2II_))
+      nother(ixO^S) = (w(ixO^S,rhoHeI_) + w(ixO^S,rhoHeII_) +&
+                   w(ixO^S,rhoHeIII_))/4.0d0 +&
+                   w(ixO^S,rhoHI_) + w(ixO^S,rhoHII_) +&
+                   w(ixO^S,rhoe_)
+      {do imesh^D=ixOmin^D,ixOmax^D|\}
+      if(nH2(imesh^D)/nother(imesh^D) > 1.0d-3)then
+        tvar = 6100.0d0/(w(imesh^D, temperature_)*&
+        w_convert_factor(temperature_))
+        if (tvar > 10.0)then
+          inv_gammaH2_1(imesh^D) = 0.5d0*5.0d0
+        else
+          inv_gammaH2_1(imesh^D) = 0.5d0*(5.0d0 +&
+                             2.0d0 * tvar**2.0d0 *&
+                          DEXP(tvar)/(DEXP(tvar)-1.0d0)**2.0d0)
+        end if
+      else
+        inv_gammaH2_1(imesh^D) = 2.5d0
+      end if
+      {end do^D&|\}
+      !tvar(ixO^S)=6100.0d0/(w(ixO^S, temperature_)*&
+      !w_convert_factor(temperature_))
+      !inv_gammaH2_1(ixO^S)=merge(merge(0.5d0*5.0d0,&
+      !                0.5d0*(5.0d0 +&
+      !                2.0d0*tvar(ixO^S)**2.0d0*&
+      !                DEXP(tvar(ixO^S))/&
+      !                (DEXP(tvar(ixO^S))-1.0d0)**2.0d0),&
+      !tvar(ixO^S)>10.0d0),&
+      !2.5d0,nH2(ixO^S)/nother(ixO^S)>1.0d-3)
+
+      gammaoth(ixO^S) = hd_config%gamma
+      inv_gammaoth_1(ixO^S) = 1.0d0/(gammaoth(ixO^S)-1.0d0)
+
+      gammaeff(ixO^S) = 1.0d0 + (nH2(ixO^S) + nother(ixO^S))/&
+                   (nH2(ixO^S)*inv_gammaH2_1(ixO^S) +&
+                nother(ixO^S)*inv_gammaoth_1(ixO^S))
+    else
+       gammaeff(ixO^S) = hd_config%gamma
+    end if
+
+    !if (check_small_values)call hd_handle_small_values_pressure(ixI^L,ixO^L,x,&
+    !                                                            'gammaeff',gammaeff,w)
+  end subroutine hd_get_gamma
+
+  !> Calculate mean molecular weight
+  subroutine hd_get_mmw(w, x, ixI^L, ixO^L, mmw)
+    use mod_global_parameters
+
+    integer, intent(in)          :: ixI^L, ixO^L
+    real(dp), intent(in)         :: w(ixI^S, nw)
+    real(dp), intent(in)         :: x(ixI^S, 1:ndim)
+    real(dp), intent(out)        :: mmw(ixI^S)
+    !----------------------------------------------------
+    if (hd_config%use_grackle) then
+      mmw(ixO^S) = w(ixO^S,rho_)/&
+        (w(ixO^S,rhoHI_)+w(ixO^S,rhoHII_)+&
+        w(ixO^S,rhoHM_)+&
+        0.25d0*(w(ixO^S,rhoHeI_)+w(ixO^S,rhoHeII_)+&
+        w(ixO^S,rhoHeIII_))+&
+        0.5d0*(w(ixO^S,rhoH2I_)+w(ixO^S,rhoH2II_))+&
+        w(ixO^S,rhometal_)/16.0)
+
+       !mmw(ixO^S) = w(ixO^S,hd_ind%H2I_density_)
+    else
+       mmw(ixO^S) = hd_config%mean_mup
+    end if
+
+    !if (check_small_values)call hd_handle_small_values_pressure(ixI^L,ixO^L,x,&
+    !                                                            'mmw',mmw,w)
+  end subroutine hd_get_mmw
+
   !> Calculate temperature within ixO^L
   subroutine hd_get_temperature( ixI^L, ixO^L,w, x, temperature)
     use mod_global_parameters
@@ -965,7 +1471,18 @@ contains
     real(dp), intent(out)        :: temperature(ixI^S)
     real(dp), dimension(ixI^S)   :: pth(ixI^S)
     logical , dimension(ixI^S)   :: patch_mult_mup
+    real(kind=dp)  :: mp,kB
     !----------------------------------------------------
+
+    if(SI_unit) then
+        mp=mp_SI
+        kB=kB_SI
+    else
+        mp=mp_cgs
+        kB=kB_cgs
+    end if
+
+
     if (hd_config%energy) then
       call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
       temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
@@ -979,7 +1496,43 @@ contains
         end if
       end if
     else
-      Temperature(ixO^S) = hd_config%adiab/phys_config%mean_mass
+      Temperature(ixO^S) = hd_config%temperature_isotherm !necessarilly isotherm
+      if(hd_config%mean_mup_on)then
+        patch_mult_mup(ixO^S) = dabs(w(ixO^S, phys_ind%mup_)-1.0_dp)>smalldouble &
+             .or. w(ixO^S, phys_ind%mup_)>smalldouble
+        if(any(patch_mult_mup(ixO^S)))then
+          where(patch_mult_mup(ixO^S))
+            temperature(ixO^S) =temperature(ixO^S)*w(ixO^S,phys_ind%mup_)
+          end where
+        end if
+      end if
+    end if
+
+    return
+
+    if (hd_config%energy) then
+      call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
+      temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
+      if(hd_config%mean_mup_on)then
+        patch_mult_mup(ixO^S) = dabs(w(ixO^S, phys_ind%mup_)-1.0_dp)>smalldouble &
+             .or. w(ixO^S, phys_ind%mup_)>smalldouble
+        if(any(patch_mult_mup(ixO^S)))then
+          where(patch_mult_mup(ixO^S))
+            temperature(ixO^S) =temperature(ixO^S)*w(ixO^S,phys_ind%mup_)
+          end where
+        end if
+      end if
+    else
+      Temperature(ixO^S) = hd_config%temperature_isotherm !necessarilly isotherm
+      if(hd_config%mean_mup_on)then
+        patch_mult_mup(ixO^S) = dabs(w(ixO^S, phys_ind%mup_)-1.0_dp)>smalldouble &
+             .or. w(ixO^S, phys_ind%mup_)>smalldouble
+        if(any(patch_mult_mup(ixO^S)))then
+          where(patch_mult_mup(ixO^S))
+            temperature(ixO^S) =temperature(ixO^S)*w(ixO^S,phys_ind%mup_)
+          end where
+        end if
+      end if
     end if
   end subroutine hd_get_temperature
 
@@ -999,6 +1552,25 @@ contains
     call hd_get_v(w, x, ixI^L, ixO^L, idim, v)
 
     f(ixO^S, rho_) = v(ixO^S) * w(ixO^S, rho_)
+
+    !Mialy s addings:
+
+    if(hd_config%use_grackle)then
+      f(ixO^S, rhoHI_) = v(ixO^S) * w(ixO^S, rhoHI_)
+      f(ixO^S, rhoHII_) = v(ixO^S) * w(ixO^S, rhoHII_)
+      f(ixO^S, rhoHM_) = v(ixO^S) * w(ixO^S, rhoHM_)
+      f(ixO^S, rhoHeI_) = v(ixO^S) * w(ixO^S, rhoHeI_)
+      f(ixO^S, rhoHeII_) = v(ixO^S) * w(ixO^S, rhoHeII_)
+      f(ixO^S, rhoHeIII_) = v(ixO^S) * w(ixO^S, rhoHeIII_)
+      f(ixO^S, rhoH2I_) = v(ixO^S) * w(ixO^S, rhoH2I_)
+      f(ixO^S, rhoH2II_) = v(ixO^S) * w(ixO^S, rhoH2II_)
+      f(ixO^S, rhoe_) = v(ixO^S) * w(ixO^S, rhoe_)
+      f(ixO^S, rhoDI_) = v(ixO^S) * w(ixO^S, rhoDI_)
+      f(ixO^S, rhoDII_) = v(ixO^S) * w(ixO^S, rhoDII_)
+      f(ixO^S, rhoHDI_) = v(ixO^S) * w(ixO^S, rhoHDI_)
+      f(ixO^S, rhometal_) = v(ixO^S) * w(ixO^S, rhometal_)
+      f(ixO^S, rhodust_) = v(ixO^S) * w(ixO^S, rhodust_)
+    end if
 
     ! Momentum flux is v_i*m_i, +p in direction idim
     do idir = 1, ndir
@@ -1052,6 +1624,23 @@ contains
     end if
 
     f(ixO^S, rho_) = w(ixO^S,mom(idim)) * w(ixO^S, rho_)
+
+    if(hd_config%use_grackle)then
+      f(ixO^S, rhoHI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHI_)
+      f(ixO^S, rhoHII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHII_)
+      f(ixO^S, rhoHM_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHM_)
+      f(ixO^S, rhoHeI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHeI_)
+      f(ixO^S, rhoHeII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHeII_)
+      f(ixO^S, rhoHeIII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHeIII_)
+      f(ixO^S, rhoH2I_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoH2I_)
+      f(ixO^S, rhoH2II_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoH2II_)
+      f(ixO^S, rhoe_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoe_)
+      f(ixO^S, rhoDI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoDI_)
+      f(ixO^S, rhoDII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoDII_)
+      f(ixO^S, rhoHDI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHDI_)
+      f(ixO^S, rhometal_) = w(ixO^S,mom(idim)) * w(ixO^S, rhometal_)
+      f(ixO^S, rhodust_) = w(ixO^S,mom(idim)) * w(ixO^S, rhodust_)
+    end if
 
     ! Momentum flux is v_i*m_i, +p in direction idim
     do idir = 1, ndir
@@ -1266,494 +1855,7 @@ contains
   !                  =finite_volume:ixOmin^D
   !/
 
-  subroutine improve_gravity_hse(wLp, wRp, wCT, x, ixI^L, ixO^L, idir,&
-  qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
-    use mod_global_parameters
-    use mod_usr_methods, only: usr_reset_solver
-    use mod_finite_volume, only: reconstruct_LR, reconstruct_LR3
-    character(len=*), intent(in)                         :: method
-    integer, intent(in)             :: ixI^L, ixO^L, idir
-    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
-    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
-    real(kind=dp)      , intent(inout) :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
-    type(walloc)       , intent(inout)    :: local_block
-    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
-    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
-    ! ..........local...........
-    ! primitive w at cell center
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim,wpert,wpertLp,wpertRp
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: wpertLC, wpertRC
-    integer                                 :: ixOfinite^L
-    real(kind=dp)   , dimension(1:ndim)     :: dxinv
-    character(len=len(method))              :: method_loc
-    integer :: iw, ix^L, hxO^L, ixC^L, ixCR^L, kxL^L, kxC^L, kxR^L
 
-
-
-    !Recompute output part of the indexes from mod_finite_volume.t:finite_volume
-    ixOfinitemax^D=ixOmax^D;
-    ixOfinitemin^D=ixOmin^D+kr(idir,^D);
-
-
-
-    wprim=wCT
-    call phys_to_primitive(ixI^L,ixI^L,wprim,x)
-
-
-    ^D&dxinv(^D)=-qdt/dx^D;
-
-    ! initialise the flux scheme
-    method_loc=trim(method)
-
-    !allow the user to change localy the numerical method
-    !Mialy : this should be at the end of the finite volume treatment
-    !after cooling source term and then L1 is being properly computed
-    !so that solver is changed for the next time step
-    call usr_reset_solver(ixI^L,ixI^L,idir,qt,wprim,x,method,&
-      type_limiter(node(plevel_,saveigrid)),method_loc,typelimiter)
-
-
-    ! use interface value of w0 at idir=finite_volume:idim
-    local_block%iw0=idir
-
-    hxO^L=ixOfinite^L-kr(idir,^D);
-    ! ixC is centered index in the idir=finite_volume:idim
-    ! direction from ixOmin-1/2 to ixOmax+1/2
-    ixCmax^D=ixOfinitemax^D; ixCmin^D=hxOmin^D;
-
-    kxCmin^D=ixImin^D; kxCmax^D=ixImax^D-kr(idir,^D);!i or j
-    kxR^L=kxC^L+kr(idir,^D);! i+1 or j+1
-    kxL^L=kxC^L-kr(idir,^D);! i-1 or j-1
-
-
-
-    ! wRp and wLp are defined at the same locations, and will correspond to
-    ! the left and right reconstructed values at a cell face. Their indexing
-    ! is similar to cell-centered values, but in direction idir=finite_volume:idim they are
-    ! shifted half a cell towards the 'lower' direction.
-
-    !first setting of the primitive left and right state variables
-    !at the cell centers
-    ! 20-03-22 : The methods below are only [yet]
-    ! possible because iw_e > 0
-    ! for non-adiabatic HD.
-    ! For abiabatic HD, we have iw_e = -1
-    ! which breaks the indexing in the below schemes
-    select case (hd_config%gravity_hse_scheme)
-    case('zerothorder','twoordernohse','twoordernopert')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-    case('firstorder')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-      !first-order scheme from Kappeli et al. (2016)
-      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                      half*wprim(kxR^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                      half*wprim(kxC^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-    case('twoorderpert','twoorderpert2')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-      ! State vectors for all perturbation parts:
-      ! - Here, only the pressure is perturbated
-      wpertRp(kxC^S,1:nw)=0.0_dp
-      wpertLp(kxC^S,1:nw)=0.0_dp
-      ! By definition, wpert(i,j)(R_i,z_j)=0 for all variables
-      ! (non-reconstructed pressure included)
-      wpert(kxC^S,1:nw)=0.0_dp
-      !p_1,i,j(R_i+1,z_j)=p_i+1,j-p_0,i,j(R_i+1,z_j)
-      wpertRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-        (wprim(kxC^S,iw_e)-&
-        half*(wprim(kxC^S,iw_rho)+wprim(kxR^S,iw_rho))*&
-        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi)))
-      !p_1,i,j(R_i-1,z_j)=p_i-1,j-p_0,i,j(R_i-1,z_j)
-      wpertLp(kxC^S,iw_e)=wprim(kxL^S,iw_e)-&
-        (wprim(kxC^S,iw_e)+&
-        half*(wprim(kxL^S,iw_rho)+wprim(kxC^S,iw_rho))*&
-        (wprim(kxC^S,iw_grav_phi)-wprim(kxL^S,iw_grav_phi)))
-    case default
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-    end select
-
-    ! Determine stencil size
-    ! phys_wider_stencil from mod_physics and set in each physics mod_..._phys.t module
-    {ixCRmin^D = ixCmin^D - phys_wider_stencil\}
-    {ixCRmax^D = ixCmax^D + phys_wider_stencil\}
-
-    !reconstruction or not of the left and right state variables
-    !at the cell interfaces and their conservative variables
-    select case (hd_config%gravity_hse_scheme)
-
-    case('zerothorder','firstorder')
-      ! do no left/right states reconstruction
-      wLC=wLp
-      wRC=wRp
-      call phys_to_conserved(ixI^L,ixI^L,wLC,x)
-      call phys_to_conserved(ixI^L,ixI^L,wRC,x)
-    case('twoordernohse')
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-    case('twoordernopert')
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-      ! since no perturbation part of the pressure is taken into account
-      ! and this equilibrum pressure part allow to resolve spatially second-order
-      ! hydrostatic equilibrum
-      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                      half*wprim(kxR^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                      half*wprim(kxC^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLC=wLp
-      wRC=wRp
-      call phys_to_conserved(ixI^L,ixI^L,wLC,x)
-      call phys_to_conserved(ixI^L,ixI^L,wRC,x)
-    case('twoorderpert','twoorderpert2')
-      ! 1) apply limited reconstruction for left and right status at cell interfaces
-      ! for the perturbated part of the pressure
-      ! *p_1,i,j^L(R_i+1/2,z_j)=p_1,i,j(R_i,z_j)+&
-      ! D(p_1,i,j(R_i,z_j))*(R_i+1/2-R_i)
-      ! = wpertLp(i,j)
-      ! *p_1,i,j^R(R_i-1/2,z_j)
-      ! => p_1,(i+1),j^R(R_(i+1)-1/2,z_j)
-      ! = p_1,i+1,j^R(R_i+1/2,z_j)
-      ! = p_1,i+1,j(R_i+1,z_j)+&
-      !   D(p_1,i+1,j(R_i+1,z_j))*(R_i+1/2-R_i+1)
-      ! = wpertRp(i,j)
-
-      ! if trim(hd_config%gravity_hse_scheme)=='twoorderpert'
-      !  ===> recompute first the equilibrum part of the pressure
-      ! and then reconstruct it too, before adding the reconstructed
-      ! perturbation part of the pressure
-      if(trim(hd_config%gravity_hse_scheme)=='twoorderpert2')then
-        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                        half*wprim(kxR^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-        wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                        half*wprim(kxC^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      end if
-
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR3(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wpertLC,wpertRC,&
-        wpertLp,wpert,wpertRp,x,.true.,iw_e)
-      case ('predictor')
-        call reconstruct_LR3(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wpertLC,wpertRC,&
-        wpertLp,wpert,wpertRp,x,.false.,iw_e)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-
-      ! 2) apply limited reconstruction for left and right status at cell interfaces
-      ! for wLp and wRp (main state variables)
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-
-      ! 3) Combine the (non-slope limited) equilibrum and
-      ! slope-limited reconstructed perturbation pressure parts
-      ! from 1) and 2) : need to recompute equilibrum pressure part
-      ! which has been non-desirably slope-limited in the process
-      ! 3)a] Equilibrum part of:
-      ! - pressure
-      if(trim(hd_config%gravity_hse_scheme)=='twoorderpert')then
-        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                        half*wprim(kxR^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-        wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                        half*wprim(kxC^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      end if
-      ! 3)b] Combination with the perturbated part of :
-      ! - pressure
-      wRp(kxC^S,iw_e)=wRp(kxC^S,iw_e)+wpertRp(kxC^S,iw_e)!beware of indexing
-      wLp(kxC^S,iw_e)=wLp(kxC^S,iw_e)+wpertLp(kxC^S,iw_e)
-    case default
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-    end select
-    !write(*,*) 'phys_modify_wLR called until end !!'
-
-
-
-
-  end subroutine improve_gravity_hse
-
-
-  subroutine improve_gravity_hse_exact(wLp, wRp, wCT, x, ixI^L, ixO^L, idir,&
-  qdt, qtC, qt, dx^D, method, wnew, wold, local_block, wLC, wRC)
-    use mod_global_parameters
-    use mod_usr_methods, only: usr_reset_solver
-    use mod_finite_volume, only: reconstruct_LR, reconstruct_LR3
-    character(len=*), intent(in)                         :: method
-    integer, intent(in)             :: ixI^L, ixO^L, idir
-    real(kind=dp)   , dimension(ixI^S,1:ndim), intent(in) ::  x
-    real(kind=dp)   , intent(in)                         :: qdt, qtC, qt, dx^D
-    real(kind=dp)      , intent(inout) :: wLp(ixI^S,1:nw), wRp(ixI^S,1:nw), wCT(ixI^S,1:nw)
-    type(walloc)       , intent(inout)    :: local_block
-    real(kind=dp)   , intent(inout) :: wLC(ixI^S,1:nw), wRC(ixI^S,1:nw)
-    real(kind=dp)   , dimension(ixI^S,1:nw)               :: wnew, wold
-    ! ..........local...........
-    ! primitive w at cell center
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: wprim,wpert,wpertLp,wpertRp
-    real(kind=dp)   , dimension(ixI^S,1:nw) :: wpertLC, wpertRC,wphikR,wphiLR
-    integer                                 :: ixOfinite^L
-    real(kind=dp)   , dimension(1:ndim)     :: dxinv
-    character(len=len(method))              :: method_loc
-    integer :: iw, ix^L, hxO^L, ixC^L, ixCR^L, kxL^L, kxC^L, kxR^L
-
-
-
-    !Recompute output part of the indexes from mod_finite_volume.t:finite_volume
-    ixOfinitemax^D=ixOmax^D;
-    ixOfinitemin^D=ixOmin^D+kr(idir,^D);
-
-
-
-    wprim=wCT
-    call phys_to_primitive(ixI^L,ixI^L,wprim,x)
-
-
-    ^D&dxinv(^D)=-qdt/dx^D;
-
-    ! initialise the flux scheme
-    method_loc=trim(method)
-
-    !allow the user to change localy the numerical method
-    !Mialy : this should be at the end of the finite volume treatment
-    !after cooling source term and then L1 is being properly computed
-    !so that solver is changed for the next time step
-    call usr_reset_solver(ixI^L,ixI^L,idir,qt,wprim,x,method,&
-      type_limiter(node(plevel_,saveigrid)),method_loc,typelimiter)
-
-
-    ! use interface value of w0 at idir=finite_volume:idim
-    local_block%iw0=idir
-
-    hxO^L=ixOfinite^L-kr(idir,^D);
-    ! ixC is centered index in the idir=finite_volume:idim
-    ! direction from ixOmin-1/2 to ixOmax+1/2
-    ixCmax^D=ixOfinitemax^D; ixCmin^D=hxOmin^D;
-
-    kxCmin^D=ixImin^D; kxCmax^D=ixImax^D-kr(idir,^D);!i or j
-    kxR^L=kxC^L+kr(idir,^D);! i+1 or j+1
-    kxL^L=kxC^L-kr(idir,^D);! i-1 or j-1
-
-
-
-    ! wRp and wLp are defined at the same locations, and will correspond to
-    ! the left and right reconstructed values at a cell face. Their indexing
-    ! is similar to cell-centered values, but in direction idir=finite_volume:idim they are
-    ! shifted half a cell towards the 'lower' direction.
-
-    !first setting of the primitive left and right state variables
-    !at the cell centers
-    ! 20-03-22 : The methods below are only [yet]
-    ! possible because iw_e > 0
-    ! for non-adiabatic HD.
-    ! For abiabatic HD, we have iw_e = -1
-    ! which breaks the indexing in the below schemes
-    select case (hd_config%gravity_hse_scheme)
-    case('zerothorder','twoordernohse','twoordernopert')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-    case('firstorder')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-      !first-order scheme from Kappeli et al. (2016)
-      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                      half*wprim(kxR^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                      half*wprim(kxC^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-    case('twoorderpert','twoorderpert2')
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-      ! State vectors for all perturbation parts:
-      ! - Here, only the pressure is perturbated
-      wpertRp(kxC^S,1:nw)=0.0_dp
-      wpertLp(kxC^S,1:nw)=0.0_dp
-      ! By definition, wpert(i,j)(R_i,z_j)=0 for all variables
-      ! (non-reconstructed pressure included)
-      wpert(kxC^S,1:nw)=0.0_dp
-      !p_1,i,j(R_i+1,z_j)=p_i+1,j-p_0,i,j(R_i+1,z_j)
-      wpertRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)-&
-        (wprim(kxC^S,iw_e)-&
-        half*(wprim(kxC^S,iw_rho)+wprim(kxR^S,iw_rho))*&
-        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi)))
-      !p_1,i,j(R_i-1,z_j)=p_i-1,j-p_0,i,j(R_i-1,z_j)
-      wpertLp(kxC^S,iw_e)=wprim(kxL^S,iw_e)-&
-        (wprim(kxC^S,iw_e)+&
-        half*(wprim(kxL^S,iw_rho)+wprim(kxC^S,iw_rho))*&
-        (wprim(kxC^S,iw_grav_phi)-wprim(kxL^S,iw_grav_phi)))
-    case default
-      wRp(kxC^S,1:nw)=wprim(kxR^S,1:nw)
-      wLp(kxC^S,1:nw)=wprim(kxC^S,1:nw)
-    end select
-
-    ! Determine stencil size
-    ! phys_wider_stencil from mod_physics and set in each physics mod_..._phys.t module
-    {ixCRmin^D = ixCmin^D - phys_wider_stencil\}
-    {ixCRmax^D = ixCmax^D + phys_wider_stencil\}
-
-    !reconstruction or not of the left and right state variables
-    !at the cell interfaces and their conservative variables
-    select case (hd_config%gravity_hse_scheme)
-
-    case('zerothorder','firstorder')
-      ! do no left/right states reconstruction
-      wLC=wLp
-      wRC=wRp
-      call phys_to_conserved(ixI^L,ixI^L,wLC,x)
-      call phys_to_conserved(ixI^L,ixI^L,wRC,x)
-    case('twoordernohse')
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-    case('twoordernopert')
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-      ! since no perturbation part of the pressure is taken into account
-      ! and this equilibrum pressure part allow to resolve spatially second-order
-      ! hydrostatic equilibrum
-      wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                      half*wprim(kxR^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                      half*wprim(kxC^S,iw_rho)*&
-                      (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      wLC=wLp
-      wRC=wRp
-      call phys_to_conserved(ixI^L,ixI^L,wLC,x)
-      call phys_to_conserved(ixI^L,ixI^L,wRC,x)
-    case('twoorderpert','twoorderpert2')
-      ! 1) apply limited reconstruction for left and right status at cell interfaces
-      ! for the perturbated part of the pressure
-      ! *p_1,i,j^L(R_i+1/2,z_j)=p_1,i,j(R_i,z_j)+&
-      ! D(p_1,i,j(R_i,z_j))*(R_i+1/2-R_i)
-      ! = wpertLp(i,j)
-      ! *p_1,i,j^R(R_i-1/2,z_j)
-      ! => p_1,(i+1),j^R(R_(i+1)-1/2,z_j)
-      ! = p_1,i+1,j^R(R_i+1/2,z_j)
-      ! = p_1,i+1,j(R_i+1,z_j)+&
-      !   D(p_1,i+1,j(R_i+1,z_j))*(R_i+1/2-R_i+1)
-      ! = wpertRp(i,j)
-
-      ! if trim(hd_config%gravity_hse_scheme)=='twoorderpert'
-      !  ===> recompute first the equilibrum part of the pressure
-      ! and then reconstruct it too, before adding the reconstructed
-      ! perturbation part of the pressure
-      if(trim(hd_config%gravity_hse_scheme)=='twoorderpert2')then
-        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                        half*wprim(kxR^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-        wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                        half*wprim(kxC^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      end if
-
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR3(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wpertLC,wpertRC,&
-        wpertLp,wpert,wpertRp,x,.true.,iw_e)
-      case ('predictor')
-        call reconstruct_LR3(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wpertLC,wpertRC,&
-        wpertLp,wpert,wpertRp,x,.false.,iw_e)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-
-      ! 2) apply limited reconstruction for left and right status at cell interfaces
-      ! for wLp and wRp (main state variables)
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-
-      ! 3) Combine the (non-slope limited) equilibrum and
-      ! slope-limited reconstructed perturbation pressure parts
-      ! from 1) and 2) : need to recompute equilibrum pressure part
-      ! which has been non-desirably slope-limited in the process
-      ! 3)a] Equilibrum part of:
-      ! - pressure
-      if(trim(hd_config%gravity_hse_scheme)=='twoorderpert')then
-        wRp(kxC^S,iw_e)=wprim(kxR^S,iw_e)+&
-                        half*wprim(kxR^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-        wLp(kxC^S,iw_e)=wprim(kxC^S,iw_e)-&
-                        half*wprim(kxC^S,iw_rho)*&
-                        (wprim(kxR^S,iw_grav_phi)-wprim(kxC^S,iw_grav_phi))
-      end if
-      ! 3)b] Combination with the perturbated part of :
-      ! - pressure
-      wRp(kxC^S,iw_e)=wRp(kxC^S,iw_e)+wpertRp(kxC^S,iw_e)!beware of indexing
-      wLp(kxC^S,iw_e)=wLp(kxC^S,iw_e)+wpertLp(kxC^S,iw_e)
-    case default
-      ! apply limited reconstruction for left and right status at cell interfaces
-      select case (typelimited)
-      case ('previous')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wold,wprim,wLC,wRC,wLp,wRp,x,.true.)
-      case ('predictor')
-        call reconstruct_LR(ixI^L,ixCR^L,ixCR^L,idir,wprim,wprim,wLC,wRC,wLp,wRp,x,.false.)
-      case default
-        call mpistop("Error in reconstruction: no such base for limiter")
-      end select
-    end select
-    !write(*,*) 'phys_modify_wLR called until end !!'
-
-
-
-
-  end subroutine improve_gravity_hse_exact
 
   function hd_kin_en(w, ixI^L, ixO^L, inv_rho) result(ke)
     use mod_global_parameters, only: nw, ndim
@@ -1769,80 +1871,7 @@ contains
     end if
   end function hd_kin_en
 
-  subroutine hd_get_aux(clipping,w,x,ixI^L,ixO^L,subname,use_oldaux,sqrB,SdotB)
-    use mod_global_parameters
-    use mod_usr_methods
-    integer, intent(in)                :: ixI^L, ixO^L
-    real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
-    real(kind=dp)      , intent(inout) :: w(ixI^S,nw)
-    logical, intent(in)                :: clipping
-    character(len=*), intent(in)       :: subname
-    logical         , intent(in), target, optional :: use_oldaux(ixI^S)
-    real(kind=dp)   , intent(in), target, optional :: sqrB(ixI^S),SdotB(ixI^S)
 
-    !---local------
-    double precision, allocatable :: gravity_potential(:^D&)
-    {real(kind=dp)      , allocatable    :: xhalfR^D(:^DD&,:)\}
-    integer :: iw_g_dir,idim
-    !---------------------------------------------------------------------------
-
-
-
-    if(hd_config%use_gravity_g)then
-      if (.not. associated(usr_gravity_potential)) then
-        write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"
-        write(*,*) "like the phys_gravity_potential in mod_usr_methods.t"
-        call mpistop("hd_get_aux: usr_gravity_potential not defined")
-      else
-        if(.not.allocated(gravity_potential))allocate(gravity_potential(ixI^S))
-        {if(.not.allocated(xhalfR^D))allocate(xhalfR^D(ixI^S,1:ndim))\}
-
-          !x_i+1/2=x_i+dx/2=(x_i+x_i+1)/2
-          {^D&!Case idim=^D
-            gravity_potential(ixI^S)=0.0_dp
-            do idim=1,ndim
-              if(idim==^D)then
-                xhalfR^D(ixI^S,idim)=x(ixI^S,idim)+half*block%dx(ixI^S,idim)
-              else
-                xhalfR^D(ixI^S,idim)=x(ixI^S,idim)
-              end if
-            end do
-          !==========================================
-          iw_g_dir=iw_grav_g^D
-          ! since the integral
-          ! int_x_i^x_i+1/2 g_x(x,...)dx = - int_x_i^x_i+1/2 dphi(x,..)/dx*dx
-          ! = -(phi(x_i+1/2)-phi(x_i))
-          ! along x=^D-th direction
-
-          !phi(x_i+1/2):
-          call usr_gravity_potential(ixI^L,ixO^L,w,xhalfR^D,gravity_potential)
-          w(ixO^S,iw_g_dir)=gravity_potential(ixO^S)
-          !-(phi(x_i+1/2)-phi(x_i)):
-          call usr_gravity_potential(ixI^L,ixO^L,w,x,gravity_potential)
-          w(ixO^S,iw_g_dir)=(w(ixO^S,iw_g_dir)-gravity_potential(ixO^S)) !=-g(x_i+1/2,...)
-          \}
-          !==========================================
-        {if(allocated(xhalfR^D))deallocate(xhalfR^D)\}
-
-      end if
-    else
-      if (.not. associated(usr_gravity_potential)) then
-        write(*,*) "mod_usr.t: please point usr_gravity_potential to a subroutine"
-        write(*,*) "like the phys_gravity_potential in mod_usr_methods.t"
-        call mpistop("hd_get_aux: usr_gravity_potential not defined")
-      else
-        if(.not.allocated(gravity_potential))allocate(gravity_potential(ixI^S))
-          gravity_potential(ixO^S)=1.0_dp
-          call usr_gravity_potential(ixI^L,ixO^L,w,x,gravity_potential)
-          !==========================================
-          w(ixO^S,grav_phi_)=gravity_potential(ixO^S)
-          !==========================================
-        if(allocated(gravity_potential))deallocate(gravity_potential)
-      end if
-    end if
-
-
-  end subroutine hd_get_aux
 
   function hd_inv_rho(w, ixI^L, ixO^L) result(inv_rho)
     use mod_global_parameters, only: nw, ndim
@@ -1920,6 +1949,23 @@ contains
     integer                         :: idir
      if(all(flag(ixO^S) <= 0)) return
         where(flag(ixO^S) > 0) w(ixO^S,rho_) = hd_config%small_density
+
+        if(hd_config%use_grackle)then
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHI_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHII_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHM_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHeI_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHeII_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHeIII_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoH2I_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoH2II_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoDI_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoDII_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHDI_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoe_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhometal_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhodust_) = hd_config%small_density
+        end if
 
         do idir = 1, ndir
           where(flag(ixO^S) > 0) w(ixO^S, mom(idir)) = 0.0_dp
