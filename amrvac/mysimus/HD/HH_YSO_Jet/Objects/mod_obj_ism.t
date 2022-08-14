@@ -812,7 +812,7 @@ contains
       end if cond_csound_set
     end if
 
-    write(*,*) 'pressure in ISM parameters set_complet == ', self%myconfig%pressure
+    !write(*,*) 'pressure in ISM parameters set_complet == ', self%myconfig%pressure
 
     !set here pressure and temperature parameters according to grackle
 
@@ -1137,11 +1137,11 @@ contains
                end where
              end if
            end if
-           write(*,*) 'pressure in ISM parameters set_w == ', self%myconfig%pressure*&
-           self%myphysunit%myconfig%pressure
+           !write(*,*) 'pressure in ISM parameters set_w == ', self%myconfig%pressure*&
+           !self%myphysunit%myconfig%pressure
            if(phys_config%energy)then
-              write(*,*) 'ISM set_w temperature',self%myconfig%temperature*&
-              self%myphysunit%myconfig%temperature
+              !write(*,*) 'ISM set_w temperature',self%myconfig%temperature*&
+              !self%myphysunit%myconfig%temperature
              where(self%patch(ixO^S))
                w(ixO^S,phys_ind%temperature_) = self%myconfig%temperature
              end where
@@ -1150,10 +1150,10 @@ contains
            iobject = self%myconfig%myindice + 1
 
            if(present(gr_solv))then
-           write(*,*) 'ISM set_w HIdensity',gr_solv%myconfig%densityHI(iobject)*&
-           self%myphysunit%myconfig%density
-           write(*,*) 'ISM set_w H2Idensity',gr_solv%myconfig%densityH2I(iobject)*&
-           self%myphysunit%myconfig%density
+           !write(*,*) 'ISM set_w HIdensity',gr_solv%myconfig%densityHI(iobject)*&
+           !self%myphysunit%myconfig%density
+           !write(*,*) 'ISM set_w H2Idensity',gr_solv%myconfig%densityH2I(iobject)*&
+           !self%myphysunit%myconfig%density
             where(self%patch(ixO^S))
               w(ixO^S,phys_ind%HI_density_)=gr_solv%myconfig%densityHI(iobject)
               w(ixO^S,phys_ind%HII_density_)=gr_solv%myconfig%densityHII(iobject)
@@ -1242,14 +1242,14 @@ contains
               end where
 
 
-              write(*,*) 'ISM set_w density',gr_solv%myconfig%density(iobject)*&
-              self%myphysunit%myconfig%density
-              write(*,*) 'ISM set_w pressure',self%myconfig%pressure*&
-              self%myphysunit%myconfig%pressure
-              write(*,*) 'ISM set_w gamma',self%myconfig%gamma*&
-              w_convert_factor(phys_ind%gamma_)
-              write(*,*) 'ISM set_w mean_mup',self%myconfig%mean_mup*&
-              self%myphysunit%myconfig%mean_mup
+              !write(*,*) 'ISM set_w density',gr_solv%myconfig%density(iobject)*&
+              !self%myphysunit%myconfig%density
+              !write(*,*) 'ISM set_w pressure',self%myconfig%pressure*&
+              !self%myphysunit%myconfig%pressure
+              !write(*,*) 'ISM set_w gamma',self%myconfig%gamma*&
+              !w_convert_factor(phys_ind%gamma_)
+              !write(*,*) 'ISM set_w mean_mup',self%myconfig%mean_mup*&
+              !self%myphysunit%myconfig%mean_mup
 
 
              if(phys_config%mean_mup_on) then

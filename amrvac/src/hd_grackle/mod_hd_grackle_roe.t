@@ -149,11 +149,9 @@ contains
     if(il==1)then
        !First calculate the square of the sound speed: c**2=(gamma-1)*(h-0.5*v**2)
        kin_en(ix^S) = 0.5d0 * sum(wroe(ix^S, mom(:))**2, dim=^ND+1)
-        csound(ix^S)=(hd_gamma-one)*(wroe(ix^S,e_) - kin_en(ix^S))
-       !csound(ix^S)=(wroe(ix^S,gamma_)-one)*(wroe(ix^S,e_) - kin_en(ix^S))
+       csound(ix^S)=(hd_gamma-one)*(wroe(ix^S,e_) - kin_en(ix^S))
        ! Make sure that csound**2 is positive
-        csound(ix^S)=max(hd_gamma*smalldouble/wroe(ix^S,rho_),csound(ix^S))
-       !csound(ix^S)=max(wroe(ix^S,gamma_)*smalldouble/wroe(ix^S,rho_),csound(ix^S))
+       csound(ix^S)=max(hd_gamma*smalldouble/wroe(ix^S,rho_),csound(ix^S))
 
        ! Calculate (pR-pL)/c**2
        ! To save memory we use tmp amnd tmp2 for pL and pR (hd_get_pthermal is OK)
@@ -200,20 +198,16 @@ contains
        if (il == soundRW_) then
           call hd_get_pthermal(wL,x,ixG^LL,ix^L,tmp)
           tmp(ix^S)=wL(ix^S,mom(idim))/wL(ix^S,rho_)&
-               !+ sqrt(wL(ix^S,gamma_)*tmp(ix^S)/wL(ix^S,rho_))
                + sqrt(hd_gamma*tmp(ix^S)/wL(ix^S,rho_))
           call hd_get_pthermal(wR,x,ixG^LL,ix^L,tmp2)
           tmp2(ix^S)=wR(ix^S,mom(idim))/wR(ix^S,rho_)&
-               !+ sqrt(wR(ix^S,gamma_)*tmp2(ix^S)/wR(ix^S,rho_))
                + sqrt(hd_gamma*tmp2(ix^S)/wR(ix^S,rho_))
        else if (il == soundLW_) then
           call hd_get_pthermal(wL,x,ixG^LL,ix^L,tmp)
           tmp(ix^S)=wL(ix^S,mom(idim))/wL(ix^S,rho_)&
-               !- sqrt(wL(ix^S,gamma_)*tmp(ix^S)/wL(ix^S,rho_))
                - sqrt(hd_gamma*tmp(ix^S)/wL(ix^S,rho_))
           call hd_get_pthermal(wR,x,ixG^LL,ix^L,tmp2)
           tmp2(ix^S)=wR(ix^S,mom(idim))/wR(ix^S,rho_)&
-               !- sqrt(wR(ix^S,gamma_)*tmp2(ix^S)/wR(ix^S,rho_))
                - sqrt(hd_gamma*tmp2(ix^S)/wR(ix^S,rho_))
        else
           tmp(ix^S) =wL(ix^S,mom(idim))/wL(ix^S,rho_)
@@ -389,8 +383,6 @@ contains
     case ('arithmetic')
        csound(ix^S)=sqrt(hd_adiab*hd_gamma*&
             wroe(ix^S,rho_)**(hd_gamma-one))
-       !csound(ix^S)=sqrt(hd_adiab*wroe(ix^S,gamma_)*&
-        !    wroe(ix^S,rho_)**(wroe(ix^S,gamma_)-one))
        ! This is the original simple Roe-solver
        if (il == soundRW_) then
           a(ix^S)=wroe(ix^S,mom(idim))+csound(ix^S)
@@ -413,13 +405,9 @@ contains
        where(abs(wL(ix^S,rho_)-wR(ix^S,rho_))<=qsmall*(wL(ix^S,rho_)+wR(ix^S,rho_)))
           csound(ix^S)=sqrt(hd_adiab*hd_gamma*&
                wroe(ix^S,rho_)**(hd_gamma-one))
-         !csound(ix^S)=sqrt(hd_adiab*wroe(ix^S,gamma_)*&
-          !    wroe(ix^S,rho_)**(wroe(ix^S,gamma_)-one))
        elsewhere
-         csound(ix^S)=sqrt(hd_adiab*(wR(ix^S,rho_)**hd_gamma-&
-              wL(ix^S,rho_)**hd_gamma)/(wR(ix^S,rho_)-wL(ix^S,rho_)))
-         !csound(ix^S)=sqrt(hd_adiab*(wR(ix^S,rho_)**wR(ix^S,gamma_)-&
-          !    wL(ix^S,rho_)**wL(ix^S,gamma_))/(wR(ix^S,rho_)-wL(ix^S,rho_)))
+          csound(ix^S)=sqrt(hd_adiab*(wR(ix^S,rho_)**hd_gamma-&
+               wL(ix^S,rho_)**hd_gamma)/(wR(ix^S,rho_)-wL(ix^S,rho_)))
        end where
        ! This is the Roe solver by Glaister
        ! based on P. Glaister JCP 93, 477-480 (1991)
@@ -452,17 +440,13 @@ contains
        ! Based on Harten & Hyman JCP 50, 235 and Zeeuw & Powell JCP 104,56
        if (il == soundRW_) then
           tmp(ix^S) =wL(ix^S,mom(idim))/wL(ix^S,rho_)&
-              !+ sqrt(hd_adiab*wL(ix^S,gamma_)*wL(ix^S,rho_)**(wL(ix^S,gamma_)-one))
                + sqrt(hd_adiab*hd_gamma*wL(ix^S,rho_)**(hd_gamma-one))
           tmp2(ix^S)=wR(ix^S,mom(idim))/wR(ix^S,rho_)&
-                !+ sqrt(hd_adiab*wR(ix^S,gamma_)*wR(ix^S,rho_)**(wR(ix^S,gamma_)-one))
                + sqrt(hd_adiab*hd_gamma*wR(ix^S,rho_)**(hd_gamma-one))
        else if (il == soundLW_) then
           tmp(ix^S) =wL(ix^S,mom(idim))/wL(ix^S,rho_)&
-                !- sqrt(hd_adiab*wL(ix^S,gamma_)*wL(ix^S,rho_)**(wL(ix^S,gamma_)-one))
                - sqrt(hd_adiab*hd_gamma*wL(ix^S,rho_)**(hd_gamma-one))
           tmp2(ix^S)=wR(ix^S,mom(idim))/wR(ix^S,rho_)&
-                !- sqrt(hd_adiab*wR(ix^S,gamma_)*wR(ix^S,rho_)**(wR(ix^S,gamma_)-one))
                - sqrt(hd_adiab*hd_gamma*wR(ix^S,rho_)**(hd_gamma-one))
        else
           tmp(ix^S) =wL(ix^S,mom(idim))/wL(ix^S,rho_)
