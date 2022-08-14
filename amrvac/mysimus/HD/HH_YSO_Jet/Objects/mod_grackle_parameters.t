@@ -21,17 +21,17 @@ real(kind=gr_rpknd),parameter :: xHI_default = 0.999965975041198345221501
 
 
 ! species weight
-real(kind=gr_rpknd),parameter :: w_HI = 1
-real(kind=gr_rpknd),parameter :: w_HII = 1
-real(kind=gr_rpknd),parameter :: w_HM = 1
-real(kind=gr_rpknd),parameter :: w_HeI = 3.971525936989
-real(kind=gr_rpknd),parameter :: w_HeII = 3.971525936989
-real(kind=gr_rpknd),parameter :: w_HeIII = 3.971525936989
-real(kind=gr_rpknd),parameter :: w_H2I = 2.000000000004
-real(kind=gr_rpknd),parameter :: w_H2II = 2.000000000004
-real(kind=gr_rpknd),parameter :: w_DI = 1.998463735368
-real(kind=gr_rpknd),parameter :: w_DII = 1.998463735368
-real(kind=gr_rpknd),parameter :: w_HDI = 2.998463735326
+real(kind=gr_rpknd),parameter :: w_HI = 1.0d0 ! 1
+real(kind=gr_rpknd),parameter :: w_HII = 1.0d0 ! 1
+real(kind=gr_rpknd),parameter :: w_HM = 1.0d0 ! 1
+real(kind=gr_rpknd),parameter :: w_HeI = 4.0d0 ! 3.971525936989
+real(kind=gr_rpknd),parameter :: w_HeII = 4.0d0 ! 3.971525936989
+real(kind=gr_rpknd),parameter :: w_HeIII = 4.0d0 ! 3.971525936989
+real(kind=gr_rpknd),parameter :: w_H2I = 2.0d0 ! 2.000000000004
+real(kind=gr_rpknd),parameter :: w_H2II = 2.0d0 ! 2.000000000004
+real(kind=gr_rpknd),parameter :: w_DI = 2.0d0 ! 1.998463735368
+real(kind=gr_rpknd),parameter :: w_DII = 2.0d0 ! 1.998463735368
+real(kind=gr_rpknd),parameter :: w_HDI = 2.0d0 ! 2.998463735326
 real(kind=gr_rpknd),parameter :: w_e = 5.443205831355435e-4
 
 ! Grackle parameters for this solver time step

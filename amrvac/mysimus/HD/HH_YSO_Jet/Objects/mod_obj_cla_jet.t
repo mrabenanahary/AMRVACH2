@@ -347,6 +347,10 @@ contains
    real(kind=dp)              :: open_angle_in,z0
    integer                    :: idims
    real(dp)                   :: temperature_intermediate,temperature_ratio
+    real(dp)                 :: jet_temper, jet_pressu
+   real(kind=dp):: nH2, nother
+   real(kind=dp):: gammaoth,gammaeff,tvar
+   real(kind=dp):: inv_gammaH2_1, inv_gammaoth_1
    !-----------------------------------
    zjet_     = min(zjet_,ndim)
    thetajet_ = zjet_
@@ -525,7 +529,91 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
      self%myconfig%mach_number = dsqrt(sum(self%myconfig%velocity**2.0_dp))/self%myconfig%c_sound
    end if cond_Mach_set
 
-   if(.not.phys_config%use_grackle)then
+   write(*,*) 'before jet set_complet temperature',self%myconfig%temperature
+   if(phys_config%use_grackle)then
+     gr_solv%myconfig%density(i_obj) = self%myconfig%density
+     call gr_solv%set_complet(gr_solv%myconfig%density(i_obj),&
+     i_obj,.false.)
+
+     self%myconfig%HI_density = gr_solv%myconfig%densityHI(i_obj)
+     self%myconfig%HII_density = gr_solv%myconfig%densityHII(i_obj)
+     self%myconfig%HM_density = gr_solv%myconfig%densityHM(i_obj)
+     self%myconfig%HeI_density = gr_solv%myconfig%densityHeI(i_obj)
+     self%myconfig%HeII_density = gr_solv%myconfig%densityHeII(i_obj)
+     self%myconfig%HeIII_density = gr_solv%myconfig%densityHeIII(i_obj)
+     self%myconfig%H2I_density = gr_solv%myconfig%densityH2I(i_obj)
+     self%myconfig%H2II_density = gr_solv%myconfig%densityH2II(i_obj)
+     self%myconfig%HDI_density = gr_solv%myconfig%densityHDI(i_obj)
+     self%myconfig%DI_density = gr_solv%myconfig%densityDI(i_obj)
+     self%myconfig%DII_density = gr_solv%myconfig%densityDII(i_obj)
+     self%myconfig%e_density = gr_solv%myconfig%densityElectrons(i_obj)
+     self%myconfig%metal_density = gr_solv%myconfig%density_Z(i_obj)
+     self%myconfig%dust_density  = gr_solv%myconfig%density_dust(i_obj)
+
+     if(self%myconfig%temperature<smalldouble)then
+       call mpistop('Need temperature par for Grackle !')
+     else
+       self%myconfig%mean_mup = gr_solv%myconfig%density(i_obj)/&
+       (gr_solv%myconfig%densityHI(i_obj)+&
+       gr_solv%myconfig%densityHII(i_obj)+&
+       gr_solv%myconfig%densityHM(i_obj)+&
+       0.25*(gr_solv%myconfig%densityHeI(i_obj)+&
+       gr_solv%myconfig%densityHeII(i_obj)+&
+       gr_solv%myconfig%densityHeIII(i_obj))+&
+       0.5*(gr_solv%myconfig%densityH2I(i_obj)+&
+       gr_solv%myconfig%densityH2II(i_obj))+&
+       gr_solv%myconfig%density_Z(i_obj)/16.0)
+
+       nH2 = 0.5d0*(gr_solv%myconfig%densityH2I(i_obj) + &
+       gr_solv%myconfig%densityH2II(i_obj))
+       nother = (gr_solv%myconfig%densityHeI(i_obj) +&
+       gr_solv%myconfig%densityHeII(i_obj) +&
+       gr_solv%myconfig%densityHeIII(i_obj))/4.0d0 +&
+       gr_solv%myconfig%densityHI(i_obj) + &
+       gr_solv%myconfig%densityHII(i_obj) +&
+       gr_solv%myconfig%densityElectrons(i_obj)
+
+       if(nH2/nother > 1.0d-3)then
+         tvar = 6100.0d0/self%myconfig%temperature
+         if (tvar > 10.0)then
+           inv_gammaH2_1 = 0.5d0*5.0d0
+         else
+           inv_gammaH2_1 = 0.5d0*(5.0d0 +&
+                              2.0d0 * tvar**2.0d0 *&
+                           DEXP(tvar)/(DEXP(tvar)-1.0d0)**2.0d0)
+         end if
+       else
+         inv_gammaH2_1 = 2.5d0
+       end if
+
+       gammaoth = phys_config%gamma
+       inv_gammaoth_1 = 1.0d0/(gammaoth-1.0d0)
+
+       gammaeff = 1.0d0 + (nH2 + nother)/&
+                    (nH2*inv_gammaH2_1 +&
+                 nother*inv_gammaoth_1)
+       jet_temper = self%myconfig%temperature
+
+       self%myconfig%gamma = gammaeff
+
+
+
+       jet_pressu = gr_solv%myconfig%density(i_obj)*kB*&
+       self%myconfig%temperature/(self%myconfig%mean_mup*mp)
+
+       self%myconfig%pressure = jet_pressu
+     end if
+     write(*,*) 'jet set_complet density',self%myconfig%density
+     write(*,*) 'jet set_complet HIdensity',self%myconfig%HI_density
+     write(*,*) 'jet set_complet H2Idensity',self%myconfig%H2I_density
+     write(*,*) 'jet set_complet temperature',self%myconfig%temperature
+     write(*,*) 'jet set_complet pressure',self%myconfig%pressure
+     write(*,*) 'jet set_complet gamma',self%myconfig%gamma
+     write(*,*) 'jet set_complet mean_mup',self%myconfig%mean_mup
+
+     self%myconfig%c_sound = sqrt(self%myconfig%gamma*self%myconfig%pressure/&
+     self%myconfig%density)
+   else
      self%myconfig%gamma = phys_config%gamma
      cond_csound_set : if(self%myconfig%c_sound>0.0_dp) then
         self%myconfig%pressure = self%myconfig%c_sound**2.0_dp * self%myconfig%density /&
@@ -543,42 +631,6 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
       end if
       self%myconfig%c_sound = sqrt(self%myconfig%gamma*self%myconfig%pressure/self%myconfig%density)
      end if cond_csound_set
-    else
-      gr_solv%myconfig%density(i_obj) = self%myconfig%density
-      call gr_solv%set_complet(self%myconfig%density,i_obj,.false.)
-
-      self%myconfig%HI_density = gr_solv%myconfig%densityHI(i_obj)
-      self%myconfig%HII_density = gr_solv%myconfig%densityHII(i_obj)
-      self%myconfig%HM_density = gr_solv%myconfig%densityHM(i_obj)
-      self%myconfig%HeI_density = gr_solv%myconfig%densityHeI(i_obj)
-      self%myconfig%HeII_density = gr_solv%myconfig%densityHeII(i_obj)
-      self%myconfig%HeIII_density = gr_solv%myconfig%densityHeIII(i_obj)
-      self%myconfig%H2I_density = gr_solv%myconfig%densityH2I(i_obj)
-      self%myconfig%H2II_density = gr_solv%myconfig%densityH2II(i_obj)
-      self%myconfig%HDI_density = gr_solv%myconfig%densityHDI(i_obj)
-      self%myconfig%DI_density = gr_solv%myconfig%densityDI(i_obj)
-      self%myconfig%DII_density = gr_solv%myconfig%densityDII(i_obj)
-      self%myconfig%e_density = gr_solv%myconfig%densityElectrons(i_obj)
-      self%myconfig%metal_density = gr_solv%myconfig%density_Z(i_obj)
-      self%myconfig%dust_density  = gr_solv%myconfig%density_dust(i_obj)
-
-      temperature_intermediate = self%myconfig%temperature
-      call gr_solv%set_parameters(temperature_intermediate,&
-      self%myconfig%pressure,self%myconfig%gamma,i_obj)
-      temperature_ratio = self%myconfig%temperature/temperature_intermediate
-      write(*,*) ' 1)ISM TEMPERTAURE AFTER GRACKLE === ', temperature_intermediate
-      write(*,*) ' 1)ISM PRESSURE AFTER GRACKLE === ', self%myconfig%pressure
-      write(*,*) ' 1)ISM DENSITY AFTER GRACKLE === ', self%myconfig%density
-      self%myconfig%temperature = self%myconfig%temperature*temperature_ratio
-      write(*,*) ' 2)ISM TEMPERTAURE BEFORE GRACKLE === ', self%myconfig%temperature
-      write(*,*) ' 2)ISM PRESSURE BEFORE GRACKLE === ', self%myconfig%pressure
-      write(*,*) ' 2)ISM DENSITY BEFORE GRACKLE === ', self%myconfig%density
-      call gr_solv%set_parameters(self%myconfig%temperature,&
-      self%myconfig%pressure,self%myconfig%gamma,i_obj)
-      write(*,*) ' 2)ISM TEMPERTAURE AFTER GRACKLE === ', self%myconfig%temperature
-      write(*,*) ' 2)ISM PRESSURE AFTER GRACKLE === ', self%myconfig%pressure
-      write(*,*) ' 2)ISM DENSITY AFTER GRACKLE === ', self%myconfig%density
-      self%myconfig%c_sound = sqrt(self%myconfig%gamma*self%myconfig%pressure/self%myconfig%density)
     end if
 
 
@@ -997,6 +1049,7 @@ end subroutine usr_cla_jet_set_patch
                                     jet_radius_in,jet_radius
   real(kind=dp)                   :: z0,open_angle_in,intermediate_jet_mflux
   real(kind=dp), dimension(ixI^S,1:ndim)::project_speed
+
   !integer::ix2
   !----------------------------------
   if(.not.allocated(self%patch))then

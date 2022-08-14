@@ -201,6 +201,39 @@ contains
              /(cspeed(ix^D)-lambdaCD(ix^D))
         end do
 
+
+        ! Mialy s adding:
+        if(hd_config%use_grackle)then
+          wCD(ix^D,rhoHI_) = wSub(ix^D,rhoHI_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoHII_) = wSub(ix^D,rhoHII_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoHM_) = wSub(ix^D,rhoHM_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoHeI_) = wSub(ix^D,rhoHeI_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoHeII_) = wSub(ix^D,rhoHeII_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoHeIII_) = wSub(ix^D,rhoHeIII_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoH2I_) = wSub(ix^D,rhoH2I_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoH2II_) = wSub(ix^D,rhoH2II_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoe_) = wSub(ix^D,rhoe_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoDI_) = wSub(ix^D,rhoDI_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoDII_) = wSub(ix^D,rhoDII_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhoHDI_) = wSub(ix^D,rhoHDI_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhometal_) = wSub(ix^D,rhometal_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+          wCD(ix^D,rhodust_) = wSub(ix^D,rhodust_)*(cspeed(ix^D)-vSub(ix^D))&
+          /(cspeed(ix^D)-lambdaCD(ix^D))
+        end if
+
         !------- Momentum ------!
         do iw=1, ndir
           if(iw /= idim)then

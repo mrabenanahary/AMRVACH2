@@ -222,6 +222,8 @@ module mod_grackle_chemistry
     ! dissociation rates (30 eV) respectively. These reaction rates are distinct from the H2self-shielding computed using the H2_self_shielding flag.
     ! on = 1 ; off = 0
     INTEGER :: gr_self_shielding_method(max_num_parameters)
+    INTEGER :: gr_use_isrf_field(max_num_parameters)
+
 
     ! The ratio of specific heats for an ideal gas.
     ! A direct calculation for the molecular component
@@ -271,6 +273,9 @@ module mod_grackle_chemistry
     ! See the figure below for an illustration its behavior. If not set, this parameter will be set to the lowest
     ! redshift of the UV background data being used.
     REAL(kind=gr_rpknd)    :: gr_UVbackground_redshift_drop(max_num_parameters)
+
+
+
 
     ! Cloudy 07.02 abundances :
     ! A float value to account for additional electrons contributed by metals. This is only used with Cloudy datasets
@@ -501,6 +506,7 @@ subroutine grackle_set_default(self)
   self%myconfig%gr_radiative_transfer_intermediate_step(1:max_num_parameters) = 0
   self%myconfig%gr_radiative_transfer_hydrogen_only(1:max_num_parameters) = 0
   self%myconfig%gr_self_shielding_method(1:max_num_parameters) = 0
+  self%myconfig%gr_use_isrf_field(1:max_num_parameters)=0
   self%myconfig%gr_Gamma(1:max_num_parameters) = 5.d0/3.d0
 
   self%myconfig%TemperatureStart(1:max_num_parameters) = 1.0d0
@@ -514,10 +520,10 @@ subroutine grackle_set_default(self)
   self%myconfig%gr_UVbackground_redshift_drop(1:max_num_parameters) = -99999.0
   self%myconfig%cloudy_electron_fraction_factor(1:max_num_parameters) = 9.153959D-3
   self%myconfig%data_dir(1:max_num_parameters) = "../../../src/grackle/input/"
-  self%myconfig%data_filename(1:max_num_parameters) = "CloudyData_UVB=HM2012.h5"
+  self%myconfig%data_filename(1:max_num_parameters) = "CloudyData_UVB=HM2012_shielded.h5"
 
   self%myconfig%data_file(1:max_num_parameters) = "../../../src/grackle/input/"//&
-  "CloudyData_UVB=HM2012.h5"//C_NULL_CHAR
+  "CloudyData_UVB=HM2012_shielded.h5"//C_NULL_CHAR
 
   self%myconfig%normalize_done(1:max_num_parameters) = .false.
   self%myconfig%gr_comoving_coordinates(1:max_num_parameters) = 0
@@ -561,16 +567,16 @@ subroutine grackle_set_default(self)
   !Species abundances
   self%myconfig%number_of_solved_species(1:max_num_parameters) = 0
   self%myconfig%x_HI(1:max_num_parameters) = 1.0d0
-  self%myconfig%x_HII(1:max_num_parameters) = tiny_number
-  self%myconfig%x_HM(1:max_num_parameters) = tiny_number
-  self%myconfig%x_H2I(1:max_num_parameters) = tiny_number
-  self%myconfig%x_H2II(1:max_num_parameters) = tiny_number
+  self%myconfig%x_HII(1:max_num_parameters) = 0.0d0
+  self%myconfig%x_HM(1:max_num_parameters) = 0.0d0
+  self%myconfig%x_H2I(1:max_num_parameters) = 0.0d0
+  self%myconfig%x_H2II(1:max_num_parameters) = 0.0d0
   self%myconfig%x_HeI(1:max_num_parameters) = 1.0d0
-  self%myconfig%x_HeII(1:max_num_parameters) = tiny_number
-  self%myconfig%x_HeIII(1:max_num_parameters) = tiny_number
+  self%myconfig%x_HeII(1:max_num_parameters) = 0.0d0
+  self%myconfig%x_HeIII(1:max_num_parameters) = 0.0d0
   self%myconfig%x_DI(1:max_num_parameters) = 1.0d0
-  self%myconfig%x_DII(1:max_num_parameters) = tiny_number
-  self%myconfig%x_HDI(1:max_num_parameters) = tiny_number
+  self%myconfig%x_DII(1:max_num_parameters) = 0.0d0
+  self%myconfig%x_HDI(1:max_num_parameters) = 0.0d0
   self%myconfig%x_e(1:max_num_parameters) = 1.0d0
   self%myconfig%densityDI(1:max_num_parameters) = 0.0d0
   self%myconfig%densityDII(1:max_num_parameters) = 0.0d0
@@ -959,6 +965,7 @@ gr_epsilon_tol,gr_density_method)
     write(unit_config,*) 'gr_radiative_transfer_intermediate_step = ',  self%myconfig%gr_radiative_transfer_intermediate_step(1)
     write(unit_config,*) 'gr_radiative_transfer_hydrogen_only = ',  self%myconfig%gr_radiative_transfer_hydrogen_only(1)
     write(unit_config,*) 'gr_self_shielding_method = ',  self%myconfig%gr_self_shielding_method(1)
+    write(unit_config,*) 'gr_use_isrf_field = ',  self%myconfig%gr_use_isrf_field(1)
     write(unit_config,*) 'gr_Gamma = ',  self%myconfig%gr_Gamma(1)
     write(unit_config,*) 'gr_photoelectric_heating_rate = ',  self%myconfig%gr_photoelectric_heating_rate(1)
 
@@ -1113,7 +1120,7 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
     call mpistop('normalized==true but no density unit given')
   end if
 
-  physical_ref_density = ref_density
+  physical_ref_density = ref_density !rho
 
   if(normalized)then
     physical_ref_density = ref_density*&
@@ -1122,83 +1129,74 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
 
   write(*,*) ' set_complet iobject begining of set_complet =', iobject
 
-    ! Z
-    if(self%myconfig%MetalFractionByMass(iobject)<smalldouble)then
-      self%myconfig%MetalFractionByMass(iobject)=self%myconfig%SolarMetalFractionByMass(iobject)
-    end if
+
+  ! == rho = rhoH + rhoHe + rhoZ
+  ! Z
+  !if(self%myconfig%MetalFractionByMass(iobject)<smalldouble)then
+    !self%myconfig%MetalFractionByMass(iobject)=self%myconfig%SolarMetalFractionByMass(iobject)
+  !end if
+
+  ! rhoZ = Z*rho
+  self%myconfig%density_Z(iobject)=self%myconfig%MetalFractionByMass(iobject)*&
+  physical_ref_density
+
+  ! chi_dust and xi_dust
+  if((self%myconfig%chi_dust(iobject)<smalldouble).and.&
+  (self%myconfig%xi_dust(iobject)>=smalldouble))then
+      self%myconfig%chi_dust(iobject)=DABS(self%myconfig%xi_dust(iobject))/&
+      (self%myconfig%MetalFractionByMass(iobject)/self%myconfig%SolarMetalFractionByMass(iobject))
+  elseif(self%myconfig%chi_dust(iobject)>=smalldouble)then
+      self%myconfig%xi_dust(iobject)=DABS(self%myconfig%chi_dust(iobject))*&
+      (self%myconfig%MetalFractionByMass(iobject)/self%myconfig%SolarMetalFractionByMass(iobject))
+  elseif((self%myconfig%chi_dust(iobject)<smalldouble).and.&
+  (self%myconfig%xi_dust(iobject)<smalldouble))then
+    self%myconfig%xi_dust(iobject)=0.0d0
+    self%myconfig%chi_dust(iobject)=0.0d0
+  end if
+
+  !rhodust = chiDust * rho
+  self%myconfig%density_dust(iobject)=physical_ref_density*&
+  self%myconfig%chi_dust(iobject)
 
 
-    ! chi_dust and xi_dust
-    if((self%myconfig%chi_dust(iobject)<smalldouble).and.&
-    (self%myconfig%xi_dust(iobject)>=smalldouble))then
-        self%myconfig%chi_dust(iobject)=DABS(self%myconfig%xi_dust(iobject))/&
-        (self%myconfig%MetalFractionByMass(iobject)/self%myconfig%SolarMetalFractionByMass(iobject))
-    elseif(self%myconfig%chi_dust(iobject)>=smalldouble)then
-        self%myconfig%xi_dust(iobject)=DABS(self%myconfig%chi_dust(iobject))*&
-        (self%myconfig%MetalFractionByMass(iobject)/self%myconfig%SolarMetalFractionByMass(iobject))
-    elseif((self%myconfig%chi_dust(iobject)<smalldouble).and.&
-    (self%myconfig%xi_dust(iobject)<smalldouble))then
-      self%myconfig%xi_dust(iobject)=0.0d0
-      self%myconfig%chi_dust(iobject)=0.0d0
-    end if
+  !rhoHplusH2 = rhoH
+  self%myconfig%densityHplusH2(iobject)=self%myconfig%HydrogenFractionByMass(iobject)*&
+  physical_ref_density
 
-    !fix rho_dust:
-    self%myconfig%density_dust(iobject) = physical_ref_density*&
-    self%myconfig%chi_dust(iobject)
+  !Y
+  self%myconfig%HeliumFractionByMass(iobject) = 1.0_dp - &
+  self%myconfig%HydrogenFractionByMass(iobject)
 
 
-    !rhoHplusH2
-    self%myconfig%densityHplusH2(iobject)=self%myconfig%HydrogenFractionByMass(iobject)*&
-    physical_ref_density
+  !rhoY
+  self%myconfig%densityHe(iobject) = self%myconfig%HeliumFractionByMass(iobject)*&
+  physical_ref_density
 
-    !rhodeut
-    self%myconfig%density_deut(iobject) = self%myconfig%DeuteriumToHydrogenRatio(iobject)*& !checked
-    self%myconfig%densityHplusH2(iobject)
+  self%myconfig%density_Y(iobject)=self%myconfig%densityHe(iobject)
 
-    !rhoX = rhoD + rhoHD + rhoH + rhoH2
-    self%myconfig%density_X(iobject) = self%myconfig%density_deut(iobject)+&
-    self%myconfig%densityHplusH2(iobject) !checked
+  !rhodeut
+  self%myconfig%density_deut(iobject) = self%myconfig%DeuteriumToHydrogenRatio(iobject)*&
+  self%myconfig%densityHplusH2(iobject)
 
-    !Y
-    self%myconfig%HeliumFractionByMass(iobject) = 1.0_dp - &
-    self%myconfig%HydrogenFractionByMass(iobject)
+  !rhoX = rhoD + rhoHD + rhoH + rhoH2
+  self%myconfig%density_X(iobject) = self%myconfig%density_deut(iobject)+&
+  self%myconfig%densityHplusH2(iobject)
 
 
-    !rhoY
-    self%myconfig%densityHe(iobject) = self%myconfig%HeliumFractionByMass(iobject)*&
-    physical_ref_density !checked
-
-    self%myconfig%density_Y(iobject)=self%myconfig%densityHe(iobject)
-
-    !rhoZ so that  rhoX+rhoY+rhoZ
-    self%myconfig%density_Z(iobject) = physical_ref_density*&
-    (self%myconfig%MetalFractionByMass(iobject)*&
-    ((1.0_dp+self%myconfig%DeuteriumToHydrogenRatio(iobject))*&
-    self%myconfig%HydrogenFractionByMass(iobject)+&
-    self%myconfig%HeliumFractionByMass(iobject)))/&
-    (1.0_dp - self%myconfig%MetalFractionByMass(iobject)) !checked
-
-    self%myconfig%density_bar(iobject) = self%myconfig%density_X(iobject)+&
-    self%myconfig%density_Y(iobject)+ self%myconfig%density_Z(iobject)
-
-
-    ! Parameters default values
-    ! Gas to dust ratios
-    self%myconfig%myindice(1:max_num_parameters) = 0
+  self%myconfig%density_bar(iobject) = self%myconfig%density_X(iobject)+&
+  self%myconfig%density_Y(iobject)+ self%myconfig%density_Z(iobject)
 
     !Finalyy compute values from abundances
+    !x_DI + x_DII +x_HDI = 1
     self%myconfig%densityDI(iobject) = self%myconfig%x_DI(iobject)*&
     self%myconfig%density_deut(iobject)
     self%myconfig%densityDII(iobject) = self%myconfig%x_DII(iobject)*&
     self%myconfig%density_deut(iobject)
     self%myconfig%densityHDI(iobject) = self%myconfig%x_HDI(iobject)*&
     self%myconfig%density_deut(iobject)
+    ! x_HI + x_HII + x_HM + x_H2I + x_H2II = 1
     self%myconfig%densityHI(iobject) = self%myconfig%x_HI(iobject)*&
     self%myconfig%densityHplusH2(iobject)
-    !write(*,*) 'list of density xHI in set_complet === ', self%myconfig%x_HI
-    !write(*,*) 'list of density HI in set_complet === ', self%myconfig%densityHI
-    !write(*,*) 'list of density HplusH2 in set_complet === ', self%myconfig%densityHplusH2
-    !write(*,*) 'reference density set_complet === ', physical_ref_density
     self%myconfig%densityHII(iobject) = self%myconfig%x_HII(iobject)*&
     self%myconfig%densityHplusH2(iobject)
     self%myconfig%densityHM(iobject) = self%myconfig%x_HM(iobject)*&
@@ -1207,19 +1205,18 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
     self%myconfig%densityHplusH2(iobject)
     self%myconfig%densityH2II(iobject) = self%myconfig%x_H2II(iobject)*&
     self%myconfig%densityHplusH2(iobject)
+    ! x_HeI + x_HeII + x_HeIII = 1
     self%myconfig%densityHeI(iobject) = self%myconfig%x_HeI(iobject)*&
     self%myconfig%density_Y(iobject)
     self%myconfig%densityHeII(iobject) = self%myconfig%x_HeII(iobject)*&
     self%myconfig%density_Y(iobject)
     self%myconfig%densityHeIII(iobject) = self%myconfig%x_HeIII(iobject)*&
     self%myconfig%density_Y(iobject)
-
-    !rhoD,rhoHD
+    ! rhoD = rhoDI + rhoDII
     self%myconfig%densityD(iobject)=self%myconfig%densityDI(iobject)+&
     self%myconfig%densityDII(iobject)
-
+    ! rhoHD
     self%myconfig%densityHD(iobject)=self%myconfig%densityHDI(iobject)
-
     !rhonotdeut
     self%myconfig%density_not_deut(iobject) = self%myconfig%densityHI(iobject)+&
     self%myconfig%densityHII(iobject) + self%myconfig%densityHM(iobject)+&
@@ -1227,13 +1224,9 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
     self%myconfig%densityHeI(iobject) + self%myconfig%densityHeII(iobject)+&
     self%myconfig%densityHeIII(iobject) + &
     self%myconfig%density_Z(iobject)
-
-
-
     !same for rhoH and rhoH2
     self%myconfig%densityH(iobject)=self%myconfig%densityHI(iobject) +&
     self%myconfig%densityHII(iobject) + self%myconfig%densityHM(iobject)
-
     self%myconfig%densityHtwo(iobject)=  self%myconfig%densityH2I(iobject) +&
       self%myconfig%densityH2II(iobject)
 
@@ -1269,8 +1262,6 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
     self%myconfig%densityElectrons(iobject)+&
     self%myconfig%density_Z(iobject)+&
     self%myconfig%density_dust(iobject)
-
-  !end do
 
 end subroutine grackle_set_complet
 
@@ -1328,6 +1319,23 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
   logical :: logicndir,logicenergy
   !real(kind=dp)           :: gamma_amrvac(ixI^S)
   real(kind=dp) :: grid_dx
+  real(kind=dp) :: my_temperature(1),&
+  my_gamma(1),my_pressure(1),density_gr(1),&
+           dust_density_gr(1),&
+           metal_density_gr(1),&
+           e_density_gr(1),&
+           DI_density_gr(1),&
+           DII_density_gr(1),&
+           HDI_density_gr(1),&
+           HI_density_gr(1),&
+           HII_density_gr(1),&
+           HM_density_gr(1),&
+           H2I_density_gr(1),&
+           H2II_density_gr(1),&
+           HeI_density_gr(1),&
+           HeII_density_gr(1),&
+           HeIII_density_gr(1)
+  real(kind=dp) :: current_redshift
   TYPE (grackle_units) :: my_units
   TYPE (grackle_field_data) :: my_fields
   TYPE (grackle_chemistry_data) :: grackle_data
@@ -1337,6 +1345,14 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
   iresult = set_default_chemistry_parameters(grackle_data)
   call self%link_par_to_gr(grackle_data,my_units)
   iresult = initialize_chemistry_data(my_units)
+
+
+  grackle_data%TemperatureStart=100.;
+  !write(*,*) '===================================='
+  !write(*,*) 'grackle_chemistry_static_source : '
+  !write(*,*) 'grackle_data%TemperatureStart == ', grackle_data%TemperatureStart
+  !write(*,*) '===================================='
+
 
   !Set field arrays
   {field_size(^D) = ixOmax^D-ixOmin^D+1|\}
@@ -1428,7 +1444,11 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
     HDI_density(ifield^D) = w_gr(imesh^D,phys_ind%HDI_density_)
     e_density(ifield^D) = w_gr(imesh^D,phys_ind%e_density_)
     metal_density(ifield^D) = w_gr(imesh^D,phys_ind%metal_density_)
-    dust_density(ifield^D) = w_gr(imesh^D,phys_ind%dust_density_)
+    if(grackle_data%use_dust_density_field==1)then
+      dust_density(ifield^D) = w_gr(imesh^D,phys_ind%dust_density_)
+    elseif(grackle_data%use_dust_density_field==0)then
+      dust_density(ifield^D) = grackle_data%local_dust_to_gas_ratio*density(ifield^D)
+    end if
     energy(ifield^D) = w_gr(imesh^D,phys_ind%e_)
      x_velocity(ifield^D) = 0.0
      y_velocity(ifield^D) = 0.0
@@ -1441,6 +1461,8 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
      RT_H2_dissociation_rate(ifield^D) = 0.0
      RT_heating_rate(ifield^D) = 0.0
   {enddo^D&|\}
+
+  !write(*,*) 'Energy field = ', energy
 
   !Fill in structure to be passed to Grackle
 
@@ -1495,6 +1517,10 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
   iresult = calculate_pressure(my_units, my_fields, pressure)
   iresult = calculate_gamma(my_units, my_fields, gamma)
   iresult =  calculate_temperature(my_units, my_fields, temperature_gr)
+
+  !write(*,*) 'New temperature = ', temperature_gr
+
+
   !write(*,*) " gamma = ", gamma
   !write(*,*) " After chemistry solving, HeI = ", HeI_density*my_units%density_units
   !write(*,*) " After chemistry solving, e- =", e_density*my_units%density_units
@@ -1603,8 +1629,11 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
     if(present(pressure_field))then
       {do ifield^D = 1,field_size(^D)|\}
          {imesh^D=ixOmin^D+ifield^D-1|\}
-          pressure_field(imesh^D) = pressure(ifield^D)*pressure_units/&
-          w_convert_factor(phys_ind%pressure_)
+          pressure_field(imesh^D) = (w_gr(imesh^D,phys_ind%rho_)*my_units%density_units/&
+          w_convert_factor(phys_ind%rho_))*&
+          (temperature_field(imesh^D)/(temperature_units*unit_pressure))
+          !pressure(ifield^D)*pressure_units/&
+          !w_convert_factor(phys_ind%pressure_)
       {enddo^D&|\}
     end if
     if(solver_activated)then
@@ -1624,6 +1653,7 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
   !call self%normalize()
 
   !iresult = gr_free_memory(my_units, my_fields)
+
 
   dt = dt_old
 end subroutine grackle_chemistry_static_source
@@ -1650,7 +1680,7 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%metal_cooling = self%myconfig%gr_metal_cooling(1)
   gr_data%UVbackground                   = self%myconfig%gr_UVbackground(1)
   general_grackle_filename = "/home/mrabenanahary/MPI-AMRVAC/amrvac/"//&
-  "src/grackle/input/CloudyData_UVB=HM2012.h5"//C_NULL_CHAR
+  "src/grackle/input/CloudyData_UVB=HM2012_shielded.h5"//C_NULL_CHAR
   !CALL GETCWD(filename)
   !write(*,*) 'CWDDDDD = ', filename
   gr_data%grackle_data_file = C_LOC(general_grackle_filename(1:1))
@@ -1690,7 +1720,7 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%radiative_transfer_hydrogen_only       = self%myconfig%gr_radiative_transfer_hydrogen_only(1)
   ! approximate self-shielding
   gr_data%self_shielding_method                  = self%myconfig%gr_self_shielding_method(1)
-
+  gr_data%use_isrf_field                         = self%myconfig%gr_use_isrf_field(1)
 
   myunits%comoving_coordinates = self%myconfig%gr_comoving_coordinates(1)
   myunits%density_units = self%myconfig%gr_density_units(1)
@@ -1705,21 +1735,21 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
 
 end subroutine grackle_solver_associate
 
-subroutine grackle_chemistry_set_parameters(out_temperature,out_pressure,out_gamma,i_obj,self)
+subroutine grackle_chemistry_set_parameters(temgas, &
+out_temperature,out_pressure,out_gamma,out_meanmw,i_obj,self)
   implicit none
   class(gr_solver),TARGET                        :: self
-  !logical, intent(in) :: mean_mup_on
+  real(kind=dp),intent(in)                              :: temgas
   real(kind=dp),intent(inout)                           :: out_temperature
   real(kind=dp),intent(inout)                           :: out_pressure
   real(kind=dp),intent(inout)                           :: out_gamma
+  real(kind=dp),intent(inout)                           :: out_meanmw
   integer                                 :: i_obj
   ! .. local ..
-  integer                                 :: idim,iresult,ifield1,imesh^D,level,iw,idir,i
+  integer                                 :: iresult,i
   real(kind=dp) :: temperature_units, pressure_units
   real(kind=dp)                           :: dt_old
   integer ,parameter        :: field_size=1
-  real :: initial_redshift
-  real(kind=dp),parameter :: fH = 0.76
   real(kind=dp), TARGET :: density(field_size), energy(field_size), &
   x_velocity(field_size), y_velocity(field_size), &
   z_velocity(field_size), &
@@ -1738,21 +1768,27 @@ subroutine grackle_chemistry_set_parameters(out_temperature,out_pressure,out_gam
   RT_HeI_ionization_rate(field_size), &
   RT_HeII_ionization_rate(field_size), &
   RT_H2_dissociation_rate(field_size), &
-  RT_heating_rate(field_size)
+  RT_heating_rate(field_size), &
+  H2_self_shielding_length(field_size), &
+  H2_custom_shielding_factor(field_size), &
+  isrf_habing(field_size)
   real(kind=dp), TARGET  :: pressure(field_size),&
   gamma(field_size),temperature_gr(field_size)
   INTEGER, TARGET :: grid_rank, grid_dimension(3), grid_start(3), grid_end(3)
-  logical :: logicndir,logicenergy
-  !real(kind=dp)           :: gamma_amrvac(ixI^S)
   real(kind=dp) :: grid_dx
+  real(kind=dp)  :: nH2, nother,  gammaH2, gammaH2_1, gammaeff, gammaeff_1
+  real(kind=dp)  :: gammaoth, gammaoth_1
+  real(kind=dp)  :: inv_gammaH2_1, inv_gamma_eff_1, inv_gammaoth_1,tvar
+  real(kind=dp)  :: meanmw
   TYPE (grackle_units) :: my_units
   TYPE (grackle_field_data) :: my_fields
-  TYPE (grackle_chemistry_data) :: grackle_data
+  TYPE (grackle_chemistry_data) :: my_grackle_data
+  TYPE (grackle_inout) :: my_config
   !-----------------------------------------------------------------------------------
   dt_old = dt
 
-  iresult = set_default_chemistry_parameters(grackle_data)
-  call self%link_par_to_gr(grackle_data,my_units)
+  iresult = set_default_chemistry_parameters(my_grackle_data)
+  call self%link_par_to_gr(my_grackle_data,my_units)
   iresult = initialize_chemistry_data(my_units)
 
   grid_rank = 3
@@ -1763,49 +1799,105 @@ subroutine grackle_chemistry_set_parameters(out_temperature,out_pressure,out_gam
   enddo
   grid_dx = 0.0d0
   grid_dimension(1) = field_size
+  !0-based is necessary for grid_start and grid_end
   grid_end(1) = field_size-1
   temperature_units = get_temperature_units(my_units)
+  my_units%velocity_units = get_velocity_units(my_units)
 
-  if(out_temperature<smalldouble)then
-    write(*,*) 'Input temperature must be > 0 when Grackle is used !'
-    call mpistop('Please provide a temperature')
-  end if
+  do i = 1, field_size
+    density(i) = self%myconfig%density(i_obj)/my_units%density_units
+    HI_density(i) = self%myconfig%densityHI(i_obj)/my_units%density_units
+    HII_density(i) = self%myconfig%densityHII(i_obj)/my_units%density_units
+    HM_density(i) = self%myconfig%densityHM(i_obj)/my_units%density_units
+    HeI_density(i) = self%myconfig%densityHeI(i_obj)/my_units%density_units
+    HeII_density(i) = self%myconfig%densityHeII(i_obj)/my_units%density_units
+    HeIII_density(i) = self%myconfig%densityHeIII(i_obj)/my_units%density_units
+    H2I_density(i) = self%myconfig%densityH2I(i_obj)/my_units%density_units
+    H2II_density(i) = self%myconfig%densityH2II(i_obj)/my_units%density_units
+    DI_density(i) = self%myconfig%densityDI(i_obj)/my_units%density_units
+    DII_density(i) = self%myconfig%densityDII(i_obj)/my_units%density_units
+    HDI_density(i) = self%myconfig%densityHDI(i_obj)/my_units%density_units
+    e_density(i) = self%myconfig%densityElectrons(i_obj)/my_units%density_units
+    metal_density(i) = self%myconfig%density_Z(i_obj)/my_units%density_units
+    dust_density(i) = self%myconfig%density_dust(i_obj)/my_units%density_units
+    x_velocity(i) = 0.0
+    y_velocity(i) = 0.0
+    z_velocity(i) = 0.0
 
-  do ifield1 = 1,field_size
-    density(ifield1) = self%myconfig%density(i_obj)/my_units%density_units
-    !write(*,*) ' INPUT DENSITY PARAM ARRAY IN GRACKLE SOLVER === ', self%myconfig%density
-    !write(*,*) ' INPUT DENSITY PARAM IN GRACKLE SOLVER === ', density(ifield1)
-    !write(*,*) ' INPUT DENSITY PARAM (phys units) IN GRACKLE SOLVER === ', density(ifield1)*&
-    !my_units%density_units
-    HI_density(ifield1) = self%myconfig%densityHI(i_obj)/my_units%density_units
-    HII_density(ifield1) = self%myconfig%densityHII(i_obj)/my_units%density_units
-    HM_density(ifield1) = self%myconfig%densityHM(i_obj)/my_units%density_units
-    HeI_density(ifield1) = self%myconfig%densityHeI(i_obj)/my_units%density_units
-    HeII_density(ifield1) = self%myconfig%densityHeII(i_obj)/my_units%density_units
-    HeIII_density(ifield1) = self%myconfig%densityHeIII(i_obj)/my_units%density_units
-    H2I_density(ifield1) = self%myconfig%densityH2I(i_obj)/my_units%density_units
-    H2II_density(ifield1) = self%myconfig%densityH2II(i_obj)/my_units%density_units
-    DI_density(ifield1) =  self%myconfig%densityDI(i_obj)/my_units%density_units
-    DII_density(ifield1) = self%myconfig%densityDII(i_obj)/my_units%density_units
-    HDI_density(ifield1) = self%myconfig%densityHDI(i_obj)/my_units%density_units
-    e_density(ifield1) = self%myconfig%densityElectrons(i_obj)*(mh_gr/me_gr)/&
-    my_units%density_units
-    metal_density(ifield1) = self%myconfig%density_Z(i_obj)/my_units%density_units
-    dust_density(ifield1) = self%myconfig%density_dust(i_obj)/my_units%density_units
-    energy(ifield1) = out_temperature/temperature_units
-     x_velocity(ifield1) = 0.0
-     y_velocity(ifield1) = 0.0
-     z_velocity(ifield1) = 0.0
-     volumetric_heating_rate(ifield1) = 0.0
-     specific_heating_rate(ifield1) = 0.0
-     RT_HI_ionization_rate(ifield1) = 0.0
-     RT_HeI_ionization_rate(ifield1) = 0.0
-     RT_HeII_ionization_rate(ifield1) = 0.0
-     RT_H2_dissociation_rate(ifield1) = 0.0
-     RT_heating_rate(ifield1) = 0.0
-  enddo
 
-  my_fields%grid_rank = 1
+    ! temgas = temperature in Kelvin
+    write(*,*) 'T = ', temgas, ' K'
+    nH2 = 0.5d0*(self%myconfig%densityH2I(i_obj) + &
+    self%myconfig%densityH2II(i_obj))
+    write(*,*) 'nH2 = ',nH2
+    nother = (self%myconfig%densityHeI(i_obj) + self%myconfig%densityHeII(i_obj) +&
+                 self%myconfig%densityHeIII(i_obj))/4.0d0 +&
+                 self%myconfig%densityHI(i_obj) + self%myconfig%densityHII(i_obj) +&
+                 self%myconfig%densityElectrons(i_obj)
+    write(*,*) 'nother = ',nother
+    if(nH2/nother > 1.0d-3)then
+      tvar = 6100.0d0/temgas
+      if (tvar > 10.0)then
+        inv_gammaH2_1 = 0.5d0*5.0d0
+      else
+        inv_gammaH2_1 = 0.5d0*(5.0d0 +&
+                           2.0d0 * tvar**2.0d0 *&
+                        DEXP(tvar)/(DEXP(tvar)-1.0d0)**2.0d0)
+      end if
+    else
+      inv_gammaH2_1 = 2.5
+    end if
+    write(*,*) 'inv_gammaH2_1 =' , inv_gammaH2_1
+    gammaoth = self%myconfig%gr_Gamma(i_obj)
+    write(*,*) 'gammaoth = ',gammaoth
+    inv_gammaoth_1 = 1.0d0/(gammaoth-1.0d0)
+    write(*,*) 'inv_gammaoth_1 = ',inv_gammaoth_1
+
+
+    gammaeff = 1.0d0 + (nH2 + nother)/&
+                 (nH2*inv_gammaH2_1 +&
+              nother*inv_gammaoth_1)
+
+    gammaeff_1 = gammaeff - 1.0d0
+    inv_gamma_eff_1 = 1.0d0/gammaeff_1
+
+
+    write(*,*) 'gammaeff = ', gammaeff
+    write(*,*) 'gammaeff - 1 =', gammaeff_1
+    write(*,*) 'inv_gamma_eff_1 = ', inv_gamma_eff_1
+
+    meanmw = self%myconfig%density(i_obj)/&
+        (self%myconfig%densityHI(i_obj)+self%myconfig%densityHII(i_obj)+&
+        self%myconfig%densityHM(i_obj)+&
+        0.25*(self%myconfig%densityHeI(i_obj)+self%myconfig%densityHeII(i_obj)+&
+        self%myconfig%densityHeIII(i_obj))+&
+        0.5*(self%myconfig%densityH2I(i_obj)+self%myconfig%densityH2II(i_obj))+&
+        self%myconfig%density_Z(i_obj)/16.0)
+
+    write(*,*) 'meanmw = ',meanmw
+    out_meanmw = meanmw
+
+    energy(i)=temgas/(meanmw * temperature_units * gammaeff_1)
+    write(*,*) 'internal energy', density(i)*my_units%density_units*&
+    energy(i)*my_units%velocity_units * my_units%velocity_units
+    volumetric_heating_rate(i) = 0.0
+    specific_heating_rate(i) = 0.0
+    RT_HI_ionization_rate(i) = 0.0
+    RT_HeI_ionization_rate(i) = 0.0
+    RT_HeII_ionization_rate(i) = 0.0
+    RT_H2_dissociation_rate(i) = 0.0
+    RT_heating_rate(i) = 0.0
+    H2_self_shielding_length(i) = 0.0
+    H2_custom_shielding_factor(i) = 0.0
+    isrf_habing(i) = my_grackle_data%interstellar_radiation_field
+    write(*,*) 'isrf_habing field = ', isrf_habing
+  end do
+
+  !
+  !     Fill in structure to be passed to Grackle
+  !
+
+  my_fields%grid_rank = 3
   my_fields%grid_dimension = C_LOC(grid_dimension)
   my_fields%grid_start = C_LOC(grid_start)
   my_fields%grid_end = C_LOC(grid_end)
@@ -1839,31 +1931,27 @@ subroutine grackle_chemistry_set_parameters(out_temperature,out_pressure,out_gam
                                     C_LOC(RT_HeII_ionization_rate)
   my_fields%RT_H2_dissociation_rate = C_LOC(RT_H2_dissociation_rate)
   my_fields%RT_heating_rate = C_LOC(RT_heating_rate)
-
-
-  pressure_units = my_units%density_units * my_units%velocity_units**2.0_dp
-  iresult =  calculate_temperature(my_units, my_fields, temperature_gr)
-  !write(*,*) ' Temperature PARAM IN GRACKLE SOLVER === ', temperature_gr
-
-  iresult = calculate_pressure(my_units, my_fields, pressure)
-  !write(*,*) ' PRESSURE PARAM IN GRACKLE SOLVER === ', pressure*pressure_units
-  iresult = calculate_gamma(my_units, my_fields, gamma)
-
-  ! return denormalized AMRVAC parameters
+  my_fields%H2_self_shielding_length = C_LOC(H2_self_shielding_length)
+  my_fields%H2_custom_shielding_factor = &
+      C_LOC(H2_custom_shielding_factor)
+  my_fields%isrf_habing = C_LOC(isrf_habing)
+!     These routines can now be called during the simulations
+!     Calculate temperature.
+  iresult = calculate_temperature(my_units, my_fields, temperature_gr)
+  write(*,*) "Temperature = ", temperature_gr(1), "K."
   out_temperature = temperature_gr(1)
-  out_gamma = gamma(1)
+!     Calcualte pressure.
+  pressure_units = my_units%density_units *&
+       my_units%velocity_units**2.0_dp
+  iresult = calculate_pressure(my_units, my_fields, pressure)
+  write(*,*) "Pressure = ", pressure(1)*pressure_units, "dyne/cm^2."
   out_pressure = pressure(1)*pressure_units
-
-  !write(*,*) " gamma = ", gamma
-  !write(*,*) " After chemistry solving, HeI = ", HeI_density*my_units%density_units
-  !write(*,*) " After chemistry solving, e- =", e_density*my_units%density_units
-
-  !iresult = gr_free_memory(my_units, my_fields)
-
+!     Calculate gamma.
+  iresult = calculate_gamma(my_units, my_fields, gamma)
+  write(*,*) "Gamma = ", gamma(1)
+  out_gamma = gamma(1)
   dt = dt_old
 end subroutine grackle_chemistry_set_parameters
-
-
 
 
 

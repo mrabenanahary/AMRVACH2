@@ -4,7 +4,7 @@ module mod_obj_star
   use mod_obj_global_parameters
   use mod_obj_mat
   use mod_physics
-  use mod_hd, only :hd_dust
+  use mod_hd_grackle, only :hd_dust
   use mod_srmhd_parameters!, only: mag,lfac_,psi_,xi_
 implicit none
   ! Star features

@@ -24,7 +24,8 @@ contains
     double precision, intent(inout) :: drho(ixG^T), dpres(ixG^T)
 
     if(hd_energy) then
-      drho(ixO^S) = hd_gamma*abs(d2w(ixO^S, rho_))&
+       drho(ixO^S) = hd_gamma*abs(d2w(ixO^S, rho_))&
+      !drho(ixO^S) = w(ixO^S,gamma_)*abs(d2w(ixO^S, rho_))&
            /min(w(ixL^S, rho_), w(ixR^S, rho_))
       dpres(ixO^S) = abs(d2w(ixO^S, e_))/min(w(ixL^S, e_), w(ixR^S, e_))
     else
@@ -53,7 +54,8 @@ contains
 
       !  eq. B76, page 48, Miller and Collela 2002, JCP 183, 26
       !  use "dpres" to save squared sound speed, assuming primitives
-      dpres(ixO^S) =(hd_gamma*w(ixO^S, e_)/w(ixO^S, rho_))
+       dpres(ixO^S) =(hd_gamma*w(ixO^S, e_)/w(ixO^S, rho_))
+      !dpres(ixO^S) =(w(ixO^S,gamma_)*w(ixO^S, e_)/w(ixO^S, rho_))
 
       dpres(ixO^S) = abs(w(ixR^S, e_)-w(ixL^S, e_))&
            /(w(ixO^S, rho_)*dpres(ixO^S))

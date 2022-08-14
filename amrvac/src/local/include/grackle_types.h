@@ -7,14 +7,14 @@
 /
 / Distributed under the terms of the Enzo Public Licence.
 /
-/ The full license is in the file LICENSE, distributed with this 
+/ The full license is in the file LICENSE, distributed with this
 / software.
 ************************************************************************/
 
 #ifndef __GRACKLE_TYPES_H_
 #define __GRACKLE_TYPES_H_
 /***********************************************************************
-/  
+/
 / VARIABLE TYPES
 /
 ************************************************************************/
@@ -73,6 +73,18 @@ typedef struct
   gr_float *isrf_habing;
 
 } grackle_field_data;
+
+typedef struct
+{
+  gr_float uenergy_density;
+  gr_float dx_local;
+  gr_float dtchem;
+  gr_float *final_temp;
+  gr_float *final_cooltime;
+  gr_float *final_press;
+  gr_float *final_gamma;
+
+} grackle_inout;
 
 typedef struct
 {

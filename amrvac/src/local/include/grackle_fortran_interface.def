@@ -8,13 +8,13 @@
 !
 ! Distributed under the terms of the Enzo Public Licence.
 !
-! The full license is in the file LICENSE, distributed with this 
+! The full license is in the file LICENSE, distributed with this
 ! software.
 !=======================================================================
 
 c This file provides a FORTRAN interface to the grackle 3.0 API based
 c   on C structs.  The following defines the three C structs that grackle
-c   uses to pass data.  These must *exactly* match the corresponding C 
+c   uses to pass data.  These must *exactly* match the corresponding C
 c   definitions in grackle_types.h and grackle_chemistry_data.h.
 c
 c In addition, here we define the Fortran 90 interfaces to the C routines
@@ -41,7 +41,7 @@ c     This is the fortran definition of grackle_field_data
          TYPE(C_PTR) :: grid_start
          TYPE(C_PTR) :: grid_end
          REAL(C_DOUBLE) :: grid_dx
-         
+
          TYPE(C_PTR) :: density
          TYPE(C_PTR) :: HI_density
          TYPE(C_PTR) :: HII_density
@@ -71,10 +71,21 @@ c     This is the fortran definition of grackle_field_data
          TYPE(C_PTR) :: RT_HeI_ionization_rate
          TYPE(C_PTR) :: RT_HeII_ionization_rate
          TYPE(C_PTR) :: RT_H2_dissociation_rate
-
          TYPE(C_PTR) :: H2_self_shielding_length
-
+         TYPE(C_PTR) :: H2_custom_shielding_factor
          TYPE(C_PTR) :: isrf_habing
+
+      END TYPE
+
+      TYPE, BIND(C) :: grackle_inout
+         REAL(C_DOUBLE) :: uenergy_density
+         REAL(C_DOUBLE) :: dx_local
+         REAL(C_DOUBLE) :: dtchem
+
+         TYPE(C_PTR) :: final_temp
+         TYPE(C_PTR) :: final_cooltime
+         TYPE(C_PTR) :: final_press
+         TYPE(C_PTR) :: final_gamma
       END TYPE
 
 c     This is the fortran definition of grackle_chemistry_data
@@ -173,7 +184,7 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION initialize_chemistry_data(my_units) 
+         INTEGER(C_INT) FUNCTION initialize_chemistry_data(my_units)
      &        bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(INOUT) :: my_units
@@ -185,13 +196,13 @@ c     The following define the fortran interfaces to the C routines
      &        (my_units, my_fields, dt) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: my_units
-            TYPE(grackle_field_data), INTENT(IN) :: my_fields
+            TYPE(grackle_field_data), INTENT(INOUT) :: my_fields
             REAL(C_DOUBLE), INTENT(IN) :: dt
          END FUNCTION solve_chemistry
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION calculate_cooling_time(my_units, 
+         INTEGER(C_INT) FUNCTION calculate_cooling_time(my_units,
      &        my_fields, cooling_time) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: my_units
@@ -201,7 +212,7 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION calculate_temperature(my_units, 
+         INTEGER(C_INT) FUNCTION calculate_temperature(my_units,
      &        my_fields, temperature) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: my_units
@@ -211,7 +222,7 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION calculate_pressure(my_units, my_fields, 
+         INTEGER(C_INT) FUNCTION calculate_pressure(my_units, my_fields,
      &        pressure) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: my_units
@@ -221,7 +232,7 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION calculate_gamma(my_units, my_fields, 
+         INTEGER(C_INT) FUNCTION calculate_gamma(my_units, my_fields,
      &        gamma) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: my_units
@@ -239,12 +250,14 @@ c     The following define the fortran interfaces to the C routines
             REAL(C_DOUBLE), INTENT(OUT) :: dust_temperature(*)
          END FUNCTION calculate_dust_temperature
       END INTERFACE
-      
+
       INTERFACE
-         INTEGER(C_INT) FUNCTION gr_free_memory(my_units, my_fields) 
-     &      bind(C)
-            IMPORT
-            TYPE(grackle_units), INTENT(IN) :: my_units
-            TYPE(grackle_field_data), INTENT(IN) :: my_fields
-         END FUNCTION gr_free_memory
+          INTEGER(C_INT) FUNCTION solve_one_cell(mychemistry,
+     &            myfields, myunits, myconfig) bind(C)
+             IMPORT
+             TYPE(grackle_units), INTENT(IN) :: myunits
+             TYPE(grackle_chemistry_data), INTENT(INOUT) :: mychemistry
+             TYPE(grackle_field_data), INTENT(INOUT) :: myfields
+             TYPE(grackle_inout), INTENT(INOUT) :: myconfig
+          END FUNCTION solve_one_cell
       END INTERFACE

@@ -7,7 +7,7 @@
 /
 / Distributed under the terms of the Enzo Public Licence.
 /
-/ The full license is in the file LICENSE, distributed with this 
+/ The full license is in the file LICENSE, distributed with this
 / software.
 ************************************************************************/
 
@@ -34,7 +34,7 @@ chemistry_data _set_default_chemistry_parameters(void);
 
 int initialize_chemistry_data(code_units *my_units);
 
-int _initialize_chemistry_data(chemistry_data *my_chemistry, 
+int _initialize_chemistry_data(chemistry_data *my_chemistry,
                                chemistry_data_storage *my_rates,
                                code_units *my_units);
 
@@ -171,8 +171,8 @@ int _calculate_temperature(chemistry_data *my_chemistry,
 
 int _free_chemistry_data(chemistry_data *my_chemistry, chemistry_data_storage *my_rates);
 
-int gr_free_memory(code_units *my_units,
-                       grackle_field_data *my_fields);
+int solve_one_cell(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
+grackle_inout *myconfig);
 
 grackle_version get_grackle_version(void);
 

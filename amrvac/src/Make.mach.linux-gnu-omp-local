@@ -15,7 +15,7 @@
 
 MACH_TEXT  = Use apt-get to install libhdf5-serial-dev gfortran
 MACH_VALID = 1
-MACH_FILE  = Make.mach.linux-gnu-omp
+MACH_FILE  = Make.mach.linux-gnu-omp-local
 
 #-----------------------------------------------------------------------
 # Install paths (local variables)

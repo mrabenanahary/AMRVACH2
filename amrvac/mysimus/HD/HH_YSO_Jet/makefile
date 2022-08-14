@@ -65,7 +65,7 @@ vpath %.t $(SRC_DIR)
 # Keep mod_usr.f for inspection
 .PRECIOUS: mod_usr_yso_jet.f \
 					$(OBJ_DIR)/mod_obj_cla_jet.f \
-          $(OBJ_DIR)/mod_obj_global_parameters.f $(OBJ_DIR)/mod_obj_mat.f $(OBJ_DIR)/grackle_header.f $(OBJ_DIR)/mod_grackle_parameters.f $(OBJ_DIR)/mod_grackle_chemistry.f $(OBJ_DIR)/mod_grackle_chemistry_solver.f\
+          $(OBJ_DIR)/mod_obj_global_parameters.f $(OBJ_DIR)/mod_obj_mat.f $(OBJ_DIR)/grackle_header.f $(OBJ_DIR)/mod_grackle_parameters.f $(OBJ_DIR)/mod_grackle_chemistry.f $(OBJ_DIR)/grackle_chemistry_solver.f\
 					$(OBJ_DIR)/mod_obj_relativistic_wind.f $(OBJ_DIR)/mod_obj_star_envelope.f\
 					$(OBJ_DIR)/mod_obj_star.f $(OBJ_DIR)/mod_obj_pulsar.f\
 					$(OBJ_DIR)/mod_obj_sn_remnant.f $(OBJ_DIR)/mod_obj_ism.f \
@@ -98,7 +98,7 @@ allclean: clean
 # Dependencies
 amrvac: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
 	      $(OBJ_DIR)/mod_obj_readrebuilddata.o                          \
-	      $(OBJ_DIR)/grackle_header.o $(OBJ_DIR)/mod_grackle_parameters.o $(OBJ_DIR)/mod_grackle_chemistry.o $(OBJ_DIR)/mod_grackle_chemistry_solver.o\
+	      $(OBJ_DIR)/grackle_header.o $(OBJ_DIR)/mod_grackle_parameters.o $(OBJ_DIR)/mod_grackle_chemistry.o $(OBJ_DIR)/grackle_chemistry_solver.o\
 	      $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_sn_remnant.o      \
 	      $(OBJ_DIR)/mod_obj_relativistic_wind.o $(OBJ_DIR)/mod_obj_star_envelope.o\
 	      $(OBJ_DIR)/mod_obj_star.o $(OBJ_DIR)/mod_obj_pulsar.o          \
@@ -116,7 +116,8 @@ $(OBJ_DIR)/mod_grackle_parameters.o: $(LIB_AMRVAC) $(OBJ_DIR)/mod_obj_global_par
 $(OBJ_DIR)/mod_grackle_chemistry.o: $(LIB_AMRVAC) $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o \
 	                            $(OBJ_DIR)/mod_obj_usr_unit.o  $(OBJ_DIR)/grackle_header.o $(OBJ_DIR)/mod_grackle_parameters.o
 
-$(OBJ_DIR)/mod_grackle_chemistry_solver.o: $(LIB_AMRVAC) $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o \
+$(OBJ_DIR)/grackle_chemistry_solver.o: $(LIB_AMRVAC) $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o $(OBJ_DIR)/mod_grackle_chemistry.o\
+$(OBJ_DIR)/mod_grackle_parameters.o $(OBJ_DIR)/grackle_header.o \
 	                            $(OBJ_DIR)/mod_obj_usr_unit.o  $(OBJ_DIR)/grackle_header.o $(OBJ_DIR)/mod_grackle_parameters.o $(OBJ_DIR)/mod_grackle_chemistry.o
 
 $(OBJ_DIR)/mod_obj_dust.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o \
@@ -145,9 +146,9 @@ $(OBJ_DIR)/mod_obj_cla_jet.o: $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o
 	                            $(OBJ_DIR)/mod_obj_usr_unit.o 
 
 mod_usr_yso_jet.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o  \
-	$(OBJ_DIR)/mod_grackle_parameters.o $(OBJ_DIR)/mod_grackle_chemistry.o $(OBJ_DIR)/mod_grackle_chemistry_solver.o\
+	$(OBJ_DIR)/mod_grackle_parameters.o $(OBJ_DIR)/mod_grackle_chemistry.o $(OBJ_DIR)/grackle_chemistry_solver.o $(OBJ_DIR)/grackle_chemistry_solver.o\
 	$(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_cla_jet.o\
 	$(OBJ_DIR)/mod_obj_sn_remnant.o $(OBJ_DIR)/mod_obj_ism.o $(OBJ_DIR)/mod_obj_cloud.o\
 	$(OBJ_DIR)/mod_obj_readrebuilddata.o 
 
-amrvac.o: mod_usr_yso_jet.o $(OBJ_DIR)/mod_grackle_parameters.o $(OBJ_DIR)/mod_grackle_chemistry.o $(OBJ_DIR)/mod_grackle_chemistry_solver.o
+amrvac.o: mod_usr_yso_jet.o $(OBJ_DIR)/mod_grackle_parameters.o $(OBJ_DIR)/mod_grackle_chemistry.o $(OBJ_DIR)/grackle_chemistry_solver.o

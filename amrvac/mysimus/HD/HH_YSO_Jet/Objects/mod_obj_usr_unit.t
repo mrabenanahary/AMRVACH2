@@ -120,6 +120,7 @@ module mod_obj_usr_unit
     write(unit_config,*) 'Number Density= ', self%myconfig%number_density,'   ',  self%myunit%number_density
     write(unit_config,*) 'Pressure      = ', self%myconfig%pressure, '   ', self%myunit%pressure
     write(unit_config,*) 'Temperature   = ', self%myconfig%temperature, '   ',  self%myunit%temperature
+    write(unit_config,*) 'Mean molecular weight = ', self%myconfig%mean_mup
     !write(unit_config,*) 'gamma (initial) = ', self%myconfig%gamma, '   '
     write(unit_config,*) 'Energy        = ', self%myconfig%energy, '   ',  self%myunit%energy
     write(unit_config,*) 'Mass          = ', self%myconfig%mass, '   ', self%myunit%mass
@@ -359,6 +360,7 @@ end subroutine usr_physical_unit_set_unit
 
     unit_velocity      = self%myconfig%velocity
     unit_density       = self%myconfig%density
+    write(*,*) 'unit density from usr_unit',unit_density
     unit_numberdensity = self%myconfig%number_density
     unit_pressure      = self%myconfig%pressure
     unit_temperature   = self%myconfig%temperature

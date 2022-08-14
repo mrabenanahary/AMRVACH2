@@ -229,6 +229,8 @@ module mod_physics
   procedure(sub_get_aux), pointer         :: phys_get_aux              => null()
   procedure(sub_check_w), pointer         :: phys_check_w              => null()
   procedure(sub_get_pthermal), pointer    :: phys_get_pthermal         => null()
+  procedure(sub_get_gamma), pointer    :: phys_get_gamma         => null()
+  procedure(sub_get_mup), pointer    :: phys_get_mup         => null()
   procedure(sub_get_kin_en),   pointer    :: phys_get_kin_en         => null()
   procedure(sub_get_csound2), pointer     :: phys_get_csound2          => null()
   procedure(sub_get_comove_B2), pointer   :: phys_get_comove_B2        => null()
@@ -369,6 +371,21 @@ module mod_physics
        real(kind=dp)      , intent(out)   :: pth(ixI^S)
      end subroutine sub_get_pthermal
 
+     subroutine sub_get_gamma(w,x,ixI^L,ixO^L,gammaeff)
+       use mod_global_parameters
+       integer, intent(in)             :: ixI^L, ixO^L
+       real(kind=dp)      , intent(in)    :: w(ixI^S,nw)
+       real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
+       real(kind=dp)      , intent(out)   :: gammaeff(ixI^S)
+     end subroutine sub_get_gamma
+
+     subroutine sub_get_mup(w,x,ixI^L,ixO^L,mmw)
+       use mod_global_parameters
+       integer, intent(in)             :: ixI^L, ixO^L
+       real(kind=dp)      , intent(in)    :: w(ixI^S,nw)
+       real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
+       real(kind=dp)      , intent(out)   :: mmw(ixI^S)
+     end subroutine sub_get_mup
 
      function sub_get_kin_en(w, ixI^L, ixO^L, inv_rho) result(ke)
        use mod_global_parameters
