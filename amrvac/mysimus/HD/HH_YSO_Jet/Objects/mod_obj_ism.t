@@ -1809,6 +1809,18 @@ contains
       divpv(ixI^S) =  divpv(ixI^S) + f_profile(ixO^S,^D) * w(ixI^S,phys_ind%mom(^D))
       }
 
+      call phys_get_pthermal(w_tmp,x,ixI^L,ixI^L,ptherm)
+      do idims=1,ndim
+        call gradient(ptherm,ixI^L,ixO^L,idims,gradp)
+
+        where(self%patch(ixO^S))
+          f_profile(ixO^S,idims) = gradp(ixO^S)
+        end where
+        pv(ixI^S,idims) =  ptherm(ixI^S)*w(ixI^S,phys_ind%mom(idims))/w(ixI^S,phys_ind%rho_)
+      end do
+      if(ndir>ndim)pv(ixI^S,ndim+1:ndir)=0.0_dp
+      call  divvector(pv,ixI^L,ixO^L,divpv)
+
 
 
 
