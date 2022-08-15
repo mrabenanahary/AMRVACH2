@@ -1484,7 +1484,8 @@ end subroutine hd_get_aux
     real(dp), intent(in)         :: w(ixI^S, nw)
     real(dp), intent(in)         :: x(ixI^S, 1:ndim)
     real(dp), intent(out)        :: temperature(ixI^S)
-    real(dp), dimension(ixI^S)   :: pth(ixI^S)
+    real(dp), dimension(ixI^S)   :: pth
+    real(dp), dimension(ixI^S)   :: meanmw
     logical , dimension(ixI^S)   :: patch_mult_mup
     real(kind=dp)  :: mp,kB
     !----------------------------------------------------
@@ -1500,16 +1501,15 @@ end subroutine hd_get_aux
 
     if (hd_config%energy) then
       call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
-      temperature(ixO^S) = pth(ixO^S)/w(ixO^S, rho_)
+      temperature(ixO^S) =&
+      mp*w_convert_factor(p_)*pth(ixO^S)/&
+      (kB*w_convert_factor(rho_)*w(ixO^S,rho_))
       if(hd_config%mean_mup_on)then
-        patch_mult_mup(ixO^S) = dabs(w(ixO^S, phys_ind%mup_)-1.0_dp)>smalldouble &
-             .or. w(ixO^S, phys_ind%mup_)>smalldouble
-        if(any(patch_mult_mup(ixO^S)))then
-          where(patch_mult_mup(ixO^S))
-            temperature(ixO^S) =temperature(ixO^S)*w(ixO^S,phys_ind%mup_)
-          end where
-        end if
+        call hd_get_mmw(w, x, ixI^L, ixO^L, meanmw)
+        temperature(ixO^S) =temperature(ixO^S) *&
+        meanmw(ixO^S)
       end if
+      temperature(ixO^S) =temperature(ixO^S)/unit_temperature
     else
       Temperature(ixO^S) = hd_config%temperature_isotherm !necessarilly isotherm
       if(hd_config%mean_mup_on)then

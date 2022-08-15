@@ -103,9 +103,9 @@
         internalboundary  = .true.
         nghostcells       = 4
         !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
-        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',16*'symm'!'symm','asymm','symm','asymm',16*'symm'!21*'cont', ! C.L. gauche <=> rmin
+        typeboundary_min1 =  21*'cont'!'symm','asymm','symm','asymm','symm',16*'symm'!'symm','asymm','symm','asymm',16*'symm'!21*'cont', ! C.L. gauche <=> rmin
         typeboundary_max1 =  21*'cont'!6*'cont'!                                    ! C.L. droite <=> rmax
-        typeboundary_min2 = 21*'special'!21*'cont'!6*'special'!'symm','symm','asymm','symm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
+        typeboundary_min2 = 21*'cont'!21*'special'!6*'special'!'symm','symm','asymm','symm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
         typeboundary_max2 =  21*'cont'!6*'cont'!       
 /
         typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max

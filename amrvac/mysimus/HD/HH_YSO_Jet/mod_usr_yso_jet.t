@@ -2031,6 +2031,10 @@ level = node(plevel_,saveigrid)
    pth_field(ixO^S)=0.0
 end if cond_grackle_on
 
+!update temperature fields after source derivation
+call phys_get_temperature( ixI^L, ixO^L,w, x, tmp_field)
+w(ixO^S,phys_ind%temperature_) = tmp_field(ixO^S)
+
 call usr_clean_memory
 
 !  call usr_check_w(ixI^L,ixO^L,.true.,'specialsource_usr',qt,x,w)
