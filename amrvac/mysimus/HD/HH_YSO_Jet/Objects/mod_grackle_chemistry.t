@@ -1266,10 +1266,9 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
 end subroutine grackle_set_complet
 
 
-subroutine grackle_chemistry_static_source(ix^D,ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_dx22,&
+subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_dx22,&
 solver_activated,pressure_field,gamma_field,temperature_field,self)
   implicit none
-  integer, intent(in)                     :: ix^D
   integer, intent(in)                     :: ixI^L,ixO^L
   real(kind=dp), intent(in)               :: qdt,qtC,qt
   real(kind=dp), intent(in)               :: x(ixI^S,1:ndim)
@@ -1290,7 +1289,7 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
   real(kind=dp) :: temperature_units, pressure_units, dtchem, dx_local, velocity_units
   type(grackle_field_data)                :: my_gr_fields
   real(kind=dp), target                   :: w_gr(ixI^S,1:nw)
-  real(kind=dp)                   :: temperature(ixI^S)
+  real(kind=dp),dimension(ixI^S) :: temperature,mmw_field,gmmeff_field,pth_field
   real(kind=dp)                           :: dt_old
   integer, parameter         :: field_size=1
   real :: initial_redshift
@@ -1367,6 +1366,7 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
 
   !     Set parameters and units
   call self%link_par_to_gr(my_grackle_data,my_units)
+  velocity_units = get_velocity_units(my_units)
 
   !     Set field arrays
 
@@ -1379,96 +1379,106 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
     grid_start(idim) = 0
     grid_end(idim) = 0
   end do
-  grid_dx = grid_dx22(1)*unit_length/my_units%length_units
+  grid_dx = grid_dx22(1)*length_convert_factor/my_units%length_units
   grid_dimension(1) = field_size
   !0-based
   grid_end(1)= field_size - 1
 
   temperature_units = get_temperature_units(my_units)
 
+  ! Compute field of H2-corrected gamma
+  call phys_get_gamma(w,ixI^L, ixO^L, gmmeff_field)
+  ! Compute field of mean molecular weight
+  call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
+  ! Compute field of H2-gamma corrected temperature
+  call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
+  ! Compute field of H2-gamma corrected pressure
+  !call phys_get_pthermal(w, x, ixI^L, ixO^L, pth_field)
+
+
   {do imesh^D=ixOmin^D,ixOmax^D|\}
     do i = 1,field_size
-      density(i) = w(ix^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)
-      HI_density(i) = w(ix^D,phys_ind%HI_density_)*w_convert_factor(phys_ind%HI_density_)
-      HII_density(i) = w(ix^D,phys_ind%HII_density_)*w_convert_factor(phys_ind%HII_density_)
-      HM_density(i) = w(ix^D,phys_ind%HM_density_)*w_convert_factor(phys_ind%HM_density_)
-      HeI_density(i) = w(ix^D,phys_ind%HeI_density_)*w_convert_factor(phys_ind%HeI_density_)
-      HeII_density(i) = w(ix^D,phys_ind%HeII_density_)*w_convert_factor(phys_ind%HeII_density_)
-      HeIII_density(i) = w(ix^D,phys_ind%HeIII_density_)*w_convert_factor(phys_ind%HeIII_density_)
-      H2I_density(i) = w(ix^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2I_density_)
-      H2II_density(i) = w(ix^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2II_density_)
-      DI_density(i) = w(ix^D,phys_ind%DI_density_)*w_convert_factor(phys_ind%DI_density_)
-      DII_density(i) = w(ix^D,phys_ind%DII_density_)*w_convert_factor(phys_ind%DII_density_)
-      HDI_density(i) = w(ix^D,phys_ind%HDI_density_)*w_convert_factor(phys_ind%HDI_density_)
-      e_density(i) = w(ix^D,phys_ind%e_density_)*w_convert_factor(phys_ind%e_density_)
-      metal_density(i) = w(ix^D,phys_ind%metal_density_)*w_convert_factor(phys_ind%metal_density_)
-      dust_density(i) = w(ix^D,phys_ind%dust_density_)*w_convert_factor(phys_ind%dust_density_)
+      density(i) = w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)
+      HI_density(i) = w(imesh^D,phys_ind%HI_density_)*w_convert_factor(phys_ind%HI_density_)
+      HII_density(i) = w(imesh^D,phys_ind%HII_density_)*w_convert_factor(phys_ind%HII_density_)
+      HM_density(i) = w(imesh^D,phys_ind%HM_density_)*w_convert_factor(phys_ind%HM_density_)
+      HeI_density(i) = w(imesh^D,phys_ind%HeI_density_)*w_convert_factor(phys_ind%HeI_density_)
+      HeII_density(i) = w(imesh^D,phys_ind%HeII_density_)*w_convert_factor(phys_ind%HeII_density_)
+      HeIII_density(i) = w(imesh^D,phys_ind%HeIII_density_)*w_convert_factor(phys_ind%HeIII_density_)
+      H2I_density(i) = w(imesh^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2I_density_)
+      H2II_density(i) = w(imesh^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2II_density_)
+      DI_density(i) = w(imesh^D,phys_ind%DI_density_)*w_convert_factor(phys_ind%DI_density_)
+      DII_density(i) = w(imesh^D,phys_ind%DII_density_)*w_convert_factor(phys_ind%DII_density_)
+      HDI_density(i) = w(imesh^D,phys_ind%HDI_density_)*w_convert_factor(phys_ind%HDI_density_)
+      e_density(i) = w(imesh^D,phys_ind%e_density_)*w_convert_factor(phys_ind%e_density_)
+      metal_density(i) = w(imesh^D,phys_ind%metal_density_)*w_convert_factor(phys_ind%metal_density_)
+      dust_density(i) = w(imesh^D,phys_ind%dust_density_)*w_convert_factor(phys_ind%dust_density_)
 
       x_velocity(i) = 0.0
       y_velocity(i) = 0.0
       z_velocity(i) = 0.0
 
       !   initilize internal energy (here 1000 K for no reason)
-      gammaoth = my_grackle_data%Gamma
-      temgas = 0.0_dp
-      do idim=1,ndim+1
+      !gammaoth = my_grackle_data%Gamma
+      !temgas = 0.0_dp
+      !do idim=1,ndim+1
         ! kinetic energy
-        temgas = temgas + 0.5*w(ix^D, phys_ind%mom(idim))/&
-        w(ix^D, phys_ind%rho_)
-      end do
-      temgas = ((gammaoth-1.0_dp)*(w(ix^D,phys_ind%e_)-temgas)/&
-      w(ix^D,phys_ind%rho_))*w_convert_factor(phys_ind%pressure_) ! pressure
+        !temgas = temgas + 0.5*w(imesh^D, phys_ind%mom(idim))/&
+        !w(imesh^D, phys_ind%rho_)
+      !end do
+      !temgas = ((gammaoth-1.0_dp)*(w(imesh^D,phys_ind%e_)-temgas)/&
+      !w(imesh^D,phys_ind%rho_))*w_convert_factor(phys_ind%pressure_) ! pressure
 
       ! H2-gamma corrected pressure
-      nH2 = 0.5d0*(H2I_density(i) + H2II_density(i))
+      !nH2 = 0.5d0*(H2I_density(i) + H2II_density(i))
       !write(*,*) 'nH2 = ',nH2
-      nother = (HeI_density(i) + HeII_density(i) +&
-               HeIII_density(i))/4.0d0 +&
-               HI_density(i) + HII_density(i) +&
-               e_density(i)
+      !nother = (HeI_density(i) + HeII_density(i) +&
+      !         HeIII_density(i))/4.0d0 +&
+      !         HI_density(i) + HII_density(i) +&
+      !         e_density(i)
       !write(*,*) 'nother = ',nother
-      if(nH2/nother > 1.0d-3)then
-         tvar = 6100.0d0/temgas
-         if (tvar > 10.0)then
-            inv_gammaH2_1 = 0.5d0*5.0d0
-         else
-            inv_gammaH2_1 = 0.5d0*(5.0d0 +&
-                       2.0d0 * tvar**2.0d0 *&
-                    exp(tvar)/(exp(tvar)-1.0d0)**2.0d0)
-         end if
-      else
-         inv_gammaH2_1 = 2.5d0
-      end if
+      !if(nH2/nother > 1.0d-3)then
+      !   tvar = 6100.0d0/temgas
+      !   if (tvar > 10.0)then
+      !      inv_gammaH2_1 = 0.5d0*5.0d0
+      !   else
+      !      inv_gammaH2_1 = 0.5d0*(5.0d0 +&
+      !                 2.0d0 * tvar**2.0d0 *&
+      !              exp(tvar)/(exp(tvar)-1.0d0)**2.0d0)
+      !   end if
+      !else
+      !   inv_gammaH2_1 = 2.5d0
+      !end if
       !write(*,*) 'inv_gammaH2_1 =' , inv_gammaH2_1
-      inv_gammaoth_1 = 1.0d0/(gammaoth-1.0d0)
+      !inv_gammaoth_1 = 1.0d0/(gammaoth-1.0d0)
       !write(*,*) 'inv_gammaoth_1 = ',inv_gammaoth_1
 
-      gammaeff = 1.0d0 + (nH2 + nother)/&
-               (nH2*inv_gammaH2_1 +&
-            nother*inv_gammaoth_1)
+      !gammaeff = 1.0d0 + (nH2 + nother)/&
+      !         (nH2*inv_gammaH2_1 +&
+      !      nother*inv_gammaoth_1)
 
-      gammaeff_1 = gammaeff - 1.0d0
-      inv_gamma_eff_1 = 1.0d0/gammaeff_1
+      !gammaeff_1 = gammaeff - 1.0d0
+      !inv_gamma_eff_1 = 1.0d0/gammaeff_1
 
       ! H2-gamma corrected pressure
-      temgas = temgas*gammaeff_1/(gammaoth-1.0_dp) !
+      !temgas = temgas*gammaeff_1/(gammaoth-1.0_dp) !
 
-      meanmw = density(i)/&
-      (HI_density(i)+HII_density(i)+HM_density(i)+&
-      0.25*(HeI_density(i)+HeII_density(i)+&
-      HeIII_density(i))+&
-      0.5*(H2I_density(i)+HII_density(i))+&
-      metal_density(i)/16.0)
+      ! Mean molecular weight
+      !meanmw = density(i)/&
+      !(HI_density(i)+HII_density(i)+HM_density(i)+&
+      !0.25*(HeI_density(i)+HeII_density(i)+&
+      !HeIII_density(i))+&
+      !0.5*(H2I_density(i)+HII_density(i))+&
+      !metal_density(i)/16.0)
 
       !write(*,*) 'meanmw = ',meanmw
-      ! from pressure to temperature
-      ! p = rho*kB*T/(mu*mH)
-      ! => T = mu*mH*p/(rho*kB)
-      ! physical units temperature
-      energy(i) = meanmw*mp*temgas/(density(i)*kB)
-      ! Grackle internal energy density = u = e/rho
-      energy(i) = energy(i) /(meanmw * temperature_units /&
-      (velocity_units * velocity_units) * gammaeff_1)
+      ! from pressure to internal energy density
+      ! u = e/rho = p/(rho*(gamma-1)) = T*unit_v^2/(mmw*(gamma-1)*unit_T)
+      ! Physical units internal energy density
+      ! (<!> mup is already denormalized)
+      energy(i) = temperature(imesh^D)*w_convert_factor(phys_ind%temperature_)/&
+      (mmw_field(imesh^D)*(gmmeff_field(imesh^D)-1.0_dp)*temperature_units/&
+      (velocity_units*velocity_units))
 
       ! For instance :
       volumetric_heating_rate(i) = 0.0
@@ -1528,6 +1538,7 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
     dx_local = grid_dx22(1)*length_convert_factor ! physical unit
     dtchem = qdt*time_convert_factor ! physical unit
 
+    !physical units
     my_config%uenergy_density = energy(i)
     my_config%dx_local = dx_local
     my_config%dtchem = dtchem
@@ -1562,32 +1573,33 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
 
     do i = 1,field_size
       ! Densities
-      w(ix^D,phys_ind%rho_) = density(i) / w_convert_factor(phys_ind%rho_)
-      w(ix^D,phys_ind%HI_density_) = HI_density(i) / w_convert_factor(phys_ind%HI_density_)
-      w(ix^D,phys_ind%HII_density_) = HII_density(i) / w_convert_factor(phys_ind%HII_density_)
-      w(ix^D,phys_ind%HM_density_) = HM_density(i) / w_convert_factor(phys_ind%HM_density_)
-      w(ix^D,phys_ind%HeI_density_) = HeI_density(i) / w_convert_factor(phys_ind%HeI_density_)
-      w(ix^D,phys_ind%HeII_density_) = HeII_density(i) / w_convert_factor(phys_ind%HeII_density_)
-      w(ix^D,phys_ind%HeIII_density_) = HeIII_density(i) / w_convert_factor(phys_ind%HeIII_density_)
-      w(ix^D,phys_ind%H2I_density_) = H2I_density(i) / w_convert_factor(phys_ind%H2I_density_)
-      w(ix^D,phys_ind%H2I_density_) = H2II_density(i) / w_convert_factor(phys_ind%H2II_density_)
-      w(ix^D,phys_ind%DI_density_) = DI_density(i) / w_convert_factor(phys_ind%DI_density_)
-      w(ix^D,phys_ind%DII_density_) = DII_density(i) / w_convert_factor(phys_ind%DII_density_)
-      w(ix^D,phys_ind%HDI_density_) = HDI_density(i) / w_convert_factor(phys_ind%HDI_density_)
-      w(ix^D,phys_ind%e_density_) = e_density(i) / w_convert_factor(phys_ind%e_density_)
-      w(ix^D,phys_ind%metal_density_) = metal_density(i) / w_convert_factor(phys_ind%metal_density_)
-      w(ix^D,phys_ind%dust_density_) = dust_density(i) / w_convert_factor(phys_ind%dust_density_)
+      w(imesh^D,phys_ind%rho_) = density(i) / w_convert_factor(phys_ind%rho_)
+      w(imesh^D,phys_ind%HI_density_) = HI_density(i) / w_convert_factor(phys_ind%HI_density_)
+      w(imesh^D,phys_ind%HII_density_) = HII_density(i) / w_convert_factor(phys_ind%HII_density_)
+      w(imesh^D,phys_ind%HM_density_) = HM_density(i) / w_convert_factor(phys_ind%HM_density_)
+      w(imesh^D,phys_ind%HeI_density_) = HeI_density(i) / w_convert_factor(phys_ind%HeI_density_)
+      w(imesh^D,phys_ind%HeII_density_) = HeII_density(i) / w_convert_factor(phys_ind%HeII_density_)
+      w(imesh^D,phys_ind%HeIII_density_) = HeIII_density(i) / w_convert_factor(phys_ind%HeIII_density_)
+      w(imesh^D,phys_ind%H2I_density_) = H2I_density(i) / w_convert_factor(phys_ind%H2I_density_)
+      w(imesh^D,phys_ind%H2I_density_) = H2II_density(i) / w_convert_factor(phys_ind%H2II_density_)
+      w(imesh^D,phys_ind%DI_density_) = DI_density(i) / w_convert_factor(phys_ind%DI_density_)
+      w(imesh^D,phys_ind%DII_density_) = DII_density(i) / w_convert_factor(phys_ind%DII_density_)
+      w(imesh^D,phys_ind%HDI_density_) = HDI_density(i) / w_convert_factor(phys_ind%HDI_density_)
+      w(imesh^D,phys_ind%e_density_) = e_density(i) / w_convert_factor(phys_ind%e_density_)
+      w(imesh^D,phys_ind%metal_density_) = metal_density(i) / w_convert_factor(phys_ind%metal_density_)
+      w(imesh^D,phys_ind%dust_density_) = dust_density(i) / w_convert_factor(phys_ind%dust_density_)
       ! Internal energy in AMRVAC code units
-      w(ix^D,phys_ind%e_) = (out_pressure/(out_gamma-1.0_dp))/w_convert_factor(phys_ind%pressure_)
+      w(imesh^D,phys_ind%e_) = out_pressure/(w_convert_factor(phys_ind%pressure_)*&
+      (out_gamma-1.0_dp))
       ! Total energy
       do idim=1,ndim+1
-        w(ix^D,phys_ind%e_) = w(ix^D,phys_ind%e_) +&
-        0.5*w(ix^D, phys_ind%mom(idim))/w(ix^D, phys_ind%rho_)
+        w(imesh^D,phys_ind%e_) = w(imesh^D,phys_ind%e_) +&
+        0.5*w(imesh^D, phys_ind%mom(idim))/w(imesh^D, phys_ind%rho_)
       end do
       ! Temperature
-      w(ix^D,phys_ind%temperature_) = out_temp/w_convert_factor(phys_ind%temperature_)
+      w(imesh^D,phys_ind%temperature_) = out_temp/w_convert_factor(phys_ind%temperature_)
       ! Gammaeff
-      w(ix^D,phys_ind%gamma_) = out_gamma/w_convert_factor(phys_ind%gamma_)
+      w(imesh^D,phys_ind%gamma_) = out_gamma/w_convert_factor(phys_ind%gamma_)
       meanmw = density(i)/&
       (HI_density(i)+HII_density(i)+HM_density(i)+&
       0.25*(HeI_density(i)+HeII_density(i)+&
@@ -1595,7 +1607,7 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
       0.5*(H2I_density(i)+HII_density(i))+&
       metal_density(i)/16.0)
       ! Mean molecular weight
-      w(ix^D,phys_ind%mup_) = meanmw/w_convert_factor(phys_ind%mup_)
+      w(imesh^D,phys_ind%mup_) = meanmw/w_convert_factor(phys_ind%mup_)
     end do
 
   {end do^D&|\}

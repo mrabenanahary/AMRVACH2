@@ -1157,20 +1157,34 @@ contains
            !write(*,*) 'ISM set_w H2Idensity',gr_solv%myconfig%densityH2I(iobject)*&
            !self%myphysunit%myconfig%density
             where(self%patch(ixO^S))
-              w(ixO^S,phys_ind%HI_density_)=gr_solv%myconfig%densityHI(iobject)
-              w(ixO^S,phys_ind%HII_density_)=gr_solv%myconfig%densityHII(iobject)
-              w(ixO^S,phys_ind%HM_density_)=gr_solv%myconfig%densityHM(iobject)
-              w(ixO^S,phys_ind%H2I_density_)=gr_solv%myconfig%densityH2I(iobject)
-              w(ixO^S,phys_ind%H2II_density_)=gr_solv%myconfig%densityH2II(iobject)
-              w(ixO^S,phys_ind%HeI_density_)=gr_solv%myconfig%densityHeI(iobject)
-              w(ixO^S,phys_ind%HeII_density_)=gr_solv%myconfig%densityHeII(iobject)
-              w(ixO^S,phys_ind%HeIII_density_)=gr_solv%myconfig%densityHeIII(iobject)
-              w(ixO^S,phys_ind%DI_density_)=gr_solv%myconfig%densityDI(iobject)
-              w(ixO^S,phys_ind%DII_density_)=gr_solv%myconfig%densityDII(iobject)
-              w(ixO^S,phys_ind%HDI_density_)=gr_solv%myconfig%densityHDI(iobject)
-              w(ixO^S,phys_ind%e_density_)=gr_solv%myconfig%densityElectrons(iobject)
-              w(ixO^S,phys_ind%metal_density_)=gr_solv%myconfig%density_Z(iobject)
-              w(ixO^S,phys_ind%dust_density_)=gr_solv%myconfig%density_dust(iobject)
+              w(ixO^S,phys_ind%HI_density_)=MAX(gr_solv%myconfig%densityHI(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%HII_density_)=MAX(gr_solv%myconfig%densityHII(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%HM_density_)=MAX(gr_solv%myconfig%densityHM(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%H2I_density_)=MAX(gr_solv%myconfig%densityH2I(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%H2II_density_)=MAX(gr_solv%myconfig%densityH2II(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%HeI_density_)=MAX(gr_solv%myconfig%densityHeI(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%HeII_density_)=MAX(gr_solv%myconfig%densityHeII(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%HeIII_density_)=MAX(gr_solv%myconfig%densityHeIII(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%DI_density_)=MAX(gr_solv%myconfig%densityDI(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%DII_density_)=MAX(gr_solv%myconfig%densityDII(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%HDI_density_)=MAX(gr_solv%myconfig%densityHDI(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%e_density_)=MAX(gr_solv%myconfig%densityElectrons(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%metal_density_)=MAX(gr_solv%myconfig%density_Z(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
+              w(ixO^S,phys_ind%dust_density_)=MAX(gr_solv%myconfig%density_dust(iobject),&
+              tiny_number*w(ixO^S,phys_ind%rho_))
               w(ixO^S,phys_ind%gamma_) = self%myconfig%gamma
             end where
            end if

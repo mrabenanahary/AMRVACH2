@@ -1307,6 +1307,39 @@ end subroutine usr_cla_jet_set_patch
        dust_is_frac=.false.
        call self%mydust%set_w(ixI^L,ixO^L,qt,dust_is_frac,self%myconfig%dust_frac,fprofile,x,w)
     end if cond_dust_on
+
+
+    where(self%patch(ixO^S))
+      w(ixO^S,phys_ind%HI_density_)=MAX(w(ixO^S,phys_ind%HI_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HII_density_)=MAX(w(ixO^S,phys_ind%HII_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HeI_density_)=MAX(w(ixO^S,phys_ind%HeI_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HeII_density_)=MAX(w(ixO^S,phys_ind%HeII_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HeIII_density_)=MAX(w(ixO^S,phys_ind%HeIII_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%e_density_)=MAX(w(ixO^S,phys_ind%e_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HM_density_)=MAX(w(ixO^S,phys_ind%HM_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%H2I_density_)=MAX(w(ixO^S,phys_ind%H2I_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%H2II_density_)=MAX(w(ixO^S,phys_ind%H2II_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%DI_density_)=MAX(w(ixO^S,phys_ind%DI_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%DII_density_)=MAX(w(ixO^S,phys_ind%DII_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HDI_density_)=MAX(w(ixO^S,phys_ind%HDI_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%metal_density_)=MAX(w(ixO^S,phys_ind%metal_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%dust_density_)=MAX(w(ixO^S,phys_ind%dust_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+    end where
+
    end if cond_inside_cla_jet
 
 
@@ -1326,10 +1359,10 @@ end subroutine usr_cla_jet_set_patch
   ! .. local..
   real(kind=dp)                   :: intermediate_jet_mflux
   !----------------------------------
-
   intermediate_jet_mflux = densityref*self%myconfig%jet_surface_init
   where(self%patch(ixO^S))
     w(ixO^S,rho_ind)       = intermediate_jet_mflux/jet_srfce(ixO^S)
+    w(ixO^S,rho_ind)       = MAX(w(ixO^S,rho_ind),tiny_number*w(ixO^S,phys_ind%rho_))
   end where
 
   end subroutine gr_compute_w_rho
@@ -1533,7 +1566,7 @@ end subroutine usr_cla_add_source
               h_time            =  1.0_dp
              end select
             where(self%ejecta_patch(ixO^S))
-             w(ixO^S,phys_ind%rho_) =  self%myconfig%density*h_time
+             w(ixO^S,phys_ind%rho_)=self%myconfig%density*h_time
              w(ixO^S,phys_ind%HI_density_)=self%myconfig%HI_density*h_time
              w(ixO^S,phys_ind%HII_density_)=self%myconfig%HII_density*h_time
              w(ixO^S,phys_ind%HeI_density_)=self%myconfig%HeI_density*h_time
