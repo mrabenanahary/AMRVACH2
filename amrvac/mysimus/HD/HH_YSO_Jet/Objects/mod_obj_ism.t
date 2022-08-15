@@ -751,6 +751,8 @@ contains
         write(*,*) 'ISM set_complet density',gr_solv%myconfig%density(i_obj)
         write(*,*) 'ISM set_complet HIdensity',gr_solv%myconfig%densityHI(i_obj)
         write(*,*) 'ISM set_complet H2Idensity',gr_solv%myconfig%densityH2I(i_obj)
+        write(*,*) 'ISM set_complet HeIdensity',gr_solv%myconfig%densityHeI(i_obj)
+        write(*,*) 'ISM set_complet e_density',gr_solv%myconfig%densityElectrons(i_obj)
         write(*,*) 'ISM set_complet temperature',self%myconfig%temperature
         write(*,*) 'ISM set_complet pressure',self%myconfig%pressure
         write(*,*) 'ISM set_complet gamma',self%myconfig%gamma

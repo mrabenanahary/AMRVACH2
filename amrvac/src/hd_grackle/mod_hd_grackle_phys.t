@@ -1135,13 +1135,19 @@ end subroutine hd_get_aux
     real(dp), intent(inout) :: w(ixI^S, nw)
     real(dp), intent(in)    :: x(ixI^S, 1:ndim)
   !  real(dp)                :: invgam
+    real(dp)                :: gamm(ixI^S)
     integer                         :: idir, itr
 
     if (hd_config%energy) then
     !   invgam = 1.0_dp/(hd_config%gamma - 1.0_dp)
        ! Calculate total energy from pressure and kinetic energy
-       w(ixO^S, e_) = w(ixO^S, e_)/gamma_1  + &
-            0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) * w(ixO^S, rho_)
+       ! old :
+       !w(ixO^S, e_) = w(ixO^S, e_)/gamma_1  + &
+       !      0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) * w(ixO^S, rho_)
+       ! new :
+       call hd_get_gamma(w, x, ixI^L, ixO^L, gamm)
+       w(ixO^S, e_) = w(ixO^S, e_)/(gamm(ixO^S)-1.0_dp)  + &
+             0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) * w(ixO^S, rho_)
     end if
 
     ! Convert velocity to momentum
@@ -1170,6 +1176,7 @@ end subroutine hd_get_aux
     ! .. local ..
     integer                         :: itr, idir
     real(dp)                        :: inv_rho(ixO^S)
+    real(dp)                        :: gamm(ixI^S)
     !--------------------------------
     if (check_small_values) call hd_handle_small_values(.true., w, x, &
                                               ixI^L, ixO^L, 'hd_to_primitive')
@@ -1178,7 +1185,11 @@ end subroutine hd_get_aux
 
     if (hd_config%energy) then
        ! Compute pressure
-       w(ixO^S, e_) = gamma_1 * (w(ixO^S, e_) - &
+       ! old :
+       !w(ixO^S, e_) = gamma_1 * (w(ixO^S, e_) - &
+       !     hd_kin_en(w, ixI^L, ixO^L, inv_rho))
+       call hd_get_gamma(w, x, ixI^L, ixO^L, gamm)
+       w(ixO^S, e_) = (gamm(ixO^S)-1.0_dp)* (w(ixO^S, e_) - &
             hd_kin_en(w, ixI^L, ixO^L, inv_rho))
     end if
 
@@ -1360,12 +1371,14 @@ end subroutine hd_get_aux
     real(dp), intent(in)         :: w(ixI^S, nw)
     real(dp), intent(in)         :: x(ixI^S, 1:ndim)
     real(dp), intent(out)        :: pth(ixI^S)
+    real(dp)                     :: gamm(ixI^S)
     !----------------------------------------------------
     if (hd_config%energy) then
-      !pth(ixO^S) = (w(ixO^S,gamma_)-1.0_dp) * (w(ixO^S, e_) - &
-      !     hd_kin_en(w, ixI^L, ixO^L))
-      pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
-          hd_kin_en(w, ixI^L, ixO^L))
+      call hd_get_gamma(w, x, ixI^L, ixO^L, gamm)
+      pth(ixO^S) = (gamm(ixO^S)-1.0_dp) * (w(ixO^S, e_) - &
+           hd_kin_en(w, ixI^L, ixO^L))
+      !pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
+      !    hd_kin_en(w, ixI^L, ixO^L))
     else
        pth(ixO^S) = hd_config%adiab * w(ixO^S, rho_)**hd_config%gamma
     end if

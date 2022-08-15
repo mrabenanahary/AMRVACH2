@@ -18,7 +18,7 @@
         autoconvert=.true.
         convert_type='vtuBCCmpi'
         !restart_from_file='Lee2001_s_0027.dat'                
-        nwauxio = 3
+        nwauxio = 9
         /
         restart_from_file='Jet_Shang06_0118.dat'
         /
@@ -120,8 +120,8 @@
         xprobmax2 =  1.0d17! <--- z_max=3.0d17
 
         ! total cell at level 1
-        domain_nx1= 8! <---dr=1.25e15 cm at lvl 1
-        domain_nx2= 8! <---dr=1.25e15 cm at lvl 1
+        domain_nx1= 16! <---dr=1.25e15 cm at lvl 1
+        domain_nx2= 16! <---dr=1.25e15 cm at lvl 1
         ! number of cell by block
         block_nx1 = 8!8!
         block_nx2 = 8!8!
@@ -343,12 +343,12 @@ ism_config%profile_idir       = 1.0,0.0,0.0       !z=2,r=1  !  ism profile direc
 
 ism_config%profile_center     = 0,0,0
 
-ism_config%profile_density_on = .true. ! Zheng=True ! .false. ! .true. ! ISM set density profile
+ism_config%profile_density_on = .false. ! Zheng=True ! .false. ! .true. ! ISM set density profile
 ism_config%profile_pressure_on= .false. ! Zheng=True ! .false. !.true.
 ism_config%theta_floored      = 0.0d0
 ism_config%profile_force_on   = .false.!.false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
 
-ism_config%profile_force_gradP_on = .true.!.false.
+ism_config%profile_force_gradP_on = .false.!.false.
 ism_config%weight_mean = 'arithmetic'
 ism_config%weight_analy = 1.0d0
 ism_config%weight_num = 0.0d0
@@ -464,10 +464,10 @@ ism_config%He_abundance      = 0.1
 	!grackle_config%chi_dust(1) = 0.05
 	!grackle_config%xi_dust(2)  = 0.05
 	grackle_config%correctdensities(1)  = .true.   
-	grackle_config%x_HI(1)  = 0.0d0
+	grackle_config%x_HI(1)  = 0.5d0
 	!grackle_config%x_HI(1)  = 0.5d0	
 	!grackle_config%x_HI(2)  = 0.5d0
-        grackle_config%x_H2I(1)  = 1.0d0
+        grackle_config%x_H2I(1)  = 0.5d0
 	!grackle_config%x_H2I(2)  = 0.25d0	
 	grackle_config%deviation_to_density_limit(1)  = 5.0d0
 	grackle_config%HydrogenFractionByMass(1) = 0.76d0
