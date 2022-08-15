@@ -371,11 +371,10 @@ module mod_physics
        real(kind=dp)      , intent(out)   :: pth(ixI^S)
      end subroutine sub_get_pthermal
 
-     subroutine sub_get_gamma(w,x,ixI^L,ixO^L,gammaeff)
+     subroutine sub_get_gamma(w,ixI^L,ixO^L,gammaeff)
        use mod_global_parameters
        integer, intent(in)             :: ixI^L, ixO^L
        real(kind=dp)      , intent(in)    :: w(ixI^S,nw)
-       real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
        real(kind=dp)      , intent(out)   :: gammaeff(ixI^S)
      end subroutine sub_get_gamma
 

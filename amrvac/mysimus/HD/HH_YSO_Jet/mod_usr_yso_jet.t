@@ -1823,6 +1823,7 @@ end subroutine initglobaldata_usr
     integer                         :: patch_back_cloud(ixI^S)
     real(dp)                   :: pth_field(ixI^S)
     real(dp)                   :: gma_field(ixI^S)
+    real(dp)                   :: mmw_field(ixI^S)
     real(dp)                   :: tmp_field(ixI^S)
     !----------------------------------------------------------
 
@@ -2031,9 +2032,15 @@ level = node(plevel_,saveigrid)
    pth_field(ixO^S)=0.0
 end if cond_grackle_on
 
-!update temperature fields after source derivation
+! for instance, until chemistry,
+! update temperature, gamma and meanmw fields at the end of source derivation
 call phys_get_temperature( ixI^L, ixO^L,w, x, tmp_field)
 w(ixO^S,phys_ind%temperature_) = tmp_field(ixO^S)
+call phys_get_gamma(w, ixI^L, ixO^L, gma_field)
+w(ixO^S,phys_ind%gamma_) = gma_field(ixO^S)/w_convert_factor(phys_ind%gamma_)
+call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
+w(ixO^S,phys_ind%mup_) = mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
+
 
 call usr_clean_memory
 
@@ -2646,7 +2653,7 @@ return
         w_convert_factor(phys_ind%pressure_)
         normconv(nw+ipressure_usr_)  = 1.0_dp
       case(igammaeff_)
-        call phys_get_gamma(w, x, ixI^L, ixO^L, gammaeff_usr)
+        call phys_get_gamma(w, ixI^L, ixO^L, gammaeff_usr)
         win(ixO^S,nw+igammaeff_) = gammaeff_usr(ixO^S)
         normconv(nw+igammaeff_)  = w_convert_factor(phys_ind%gamma_)
       case(imeanmupeff_)

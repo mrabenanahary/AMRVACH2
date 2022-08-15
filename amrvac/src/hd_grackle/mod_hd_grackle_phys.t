@@ -1067,7 +1067,7 @@ end subroutine hd_get_aux
     real(dp), intent(in)         :: w(ixI^S, nw)
     integer, intent(inout)       :: flag(ixI^S)
     ! .. local ..
-    real(dp)                     :: tmp(ixI^S)
+    real(dp)                     :: tmp(ixI^S),gamm(ixI^S)
     !-----------------------
     flag(ixO^S) = 0
 
@@ -1096,8 +1096,10 @@ end subroutine hd_get_aux
        if (primitive) then
           where(w(ixO^S, e_) < hd_config%small_pressure) flag(ixO^S) = e_
        else
+         call hd_get_gamma(w, ixI^L, ixO^L, gamm)
          where(w(ixO^S, rho_) > hd_config%small_density)
-          tmp(ixO^S) = gamma_1*(w(ixO^S, e_) - &
+          !old : tmp(ixO^S) = gamma_1*(w(ixO^S, e_) - &
+          tmp(ixO^S) = (gamm(ixO^S)-1.0_dp)*(w(ixO^S, e_) - &
                0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) / w(ixO^S, rho_))
           elsewhere
             tmp(ixO^S) =   w(ixO^S, e_)
@@ -1145,7 +1147,7 @@ end subroutine hd_get_aux
        !w(ixO^S, e_) = w(ixO^S, e_)/gamma_1  + &
        !      0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) * w(ixO^S, rho_)
        ! new :
-       call hd_get_gamma(w, x, ixI^L, ixO^L, gamm)
+       call hd_get_gamma(w, ixI^L, ixO^L, gamm)
        w(ixO^S, e_) = w(ixO^S, e_)/(gamm(ixO^S)-1.0_dp)  + &
              0.5_dp * sum(w(ixO^S, mom(:))**2.0_dp, dim=ndim+1) * w(ixO^S, rho_)
     end if
@@ -1188,7 +1190,7 @@ end subroutine hd_get_aux
        ! old :
        !w(ixO^S, e_) = gamma_1 * (w(ixO^S, e_) - &
        !     hd_kin_en(w, ixI^L, ixO^L, inv_rho))
-       call hd_get_gamma(w, x, ixI^L, ixO^L, gamm)
+       call hd_get_gamma(w,ixI^L, ixO^L, gamm)
        w(ixO^S, e_) = (gamm(ixO^S)-1.0_dp)* (w(ixO^S, e_) - &
             hd_kin_en(w, ixI^L, ixO^L, inv_rho))
     end if
@@ -1213,9 +1215,13 @@ end subroutine hd_get_aux
     integer, intent(in)          :: ixI^L, ixO^L
     real(dp)             :: w(ixI^S, nw)
     real(dp), intent(in) :: x(ixI^S, 1:ndim)
+    real(dp), dimension(ixI^S)   :: gamm
 
     if (hd_config%energy) then
-       w(ixO^S, e_) = gamma_1 * w(ixO^S, rho_)**(-gamma_1) * &
+       call hd_get_gamma(w, ixI^L, ixO^L, gamm)
+       !w(ixO^S, e_) = gamma_1 * &
+       w(ixO^S, e_) = (gamm(ixO^S)-1.0_dp) * &
+       w(ixO^S, rho_)**(-(gamm(ixO^S)-1.0_dp)) * &
             (w(ixO^S, e_) - hd_kin_en(w, ixI^L, ixO^L))
     else
        call mpistop("energy from entropy can not be used with -eos = iso !")
@@ -1228,10 +1234,14 @@ end subroutine hd_get_aux
     integer, intent(in)          :: ixI^L, ixO^L
     real(dp)             :: w(ixI^S, nw)
     real(dp), intent(in) :: x(ixI^S, 1:ndim)
+    real(dp), dimension(ixI^S)   :: gamm
 
     if (hd_config%energy) then
-       w(ixO^S, e_) = w(ixO^S, rho_)**gamma_1 * w(ixO^S, e_) &
-            / gamma_1 + hd_kin_en(w, ixI^L, ixO^L)
+       call hd_get_gamma(w, ixI^L, ixO^L, gamm)
+       !w(ixO^S, e_) = w(ixO^S, rho_)**gamma_1 * w(ixO^S, e_) / &
+       !    gamma_1 + hd_kin_en(w, ixI^L, ixO^L)
+       w(ixO^S, e_) = w(ixO^S, rho_)**(gamm(ixO^S)-1.0_dp) * w(ixO^S, e_) / &
+            (gamm(ixO^S)-1.0_dp) + hd_kin_en(w, ixI^L, ixO^L)
     else
        call mpistop("entropy from energy can not be used with -eos = iso !")
     end if
@@ -1286,6 +1296,7 @@ end subroutine hd_get_aux
     real(dp)                          :: wmean(ixI^S,nw)
     real(dp), dimension(ixI^S)        :: umean, dmean, csoundL, csoundR,&
                                          tmp1,tmp2,tmp3
+    real(dp), dimension(ixI^S)   :: gammLp,gammRp
     !---------------------------------------------------
     if (typeboundspeed/='cmaxmean') then
       ! This implements formula (10.52) from "Riemann Solvers and Numerical
@@ -1297,8 +1308,12 @@ end subroutine hd_get_aux
       umean(ixO^S)=(wLp(ixO^S,mom(idim))*tmp1(ixO^S)+wRp(ixO^S,mom(idim))*tmp2(ixO^S))*tmp3(ixO^S)
 
       if(hd_config%energy) then
-        csoundL(ixO^S)=hd_config%gamma*wLp(ixO^S,p_)/wLp(ixO^S,rho_)
-        csoundR(ixO^S)=hd_config%gamma*wRp(ixO^S,p_)/wRp(ixO^S,rho_)
+        !csoundL(ixO^S)=hd_config%gamma*wLp(ixO^S,p_)/wLp(ixO^S,rho_)
+        !csoundR(ixO^S)=hd_config%gamma*wRp(ixO^S,p_)/wRp(ixO^S,rho_)
+        call hd_get_gamma(wLp, ixI^L, ixO^L, gammLp)
+        csoundL(ixO^S)=gammLp(ixO^S)*wLp(ixO^S,p_)/wLp(ixO^S,rho_)
+        call hd_get_gamma(wRp, ixI^L, ixO^L, gammRp)
+        csoundR(ixO^S)=gammRp(ixO^S)*wRp(ixO^S,p_)/wRp(ixO^S,rho_)
       else
         csoundL(ixO^S)=hd_config%gamma*hd_config%adiab*wLp(ixO^S,rho_)**gamma_1
         csoundR(ixO^S)=hd_config%gamma*hd_config%adiab*wRp(ixO^S,rho_)**gamma_1
@@ -1350,10 +1365,13 @@ end subroutine hd_get_aux
     real(dp), intent(in)    :: w(ixI^S,nw)
     real(dp), intent(in)    :: x(ixI^S,1:ndim)
     real(dp), intent(out)   :: csound2(ixI^S)
+    real(dp), dimension(ixI^S)   :: gamm
     !------------------------------------------
     if(hd_config%energy) then
       call hd_get_pthermal(w,x,ixI^L,ixO^L,csound2)
-      csound2(ixO^S)=hd_config%gamma*csound2(ixO^S)/w(ixO^S,rho_)
+      !csound2(ixO^S)=hd_config%gamma*csound2(ixO^S)/w(ixO^S,rho_)
+      call hd_get_gamma(w, ixI^L, ixO^L, gamm)
+      csound2(ixO^S)=gamm(ixO^S)*csound2(ixO^S)/w(ixO^S,rho_)
     else
       if(dabs(gamma_1)<smalldouble) then
         csound2(ixO^S)=hd_config%adiab
@@ -1374,7 +1392,7 @@ end subroutine hd_get_aux
     real(dp)                     :: gamm(ixI^S)
     !----------------------------------------------------
     if (hd_config%energy) then
-      call hd_get_gamma(w, x, ixI^L, ixO^L, gamm)
+      call hd_get_gamma(w,ixI^L, ixO^L, gamm)
       pth(ixO^S) = (gamm(ixO^S)-1.0_dp) * (w(ixO^S, e_) - &
            hd_kin_en(w, ixI^L, ixO^L))
       !pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
@@ -1388,12 +1406,11 @@ end subroutine hd_get_aux
   end subroutine hd_get_pthermal
 
   !> Calculate adiabatic index
-  subroutine hd_get_gamma(w, x, ixI^L, ixO^L, gammaeff)
+  subroutine hd_get_gamma(w,ixI^L, ixO^L, gammaeff)
     use mod_global_parameters
 
     integer, intent(in)          :: ixI^L, ixO^L
     real(dp), intent(in)         :: w(ixI^S, nw)
-    real(dp), intent(in)         :: x(ixI^S, 1:ndim)
     real(dp), intent(out)        :: gammaeff(ixI^S)
     real(kind=dp), dimension(ixI^S ):: nH2, nother
     real(kind=dp), dimension(ixI^S ):: gammaoth

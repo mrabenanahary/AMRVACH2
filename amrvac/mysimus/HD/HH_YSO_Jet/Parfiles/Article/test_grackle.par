@@ -120,8 +120,8 @@
         xprobmax2 =  1.0d17! <--- z_max=3.0d17
 
         ! total cell at level 1
-        domain_nx1= 16! <---dr=1.25e15 cm at lvl 1
-        domain_nx2= 16! <---dr=1.25e15 cm at lvl 1
+        domain_nx1= 64! <---dr=1.25e15 cm at lvl 1
+        domain_nx2= 64! <---dr=1.25e15 cm at lvl 1
         ! number of cell by block
         block_nx1 = 8!8!
         block_nx2 = 8!8!
