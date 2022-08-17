@@ -1266,18 +1266,13 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
 end subroutine grackle_set_complet
 
 
-subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_dx22,&
-solver_activated,pressure_field,gamma_field,temperature_field,self)
+subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_dx22,self)
   implicit none
   integer, intent(in)                     :: ixI^L,ixO^L
   real(kind=dp), intent(in)               :: qdt,qtC,qt
   real(kind=dp), intent(in)               :: x(ixI^S,1:ndim)
   real(kind=dp), intent(in)               :: wCT(ixI^S,1:nw)
   real(kind=dp), intent(in)               :: grid_dx22(1:ndim)
-  logical, intent(in) :: solver_activated
-  real(kind=dp), intent(inout),optional   :: pressure_field(ixI^S)
-  real(kind=dp), intent(inout),optional   :: temperature_field(ixI^S)
-  real(kind=dp), intent(inout),optional   :: gamma_field(ixI^S)
   !type(usrphysical_unit), target     :: physunit_inuse
   !real(kind=dp), intent(in)               :: gamma
   real(kind=dp),intent(inout)             :: w(ixI^S,1:nw)
@@ -1294,7 +1289,7 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
   integer, parameter         :: field_size=1
   real :: initial_redshift
   real(kind=dp),parameter :: fH = 0.76
-  real(kind=dp), TARGET :: density(field_size), energy(field_size), &
+  real*8, TARGET :: density(field_size), energy(field_size), &
   x_velocity(field_size), y_velocity(field_size), &
   z_velocity(field_size), &
   HI_density(field_size), HII_density(field_size), &
@@ -1396,6 +1391,8 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
   !call phys_get_pthermal(w, x, ixI^L, ixO^L, pth_field)
 
 
+  !write(*,*) 'Do we get here 2 ?'
+
   {do imesh^D=ixOmin^D,ixOmax^D|\}
     do i = 1,field_size
       density(i) = w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)
@@ -1476,9 +1473,18 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
       ! u = e/rho = p/(rho*(gamma-1)) = T*unit_v^2/(mmw*(gamma-1)*unit_T)
       ! Physical units internal energy density
       ! (<!> mup is already denormalized)
-      energy(i) = temperature(imesh^D)*w_convert_factor(phys_ind%temperature_)/&
-      (mmw_field(imesh^D)*(gmmeff_field(imesh^D)-1.0_dp)*temperature_units/&
-      (velocity_units*velocity_units))
+      energy(i) = temperature(imesh^D)*w_convert_factor(phys_ind%temperature_)
+      energy(i) = energy(i) / (mmw_field(imesh^D)*temperature_units/&
+      (velocity_units*velocity_units)*(gmmeff_field(imesh^D)-1.0_dp))
+
+      !write(*,*) ' Input temperature = ',temperature(imesh^D)*w_convert_factor(phys_ind%temperature_),'K'
+      !write(*,*) ' Input mmw = ',mmw_field(imesh^D)
+      !write(*,*) ' Input gammaeff = ',gmmeff_field(imesh^D)
+      !write(*,*) ' Input T/v^2 = ', temperature_units/&
+      !(velocity_units*velocity_units)
+      !write(*,*) ' Input u_v = ', velocity_units
+      !write(*,*) ' Input density = ', density(1)
+      !write(*,*) ' Input internal energy = ', density(1)*energy(1),'erg/g'
 
       ! For instance :
       volumetric_heating_rate(i) = 0.0
@@ -1539,7 +1545,7 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
     dtchem = qdt*time_convert_factor ! physical unit
 
     !physical units
-    my_config%uenergy_density = energy(i)
+    my_config%uenergy_density = energy(1)
     my_config%dx_local = dx_local
     my_config%dtchem = dtchem
     my_config%final_temp = C_LOC(final_temp)
@@ -1547,10 +1553,12 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
     my_config%final_press = C_LOC(final_press)
     my_config%final_gamma = C_LOC(final_gamma)
 
-    write(*,*) 'In HI density = ', HI_density(1)
-    write(*,*) 'In uenergy_density = ', my_config%uenergy_density
-    write(*,*) 'In dx_local = ', my_config%dx_local
-    write(*,*) 'In dtchem = ', my_config%dtchem
+    !write(*,*) 'In HI density = ', HI_density(1)
+    !write(*,*) 'In uenergy_density = ', my_config%uenergy_density
+    !write(*,*) 'In dx_local = ', my_config%dx_local
+    !write(*,*) 'In dtchem = ', my_config%dtchem
+
+
 
     iresult = solve_one_cell(my_grackle_data,my_fields,my_units,&
     my_config)
@@ -1560,14 +1568,14 @@ solver_activated,pressure_field,gamma_field,temperature_field,self)
     out_pressure = final_press(1)
     out_gamma = final_gamma(1)
 
-    write(*,*) 'Final values'
-    write(*,*) 'Temperature = ', out_temp
-    write(*,*) 'tcool = ', out_tcool
-    write(*,*) 'out_pressure = ', out_pressure
-    write(*,*) 'out_gamma = ', out_gamma
-    write(*,*) 'Out density 2= ', density(1)
-    write(*,*) 'Out HI density 2 = ', HI_density(1)
-    write(*,*) 'Out HII density 2= ', HII_density(1)
+    !write(*,*) 'Final values'
+    !write(*,*) 'Temperature = ', out_temp
+    !write(*,*) 'tcool = ', out_tcool
+    !write(*,*) 'out_pressure = ', out_pressure
+    !write(*,*) 'out_gamma = ', out_gamma
+    !write(*,*) 'Out density 2= ', density(1)
+    !write(*,*) 'Out HI density 2 = ', HI_density(1)
+    !write(*,*) 'Out HII density 2= ', HII_density(1)
 
     ! update-advance fields
 

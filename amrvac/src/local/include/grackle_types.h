@@ -79,6 +79,10 @@ typedef struct
   gr_float uenergy_density;
   gr_float dx_local;
   gr_float dtchem;
+  int ixOmin1;
+  int ixOmax1;
+  int ixOmin2;
+  int ixOmax2;
   gr_float *final_temp;
   gr_float *final_cooltime;
   gr_float *final_press;

@@ -1636,19 +1636,6 @@ end subroutine initglobaldata_usr
        iobj=iobj+1
        jet_yso(i_jet_yso)%subname='initonegrid_usr'
        call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,global_time,x,w,grackle_solver)
-       !tmp_int_f(ixO^S) = w(ixO^S,phys_ind%temperature_)
-       !call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
-       !dx_local,solver_activated=.false.,pressure_field=pth_field,temperature_field=tmp_field)
-       !w(ixO^S,phys_ind%temperature_)=tmp_field(ixO^S)
-       !tmp_ratio_f(ixO^S) = tmp_int_f(ixO^S)/w(ixO^S,phys_ind%temperature_)
-       !w(ixO^S,phys_ind%temperature_) = tmp_int_f(ixO^S) * tmp_ratio_f(ixO^S)
-       !call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
-       !dx_local,solver_activated=.false.,pressure_field=pth_field,&
-       !temperature_field=tmp_field)
-       !w(ixO^S,phys_ind%temperature_)=tmp_field(ixO^S)
-       !w(ixO^S,phys_ind%pressure_) = pth_field(ixO^S)
-       !pth_field(ixO^S)= 0.0
-       !tmp_field(ixO^S)=0.0
        patch_inuse(ixO^S) = jet_yso(i_jet_yso)%patch(ixO^S)
        cond_ism_onjet : if(usrconfig%ism_on)then
         Loop_isms2 : do i_ism=0,usrconfig%ism_number-1
@@ -1821,10 +1808,10 @@ end subroutine initglobaldata_usr
     real(kind=dp)                   :: dx_local(1:ndim)
     integer                         :: idir,idust,ix^D,ixL^D,ixR^L,level
     integer                         :: patch_back_cloud(ixI^S)
-    real(dp)                   :: pth_field(ixI^S)
-    real(dp)                   :: gma_field(ixI^S)
-    real(dp)                   :: mmw_field(ixI^S)
-    real(dp)                   :: tmp_field(ixI^S)
+    !real(dp)                   :: pth_field(ixI^S)
+    !real(dp)                   :: gma_field(ixI^S)
+    !real(dp)                   :: mmw_field(ixI^S)
+    !real(dp)                   :: tmp_field(ixI^S)
     !----------------------------------------------------------
 
     cond_reset : if(usrconfig%reset_medium) then
@@ -2015,31 +2002,18 @@ cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
 !Add Grackle chemistry+heating+cooling module treatment here :
 level = node(plevel_,saveigrid)
    ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
-   !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,&
-   !dx_local,solver_activated=.true.,&
-   !pressure_field=pth_field,&
-   !gamma_field=gma_field,&
-   !temperature_field=tmp_field)
-   !w(ixO^S,phys_ind%gamma_)=gma_field(ixO^S)
-   !w(ixO^S,phys_ind%temperature_)=tmp_field(ixO^S)
-   !w(ixO^S,phys_ind%e_) =pth_field(ixO^S)+&
-   !0.5_dp * sum(w(ixO^S,phys_ind%mom(:))**2.0_dp,dim=ndim+1) / &
-   !w(ixO^S,phys_ind%rho_)
-   !(pth_field(ixO^S)/&
-   !(w(ixO^S,phys_ind%gamma_)-1.0_dp))+&
-   gma_field(ixO^S)=0.0
-   tmp_field(ixO^S)=0.0
-   pth_field(ixO^S)=0.0
+   !write(*,*) 'Do we get here 1 ?'
+   !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local)
 end if cond_grackle_on
 
 ! for instance, until chemistry,
 ! update temperature, gamma and meanmw fields at the end of source derivation
-call phys_get_temperature( ixI^L, ixO^L,w, x, tmp_field)
-w(ixO^S,phys_ind%temperature_) = tmp_field(ixO^S)
-call phys_get_gamma(w, ixI^L, ixO^L, gma_field)
-w(ixO^S,phys_ind%gamma_) = gma_field(ixO^S)/w_convert_factor(phys_ind%gamma_)
-call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
-w(ixO^S,phys_ind%mup_) = mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
+!call phys_get_temperature( ixI^L, ixO^L,w, x, tmp_field)
+!w(ixO^S,phys_ind%temperature_) = tmp_field(ixO^S)
+!call phys_get_gamma(w, ixI^L, ixO^L, gma_field)
+!w(ixO^S,phys_ind%gamma_) = gma_field(ixO^S)/w_convert_factor(phys_ind%gamma_)
+!call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
+!w(ixO^S,phys_ind%mup_) = mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
 
 
 call usr_clean_memory
@@ -2538,7 +2512,7 @@ return
      ! .. local ..
      integer                         :: i_jet_yso,i_obj
      real(kind=dp)                   :: dx_local(1:ndim)
-     real(dp)                   :: tmp_int_f(ixI^S),tmp_ratio_f(ixI^S),pth_field(ixI^S)
+     !real(dp)                   :: tmp_int_f(ixI^S),tmp_ratio_f(ixI^S),pth_field(ixI^S)
      real(dp)                   :: tmp_field(ixI^S)
      !--------------------------------------------------------------
      !level = node(plevel_,saveigrid)
@@ -2554,20 +2528,9 @@ return
           call jet_yso(i_jet_yso)%set_patch(ixI^L,ixO^L,qt,x)
           cond_insid_jet : if(any(jet_yso(i_jet_yso)%patch(ixI^S)))then
             call phys_to_primitive(ixI^L,ixO^L,w,x)
+            !write(*,*) 'Do we get here 3 ?'
             call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,qt,x,w,gr_solv=grackle_solver)
-            !tmp_int_f(ixO^S) = w(ixO^S,phys_ind%temperature_)
-            !call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
-            !dx_local,solver_activated=.false.,temperature_field=tmp_field)
-            !w(ixO^S,phys_ind%temperature_) = tmp_field(ixO^S)
-            !tmp_ratio_f(ixO^S) = tmp_int_f(ixO^S)/w(ixO^S,phys_ind%temperature_)
-            !w(ixO^S,phys_ind%temperature_) = tmp_int_f(ixO^S) * tmp_ratio_f(ixO^S)
-            !call grackle_solver%grackle_source(ixI^L,ixO^L,x,0.0d0,0.0d0,w,0.0d0,w,&
-            !dx_local,solver_activated=.false.,pressure_field=pth_field,&
-            !temperature_field=tmp_field)
-            !w(ixO^S,phys_ind%temperature_) = tmp_field(ixO^S)
-            !w(ixO^S,phys_ind%pressure_) = pth_field(ixO^S)
-            !pth_field(ixO^S)= 0.0
-            !tmp_field(ixO^S)=0.0
+             !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local)
             ! get conserved variables to be used in the code
             call phys_to_conserved(ixI^L,ixO^L,w,x)
           end if cond_insid_jet
