@@ -76,7 +76,7 @@ typedef struct
 
 typedef struct
 {
-  gr_float uenergy_density;
+  gr_float *uenergy_density;
   gr_float dx_local;
   gr_float dtchem;
   int ixOmin1;

@@ -130,6 +130,8 @@ contains
     usr_get_dt          => special_get_dt
     usr_internal_bc     => usr_special_internal_bc
     usr_reset_solver    => special_reset_solver
+    !usr_process_adv_grid => specialprocess_grid
+
 
     usr_gravity_potential => special_pointmass_gravity_potential
     usr_gravity_fpotential => special_pointmass_gravity_fpotential
@@ -1806,7 +1808,7 @@ end subroutine initglobaldata_usr
     real(kind=dp), dimension(ixI^S) :: wjettracer,wismtracer
     real(kind=dp)                   :: usr_loc_tracer_small_density
     real(kind=dp)                   :: dx_local(1:ndim)
-    integer                         :: idir,idust,ix^D,ixL^D,ixR^L,level
+    integer                         :: idir,idust,ix^D,ixL^D,ixR^L,level,iresult
     integer                         :: patch_back_cloud(ixI^S)
     !real(dp)                   :: pth_field(ixI^S)
     !real(dp)                   :: gma_field(ixI^S)
@@ -2003,7 +2005,7 @@ cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
 level = node(plevel_,saveigrid)
    ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
    !write(*,*) 'Do we get here 1 ?'
-   !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local)
+   call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local)
 end if cond_grackle_on
 
 ! for instance, until chemistry,
@@ -2020,6 +2022,24 @@ call usr_clean_memory
 
 !  call usr_check_w(ixI^L,ixO^L,.true.,'specialsource_usr',qt,x,w)
   end subroutine specialsource_usr
+
+  subroutine specialprocess_grid(igrid,level,ixI^L,ixO^L,qt,w,x)
+  use mod_global_parameters
+  use grackle_header
+  use mod_grackle_chemistry
+  use mod_grackle_parameters
+  integer, intent(in)             :: igrid,level,ixI^L,ixO^L
+  double precision, intent(in)    :: qt,x(ixI^S,1:ndim)
+  double precision, intent(inout) :: w(ixI^S,1:nw)
+  integer :: iresult
+  !--------------------------------------
+
+  !iresult = free_chemistry_data()
+
+
+  end subroutine specialprocess_grid
+
+
   !========================================================================
   subroutine process_grid_usr(igrid,level,ixI^L,ixO^L,qt,w,x)
     use mod_global_parameters
@@ -2390,9 +2410,9 @@ return
          end do Loop_jet_yso
         end if
 
-        !if(phys_config%use_grackle)then
-          !iresult = gr_free_memory(my_units, my_fields)
-        !end if
+        if(phys_config%use_grackle)then
+          !iresult = free_chemistry_data()
+        end if
   end subroutine usr_clean_memory
 
 
@@ -2530,7 +2550,8 @@ return
             call phys_to_primitive(ixI^L,ixO^L,w,x)
             !write(*,*) 'Do we get here 3 ?'
             call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,qt,x,w,gr_solv=grackle_solver)
-             !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local)
+
+            !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local)
             ! get conserved variables to be used in the code
             call phys_to_conserved(ixI^L,ixO^L,w,x)
           end if cond_insid_jet

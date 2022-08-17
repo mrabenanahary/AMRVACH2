@@ -78,7 +78,7 @@ c     This is the fortran definition of grackle_field_data
       END TYPE
 
       TYPE, BIND(C) :: grackle_inout
-         REAL(C_DOUBLE) :: uenergy_density
+         TYPE(C_PTR) :: uenergy_density
          REAL(C_DOUBLE) :: dx_local
          REAL(C_DOUBLE) :: dtchem
          INTEGER(C_INT) :: ixOmin1
@@ -256,15 +256,16 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-          INTEGER(C_INT) FUNCTION solve_one_cell(mychemistry,
+          INTEGER(C_INT) FUNCTION solvegrid(mychemistry,
      &            myfields, myunits, myconfig) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: myunits
             TYPE(grackle_chemistry_data), INTENT(INOUT) :: mychemistry
             TYPE(grackle_field_data), INTENT(INOUT) :: myfields
             TYPE(grackle_inout), INTENT(INOUT) :: myconfig
-          END FUNCTION solve_one_cell
+          END FUNCTION solvegrid
       END INTERFACE
+
       INTERFACE
          INTEGER(C_INT) FUNCTION free_chemistry_data() bind(C)
             IMPORT

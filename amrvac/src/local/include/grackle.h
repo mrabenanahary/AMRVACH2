@@ -176,7 +176,7 @@ int free_chemistry_data(void);
 int solve_one_cell(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
 grackle_inout *myconfig);
 
-int solve2Dchemistry(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
+int solvegrid(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
 grackle_inout *myconfig);
 
 grackle_version get_grackle_version(void);

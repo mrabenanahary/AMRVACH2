@@ -145,7 +145,7 @@ $(OBJ_DIR)/mod_obj_cloud.o  : $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o
 $(OBJ_DIR)/mod_obj_cla_jet.o: $(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_mat.o \
 	                            $(OBJ_DIR)/mod_obj_usr_unit.o 
 
-mod_usr_yso_jet.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o  \
+mod_usr_yso_jet.o: $(OBJ_DIR)/mod_obj_global_parameters.o $(OBJ_DIR)/mod_obj_mat.o  $(OBJ_DIR)/grackle_header.o\
 	$(OBJ_DIR)/mod_grackle_parameters.o $(OBJ_DIR)/mod_grackle_chemistry.o $(OBJ_DIR)/grackle_chemistry_solver.o $(OBJ_DIR)/grackle_chemistry_solver.o\
 	$(OBJ_DIR)/mod_obj_dust.o $(OBJ_DIR)/mod_obj_cla_jet.o\
 	$(OBJ_DIR)/mod_obj_sn_remnant.o $(OBJ_DIR)/mod_obj_ism.o $(OBJ_DIR)/mod_obj_cloud.o\

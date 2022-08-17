@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        !restart_from_file='Lee2001_s_0027.dat'                
+        !restart_from_file='Lee2001_s_0027.dat'
         nwauxio = 9
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -48,7 +48,7 @@
         !tsave(1,2)=4.73364d8 !save after first end of injection cycle at t=150 yrs
         !dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	!ditsave_log =5
-        dtsave_dat=  3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  3.156d7!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !dtsave_dat=  4.73364d9
         !ditsave_dat =1
  /
@@ -61,7 +61,7 @@
 
         dtmin=1.0d-6
         !time_max= 99d15 ! years
-        time_max=  3.1715388d10 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.156d8!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !time_max=  4.73364d9
         !it_max=6
 
@@ -103,10 +103,10 @@
         internalboundary  = .true.
         nghostcells       = 4
         !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
-        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',16*'symm'!'symm','asymm','symm','asymm',16*'symm'!21*'cont', ! C.L. gauche <=> rmin
+        typeboundary_min1 =  21*'cont'!'symm','asymm','symm','asymm','symm',16*'symm'!'symm','asymm','symm','asymm',16*'symm'!21*'cont', ! C.L. gauche <=> rmin
         typeboundary_max1 =  21*'cont'!6*'cont'!                                    ! C.L. droite <=> rmax
-        typeboundary_min2 = 21*'special'!6*'special'!'symm','symm','asymm','symm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
-        typeboundary_max2 =  21*'cont'!6*'cont'!       
+        typeboundary_min2 =  21*'cont'!21*'special'!6*'special'!'symm','symm','asymm','symm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
+        typeboundary_max2 =  21*'cont'!6*'cont'!
 /
         typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max
         typeboundary_min3 = 8*'cont'                                         ! C.L. avant <=> phi/profondeur min
@@ -120,8 +120,8 @@
         xprobmax2 =  1.0d17! <--- z_max=3.0d17
 
         ! total cell at level 1
-        domain_nx1= 64! <---dr=1.25e15 cm at lvl 1
-        domain_nx2= 64! <---dr=1.25e15 cm at lvl 1
+        domain_nx1= 128! <---dr=1.25e15 cm at lvl 1
+        domain_nx2= 128! <---dr=1.25e15 cm at lvl 1
         ! number of cell by block
         block_nx1 = 8!8!
         block_nx2 = 8!8!
@@ -131,13 +131,13 @@
         refine_max_level=1 !<--- dr=dz=7.8125e13 cm au lvl 5
         refine_threshold=20*0.01d0
         derefine_ratio=20*1d-3
-        
+
       !  old style (but still avalaible):
       !  w_refine_weight(1)=0.25d0
       !  w_refine_weight(2)=0.25d0
       !  w_refine_weight(3)=0.25d0
       !  w_refine_weight(12)=1.0d0
-      
+
       ! user-proof and user-friendly style:
       	w_refine_weight_wnames = 'rho'
       	w_refine_weight_wvalues = 1.0d0
@@ -175,16 +175,16 @@
          hd_isotherm_on = .false.
          !hd_gamma             = 1.0d0
          SI_unit              = .false.  ! use cgs
-         He_abundance         = 0.1d0               
+         He_abundance         = 0.1d0
 	  hd_use_grackle = .true.
 	  hd_gr_primordial_chemistry = 1
 	  hd_gr_metal_cooling = .true.
 	  hd_gr_dust_chemistry = .true.
-	  hd_gr_with_radiative_cooling = .true. 	  
+	  hd_gr_with_radiative_cooling = .true.
          hd_dust              = .false.   ! dust off
          hd_radiative_cooling = .false. !>>HH4647 .false.!.true.    ! cooling on
          hd_gravity	       = .false. !>>HH4647 .false.!.true.    ! gravity on
-         hd_gravity_hse       = .false. !>>HH4647 .false.!.true.    ! gravity on         
+         hd_gravity_hse       = .false. !>>HH4647 .false.!.true.    ! gravity on
          hd_gravity_hse_scheme= 'twoorderpert'!options:'zerothorder','firstorder','twoordernohse','twoordernopert','twoorderpert','twoorderpert2'
          hd_use_gravity_g = .false.
          hd_chemical          = .false.   ! use chemical
@@ -194,7 +194,7 @@
          !hd_temperature_isotherm = 250.0d0
    /
 
-  &grav_list 
+  &grav_list
   	grav_split=.false.
    /
 
@@ -235,7 +235,7 @@
         usrconfig%profile_use_hse     = .false.
         usrconfig%cloud_on            = .false.                      !> set cloud
         usrconfig%cloud_structure     = 2                           !> cloud structure type
-        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+        usrconfig%jet_yso_on          = .false. !>>HH4647.false.!.false.!.false.!                      !> set a jet
         usrconfig%physunit_on         = .true.                      !> set the normalisation in use
         usrconfig%reset_medium        = .true.                      !> set on the reset
         usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
@@ -269,7 +269,7 @@
 !et fixées aux valeurs recommandées et correspondant le mieux à la simulation de l'article
  &usr_ism_list
   ism_config%unit               ='cgs'
-  ism_config%density            = 1.6d-19         !Li & Shu et 1996b ism density if it set to 0 it will use number_density
+  ism_config%density            = 1.6d-18         !Li & Shu et 1996b ism density if it set to 0 it will use number_density
   ism_config%number_density     = 0.0d0  !>>HH4647  !2.95d9    !1.0d2     !4.44d6     ! Zheng19 = 2.95d9 cm-3 ! ism number density (1/cm^3) ) of protons n_H = facteur rho_j (e.g. = 100 cm-3) physique dans l'expression du profil de densité rho_c du milieu ambiant
                                             ! and w(ixO^S,phys_ind%rho_)        =  self%myconfig%density = = self%myconfig%number_density*mp = rho_h the mass density of protons
                                             ! si tu l'augmentes e.g. a number_density=1.0d3,
@@ -278,7 +278,7 @@
   ism_config%velocity(2)        = 0.0!5.d8     ! ism  speed components (cm/s) Z : 0.0 = milieu statique
   ism_config%velocity(3)        = 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
   ism_config%Mach_number_tomov_obj= 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
-  ism_config%temperature        = 1.2d2  !<---T_a = 100 K temperature typique
+  ism_config%temperature        = 2.0d2  !<---T_a = 100 K temperature typique
   ism_config%pressure           = 0.0d0     !1.3806485199999997d-12! ism pressure if is set to 0 it will use temperature : äraview trouve a T=100 K et rho_j=100 cm-3 >>> p_j = 2.71055e-12 Ba
   ism_config%tracer_on          = .true.    ! ism tracer
   ism_config%tracer_init_density= 1.0d9!1.0d3     ! ism tracer density
@@ -292,15 +292,15 @@
 
   ism_config%profile_force_with_grav = .true.
   ism_config%boundary_on        = .true.
-  ism_config%boundary_cond(1,1) = 'axis'  
-  ism_config%boundary_cond(1,2) = 'fix'  
+  ism_config%boundary_cond(1,1) = 'axis'
+  ism_config%boundary_cond(1,2) = 'fix'
   ism_config%boundary_cond(2,1) = 'fix'!'limitinflow'!'limitinflowdisc'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
-  ism_config%boundary_cond(2,2) = 'fix'  
-   
+  ism_config%boundary_cond(2,2) = 'fix'
 
-	
-	
-  ! 3 cases : 
+
+
+
+  ! 3 cases :
   ! 1) boundary_cond = 'fix' : 03-03-22 > successfully implemented !
   ! 2) boundary_cond /= 'fix' but mixed_fixed_bound == .false. everywhere
   ! 3) boundary_cond /= 'fix' and at least one of the mixed_fixed_bound is .true.
@@ -308,7 +308,7 @@
   ism_config%nghostcells(2)        = 4
 
   ism_config%flux_frac          = 9.0d-1
-  ism_config%useprimitive       = .false. 
+  ism_config%useprimitive       = .false.
   ism_config%escapencells(1)       = 11
   ism_config%escapencells(2)       = 11
   ism_config%escapencellsglobal(1)       = 2
@@ -321,12 +321,12 @@
   ! 	* 1 : rho
   ! 	* 2 : v1 =  v_R in cylindrical coordinates
   ! 	* 3 : v2 =  v_Z in cylindrical coordinates
-  ! 	* 4 : v3 =  v_phi in cylindrical coordinates  
+  ! 	* 4 : v3 =  v_phi in cylindrical coordinates
   ! 	* 5 : p (or e for conservative variables) only when hd_energy==.true.
   ! 	* 6,7 (or resp. 5,6) : tracers when hd_energy==.true. (resp. hd_energy==.false.)
   !
   ! - By default, all ism_config%mixed_fixed_bound(2,1,index) are .false., so that only the above boundary conditions are considered !
-  
+
   !ism_config%mixed_fixed_bound(2,1,1) = .true.
   !ism_config%mixed_fixed_bound(2,1,2) = .true.
   !ism_config%mixed_fixed_bound(2,1,3) = .true.
@@ -463,20 +463,20 @@ ism_config%He_abundance      = 0.1
 &grackle_conf_list
 	!grackle_config%chi_dust(1) = 0.05
 	!grackle_config%xi_dust(2)  = 0.05
-	grackle_config%correctdensities(1)  = .true.   
+	grackle_config%correctdensities(1)  = .true.
 	grackle_config%x_HI(1)  = 1.0d0
-	!grackle_config%x_HI(1)  = 0.5d0	
+	!grackle_config%x_HI(1)  = 0.5d0
 	!grackle_config%x_HI(2)  = 0.5d0
         grackle_config%x_H2I(1)  = 0.0d0
-	!grackle_config%x_H2I(2)  = 0.25d0	
+	!grackle_config%x_H2I(2)  = 0.25d0
 	grackle_config%deviation_to_density_limit(1)  = 5.0d0
 	grackle_config%HydrogenFractionByMass(1) = 0.76d0
 	grackle_config%IonizationFraction(1) = 0.0d0!1.0d-3
 	!grackle_config%MetalFractionByMass(2) = 0.0d0
 	grackle_config%HydrogenFractionByMass(2) = 0.76d0
-	grackle_config%IonizationFraction(2) = 0.0d0	
-	!grackle_config%TemperatureStart(1) = 100.0d0	
-	!grackle_config%TemperatureStart(2) = 100.0d0	
+	grackle_config%IonizationFraction(2) = 0.0d0
+	!grackle_config%TemperatureStart(1) = 100.0d0
+	!grackle_config%TemperatureStart(2) = 100.0d0
 
 
 	grackle_config%use_grackle(1) = 1            ! chemistry on
@@ -502,6 +502,6 @@ ism_config%He_abundance      = 0.1
 &grackle_fields_par_list
   gr_patches_name(1)='ism'
   gr_profiles(1)='ism_uniform'
-  gr_patches_name(2)='jet'  
+  gr_patches_name(2)='jet'
   gr_profiles(2)='jet_uniform'
 /
