@@ -1504,7 +1504,7 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_d
     !deprecated : iresult = solve_one_cell(my_grackle_data,my_fields,my_units,&
     !my_config)
 
-    iresult = solvegrid(my_grackle_data,my_fields,my_units,&
+    iresult = oldsavegrid(my_grackle_data,my_fields,my_units,&
       my_config)
 
     !write(*,*) 'Final values'

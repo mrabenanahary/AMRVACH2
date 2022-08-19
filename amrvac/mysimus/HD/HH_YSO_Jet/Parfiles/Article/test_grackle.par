@@ -48,9 +48,9 @@
         !tsave(1,2)=4.73364d8 !save after first end of injection cycle at t=150 yrs
         !dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	!ditsave_log =5
-        !dtsave_dat=  3.156d8!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  3.156d8!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !dtsave_dat=  4.73364d9
-        ditsave_dat =1
+        !ditsave_dat =1
  /
 
         ditsave_log = 1
@@ -61,9 +61,9 @@
 
         dtmin=1.0d-6
         !time_max= 99d15 ! years
-        !time_max=  3.156d10!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.156d10!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !time_max=  4.73364d9
-        it_max=100
+        !it_max=100
 
 
 /
@@ -237,7 +237,7 @@
         usrconfig%profile_use_hse     = .false.
         usrconfig%cloud_on            = .false.                      !> set cloud
         usrconfig%cloud_structure     = 2                           !> cloud structure type
-        usrconfig%jet_yso_on          = .false. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
         usrconfig%physunit_on         = .true.                      !> set the normalisation in use
         usrconfig%reset_medium        = .true.                      !> set on the reset
         usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
@@ -341,17 +341,17 @@
 !  ism_config%debug        	 = .false. ! use it as .true. to debug user module mod_obj_ism.t
 
 
-ism_config%profile_typeaxial  = 'projection_direction'!'spherical'!'projection_direction'
-ism_config%profile_idir       = 0.0,1.0,0.0       !z=2,r=1  !  ism profile direction
+ism_config%profile_typeaxial  = 'spherical'!'spherical'!'projection_direction'
+ism_config%profile_idir       = 1.0,0.0,0.0       !z=2,r=1  !  ism profile direction
 
 ism_config%profile_center     = 0,0,0
 
-ism_config%profile_density_on = .false. ! Zheng=True ! .false. ! .true. ! ISM set density profile
+ism_config%profile_density_on = .true. ! Zheng=True ! .false. ! .true. ! ISM set density profile
 ism_config%profile_pressure_on= .false. ! Zheng=True ! .false. !.true.
 ism_config%theta_floored      = 0.0d0
 ism_config%profile_force_on   = .false.!.false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
 
-ism_config%profile_force_gradP_on = .false.!.false.
+ism_config%profile_force_gradP_on = .true.!.false.
 ism_config%weight_mean = 'arithmetic'
 ism_config%weight_analy = 1.0d0
 ism_config%weight_num = 0.0d0
@@ -359,7 +359,7 @@ ism_config%weight_mean_variable = 'default'!'minus_density_grad'
 ism_config%profile_rw_force = 2.5d16
 ism_config%weight_num_index = 1.0d0
 ism_config%weight_analy_index = 1.0d0
-ism_config%profile_density    = 'cabrit1997'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_density    = 'Lee2001'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
 ism_config%profile_jspec = 8.0782850178d20!20       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
@@ -439,9 +439,9 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%profile               =  'none'  !> cla_jet profile
 
 
-    cla_jet_config%variation_on          =  .false. ! Zhang19 .false. !.true.! to set on  or off the jet-injection in-real-time velocity variability
-    cla_jet_config%density_variation_on  =  .false. !<----- vary mass-loss rate !> cla_jet density variation switch
-    cla_jet_config%pressure_variation_on =  .false. !<----- vary constant jet temperature !> cla_jet pressure variation switch : enables constant temperature in the jet inlet
+    cla_jet_config%variation_on          =  .true. ! Zhang19 .false. !.true.! to set on  or off the jet-injection in-real-time velocity variability
+    cla_jet_config%density_variation_on  =  .true. !<----- vary mass-loss rate !> cla_jet density variation switch
+    cla_jet_config%pressure_variation_on =  .true. !<----- vary constant jet temperature !> cla_jet pressure variation switch : enables constant temperature in the jet inlet
     cla_jet_config%density_variation_profile =  'conserved_mflux' !<----- which variability apply to pressure and/or pressure
     cla_jet_config%variation_start_time  =  0.0d0 !time (in s in cgs) at which to begin the time variability : 0.0 to begin at the start of the simulation
     cla_jet_config%variation_end_time    =  4d15

@@ -2005,7 +2005,7 @@ cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
 level = node(plevel_,saveigrid)
    ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
    !write(*,*) 'Do we get here 1 ?'
-   call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local)
+   !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local)
 end if cond_grackle_on
 
 ! for instance, until chemistry,

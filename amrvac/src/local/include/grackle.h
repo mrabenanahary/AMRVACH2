@@ -179,6 +179,9 @@ grackle_inout *myconfig);
 int solvegrid(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
 grackle_inout *myconfig);
 
+int oldsavegrid(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
+grackle_inout *myconfig);
+
 grackle_version get_grackle_version(void);
 
 #endif
