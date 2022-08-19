@@ -1504,6 +1504,12 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_d
     !deprecated : iresult = solve_one_cell(my_grackle_data,my_fields,my_units,&
     !my_config)
 
+    !iresult = solvegrid(my_grackle_data,my_fields,my_units,&
+    !  my_config)
+    ! the NaN does not come from normalization error on fields,
+    ! but from adding of counterbalancing force activation : check mod_obj_ism!
+    ! It seems that NaN also appears as soon as one species has its density reaching
+    ! zero !!!
     iresult = oldsavegrid(my_grackle_data,my_fields,my_units,&
       my_config)
 

@@ -48,7 +48,7 @@
         !tsave(1,2)=4.73364d8 !save after first end of injection cycle at t=150 yrs
         !dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	!ditsave_log =5
-        dtsave_dat=  3.156d8!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  3.156d7!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !dtsave_dat=  4.73364d9
         !ditsave_dat =1
  /
@@ -61,7 +61,7 @@
 
         dtmin=1.0d-6
         !time_max= 99d15 ! years
-        time_max=  3.156d10!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.156d9!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !time_max=  4.73364d9
         !it_max=100
 
@@ -122,11 +122,11 @@
         xprobmax2 =  1.0d17! <--- z_max=3.0d17
 
         ! total cell at level 1
-        domain_nx1= 128! <---dr=1.25e15 cm at lvl 1
-        domain_nx2= 128! <---dr=1.25e15 cm at lvl 1
+        domain_nx1= 64! <---dr=1.25e15 cm at lvl 1
+        domain_nx2= 64! <---dr=1.25e15 cm at lvl 1
         ! number of cell by block
-        block_nx1 = 128!8!
-        block_nx2 = 128!8!
+        block_nx1 = 64!8!
+        block_nx2 = 64!8!
 
         ! AMR configuration
         refine_criterion=3
@@ -281,7 +281,7 @@
   ism_config%velocity(2)        = 0.0!-1.2d7!5.d8     ! ism  speed components (cm/s) Z : 0.0 = milieu statique
   ism_config%velocity(3)        = 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
   ism_config%Mach_number_tomov_obj= 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
-  ism_config%temperature        = 2.0d2  !<---T_a = 100 K temperature typique
+  ism_config%temperature        = 2.0d3  !<---T_a = 100 K temperature typique
   ism_config%pressure           = 0.0d0     !1.3806485199999997d-12! ism pressure if is set to 0 it will use temperature : äraview trouve a T=100 K et rho_j=100 cm-3 >>> p_j = 2.71055e-12 Ba
   ism_config%tracer_on          = .true.    ! ism tracer
   ism_config%tracer_init_density= 1.0d9!1.0d3     ! ism tracer density
@@ -341,8 +341,8 @@
 !  ism_config%debug        	 = .false. ! use it as .true. to debug user module mod_obj_ism.t
 
 
-ism_config%profile_typeaxial  = 'projection_direction'!'spherical'!'projection_direction'
-ism_config%profile_idir       = 0.0,1.0,0.0       !z=2,r=1  !  ism profile direction
+ism_config%profile_typeaxial  = 'spherical'!'spherical'!'projection_direction'
+ism_config%profile_idir       = 1.0,0.0,0.0       !z=2,r=1  !  ism profile direction
 
 ism_config%profile_center     = 0,0,0
 
@@ -359,7 +359,7 @@ ism_config%weight_mean_variable = 'default'!'minus_density_grad'
 ism_config%profile_rw_force = 2.5d16
 ism_config%weight_num_index = 1.0d0
 ism_config%weight_analy_index = 1.0d0
-ism_config%profile_density    = 'cabrit1997'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_density    = 'Lee2001'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
 ism_config%profile_jspec = 8.0782850178d20!20       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
@@ -495,6 +495,7 @@ ism_config%He_abundance      = 0.1
 	grackle_config%gr_a_units(1) = 1.0d0
 	grackle_config%a_value(1) = 1.0d0
 	grackle_config%gr_Gamma(1) = 1.66666666667d0
+  grackle_config%deviation_to_density(1) = 1.0d-15
 
 /
 
