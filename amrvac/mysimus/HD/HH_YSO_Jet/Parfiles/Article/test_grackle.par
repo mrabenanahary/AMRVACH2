@@ -237,7 +237,7 @@
         usrconfig%profile_use_hse     = .false.
         usrconfig%cloud_on            = .false.                      !> set cloud
         usrconfig%cloud_structure     = 2                           !> cloud structure type
-        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+        usrconfig%jet_yso_on          = .false. !>>HH4647.false.!.false.!.false.!                      !> set a jet
         usrconfig%physunit_on         = .true.                      !> set the normalisation in use
         usrconfig%reset_medium        = .true.                      !> set on the reset
         usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
@@ -341,8 +341,8 @@
 !  ism_config%debug        	 = .false. ! use it as .true. to debug user module mod_obj_ism.t
 
 
-ism_config%profile_typeaxial  = 'spherical'!'spherical'!'projection_direction'
-ism_config%profile_idir       = 1.0,0.0,0.0       !z=2,r=1  !  ism profile direction
+ism_config%profile_typeaxial  = 'projection_direction'!'spherical'!'projection_direction'
+ism_config%profile_idir       = 0.0,1.0,0.0       !z=2,r=1  !  ism profile direction
 
 ism_config%profile_center     = 0,0,0
 
@@ -351,7 +351,7 @@ ism_config%profile_pressure_on= .false. ! Zheng=True ! .false. !.true.
 ism_config%theta_floored      = 0.0d0
 ism_config%profile_force_on   = .false.!.false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
 
-ism_config%profile_force_gradP_on = .true.!.false.
+ism_config%profile_force_gradP_on = .false.!.false.
 ism_config%weight_mean = 'arithmetic'
 ism_config%weight_analy = 1.0d0
 ism_config%weight_num = 0.0d0
@@ -359,7 +359,7 @@ ism_config%weight_mean_variable = 'default'!'minus_density_grad'
 ism_config%profile_rw_force = 2.5d16
 ism_config%weight_num_index = 1.0d0
 ism_config%weight_analy_index = 1.0d0
-ism_config%profile_density    = 'Lee2001'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_density    = 'cabrit1997'!'Ulrich1976'!'Ulrich1976'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
 ism_config%profile_jspec = 8.0782850178d20!20       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass

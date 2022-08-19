@@ -1392,7 +1392,7 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_d
       igr2 = imesh2-ixOmin2
       do imesh1 = ixOmin1, ixOmax1
         igr1 = imesh1-ixOmin1}
-        {^IFTWOD i = 1 + igr2 + field_size(1) * igr1}
+        {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
         density(i) = w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)
         HI_density(i) = w(imesh^D,phys_ind%HI_density_)*w_convert_factor(phys_ind%HI_density_)
         HII_density(i) = w(imesh^D,phys_ind%HII_density_)*w_convert_factor(phys_ind%HII_density_)
@@ -1525,7 +1525,7 @@ do imesh2 = ixOmin2, ixOmax2
   igr2 = imesh2-ixOmin2
   do imesh1 = ixOmin1, ixOmax1
     igr1 = imesh1-ixOmin1}
-    {^IFTWOD i = 1 + igr2 + field_size(1) * igr1}
+    {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
     ! Densities
     w(imesh^D,phys_ind%rho_) = density(i) / w_convert_factor(phys_ind%rho_)
     w(imesh^D,phys_ind%HI_density_) = HI_density(i) / w_convert_factor(phys_ind%HI_density_)
