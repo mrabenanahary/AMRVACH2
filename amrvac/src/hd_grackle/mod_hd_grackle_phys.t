@@ -1983,20 +1983,20 @@ end subroutine hd_get_aux
         where(flag(ixO^S) > 0) w(ixO^S,rho_) = hd_config%small_density
 
         if(hd_config%use_grackle)then
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHI_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHII_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHM_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHeI_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHeII_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHeIII_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoH2I_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoH2II_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoDI_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoDII_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHDI_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhoe_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhometal_) = hd_config%small_density
-          where(flag(ixO^S) > 0) w(ixO^S, rhodust_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHI_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHII_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHM_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHeI_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHeII_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHeIII_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoH2I_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoH2II_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoDI_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoDII_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHDI_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhoe_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhometal_) = hd_config%small_density/14.0_dp
+          where(flag(ixO^S) > 0) w(ixO^S, rhodust_) = hd_config%small_density/14.0_dp
         end if
 
         do idir = 1, ndir

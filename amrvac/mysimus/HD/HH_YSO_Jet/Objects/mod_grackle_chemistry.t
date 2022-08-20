@@ -453,7 +453,7 @@ module mod_grackle_chemistry
     !PROCEDURE, PASS(self)        :: set_parameters           => grackle_chemistry_set_parameters
     !PROCEDURE, PASS(self) :: associate_units          => grackle_solver_associate_units
     PROCEDURE, PASS(self)        :: grackle_source           => grackle_chemistry_static_source
-
+    PROCEDURE, PASS(self)        :: make_consistent          => grackle_make_consistent
   end type gr_solver
 
 
@@ -1266,7 +1266,8 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
 end subroutine grackle_set_complet
 
 
-subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_dx22,self)
+subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_dx22,&
+patch,self)
   implicit none
   integer, intent(in)                     :: ixI^L,ixO^L
   real(kind=dp), intent(in)               :: qdt,qtC,qt
@@ -1276,6 +1277,7 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_d
   !type(usrphysical_unit), target     :: physunit_inuse
   !real(kind=dp), intent(in)               :: gamma
   real(kind=dp),intent(inout)             :: w(ixI^S,1:nw)
+  logical, intent(in)               :: patch(ixI^S)
   class(gr_solver),TARGET                        :: self
   !type(gr_objects), intent(inout)  :: gr_obj
   ! .. local ..
@@ -1513,6 +1515,8 @@ subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_d
     iresult = oldsavegrid(my_grackle_data,my_fields,my_units,&
       my_config)
 
+
+
     !write(*,*) 'Final values'
     !write(*,*) 'Temperature = ', final_temp
     !write(*,*) 'tcool = ', final_cooltime
@@ -1533,6 +1537,7 @@ do imesh2 = ixOmin2, ixOmax2
     igr1 = imesh1-ixOmin1}
     {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
     ! Densities
+
     w(imesh^D,phys_ind%rho_) = density(i) / w_convert_factor(phys_ind%rho_)
     w(imesh^D,phys_ind%HI_density_) = HI_density(i) / w_convert_factor(phys_ind%HI_density_)
     w(imesh^D,phys_ind%HII_density_) = HII_density(i) / w_convert_factor(phys_ind%HII_density_)
@@ -1548,6 +1553,19 @@ do imesh2 = ixOmin2, ixOmax2
     w(imesh^D,phys_ind%e_density_) = e_density(i) / w_convert_factor(phys_ind%e_density_)
     w(imesh^D,phys_ind%metal_density_) = metal_density(i) / w_convert_factor(phys_ind%metal_density_)
     w(imesh^D,phys_ind%dust_density_) = dust_density(i) / w_convert_factor(phys_ind%dust_density_)
+
+{end do^D&|\}
+
+!call phys_gr_consistency(w, x, ixI^L, ixO^L)
+
+{^IFTWOD
+! flattening 2D array :
+do imesh2 = ixOmin2, ixOmax2
+  igr2 = imesh2-ixOmin2
+  do imesh1 = ixOmin1, ixOmax1
+    igr1 = imesh1-ixOmin1}
+    {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
+
     ! Internal energy in AMRVAC code units
     w(imesh^D,phys_ind%e_) = density(i)*energy(i) / w_convert_factor(phys_ind%e_)
     !(out_gamma-1.0_dp))
@@ -1568,6 +1586,7 @@ do imesh2 = ixOmin2, ixOmax2
     metal_density(i)/16.0)
     ! Mean molecular weight
     w(imesh^D,phys_ind%mup_) = meanmw/w_convert_factor(phys_ind%mup_)
+
   {end do^D&|\}
 
   ! Compute field of H2-gamma corrected temperature
@@ -1657,5 +1676,150 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
 end subroutine grackle_solver_associate
 
 
+subroutine grackle_make_consistent(ixI^L,ixO^L,w,iobj,self)
+  use mod_global_parameters
+  implicit none
+  integer, intent(in)                     :: ixI^L,ixO^L,iobj
+  real(kind=dp),intent(inout)             :: w(ixI^S,1:nw)
+  class(gr_solver),TARGET                 :: self
+  real(kind=dp),dimension(ixI^S) :: totalH, totalHe, totalD, metalfree
+  real(kind=dp),dimension(ixI^S) :: correctH,correctHe, correctD
+  real(dp)                 :: mp,kB,me
+  !-------------------------------------------------------
+
+  correctH = 0.0_dp
+  correctHe = 0.0_dp
+  correctD = 0.0_dp
+
+  if(SI_unit) then
+    mp=mp_SI
+    kB=kB_SI
+  else
+    mp=mp_cgs
+    kB=kB_cgs
+  end if
+  me = const_me
+  !1)
+  where(w(ixO^S,phys_ind%HI_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%HI_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !2)
+  where(w(ixO^S,phys_ind%HII_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%HII_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !3)
+  where(w(ixO^S,phys_ind%H2I_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%H2I_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !4)
+  where(w(ixO^S,phys_ind%HeI_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%HeI_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !5)
+  where(w(ixO^S,phys_ind%HeII_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%HeII_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !6)
+  where(w(ixO^S,phys_ind%HeIII_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%HeIII_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !7)
+  where(w(ixO^S,phys_ind%H2II_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%H2II_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !8)
+  where(w(ixO^S,phys_ind%HM_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%HM_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !9)
+  where(w(ixO^S,phys_ind%DI_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%DI_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !10)
+  where(w(ixO^S,phys_ind%DII_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%DII_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !11)
+  where(w(ixO^S,phys_ind%HDI_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%HDI_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !12)
+  where(w(ixO^S,phys_ind%e_density_)<&
+  (me/mp)*self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%e_density_)=&
+  (me/mp)*self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !13)
+  where(w(ixO^S,phys_ind%metal_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%metal_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+  !14)
+  where(w(ixO^S,phys_ind%dust_density_)<&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_))&
+  w(ixO^S,phys_ind%dust_density_)=&
+  self%myconfig%deviation_to_density(iobj)*w(ixO^S,phys_ind%rho_)
+
+
+  metalfree(ixO^S) = w(ixO^S,phys_ind%rho_)-w(ixO^S,phys_ind%metal_density_)
+  w(ixO^S,phys_ind%HI_density_) = ABS(w(ixO^S,phys_ind%HI_density_))
+  w(ixO^S,phys_ind%HII_density_) = ABS(w(ixO^S,phys_ind%HII_density_))
+  w(ixO^S,phys_ind%HeI_density_) = ABS(w(ixO^S,phys_ind%HeI_density_))
+  w(ixO^S,phys_ind%HeII_density_) = ABS(w(ixO^S,phys_ind%HeII_density_))
+  w(ixO^S,phys_ind%HeIII_density_) = ABS(w(ixO^S,phys_ind%HeIII_density_))
+  totalH(ixO^S) = w(ixO^S,phys_ind%HI_density_) + w(ixO^S,phys_ind%HII_density_)
+  totalHe(ixO^S) = w(ixO^S,phys_ind%HeI_density_) + w(ixO^S,phys_ind%HeII_density_)+&
+  w(ixO^S,phys_ind%HeIII_density_)
+!     include molecular hydrogen
+  w(ixO^S,phys_ind%HM_density_) = ABS(w(ixO^S,phys_ind%HM_density_))
+  w(ixO^S,phys_ind%H2I_density_) = ABS(w(ixO^S,phys_ind%H2I_density_))
+  w(ixO^S,phys_ind%H2II_density_) = ABS(w(ixO^S,phys_ind%H2II_density_))
+  totalH(ixO^S) = totalH(ixO^S) + w(ixO^S,phys_ind%HM_density_) +&
+  w(ixO^S,phys_ind%H2II_density_) + w(ixO^S,phys_ind%H2I_density_)
+!     Correct densities by keeping fractions the same
+
+  correctH(ixO^S) = REAL(self%myconfig%HydrogenFractionByMass(iobj)*&
+  metalfree(ixO^S)/totalH(ixO^S),dp)
+  correctHe(ixO^S) = REAL((1.0d0-self%myconfig%HydrogenFractionByMass(iobj))*&
+  metalfree(ixO^S)/totalHe(ixO^S),dp)
+
+  w(ixO^S,phys_ind%HI_density_) = w(ixO^S,phys_ind%HI_density_)*correctH(ixO^S)
+  w(ixO^S,phys_ind%HII_density_) = w(ixO^S,phys_ind%HII_density_)*correctH(ixO^S)
+  w(ixO^S,phys_ind%HeI_density_) = w(ixO^S,phys_ind%HeI_density_)*correctHe(ixO^S)
+  w(ixO^S,phys_ind%HeII_density_) = w(ixO^S,phys_ind%HeII_density_)*correctHe(ixO^S)
+  w(ixO^S,phys_ind%HeIII_density_) = w(ixO^S,phys_ind%HeIII_density_)*correctHe(ixO^S)
+  w(ixO^S,phys_ind%HM_density_) = w(ixO^S,phys_ind%HM_density_)*correctH(ixO^S)
+  w(ixO^S,phys_ind%H2I_density_) = w(ixO^S,phys_ind%H2I_density_)*correctH(ixO^S)
+  w(ixO^S,phys_ind%H2II_density_) = w(ixO^S,phys_ind%H2II_density_)*correctH(ixO^S)
+
+  !     Do the same thing for deuterium (ignore HD) Assumes dtoh is small
+  w(ixO^S,phys_ind%DI_density_) = ABS(w(ixO^S,phys_ind%DI_density_))
+  w(ixO^S,phys_ind%DII_density_) = ABS(w(ixO^S,phys_ind%DII_density_))
+  w(ixO^S,phys_ind%HDI_density_) = ABS(w(ixO^S,phys_ind%HDI_density_))
+  totalD(ixO^S) = w(ixO^S,phys_ind%DI_density_) +&
+  w(ixO^S,phys_ind%DII_density_) + (2.0d0/3.0d0)*w(ixO^S,phys_ind%HDI_density_)
+  correctD(ixO^S) = REAL(self%myconfig%DeuteriumToHydrogenRatio(iobj)*&
+  self%myconfig%HydrogenFractionByMass(iobj)*&
+  metalfree(ixO^S)/totalD(ixO^S),dp)
+  w(ixO^S,phys_ind%DI_density_) = w(ixO^S,phys_ind%DI_density_)*correctD(ixO^S)
+  w(ixO^S,phys_ind%DII_density_) = w(ixO^S,phys_ind%DII_density_)*correctD(ixO^S)
+  w(ixO^S,phys_ind%HDI_density_) = w(ixO^S,phys_ind%HDI_density_)*correctD(ixO^S)
+
+!       Set the electron density
+  w(ixO^S,phys_ind%e_density_) = (me/mp)*(w(ixO^S,phys_ind%HII_density_) + &
+  w(ixO^S,phys_ind%HeII_density_)/4.0d0 + w(ixO^S,phys_ind%HeIII_density_)/2.0d0 -&
+  w(ixO^S,phys_ind%HM_density_) + w(ixO^S,phys_ind%H2II_density_)/2.0d0)
+
+end subroutine grackle_make_consistent
 
 end module mod_grackle_chemistry

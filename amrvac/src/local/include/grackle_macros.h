@@ -7,14 +7,14 @@
 /
 / Distributed under the terms of the Enzo Public Licence.
 /
-/ The full license is in the file LICENSE, distributed with this 
+/ The full license is in the file LICENSE, distributed with this
 / software.
 ************************************************************************/
 
 #ifndef __GRACKLE_MACROS_H_
 #define __GRACKLE_MACROS_H_
 /***********************************************************************
-/  
+/
 / MACRO DEFINITIONS AND PARAMETERS
 /
 ************************************************************************/
@@ -105,11 +105,11 @@
 #define MAX_LINE_LENGTH                   512
 
 #ifndef tiny
-#define tiny 1.0e-20
+#define tiny 1.0e-13
 #endif
 
 #ifndef huge
-#define huge 1.0e20
+#define huge 1.0e30
 #endif
 
 /* Macro definitions (things C should have) */

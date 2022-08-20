@@ -1879,6 +1879,7 @@ contains
      real(kind=dp)                           :: coef_eos
      integer                                 :: idir,idims
      logical, dimension(ixI^S)               :: patch_temperature
+     real(kind=dp),dimension(ixI^S) :: mmw_field,gmmeff_field,pth_field
      !---------------------------------------------------------
      ! This subroutine implicitly uses conservative variables
 
@@ -1911,69 +1912,33 @@ contains
         end if  cond_inside_prof
       end if cond_add_force
 
-
-     cond_reset : if(self%myconfig%reset_coef>0.0_dp.and.phys_config%energy)then
-      cond_inside : if(any(self%patch(ixO^S)))then
-
-       cond_filter : if(present(source_filter))then
-         source_filter_loc(ixO^S) = source_filter(ixO^S)
-       else cond_filter
-         source_filter_loc(ixO^S) = 1.0_dp
-       end if cond_filter
-
-
-       call self%set_w(ixI^L,ixO^L,qt,x,w_init)
-       !Here the codes needs to pass from conservative to primitive variables w
-       call phys_to_primitive(ixI^L,ixO^L,w,x)
-       where(self%patch(ixO^S))
-         temperature(ixO^S)      = w(ixO^S,phys_ind%pressure_)/w(ixO^S,phys_ind%rho_)
-         temperature_init(ixO^S) =  w_init(ixO^S,phys_ind%pressure_)/&
-                                   w_init(ixO^S,phys_ind%rho_)
-        patch_temperature(ixO^S) = dabs(temperature(ixO^S)-&
-                                    temperature_init(ixO^S))&
-                                    >=self%myconfig%reset_dtemperature
-       elsewhere
-          patch_temperature(ixO^S) = .false.
-       end where
-        cond_rest_pressure: if(any(patch_temperature(ixO^S)))then
-          where(self%patch(ixO^S))
-            self%patch(ixO^S) =.false.
-          end where
-        else cond_rest_pressure
-          self%patch(ixO^S) =.false.
-        end if  cond_rest_pressure
-       where(self%patch(ixO^S))
-         source_filter_loc(ixO^S) = max(dabs(source_filter_loc(ixO^S)*self%myconfig%reset_coef),1.0_dp)
-
-         w(ixO^S,phys_ind%rho_) =   w(ixO^S,phys_ind%rho_)*(1.0_dp-source_filter_loc(ixO^S)) +&
-                          w_init(ixO^S,phys_ind%rho_)*source_filter_loc(ixO^S)
-         w(ixO^S,phys_ind%pressure_) =  w(ixO^S,phys_ind%pressure_)*(1.0_dp-source_filter_loc(ixO^S)) +&
-                          w_init(ixO^S,phys_ind%pressure_)*source_filter_loc(ixO^S)
-       end where
-
-       loop_idir :  do idir = 1,ndir
-        where(patch_temperature(ixO^S))
-          w(ixO^S,phys_ind%mom(idir)) = w(ixO^S,phys_ind%mom(idir))*(1.0_dp-source_filter_loc(ixO^S)) +&
-                          w_init(ixO^S,phys_ind%mom(idir))*source_filter_loc(ixO^S)
-        end where
-       end do loop_idir
+      ! Compute field of H2-corrected gamma
+      call phys_get_gamma(w,ixI^L, ixO^L, gmmeff_field)
+      ! Compute field of mean molecular weight
+      call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
+      ! Compute field of H2-gamma corrected temperature
+      call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
+      ! Compute field of H2-gamma corrected pressure
+      !call phys_get_pthermal(w, x, ixI^L, ixO^L, pth_field)
 
 
+      if(self%myconfig%profile_force_on) then
 
-       cond_dust_on : if( self%myconfig%dust_on)then
-          call self%mydust%set_patch(ixI^L,ixO^L,self%patch)
-          self%mydust%myconfig%velocity= self%myconfig%velocity
-          f_profile = 1.0_dp
-          call   self%mydust%set_w(ixI^L,ixO^L,qt,.false., &
-                                   self%myconfig%dust_frac,f_profile,x,w)
-       end if cond_dust_on
+        if(any(self%patch(ixO^S)))then
+          if(phys_config%energy) then
+            if(phys_config%use_grackle)then
+            where(self%patch(ixO^S))
+            ! This subroutine implicitly uses conservative variables
+             w(ixO^S,phys_ind%gamma_)=gmmeff_field(ixO^S)
+             w(ixO^S,phys_ind%mup_)=mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
+             w(ixO^S,phys_ind%temperature_)=temperature(ixO^S)
+            end where
+            end if
+          end if
+        end if
+      end if
 
-       !Don t forget to switch back to conservative variables w
-       call phys_to_conserved(ixI^L,ixO^L,w,x)
 
-      end if cond_inside
-    end if cond_reset
-    !if(any(self%patch(ixO^S)))print*,' test ism force',maxval(dabs(w(ixO^S,phys_ind%mom(z_))),mask=self%patch(ixO^S))
    end subroutine usr_ism_add_source
 
    !--------------------------------------------------------------------

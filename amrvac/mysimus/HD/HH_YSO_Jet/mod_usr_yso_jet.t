@@ -1616,6 +1616,7 @@ end subroutine initglobaldata_usr
        ism_surround(i_ism)%subname='initonegrid_usr'
 
        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,global_time,x,w,gr_solv=grackle_solver)
+       call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
        patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.ism_surround(i_ism)%patch(ixO^S)
        if(ism_surround(i_ism)%myconfig%dust_on)then
          i_object_w_dust = i_object_w_dust +1
@@ -1802,8 +1803,8 @@ end subroutine initglobaldata_usr
     real(dp), intent(in)            :: wCT(ixI^S,1:nw), x(ixI^S,1:ndim)
     real(dp), intent(inout)         :: w(ixI^S,1:nw)
     ! .. local ..
-    integer                         :: i_cloud,i_ism,i_jet_yso,i_object
-    logical, dimension(ixI^S)       :: escape_patch
+    integer                         :: i_cloud,i_ism,i_jet_yso,i_object,iobj
+    logical, dimension(ixI^S)       :: escape_patch,not_escape_patch
     real(kind=dp), dimension(ixI^S) :: source_filter,density_ratio,pressure_ism
     real(kind=dp), dimension(ixI^S) :: wjettracer,wismtracer
     real(kind=dp)                   :: usr_loc_tracer_small_density
@@ -1884,8 +1885,9 @@ end subroutine initglobaldata_usr
         end if
 
         cond_ism_noescape : if(.not.(all(escape_patch(ixI^S))))then
+          iobj = 0
           Loop_isms : do i_ism=0,usrconfig%ism_number-1
-
+            iobj = iobj+1
 
             cond_reset_ism0 : if(ism_surround(i_ism)%myconfig%reset_on) then
 
@@ -1931,6 +1933,8 @@ end subroutine initglobaldata_usr
                merge(ism_surround(i_ism)%myconfig%tracer_init_density, &
                  wCT(ixI^S,phys_ind%rho_),                               &
                  ism_surround(i_ism)%myconfig%tracer_init_density>0.0_dp)
+
+
 
               call ism_surround(i_ism)%add_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,&
                                                   wCT,qt,w,use_tracer=.true.,&
@@ -1999,14 +2003,17 @@ end subroutine initglobaldata_usr
    end if cond_dust_on
 
 
-!write(*,*) 'II> Grackle source adding <II'
-cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
-!Add Grackle chemistry+heating+cooling module treatment here :
-level = node(plevel_,saveigrid)
-   ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
-   !write(*,*) 'Do we get here 1 ?'
-   call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local)
-end if cond_grackle_on
+ !write(*,*) 'II> Grackle source adding <II'
+ cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
+ !Add Grackle chemistry+heating+cooling module treatment here :
+ level = node(plevel_,saveigrid)
+    ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
+    !write(*,*) 'Do we get here 1 ?'
+    not_escape_patch(ixO^S) = .not.escape_patch(ixO^S)
+    call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
+    not_escape_patch)
+    call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
+ end if cond_grackle_on
 
 ! for instance, until chemistry,
 ! update temperature, gamma and meanmw fields at the end of source derivation
@@ -2253,6 +2260,7 @@ return
       ism_surround(i_ism)%subname='specialbound_usr'
         call ism_surround(i_ism)%set_w(ixI^L,ixO^L,qt,x,w,&
         isboundary_iB=(/idims,iside/),gr_solv=grackle_solver)
+        call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
         patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.ism_surround(i_ism)%patch(ixO^S)
 
         !Here we set the user-defined boundary conditions already read from .par parameters files
@@ -2280,6 +2288,7 @@ return
         if(trim(myboundary_cond)/='fix'.or.any(mynotmixed_fixed_bound))then
           call ism_surround(i_ism)%myboundaries%set_w(ixI^L,ixO^L,iB,idims,iside,&
                                     ism_surround(i_ism)%patch,x,w)
+          !call grackle_solver%make_consistent(ixI^L,ixO^L,w,1)
 
         end if
         !w(ixO^S,1:nw)=wp(ixO^S,1:nw)

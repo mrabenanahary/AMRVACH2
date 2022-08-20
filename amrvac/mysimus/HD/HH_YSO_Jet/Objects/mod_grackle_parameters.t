@@ -9,7 +9,7 @@ module mod_grackle_parameters
 ! Define constants
 
 real*8,parameter    :: mh_gr=mp_cgs, kboltz_gr=kB_cgs, me_gr=const_me
-real(kind=dp) :: tiny_number= 1.0d-20,huge_number= 1.0d20
+real(kind=dp) :: tiny_number= 1.0d-13,huge_number= 1.0d30
 integer,parameter :: max_num_parameters = 5
 real(kind=dp),parameter :: abundance_tolerance = 1.0e-2_gr_RKIND
 real(kind=dp),parameter :: abundance_density = 1.0e-2_gr_RKIND
