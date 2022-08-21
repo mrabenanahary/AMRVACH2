@@ -1,4 +1,0 @@
-srun: got SIGCONT
-slurmstepd-tycho68: error: *** STEP 3292637.2 ON tycho68 CANCELLED AT 2022-05-06T11:27:58 ***
-slurmstepd-tycho68: error: *** JOB 3292637 ON tycho68 CANCELLED AT 2022-05-06T11:27:58 ***
-srun: forcing job termination

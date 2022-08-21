@@ -1,6 +1,0 @@
-slurmstepd-tycho63: error: *** JOB 3307836 ON tycho63 CANCELLED AT 2022-05-15T14:32:23 ***
-srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
-srun: got SIGCONT
-srun: forcing job termination
-slurmstepd-tycho63: error: *** STEP 3307836.2 ON tycho63 CANCELLED AT 2022-05-15T14:32:23 ***
-srun: error: tycho63: task 0: Terminated

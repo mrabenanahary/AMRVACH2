@@ -1,3 +1,0 @@
-export AMRVAC_DIR=/Users/meliani/Documents/Work/ownCloud/Project/SN_Stage/amrvac
-alias setup.pl=$AMRVAC_DIR/setup.pl
-PATH="$PATH:$AMRVAC_DIR:$AMRVAC_DIR/tools"

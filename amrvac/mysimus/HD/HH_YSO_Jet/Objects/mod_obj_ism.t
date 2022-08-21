@@ -1773,7 +1773,7 @@ contains
       if(phys_config%use_grackle)then
         all_patch(ixI^S) = .true.
         !call MPI_BARRIER(icomm, ierrmpi)
-        write(*,*) ' iteration number = ', it
+        !write(*,*) ' iteration number = ', it
         !call gr_solv%grackle_source(ixI^L,ixO^L,x,qdt,0.0d0,w_init,&
         !qt,w_tmp,grid_dx,&
         !all_patch)
