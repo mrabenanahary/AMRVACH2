@@ -1835,8 +1835,8 @@ end subroutine initglobaldata_usr
           escape_patch(ixI^S) =  escape_patch(ixI^S).or.&
              w(ixI^S,phys_ind%tracer(jet_yso(i_jet_yso)%myconfig%itr))&
              >usr_loc_tracer_small_density
-          escape_patch(ixI^S) =  escape_patch(ixI^S).or.&
-           x(ixI^S,rjet_)<jet_yso(i_jet_yso)%myconfig%r_out_impos
+          !escape_patch(ixI^S) =  escape_patch(ixI^S).or.&
+          ! x(ixI^S,rjet_)<jet_yso(i_jet_yso)%myconfig%r_out_impos
 
           where(w(ixI^S,phys_ind%tracer(jet_yso(i_jet_yso)%myconfig%itr))<&
                     usr_loc_tracer_small_density)
@@ -1919,6 +1919,21 @@ end subroutine initglobaldata_usr
               end if cond_jeton_ism0
             end if cond_reset_ism0
 
+            !write(*,*) 'II> Grackle source adding <II'
+            ^D&dx_local(^D)=0.0d0;
+            cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
+            !Add Grackle chemistry+heating+cooling module treatment here :
+                level = node(plevel_,saveigrid)
+               ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
+               !write(*,*) 'Do we get here 1 ?'
+               not_escape_patch(ixI^S) = .true.
+               !call MPI_BARRIER(icomm, ierrmpi)
+               call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
+               not_escape_patch)
+
+               call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
+            end if cond_grackle_on
+
             cond_tracer_ism_on : if((ism_surround(i_ism)%myconfig%reset_on &
                           .and.ism_surround(i_ism)%myconfig%tracer_on).or. &
                                ism_surround(i_ism)%myconfig%profile_force_on)then
@@ -1937,10 +1952,14 @@ end subroutine initglobaldata_usr
 
 
               call ism_surround(i_ism)%add_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,&
-                                                  wCT,qt,w,use_tracer=.true.,&
+                                                  wCT,qt,w,grackle_solver,&
+                                                  dx_local,&
+                                                  use_tracer=.true.,&
                                                   escape_patch=escape_patch,&
                                                   source_filter=source_filter)
             end if cond_tracer_ism_on
+
+
           end do  Loop_isms
         end if cond_ism_noescape
       end if cond_ism_on
@@ -2003,17 +2022,7 @@ end subroutine initglobaldata_usr
    end if cond_dust_on
 
 
- !write(*,*) 'II> Grackle source adding <II'
- cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
- !Add Grackle chemistry+heating+cooling module treatment here :
- level = node(plevel_,saveigrid)
-    ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
-    !write(*,*) 'Do we get here 1 ?'
-    not_escape_patch(ixO^S) = .not.escape_patch(ixO^S)
-    call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
-    not_escape_patch)
-    call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
- end if cond_grackle_on
+
 
 ! for instance, until chemistry,
 ! update temperature, gamma and meanmw fields at the end of source derivation
@@ -2590,7 +2599,7 @@ return
     ! .. local ..
     real(dp)                   :: w(ixI^S,nw),w_init(ixI^S,nw)
     real(dp)                   :: error_var(ixM^T)
-    integer                    :: iw, level,idir,idust
+    integer                    :: iw, level,idir,idust, idim
     integer, parameter         :: icsound_             = 1
     integer, parameter         :: itemperature_      = 2
     integer, parameter         :: ilevel_            = 3
@@ -2636,19 +2645,27 @@ return
                                 !/(w(ixO^S,phys_ind%rho_))
       !/
       case(itemperature_)
-        call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
-        win(ixO^S,nw+itemperature_) = temperature(ixO^S)*&
-        w_convert_factor(phys_ind%temperature_)
+        !call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
+        win(ixO^S,nw+itemperature_) = 0.0_dp
+        do idim=1,ndim+1
+          win(ixO^S,nw+itemperature_) = win(ixO^S,nw+itemperature_) + &
+          0.5_dp*(w(ixO^S, phys_ind%mom(idim))**2.0_dp/&
+          w(ixO^S, phys_ind%rho_))*w_convert_factor(phys_ind%e_)
+        end do
         normconv(nw+itemperature_)  = 1.0_dp
       case(ipressure_usr_)
-        call phys_get_pthermal(w, x, ixI^L, ixO^L, pressure_th)
-        win(ixO^S,nw+ipressure_usr_) = pressure_th(ixO^S)*&
-        w_convert_factor(phys_ind%pressure_)
+        !call phys_get_pthermal(w, x, ixI^L, ixO^L, pressure_th)
+        win(ixO^S,nw+ipressure_usr_) = w(ixO^S,phys_ind%e_)*w_convert_factor(phys_ind%e_)
+        do idim=1,ndim+1
+          win(ixO^S,nw+ipressure_usr_) = win(ixO^S,nw+ipressure_usr_) - &
+          0.5_dp*(w(ixO^S, phys_ind%mom(idim))**2.0_dp/&
+          w(ixO^S, phys_ind%rho_))*w_convert_factor(phys_ind%e_)
+        end do
         normconv(nw+ipressure_usr_)  = 1.0_dp
       case(igammaeff_)
-        call phys_get_gamma(w, ixI^L, ixO^L, gammaeff_usr)
-        win(ixO^S,nw+igammaeff_) = gammaeff_usr(ixO^S)
-        normconv(nw+igammaeff_)  = w_convert_factor(phys_ind%gamma_)
+        !call phys_get_gamma(w, ixI^L, ixO^L, gammaeff_usr)
+        win(ixO^S,nw+igammaeff_) = w(ixO^S,phys_ind%e_)*w_convert_factor(phys_ind%e_)
+        normconv(nw+igammaeff_)  = 1.0_dp
       case(imeanmupeff_)
         call phys_get_mup(w, x, ixI^L, ixO^L, mup_eff)
         ! mup_eff is already denormalized
@@ -2817,13 +2834,13 @@ return
       case(icsound_)
         varnames(icsound_)               = 'csound2'
       case(itemperature_)
-        varnames(itemperature_)        ='temperature_usr'
+        varnames(itemperature_)        ='energykinketic'
       case(ilevel_)
         varnames(ilevel_)              = 'level'
       case(indensity_)
         varnames(indensity_)           = 'number_density'
       case(ipressure_usr_)
-        varnames(ipressure_usr_)           = 'pressure_usr'
+        varnames(ipressure_usr_)           = 'energyinternal'
       case(ierror_lohner_rho_)
         varnames(ierror_lohner_rho_)   = 'erroramrrho'
       case(ierror_lohner_p_)
@@ -2849,7 +2866,7 @@ return
       case(irelerr_v3_)
         varnames(irelerr_v3_)   = 'relerrorv3'
       case(igammaeff_)
-        varnames(igammaeff_)   = 'gammaeff_usr'
+        varnames(igammaeff_)   = 'energytotal'
       case(imeanmupeff_)
         varnames(imeanmupeff_)   = 'mean_mup_usr'
       end select

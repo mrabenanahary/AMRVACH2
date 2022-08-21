@@ -363,12 +363,13 @@ module mod_physics
        integer, intent(inout)       :: w_flag(ixI^S)
      end subroutine sub_check_w
 
-     subroutine sub_get_pthermal(w,x,ixI^L,ixO^L,pth)
+     subroutine sub_get_pthermal(w,x,ixI^L,ixO^L,pth,subname)
        use mod_global_parameters
        integer, intent(in)             :: ixI^L, ixO^L
        real(kind=dp)      , intent(in)    :: w(ixI^S,nw)
        real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
        real(kind=dp)      , intent(out)   :: pth(ixI^S)
+       character(len=*), optional     :: subname
      end subroutine sub_get_pthermal
 
      subroutine sub_get_gamma(w,ixI^L,ixO^L,gammaeff)
@@ -655,7 +656,7 @@ contains
     if (.not. associated(phys_handle_small_values)) &
          phys_handle_small_values => dummy_small_values
     if (.not. associated(phys_get_temperature)) &
-         phys_get_pthermal => dummy_get_temperature
+         phys_get_pthermal => dummy_get_pthermal
     if (.not. associated(phys_get_4u_from_3v))   &
           phys_get_4u_from_3v=>dummy_get_4u_from_3v
     if (.not. associated(phys_get_3v_from_4u))   &
@@ -721,13 +722,14 @@ contains
     w_flag(ixO^S) = 0             ! All okay
   end subroutine dummy_check_w
 
-  subroutine dummy_get_pthermal(w, x, ixI^L, ixO^L, pth)
+  subroutine dummy_get_pthermal(w, x, ixI^L, ixO^L, pth,subname)
     use mod_global_parameters
 
     integer, intent(in)                :: ixI^L, ixO^L
     real(kind=dp)      , intent(in)    :: w(ixI^S, nw)
     real(kind=dp)      , intent(in)    :: x(ixI^S, 1:ndim)
     real(kind=dp)      , intent(out)   :: pth(ixI^S)
+    character(len=*), optional     :: subname
 
     pth(ixO^S) = 0
     call mpistop("No get_pthermal method specified")

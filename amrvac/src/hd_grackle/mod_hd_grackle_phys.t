@@ -1272,7 +1272,17 @@ end subroutine hd_get_aux
     call hd_get_csound2(w,x,ixI^L,ixO^L,csound)
     csound(ixO^S) = sqrt(csound(ixO^S))
 
+    !write(*,*) idim,') ','hd_get_cmax csound of iteration it = ', it,&
+    !' = ', csound(ixO^S)
+
+
+    !write(*,*) idim,') ','hd_get_cmax v(ixO^S) of iteration it = ', it,&
+    !' = ', v(ixO^S)
     cmax(ixO^S) = abs(v(ixO^S))+csound(ixO^S)
+
+
+    !write(*,*) idim,') ','hd_get_cmax cmax(ixO^S) of iteration it = ', it,&
+    !' = ', cmax(ixO^S)
 
     if (hd_config%dust_on) then
       call dust_get_cmax(w, x, ixI^L, ixO^L, idim, cmax)
@@ -1368,9 +1378,16 @@ end subroutine hd_get_aux
     real(dp), dimension(ixI^S)   :: gamm
     !------------------------------------------
     if(hd_config%energy) then
-      call hd_get_pthermal(w,x,ixI^L,ixO^L,csound2)
+
+    !write(*,*) 'hd_get_csound2 w(ixO^S,rho_) of iteration it = ', it,&
+    !' = ', w(ixO^S,rho_)
+      call hd_get_pthermal(w,x,ixI^L,ixO^L,csound2, 'hd_get_csound2')
+    !write(*,*) 'hd_get_csound2 p(csound2) of iteration it = ', it,&
+    !' = ', csound2(ixO^S)
       !csound2(ixO^S)=hd_config%gamma*csound2(ixO^S)/w(ixO^S,rho_)
       call hd_get_gamma(w, ixI^L, ixO^L, gamm)
+      !write(*,*) 'hd_get_csound2 gamm(csound2) of iteration it = ', it,&
+      !' = ', gamm(ixO^S)
       csound2(ixO^S)=gamm(ixO^S)*csound2(ixO^S)/w(ixO^S,rho_)
     else
       if(dabs(gamma_1)<smalldouble) then
@@ -1382,17 +1399,31 @@ end subroutine hd_get_aux
   end subroutine hd_get_csound2
 
   !> Calculate thermal pressure=(gamma-1)*(e-0.5*m**2/rho) within ixO^L
-  subroutine hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
+  subroutine hd_get_pthermal(w, x, ixI^L, ixO^L, pth,subname)
     use mod_global_parameters
 
     integer, intent(in)          :: ixI^L, ixO^L
     real(dp), intent(in)         :: w(ixI^S, nw)
     real(dp), intent(in)         :: x(ixI^S, 1:ndim)
     real(dp), intent(out)        :: pth(ixI^S)
-    real(dp)                     :: gamm(ixI^S)
+    character(len=*), optional     :: subname
+    real(dp)                     :: gamm(ixI^S),sgmerr(1:1)
     !----------------------------------------------------
+    if(present(subname)) then
+      !write(*,*) 'hd_get_pthermal called from ', trim(subname)
+    else
+     !write(*,*) 'hd_get_pthermal called from outside'
+    end if
+
     if (hd_config%energy) then
       call hd_get_gamma(w,ixI^L, ixO^L, gamm)
+      !write(*,*) 'hd_get_pthermal gamma(csound2) of iteration it = ', it,&
+      !' = ', gamm(ixO^S)
+      !write(*,*) 'hd_get_pthermal w(ixO^S, e_) of iteration it = ', it,&
+      !' = ', w(ixO^S, e_)*w_convert_factor(e_)
+      if(any(isnan(w(ixO^S, e_))))then
+        !call backtrace()
+      end if
       pth(ixO^S) = (gamm(ixO^S)-1.0_dp) * (w(ixO^S, e_) - &
            hd_kin_en(w, ixI^L, ixO^L))
       !pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
@@ -1421,6 +1452,18 @@ end subroutine hd_get_aux
     !----------------------------------------------------
     !write(*,*) 'temperature field = ', w(ixO^S,temperature_)*w_convert_factor(temperature_)
     if (hd_config%use_grackle) then
+      !write(*,*) 'hd_get_gamma H2I',w(ixO^S,rhoH2I_)
+      !write(*,*) 'hd_get_gamma H2II',w(ixO^S,rhoH2II_)
+      !write(*,*) 'hd_get_gamma HeI',w(ixO^S,rhoHeI_)
+      !write(*,*) 'hd_get_gamma HeII',w(ixO^S,rhoHeII_)
+      !write(*,*) 'hd_get_gamma HeIII',w(ixO^S,rhoHeIII_)
+      !write(*,*) 'hd_get_gamma HI',w(ixO^S,rhoHI_)
+      !write(*,*) 'hd_get_gamma HII',w(ixO^S,rhoHII_)
+      !write(*,*) 'hd_get_gamma e-',w(ixO^S,rhoe_)
+      if(all(w(ixO^S,rhoHI_)<=0.0_dp))then
+        call backtrace()
+        call mpistop()
+      end if
       nH2(ixO^S) = 0.5d0*(w(ixO^S,rhoH2I_) + &
       w(ixO^S,rhoH2II_))
       nother(ixO^S) = (w(ixO^S,rhoHeI_) + w(ixO^S,rhoHeII_) +&
@@ -1517,7 +1560,7 @@ end subroutine hd_get_aux
 
 
     if (hd_config%energy) then
-      call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
+      call hd_get_pthermal(w, x, ixI^L, ixO^L, pth,'hd_get_temperature')
       temperature(ixO^S) =&
       mp*w_convert_factor(p_)*pth(ixO^S)/&
       (kB*w_convert_factor(rho_)*w(ixO^S,rho_))
@@ -1580,7 +1623,7 @@ end subroutine hd_get_aux
     real(dp)                        :: pth(ixI^S), v(ixI^S)
     integer                         :: idir, itr
 
-    call hd_get_pthermal(w, x, ixI^L, ixO^L, pth)
+    call hd_get_pthermal(w, x, ixI^L, ixO^L, pth,'hd_get_flux_cons')
     call hd_get_v(w, x, ixI^L, ixO^L, idim, v)
 
     f(ixO^S, rho_) = v(ixO^S) * w(ixO^S, rho_)
@@ -1732,7 +1775,7 @@ end subroutine hd_get_aux
     select case (typeaxial)
     case ("cylindrical")
        ! s[mr]=(pthermal+mphi**2/rho)/radius
-       call hd_get_pthermal(wCT,x,ixI^L,ixO^L,tmp)
+       call hd_get_pthermal(wCT,x,ixI^L,ixO^L,tmp,'hd_add_source_geom 1')
        if(phi_>0) then
          tmp(ixO^S)=tmp(ixO^S)+wCT(ixO^S,mphi_)**2/wCT(ixO^S,rho_)
          w(ixO^S,mr_)=w(ixO^S,mr_)+qdt*tmp(ixO^S)/x(ixO^S,1)
@@ -1750,7 +1793,7 @@ end subroutine hd_get_aux
     case ("spherical")
        h1x^L=ixO^L-kr(1,^D); {^NOONED h2x^L=ixO^L-kr(2,^D);}
        ! s[mr]=((mtheta**2+mphi**2)/rho+2*p)/r
-       call hd_get_pthermal(wCT,x,ixI^L,ixO^L,tmp1)
+       call hd_get_pthermal(wCT,x,ixI^L,ixO^L,tmp1,'hd_add_source_geom 2')
        tmp(ixO^S)=tmp1(ixO^S)*x(ixO^S,1) &
             *(block%surfaceC(ixO^S,1)-block%surfaceC(h1x^S,1)) &
             /block%dvolume(ixO^S)

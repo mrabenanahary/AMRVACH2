@@ -7,14 +7,14 @@
 /
 / Distributed under the terms of the Enzo Public Licence.
 /
-/ The full license is in the file LICENSE, distributed with this
+/ The full license is in the file LICENSE, distributed with this 
 / software.
 ************************************************************************/
 
 #ifndef __GRACKLE_MACROS_H_
 #define __GRACKLE_MACROS_H_
 /***********************************************************************
-/
+/  
 / MACRO DEFINITIONS AND PARAMETERS
 /
 ************************************************************************/

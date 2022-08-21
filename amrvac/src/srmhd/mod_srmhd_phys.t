@@ -247,7 +247,7 @@ contains
     phys_get_aux             => srmhd_get_auxiliary
     phys_check_params        => srmhd_check_params
     phys_check_w             => srmhd_check_w
-    phys_get_pthermal        => srmhd_get_pthermal
+    !phys_get_pthermal        => srmhd_get_pthermal
     !phys_get_comove_B2       => srmhd_get_comove_B2
     phys_boundary_adjust     => srmhd_boundary_adjust
     phys_write_info          => srmhd_write_info

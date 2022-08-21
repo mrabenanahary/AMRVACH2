@@ -33,22 +33,32 @@ if (dtpar<=zero) then
               pw(igrid)%x,ixG^LL,ixM^LL,'setdt')
       end if
 
-
+      !write(*,*) igrid,') ','Before courant AMRVAC-side setdt qdt = ', dtnew, ' of iteration it = ', it
       call getdt_courant(pw(igrid)%w,ixG^LL,ixM^LL,qdtnew,pw(igrid)%x)
       dtnew=min(dtnew,qdtnew)
+      !write(*,*) igrid,') ','After courant AMRVAC-side setdt qdt = ', dtnew, ' of iteration it = ', it
 
 
+
+      !write(*,*) igrid,') ','Before phys_dt AMRVAC-side setdt qdt = ', dtnew, ' of iteration it = ', it
       call phys_get_dt(pw(igrid)%w,ixG^LL,ixM^LL,qdtnew,dx^D,pw(igrid)%x)
       dtnew=min(dtnew,qdtnew)
+      !write(*,*) igrid,') ','After phys_dt AMRVAC-side setdt qdt = ', dtnew, ' of iteration it = ', it
 
 
+      !write(*,*) igrid,') ','Before usr_dt AMRVAC-side setdt qdt = ', dtnew, ' of iteration it = ', it
       if (associated(usr_get_dt)) then
          call usr_get_dt(pw(igrid)%w,ixG^LL,ixM^LL,global_time,qdtnew,dx^D,pw(igrid)%x)
       end if
 
+
       dtnew          = min(dtnew,qdtnew)
+      !write(*,*) igrid,') ','After usr_dt AMRVAC-side setdt qdt = ', dtnew, ' of iteration it = ', it
+      !write(*,*) igrid,') ','Before AMRVAC-side setdt dtmin_mype = ', dtmin_mype, ' of iteration it = ', it
       dtmin_mype     = min(dtmin_mype,dtnew)
+      !write(*,*) igrid,') ','After AMRVAC-side setdt dtmin_mype = ', dtmin_mype, ' of iteration it = ', it
       dt_grid(igrid) = dtnew
+      !write(*,*) igrid,') ','After AMRVAC-side setdt dt_grid(igrid) = ', dt_grid(igrid), ' of iteration it = ', it
    end do
 !$OMP END PARALLEL DO
 else
@@ -193,6 +203,8 @@ contains
 
    Loop_idims : do idims=1,ndim
       call phys_get_cmax(w,x,ixI^L,ixO^L,idims,cmax)
+      !write(*,*) idim,') ','getdt_courant cmax of iteration it = ', it,&
+      !' = ', cmax(ixO^S)
       if(need_global_cmax) cmax_mype = max(cmax_mype,maxval(cmax(ixO^S)))
       if (.not.slab) then
          tmp(ixO^S)=cmax(ixO^S)/block%ds(ixO^S,idims)
@@ -202,6 +214,10 @@ contains
          cmaxtot(ixO^S)=cmaxtot(ixO^S)+cmax(ixO^S)*dxinv(idims)
          courantmax=max(courantmax,maxval(cmax(ixO^S)*dxinv(idims)))
       end if
+      !write(*,*) idim,') ','getdt_courant cmaxtot of iteration it = ', it,&
+      !' = ', cmaxtot(ixO^S)
+      !write(*,*) idim,') ','getdt_courant courantmax = ', courantmax, &
+      !' of iteration it = ', it
       if (small_getdt_average) then
        where (cmaxtot(ixO^S)>small_dt_coef*courantpar/(dtmin))
         patchierror(ixO^S) = 1
@@ -216,6 +232,8 @@ contains
        end if
       end if
       courantmaxtot=courantmaxtot+courantmax
+      !write(*,*) idim,') ','getdt_courant  courantmaxtot= ', courantmaxtot,&
+      ! ' of iteration it = ', it
       log_nocrrect=.true.
     end do Loop_idims
     if(log_nocrrect)exit Loop_cor
@@ -231,6 +249,8 @@ contains
      ! courantmaxtots='max(summed c/dx)'
      courantmaxtots=max(courantmaxtots,maxval(cmaxtot(ixO^S)))
      if (courantmaxtots>smalldouble) dtnew=min(dtnew,courantpar/courantmaxtots)
+     !write(*,*) idim,') ','getdt_courant  courantmaxtots= ', courantmaxtots,&
+      !' of iteration it = ', it
   case default
      write(unitterm,*)'Unknown typecourant=',typecourant
      call mpistop("Error from getdt_courant: no such typecourant!")

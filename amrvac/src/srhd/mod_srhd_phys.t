@@ -362,7 +362,7 @@ contains
     phys_get_aux             => srhd_get_auxiliary
     phys_check_params        => srhd_check_params
     phys_check_w             => srhd_check_w
-    phys_get_pthermal        => srhd_get_pthermal
+    !phys_get_pthermal        => srhd_get_pthermal
     phys_boundary_adjust     => srhd_boundary_adjust
     phys_write_info          => srhd_write_info
     phys_angmomfix           => srhd_angmomfix

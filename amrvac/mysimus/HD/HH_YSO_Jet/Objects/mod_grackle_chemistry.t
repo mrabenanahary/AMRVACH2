@@ -1287,7 +1287,9 @@ patch,self)
   real(kind=dp) :: temperature_units, pressure_units, dtchem, dx_local, velocity_units
   type(grackle_field_data)                :: my_gr_fields
   real(kind=dp), target                   :: w_gr(ixI^S,1:nw)
-  real(kind=dp),dimension(ixI^S) :: temperature,mmw_field,gmmeff_field,pth_field
+  real(kind=dp),dimension(ixI^S) :: temperature!,mmw_field,gmmeff_field
+  real(kind=dp),dimension(ixI^S) :: pth_field
+  real(kind=dp),dimension(ixI^S) :: total_energy, kn_energy
   real(kind=dp)                           :: dt_old
   integer         :: field_size(1:ndim)
   real :: initial_redshift
@@ -1341,14 +1343,21 @@ patch,self)
       kB=kB_cgs
   end if
 
+  !write(*,*) 'AMRVAC-side grackle_source qdt = ', qdt, ' of iteration it = ', it
+
   dt_old = dt
 
   !     Create a grackle chemistry object for parameters and set defaults
   iresult = set_default_chemistry_parameters(my_grackle_data)
+  !call MPI_BARRIER(icomm, ierrmpi)
+
 
   !     Set parameters and units
   call self%link_par_to_gr(my_grackle_data,my_units)
   velocity_units = get_velocity_units(my_units)
+
+  iresult = initialize_chemistry_data(my_units)
+  !call MPI_BARRIER(icomm, ierrmpi)
 
   !     Set field arrays
 
@@ -1375,11 +1384,12 @@ patch,self)
   temperature_units = get_temperature_units(my_units)
 
   ! Compute field of H2-corrected gamma
-  call phys_get_gamma(w,ixI^L, ixO^L, gmmeff_field)
+  !call phys_get_gamma(w,ixI^L, ixO^L, gmmeff_field)
+  !write(*,*) ' gamma in grackle source = ', gmmeff_field(ixO^S)
   ! Compute field of mean molecular weight
-  call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
+  !call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
   ! Compute field of H2-gamma corrected temperature
-  call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
+  !call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
   ! Compute field of H2-gamma corrected pressure
   !call phys_get_pthermal(w, x, ixI^L, ixO^L, pth_field)
 
@@ -1420,11 +1430,22 @@ patch,self)
         ! u = e/rho = p/(rho*(gamma-1)) = T*unit_v^2/(mmw*(gamma-1)*unit_T)
         ! Physical units internal energy density
         ! (<!> mup is already denormalized)
-        energy(i) = temperature(imesh^D)*w_convert_factor(phys_ind%temperature_)
-        energy(i) = energy(i) / (mmw_field(imesh^D)*temperature_units/&
-        (velocity_units*velocity_units)*(gmmeff_field(imesh^D)-1.0_dp))
-
-
+        !energy(i) = temperature(imesh^D)*w_convert_factor(phys_ind%temperature_)
+        !energy(i) = energy(i) / (mmw_field(imesh^D)*(mp/kB)*&
+        !(gmmeff_field(imesh^D)-1.0_dp))
+        !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
+          !write(*,*) 'jet uinternal energy 1 = ',energy(i)
+        !end if
+        energy(i) = w(imesh^D,phys_ind%e_)*w_convert_factor(phys_ind%e_)
+        do idim=1,ndim+1
+          energy(i) = energy(i) - &
+          (0.5_dp*w(imesh^D, phys_ind%mom(idim))**2.0_dp/w(imesh^D, phys_ind%rho_))*&
+          w_convert_factor(phys_ind%e_)
+        end do
+        energy(i) = energy(i) / (w(imesh^D, phys_ind%rho_)*w_convert_factor(phys_ind%rho_))
+        !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
+          !write(*,*) 'jet uinternal energy 2 = ',energy(i)
+        !end if
         ! For instance :
         volumetric_heating_rate(i) = 0.0
         specific_heating_rate(i) = 0.0
@@ -1512,9 +1533,10 @@ patch,self)
     ! but from adding of counterbalancing force activation : check mod_obj_ism!
     ! It seems that NaN also appears as soon as one species has its density reaching
     ! zero !!!
+    !call MPI_BARRIER(icomm, ierrmpi)
     iresult = oldsavegrid(my_grackle_data,my_fields,my_units,&
       my_config)
-
+    !call MPI_BARRIER(icomm, ierrmpi)
 
 
     !write(*,*) 'Final values'
@@ -1537,7 +1559,7 @@ do imesh2 = ixOmin2, ixOmax2
     igr1 = imesh1-ixOmin1}
     {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
     ! Densities
-
+    if(patch(imesh^D))then
     w(imesh^D,phys_ind%rho_) = density(i) / w_convert_factor(phys_ind%rho_)
     w(imesh^D,phys_ind%HI_density_) = HI_density(i) / w_convert_factor(phys_ind%HI_density_)
     w(imesh^D,phys_ind%HII_density_) = HII_density(i) / w_convert_factor(phys_ind%HII_density_)
@@ -1553,10 +1575,12 @@ do imesh2 = ixOmin2, ixOmax2
     w(imesh^D,phys_ind%e_density_) = e_density(i) / w_convert_factor(phys_ind%e_density_)
     w(imesh^D,phys_ind%metal_density_) = metal_density(i) / w_convert_factor(phys_ind%metal_density_)
     w(imesh^D,phys_ind%dust_density_) = dust_density(i) / w_convert_factor(phys_ind%dust_density_)
-
+    end if
 {end do^D&|\}
 
 !call phys_gr_consistency(w, x, ixI^L, ixO^L)
+
+
 
 {^IFTWOD
 ! flattening 2D array :
@@ -1565,14 +1589,32 @@ do imesh2 = ixOmin2, ixOmax2
   do imesh1 = ixOmin1, ixOmax1
     igr1 = imesh1-ixOmin1}
     {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
+    if(patch(imesh^D))then
 
     ! Internal energy in AMRVAC code units
-    w(imesh^D,phys_ind%e_) = density(i)*energy(i) / w_convert_factor(phys_ind%e_)
+    kn_energy(imesh^D) = 0.0_dp
+    !w(imesh^D,phys_ind%e_) = density(i)*energy(i) / w_convert_factor(phys_ind%e_)
+    !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
+      !write(*,*) 'jet internal energy a = ',density(i)*energy(i)
+    !end if
+    do idim=1,ndim+1
+      kn_energy(imesh^D) = kn_energy(imesh^D) +&
+      (0.5_dp*w(imesh^D, phys_ind%mom(idim))**2.0_dp/w(imesh^D, phys_ind%rho_))*&
+      w_convert_factor(phys_ind%e_)
+    end do
+    !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
+      !write(*,*) 'jet kinetic energy a = ', kn_energy(imesh^D)
+    !end if
+    total_energy(imesh^D) = density(i)*energy(i)+kn_energy(imesh^D)
+    !write(*,*) 'jet kinetic energy = ',kn_energy(imesh^D)
+    !write(*,*) 'jet kinetic energy = ', total_energy(imesh^D)
     !(out_gamma-1.0_dp))
     ! Total energy
+    !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
+      !write(*,*) 'jet total energy a = ', total_energy(imesh^D)
+    !end if
     do idim=1,ndim+1
-      w(imesh^D,phys_ind%e_) = w(imesh^D,phys_ind%e_) +&
-      0.5*w(imesh^D, phys_ind%mom(idim))/w(imesh^D, phys_ind%rho_)
+      w(imesh^D,phys_ind%e_) = total_energy(imesh^D)/w_convert_factor(phys_ind%e_)
     end do
     ! Temperature
     !w(imesh^D,phys_ind%temperature_) = final_temp(i)/w_convert_factor(phys_ind%temperature_)
@@ -1586,14 +1628,15 @@ do imesh2 = ixOmin2, ixOmax2
     metal_density(i)/16.0)
     ! Mean molecular weight
     w(imesh^D,phys_ind%mup_) = meanmw/w_convert_factor(phys_ind%mup_)
-
+    end if
   {end do^D&|\}
 
   ! Compute field of H2-gamma corrected temperature
   call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
-  w(ixO^S,phys_ind%temperature_)=temperature(ixO^S)
+  where(patch(ixO^S)) w(ixO^S,phys_ind%temperature_)=temperature(ixO^S)
 
-
+  !call MPI_BARRIER(icomm, ierrmpi)
+  !iresult = free_chemistry_data()
 
   dt = dt_old
 end subroutine grackle_chemistry_static_source

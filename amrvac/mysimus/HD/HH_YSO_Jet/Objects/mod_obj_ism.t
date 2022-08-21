@@ -1713,7 +1713,7 @@ contains
 
    !--------------------------------------------------------------------
 
-   subroutine usr_ism_get_pforce_profile(ixI^L,ixO^L,qt,qdt,x,w,f_profile,divpv,self)
+   subroutine usr_ism_get_pforce_profile(ixI^L,ixO^L,qt,qdt,x,w,f_profile,divpv,gr_solv,grid_dx,self)
     use mod_radiative_cooling
     implicit none
     integer, intent(in)                  :: ixI^L,ixO^L
@@ -1721,6 +1721,8 @@ contains
     real(kind=dp)                        :: maxv,minv
     real(kind=dp), intent(in)            :: x(ixI^S,1:ndim)
     real(kind=dp), intent(in)            :: w(ixI^S,1:nw)
+    type(gr_solver)                         :: gr_solv
+    real(kind=dp), intent(in)            :: grid_dx(1:ndim)
     class(ism)                           :: self
     real(kind=dp), intent(inout)         :: f_profile(ixI^S,1:ndim)
     real(kind=dp), intent(inout)         :: divpv(ixI^S)
@@ -1732,7 +1734,7 @@ contains
     real(kind=dp), dimension(ixI^S)      :: ptherm,gradp,d_profile,theta_profile
     real(kind=dp), dimension(ixI^S)      :: alpha_analy,alpha_num,fsign
     logical                              :: tmp_active,src_active
-    logical, dimension(ixI^S)            :: patch_tosave
+    logical, dimension(ixI^S)            :: patch_tosave,all_patch
     real(dp)                 :: mp,kB,Ggrav,alpha
     !----------------------------------------------------
 
@@ -1751,7 +1753,7 @@ contains
 
     patch_tosave(ixI^S)=self%patch(ixI^S)
     self%patch(ixI^S)  =.true.
-    call self%set_w(ixI^L, ixI^L,qt,x,w_init)
+    call self%set_w(ixI^L, ixI^L,qt,x,w_init,gr_solv=gr_solv)
     self%patch(ixI^S)=patch_tosave(ixI^S)
 
     call phys_to_conserved(ixI^L,ixI^L,w_init,x)
@@ -1767,6 +1769,22 @@ contains
         call radiative_cooling_add_source(qdt,ixI^L,ixI^L,w_init,w_tmp,x,&
                                            src_active,tmp_active)
       end if
+      !write(*,*) 'Before gr_solv%grackle_source w(ixO^S,e_)',w(ixO^S,phys_ind%e_)
+      if(phys_config%use_grackle)then
+        all_patch(ixI^S) = .true.
+        !call MPI_BARRIER(icomm, ierrmpi)
+        write(*,*) ' iteration number = ', it
+        !call gr_solv%grackle_source(ixI^L,ixO^L,x,qdt,0.0d0,w_init,&
+        !qt,w_tmp,grid_dx,&
+        !all_patch)
+        !call MPI_BARRIER(icomm, ierrmpi)
+        if(self%myconfig%myindice+1/=1) then
+          call mpistop('beware : self%myconfig%myindice = ',&
+          self%myconfig%myindice+1,' /= 1')
+        end if
+        !call gr_solv%make_consistent(ixI^L,ixO^L,w_tmp,self%myconfig%myindice+1)
+      end if
+      !write(*,*) 'After gr_solv%grackle_source w(ixO^S,e_)',w(ixO^S,phys_ind%e_)
       call phys_get_pthermal(w_tmp,x,ixI^L,ixI^L,ptherm)
       Loop_idir_force : do idims=1,ndim
         call gradient(ptherm,ixI^L,ixO^L,idims,gradp)
@@ -1858,7 +1876,7 @@ contains
 
 
    !--------------------------------------------------------------------
-   subroutine usr_ism_add_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w,self,&
+   subroutine usr_ism_add_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,wCT,qt,w,gr_solv,grid_dx,self,&
                                  use_tracer,escape_patch,source_filter)
      implicit none
      integer, intent(in)                     :: ixI^L,ixO^L,iw^LIM
@@ -1866,6 +1884,8 @@ contains
      real(kind=dp), intent(in)               :: x(ixI^S,1:ndim)
      real(kind=dp), intent(in)               :: wCT(ixI^S,1:nw)
      real(kind=dp), intent(inout)            :: w(ixI^S,1:nw)
+     type(gr_solver)                         :: gr_solv
+     real(kind=dp), intent(in)            :: grid_dx(1:ndim)
      logical, intent(in), optional           :: use_tracer
      logical, intent(in),optional            :: escape_patch(ixI^S)
      real(kind=dp), intent(in),optional      :: source_filter(ixI^S)
@@ -1890,7 +1910,8 @@ contains
       cond_add_force : if(self%myconfig%profile_force_on) then
 
         cond_inside_prof: if(any(self%patch(ixO^S)))then
-          call self%get_pforce_profile(ixI^L,ixO^L,qtC,qdt,x,wCT,f_profile,divpv)
+          call self%get_pforce_profile(ixI^L,ixO^L,qtC,qdt,x,wCT,f_profile,divpv,&
+          gr_solv,grid_dx)
           Loop_idim_force_m : do idims = 1,ndim
           where(self%patch(ixO^S))
            ! This subroutine implicitly uses conservative variables
@@ -1902,11 +1923,13 @@ contains
           if(phys_config%energy) then
             coef_eos = 1.0_dp!self%myconfig%gamma/(self%myconfig%gamma-1.0_dp)
 
+            !write(*,*) 'Before add_source w(ixO^S,e_)',w(ixO^S,phys_ind%e_)
             where(self%patch(ixO^S))
             ! This subroutine implicitly uses conservative variables
              w(ixO^S,phys_ind%e_)=w(ixO^S,phys_ind%e_)  &
                 + qdt*coef_eos*divpv(ixO^S)
             end where
+            !write(*,*) 'After add_source w(ixO^S,e_)',w(ixO^S,phys_ind%e_)
 
           end if
         end if  cond_inside_prof

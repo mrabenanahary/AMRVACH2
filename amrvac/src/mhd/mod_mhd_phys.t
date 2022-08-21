@@ -349,7 +349,7 @@ contains
     phys_to_primitive        => mhd_to_primitive
     phys_check_params        => mhd_check_params
     phys_check_w             => mhd_check_w
-    phys_get_pthermal        => mhd_get_pthermal
+    !phys_get_pthermal        => mhd_get_pthermal
     phys_get_temperature     => mhd_get_temperature
     phys_boundary_adjust     => mhd_boundary_adjust
     phys_write_info          => mhd_write_info

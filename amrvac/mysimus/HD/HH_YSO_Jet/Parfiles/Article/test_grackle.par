@@ -14,7 +14,7 @@
 
  &filelist
         base_filename='Output/test_grackle/Lee2001_s_'
-        saveprim=.true.
+        saveprim=.false.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
         !restart_from_file='Output/test_grackle/Lee2001_s_0027.dat'
@@ -48,7 +48,7 @@
         !tsave(1,2)=4.73364d8 !save after first end of injection cycle at t=150 yrs
         !dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
 	!ditsave_log =5
-        dtsave_dat=  3.156d6!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  3.156d7!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !dtsave_dat=  4.73364d9
         !ditsave_dat =1
  /
@@ -61,9 +61,9 @@
 
         dtmin=1.0d-6
         !time_max= 99d15 ! years
-        time_max=  3.156d9!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  3.156d10!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !time_max=  4.73364d9
-        !it_max=100
+        !it_max=4
 
 
 /
@@ -85,8 +85,8 @@
         small_density            = 1.0d-10
         small_values_method      =  'average'
         small_values_daverage    = 8
-        !source_split_usr = .true.
-        !typesourcesplit= 'sfs'
+        source_split_usr = .true.
+        typesourcesplit= 'sf'
 
         check_small_values       = .true.
         small_values_force_floor = .true.
@@ -103,11 +103,11 @@
 
  &boundlist
         internalboundary  = .true.
-        nghostcells       = 4
+        nghostcells       = 2
         !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
-        typeboundary_min1 =  21*'cont'!'symm','asymm','symm','asymm','symm',16*'symm'!'symm','asymm','symm','asymm',16*'symm'!21*'cont', ! C.L. gauche <=> rmin
+        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',16*'symm'!'symm','asymm','symm','asymm',16*'symm'!21*'cont', ! C.L. gauche <=> rmin
         typeboundary_max1 =  21*'cont'!6*'cont'!                                    ! C.L. droite <=> rmax
-        typeboundary_min2 =  21*'cont'!21*'special'!6*'special'!'symm','symm','asymm','symm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
+        typeboundary_min2 =  21*'special'!6*'special'!'symm','symm','asymm','symm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
         typeboundary_max2 =  21*'cont'!6*'cont'!
 /
         typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max
@@ -117,9 +117,9 @@
  &meshlist
         ! grid at level 1
         xprobmin1 =  0.0d0    ! cm
-        xprobmax1 =  1.0d17! <--- r_max=3.0d17
+        xprobmax1 =  0.3d17! <--- r_max=3.0d17
         xprobmin2 =  0.0d0    ! cm
-        xprobmax2 =  1.0d17! <--- z_max=3.0d17
+        xprobmax2 =  0.3d17! <--- z_max=3.0d17
 
         ! total cell at level 1
         domain_nx1= 128! <---dr=1.25e15 cm at lvl 1
@@ -166,7 +166,7 @@
         typecourant         = 'maxsum'
         courantpar          = 0.8d0
         slowsteps           = 1000
-        small_getdt_average = .true.
+        small_getdt_average = .false.
         small_dt_coef       = 1.0d-5
  /
 
@@ -237,7 +237,7 @@
         usrconfig%profile_use_hse     = .false.
         usrconfig%cloud_on            = .false.                      !> set cloud
         usrconfig%cloud_structure     = 2                           !> cloud structure type
-        usrconfig%jet_yso_on          = .false. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
         usrconfig%physunit_on         = .true.                      !> set the normalisation in use
         usrconfig%reset_medium        = .true.                      !> set on the reset
         usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
@@ -281,7 +281,7 @@
   ism_config%velocity(2)        = 0.0!-1.2d7!5.d8     ! ism  speed components (cm/s) Z : 0.0 = milieu statique
   ism_config%velocity(3)        = 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
   ism_config%Mach_number_tomov_obj= 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
-  ism_config%temperature        = 2.0d2  !<---T_a = 100 K temperature typique
+  ism_config%temperature        = 1.0d2  !<---T_a = 100 K temperature typique
   ism_config%pressure           = 0.0d0     !1.3806485199999997d-12! ism pressure if is set to 0 it will use temperature : äraview trouve a T=100 K et rho_j=100 cm-3 >>> p_j = 2.71055e-12 Ba
   ism_config%tracer_on          = .true.    ! ism tracer
   ism_config%tracer_init_density= 1.0d9!1.0d3     ! ism tracer density
@@ -341,17 +341,17 @@
 !  ism_config%debug        	 = .false. ! use it as .true. to debug user module mod_obj_ism.t
 
 
-ism_config%profile_typeaxial  = 'projection_direction'!'spherical'!'projection_direction'
-ism_config%profile_idir       = 0.0,1.0,0.0       !z=2,r=1  !  ism profile direction
+ism_config%profile_typeaxial  = 'spherical'!'spherical'!'projection_direction'
+ism_config%profile_idir       = 1.0,0.0,0.0       !z=2,r=1  !  ism profile direction
 
 ism_config%profile_center     = 0,0,0
 
 ism_config%profile_density_on = .true. ! Zheng=True ! .false. ! .true. ! ISM set density profile
 ism_config%profile_pressure_on= .false. ! Zheng=True ! .false. !.true.
 ism_config%theta_floored      = 0.0d0
-ism_config%profile_force_on   = .false.!.false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
+ism_config%profile_force_on   = .true.!.false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
 
-ism_config%profile_force_gradP_on = .false.!.false.
+ism_config%profile_force_gradP_on = .true.!.false.
 ism_config%weight_mean = 'arithmetic'
 ism_config%weight_analy = 1.0d0
 ism_config%weight_num = 0.0d0
@@ -359,7 +359,7 @@ ism_config%weight_mean_variable = 'default'!'minus_density_grad'
 ism_config%profile_rw_force = 2.5d16
 ism_config%weight_num_index = 1.0d0
 ism_config%weight_analy_index = 1.0d0
-ism_config%profile_density    = 'cabrit1997' !'Ulrich1976'!'cabrit1997'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_density    = 'Lee2001' !'Ulrich1976'!'cabrit1997'!'Lee2001'!'Ulrich1976'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
 ism_config%profile_jspec = 8.0782850178d20!20       !> ISM envelope specific angular momentum
 ism_config%profile_Minf  = 2.5203562637184713d20 !> ISM envelope infalling mass-loss rate on the protostar
 ism_config%profile_Mstar = 8.94784441814123d32   !> central objet or protostar mass
@@ -396,10 +396,10 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%time_cla_jet_on       =  0.0d0 !> initial time the cla_jet is set in the simulation box
 
     cla_jet_config%myindice              =  0       !> cla_jet associated indice
-    cla_jet_config%density               =  1.795963442083303d-19!<-------Fm=0.6e-7 Msun/yr
+    cla_jet_config%density               =  1.795963442083303d-17!<-------Fm=0.6e-7 Msun/yr
 
     cla_jet_config%number_density        =  0.0d0
-    cla_jet_config%temperature           =  2.0d3  !>>HH4647 !> cla_jet temperature  (K)
+    cla_jet_config%temperature           =  1.0d2  !>>HH4647 !> cla_jet temperature  (K)
     cla_jet_config%pressure              =  0.0d0   !> cla_jet pressure
     cla_jet_config%pressure_toism        =  0.0d0   !> cla_jet pressure relative to ism pressure
     cla_jet_config%magnetic(1)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
@@ -425,10 +425,10 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%open_angle            = 3.0d0 !>>HH4647 !>  cla_jet initial open angle  (degre): 0.0d0 = jet droit cylindrique
     cla_jet_config%z_in                  =  -46.275d18 !> cla_jet inner boundary position
     cla_jet_config%variation_n_cells     = 2
-    cla_jet_config%z_impos               =  8.22d15 !
-    cla_jet_config%z_out_init            =  8.30d15 !
-    cla_jet_config%r_out_init            =  7.47d15! <--- 50 UA
-    cla_jet_config%r_out_impos           =  7.47d15! <--- 50 UA
+    cla_jet_config%z_impos               =  8.22d14 !
+    cla_jet_config%z_out_init            =  8.30d14 !
+    cla_jet_config%r_out_init            =  7.47d14! <--- 50 UA
+    cla_jet_config%r_out_impos           =  7.47d14! <--- 50 UA
 
     cla_jet_config%r_in_init             =  0.0 !-7.48d14 !> cla_jet inner jet  region : position de la limite gauche du jet en coordonnées cylindriques : à tenir compte dans le calcul de la surface d'éjection du jet et donc du calcul du flux de masse ejectée
 
@@ -439,9 +439,9 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%profile               =  'none'  !> cla_jet profile
 
 
-    cla_jet_config%variation_on          =  .false. ! Zhang19 .false. !.true.! to set on  or off the jet-injection in-real-time velocity variability
-    cla_jet_config%density_variation_on  =  .false. !<----- vary mass-loss rate !> cla_jet density variation switch
-    cla_jet_config%pressure_variation_on =  .false. !<----- vary constant jet temperature !> cla_jet pressure variation switch : enables constant temperature in the jet inlet
+    cla_jet_config%variation_on          =  .true. ! Zhang19 .false. !.true.! to set on  or off the jet-injection in-real-time velocity variability
+    cla_jet_config%density_variation_on  =  .true. !<----- vary mass-loss rate !> cla_jet density variation switch
+    cla_jet_config%pressure_variation_on =  .true. !<----- vary constant jet temperature !> cla_jet pressure variation switch : enables constant temperature in the jet inlet
     cla_jet_config%density_variation_profile =  'conserved_mflux' !<----- which variability apply to pressure and/or pressure
     cla_jet_config%variation_start_time  =  0.0d0 !time (in s in cgs) at which to begin the time variability : 0.0 to begin at the start of the simulation
     cla_jet_config%variation_end_time    =  4d15
@@ -451,7 +451,7 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%variation_velocity(2) =  6.0d6 !<------ variation de la norme du vecteur vitesse du jet
     cla_jet_config%variation_velocity(3) =  0.0d0
     cla_jet_config%variation_time        =  9.46728d9!<---- 300 ans
-    cla_jet_config%variation_position    =  0.0d0,8.22d15 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
+    cla_jet_config%variation_position    =  0.0d0,8.22d14 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
     cla_jet_config%variation_type        =  'sawtooth2' !
     cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation
     cla_jet_config%variation_phys_variable(1) =  3 ! 3 mean the velocity in Z direction
@@ -475,14 +475,14 @@ ism_config%He_abundance      = 0.1
 	grackle_config%IonizationFraction(2) = 0.0d0!1.0d-3
   grackle_config%DeuteriumToHydrogenRatio(1) = 6.8d-5
   grackle_config%DeuteriumToHydrogenRatio(2) = 0.0d0
- 	!grackle_config%TemperatureStart(1) = 100.0d0
+ 	grackle_config%TemperatureStart(1) = 1000.0d0
 	!grackle_config%TemperatureStart(2) = 100.0d0
 
 
 	grackle_config%use_grackle(1) = 1            ! chemistry on
 	grackle_config%gr_use_isrf_field(1) = 0          ! interstellar radiation field on
-	grackle_config%gr_with_radiative_cooling(1) = 0 ! cooling on
-	grackle_config%gr_primordial_chemistry(1) = 3   ! network with H, He, D
+	grackle_config%gr_with_radiative_cooling(1) = 1 ! cooling on
+	grackle_config%gr_primordial_chemistry(1) = 3  ! network with H, He, D
 	grackle_config%gr_dust_chemistry(1) = 1        ! dust processes
 	grackle_config%gr_metal_cooling(1) = 1          ! metal cooling on
 	grackle_config%gr_h2_on_dust(1) = 0                ! H2 formation on dust
