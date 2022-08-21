@@ -1,0 +1,1063 @@
+1761954
+tycho64
+/scratch/mrabenanahary/run.1761954.tycho64
+::::::::::::::
+Shang06_over_1000_yrse.par
+::::::::::::::
+!==============================================================
+! Project : YSO JET MIALY
+! Aim     :
+! Results :
+! Method  : Use cartesian coordinate
+!
+! Update  : 22/11/2019
+! configuration :
+! Openmpi/gfortran or intel or ....
+! $AMRVAC_DIR/setup.pl -d=2 -phys=hd -arch=default
+! with intel
+! $AMRVAC_DIR/setup.pl -d=2 -phys=hd -arch=intel
+!==============================================================
+
+ &filelist
+        base_filename='Output/Shang06_over_1000_yrse/Jet_Shang06_'
+        saveprim=.true.
+        autoconvert=.true.
+        convert_type='vtuBCCmpi'
+        nwauxio = 4
+        restart_from_file='Jet_Shang06_0100.dat'
+        /
+        convert = .true.
+
+
+
+        snapshotnext =0326
+/
+
+
+
+
+/
+        nwauxio=10
+
+
+
+
+/
+
+
+ &savelist
+        itsave(1,1)=0
+        itsave(1,2)=0
+        dtsave_log=3.1557600d7   ! 1 year 3.1557600d6 = 0.1 yr
+	!ditsave_log =50
+        dtsave_dat=  3.1557600d9! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        !ditsave_dat =1
+ /
+
+        ditsave_log = 1
+        ditsave_dat =1
+        dtsave_dat =21.08
+
+ &stoplist
+
+        dtmin=1.0d-13
+        !time_max= 99d15 ! years
+        time_max=  3.15576d11 ! 10000 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        !it_max=10
+
+
+/
+  reset_it=.true.
+
+          it_init=0
+
+
+
+
+
+
+ &methodlist
+        time_integrator          =  'twostep'
+        typepred1                =  20*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        flux_scheme              =  20*'tvdlf'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        limiter                  =  20*'minmod'!>>HH4647 !'koren'!'cada3'
+        small_pressure           = 1.0d-9
+        small_density            = 1.0d-8
+        small_values_method      =  'average'
+        small_values_daverage    = 8
+
+        check_small_values       = .true.
+        small_values_force_floor = .true.
+        loglimit(1) = .false.
+
+
+ /
+         loglimit(4) = .true.
+         loglimit(1)            = .true.
+         loglimit(5)            = .true.
+         loglimit(6)            = .true.
+         loglimit(7)            = .true.
+        tvdlfeps=0.5d0
+
+ &boundlist
+        internalboundary  = .true.
+        nghostcells       = 4
+        !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
+        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',2*'symm'!, ! C.L. gauche <=> rmin
+        typeboundary_max1 =  7*'cont'                                    ! C.L. droite <=> rmax
+        typeboundary_min2 =  7*'special'!'symm','asymm','symm','asymm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
+        typeboundary_max2 =  7*'cont'                                        ! C.L. supérieure <=> zmax                                      ! C.L. supérieure <=> zmax
+
+/
+        typeboundary_max3 = 8*'cont'                                         ! C.L. arrière <=> phi/profondeur max
+        typeboundary_min3 = 8*'cont'                                         ! C.L. avant <=> phi/profondeur min
+ /
+
+ &meshlist
+        ! grid at level 1
+        xprobmin1 =  0.0d0    ! cm
+        xprobmax1 =  1.6d17 ! cm 2.5d16!1.25d16 !>>HH4647 !4.0d16 !2.0d16   ! cm
+        xprobmin2 =  0.0d0    ! cm
+        xprobmax2 =  1.25d17!>>HH4647 !1.0d17 !2.0d17    ! cm
+
+        ! total cell at level 1
+        domain_nx1= 256!40!>>HH4647 !64!32!
+        domain_nx2= 200!>>HH4647 !160!320!
+        ! number of cell by block
+        block_nx1 = 8!8!
+        block_nx2 = 8!8!
+
+        ! AMR configuration
+        refine_criterion=3
+        refine_max_level=4 !>>HH4647 !
+        refine_threshold=20*0.05d0
+        derefine_ratio=20*0.05d0
+      !  w_refine_weight(1)=0.25d0
+      !  w_refine_weight(2)=0.25d0
+      !  w_refine_weight(3)=0.25d0
+        w_refine_weight(1)=1.0d0
+
+        max_blocks = 20000
+        ! can be added when is needed
+        prolongprimitive= .true.
+        coarsenprimitive= .true.
+        /
+
+
+
+
+
+
+
+ /
+        stretched_grid    = .true.
+        stretched_dim(1)  = .true.
+        stretched_dim(2)  = .true.
+        itfixgrid =0
+
+ &paramlist
+        typecourant         = 'maxsum'
+        courantpar          = 0.8d0
+        slowsteps           = 1500
+        small_getdt_average = .true.
+        small_dt_coef       = 1.0d-6
+ /
+
+  &hd_list
+         hd_energy            = .true. !>>HH4647 !
+         hd_gamma             = 1.666666667 !>>HH4647 ! hd_temperature_isotherm = 100
+         SI_unit              = .false.  ! use cgs
+
+         He_abundance         = 0.1d0                     !
+
+         hd_dust              = .false.   ! dust off
+         hd_radiative_cooling = .true. !>>HH4647 .false.!.true.    ! cooling on
+         hd_chemical          = .false.   ! use chemical
+         hd_n_tracer          = 2
+         hd_mean_mup_on       = .true. !>>HH4647 .true.
+   /
+
+
+
+ !'MLcosmol' : 'Use Mellema & Lundqvist (2002) cooling curve for zero metallicity '
+ !'SPEX_DM'  : 'Use SPEX cooling curve for solar metallicity above 10^4 K. At lower temperatures,use Dalgarno & McCray (1972), with a pre-set ionization fraction of 10^-3 as described by Schure et al. (2009). '
+   &rc_list
+         ncool            = 4000
+         coolcurve        = 'SPEX_DM'!'MLcosmol' !
+         coolmethod       = 'exact'
+         cfrac            = 1.d0
+         Tfix             = .false.
+         tlow             = 110 !>>HH4647
+         coolsaveL        = .true.
+         coolsavedT       = .true.
+   /
+
+
+ &dust_list
+     dust_n_species           = 2
+     dust_min_rho             = 1.0d-10
+     gas_mu                   = 1.0d0
+     dust_method              = 'Kwok'
+     dust_small_to_zero       = .true.
+     dust_temperature         = 1.0d0
+     dust_temperature_type    = 'silicate'
+     dust_source_split        = .false.
+     dust_it_diff             = 50000
+   /
+
+
+
+
+
+ &usr_list
+        usrconfig%ism_on              = .true.                      !> set ism
+        usrconfig%cloud_on            = .false.                      !> set cloud
+        usrconfig%cloud_structure     = 2                           !> cloud structure type
+        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+        usrconfig%physunit_on         = .true.                      !> set the normalisation in use
+        usrconfig%reset_medium        = .true.                      !> set on the reset
+        usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
+        usrconfig%phys_inuse          = 'hd' !'mhd' ! set physique want to be used
+
+        usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
+        !usrconfig%phys_temperature_isotherm     = 100 ! Le 2001
+        usrconfig%reset_flux_scheme_on          = .true.
+        usrconfig%reset_flux_scheme_diffuse     = 'tvdlf'
+        usrconfig%reset_flux_scheme_thresholdL1 = 1.0d-6
+
+
+ /
+
+
+
+
+&usr_physical_unit_list
+ phys_unit%unit                  = 'cgs'
+ phys_unit%length                = 1.496d14                 ! cm (1 parsec) : par defaut = 1.496d14
+ phys_unit%time                  = 3d8                      ! s (2 year) : par defaut = 3d10
+ phys_unit%number_density        = 1.0d-6 !>>HH4647                      ! cm^-3 : par defaut = 1.0d8 (1.0d5 pour un milieu ambiant tres peu dense, e.g. a 100cm-3)                      ! cm^-3 : par defaut = 1.0d8 (1.0d5 pour un milieu ambiant tres peu dense, e.g. a 100cm-3)
+ phys_unit%chemical_He_abundance = 0.1d0
+/
+
+!11/12/19 : pour ISM et le projet n°1 de Sylvie Cabrit sur son article de 1997, les paramètres ci-dessous pour l'ISM ont été testés
+!et fixées aux valeurs recommandées et correspondant le mieux à la simulation de l'article
+ &usr_ism_list
+  ism_config%unit               ='cgs'
+  ism_config%density            = 1.6d-18         !Li & Shu et 1996b ism density if it set to 0 it will use number_density
+  ism_config%number_density     = 0.0d0  !>>HH4647  !2.95d9    !1.0d2     !4.44d6     ! Zheng19 = 2.95d9 cm-3 ! ism number density (1/cm^3) ) of protons n_H = facteur rho_j (e.g. = 100 cm-3) physique dans l'expression du profil de densité rho_c du milieu ambiant
+                                            ! and w(ixO^S,phys_ind%rho_)        =  self%myconfig%density = = self%myconfig%number_density*mp = rho_h the mass density of protons
+                                            ! si tu l'augmentes e.g. a number_density=1.0d3,
+                                            !la valeur rho_c=rho_j de densité au niveau de la frontière inférieure ISM augmente d'un facteur 10
+  ism_config%velocity(1)        = 0.0       ! ism  speed components (cm/s) R/X : 0.0 = milieu statique
+  ism_config%velocity(2)        = 0.0!5.d8     ! ism  speed components (cm/s) Z : 0.0 = milieu statique
+  ism_config%velocity(3)        = 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
+  ism_config%Mach_number_tomov_obj= 0.0       ! ism  speed components (cm/s)  Y : 0.0 = milieu statique
+  ism_config%temperature        = 100.0d0  !>>HH4647   ! Zheng19 = 50 K ! ism temperature (K) : influence la valeur de pression et de force de gravité contrebalaçant mais pas le gradient de pression
+  ism_config%pressure           = 0.0d0     !1.3806485199999997d-12! ism pressure if is set to 0 it will use temperature : äraview trouve a T=100 K et rho_j=100 cm-3 >>> p_j = 2.71055e-12 Ba
+  ism_config%tracer_on          = .true.    ! ism tracer
+  ism_config%tracer_init_density= 1.0d3     ! ism tracer density
+
+  ism_config%reset_on           = .true.    ! ism reset
+  ism_config%reset_coef         = 0.8! 0.0     ! ism reset  coefficient
+  ism_config%reset_dtemperature = 1.0d-2    !> set the pressure variation
+  ism_config%reset_distance(2)  =  1.01d18  ! ism rest distance
+  ism_config%reset_scale(2)     =  5d16     ! ism reset scalling distance
+
+  ism_config%boundary_cond(2,2) = 'open'
+  ism_config%boundary_cond(2,1) = 'fix'
+  ism_config%boundary_on        = .true.
+
+ism_config%profile_typeaxial  = 'spherical'!'projection_direction'
+ism_config%profile_idir       = 0.0,1.0,0.0       !z=2,r=1  !  ism profile direction
+
+ism_config%profile_center     = 0,0,0
+
+ism_config%profile_density_on = .true. ! Zheng=True ! .false. ! .true. ! ISM set density profile
+ism_config%profile_pressure_on= .true. ! Zheng=True ! .false. !.true.
+
+ism_config%profile_density    = 'Lee2001'!>>HH4647'cabrit1997' ! Zheng19 = 'cabrit1997' !ISM density profile
+ism_config%profile_force_on   = .true. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
+ism_config%profile_force_gradP_on = .true.
+
+ism_config%profile_zc    = 7.0d16!4.49d14 ! 1.0d16 !4.49d14 ! Zheng19 = 30 au = 4.49d14 cm :  grandeur de normalisation dans le profil de pression/densite (en cm)
+ism_config%profile_rw    = 2.5d15 !> ISM reference radius for Lee 2001 profile (in cm)
+ism_config%profile_kappa    = 2.0d0 ! Zheng19 = 2 ! indice kappa pour la loi de densité et de pression : 'cabrit1997' <=> kappa=2
+ism_config%profile_shiftstart = 0.00d0 !>>HH4647 3.33d14 ! 3.33d14 ! 1.0d15 ! the distance from which the ISM profile is set
+
+ism_config%chemical_gas_type = 'fullyatomic'!>>HH4647'fullymolecular'
+ism_config%He_abundance      = 0.1
+/
+
+&usr_usrboundary_ism_list
+  usrboundary_config%boundary_type(2,1) = 'fix'
+  usrboundary_config%boundary_type(2,2) = 'open'
+  usrboundary_config%useprimitive       = .false.
+  usrboundary_config%flux_frac          = 1.0d-2
+/
+
+!11/12/19 : pour le jet et le projet n°1 de Sylvie Cabrit sur son article de 1997, les paramètres ci-dessous pour le jet ont été testés
+!et fixées aux valeurs recommandées et correspondant le mieux à la simulation de l'article
+&usr_cla_jet_list
+    cla_jet_config%unit                  =  'cgs' !> physical unit at parameter file
+    cla_jet_config%time_cla_jet_on       =  0.0d0 !> initial time the cla_jet is set in the simulation box
+
+    cla_jet_config%myindice              =  0       !> cla_jet associated indice
+    cla_jet_config%density               =  0.0d0 !> cla_jet density  (g/cm^3) densite totale en particules H+H^++H2+He
+
+    cla_jet_config%number_density        =  1.53d6 !7.6d5 !1.0d5 !7.65e5  ! = ntot = nH * 1.4 : densite en H+H^++H2+He,
+                                            ! et où nH = densite retournee par Paraview est la densite en H+H^++H2
+                                            ! Zhang19 = 0.3-5 e-7 Msun/yr >>> n0= 42864.27- 1.072d6 cm-3 on impose le flux de masse 1.0d5 !> cla_jet number density (1/cm^3)  Reference  Whittle, J. D. Silverman, et al. 2004 : on doit désactiver le flux de masse pour pouvoir utiliser cette densité
+    cla_jet_config%temperature           =  100.0d0  !>>HH4647 !> cla_jet temperature  (K)
+    cla_jet_config%pressure              =  0.0d0   !> cla_jet pressure
+    cla_jet_config%pressure_toism        =  0.0d0   !> cla_jet pressure relative to ism pressure
+    cla_jet_config%magnetic(1)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%magnetic(2)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%magnetic(3)           =  0.0d0   !> cla_jet magnetic field components : 0.0d0 = HD
+    cla_jet_config%xisigma               =  0.0d0   !> cla_jet magnetisation : 0.0d0 = HD
+    cla_jet_config%magn_anglePHItoPol    =  0.0d0   !> cla_jet magnetisation field incl : 0.0d0 = HD
+
+    cla_jet_config%Mach_number           =  0.0!250.0d0   !> cla_jet  Mach number : Par défaut : Ma = 20
+    cla_jet_config%c_sound               =  0.0d0   !> cla_jet  sound speed (cm/s)
+    cla_jet_config%velocity(1)           =  0.0d0   !> cla_jet  velocity (radial speed)(cm/s)
+    cla_jet_config%velocity(2)           =  1.0d7 !>>HH46471.5d7 !0.0d0 !1.0d7   !1.0d7!> cla_jet  velocity (longitudinal speed)(cm/s) ! Reference  Whittle, J. D. Silverman, et al. 2004 ! Projet n°1 de Sylvie (Cabrit et Raga 1997) => Vjet = 150 km/s = 1.5d7 cm/s (sans tenir compte de la variabilité temporelle du jet) !cla_jet_config%velocity_poloidal     =  0.0d0 !1.0d7 ! Zhang19 = 100 km/s
+    cla_jet_config%velocity(3)           =  0.0d0   !> cla_jet  velocity (rotation speed)(cm/s)
+    cla_jet_config%velocity_poloidal     =  0.0d0
+    cla_jet_config%power                 =  0.0d0   !> wind power flux
+    cla_jet_config%mass_flux             =  0.0d0   ! 3.15e19 ! flux en H+H^++H2 1.13d21 !1.89d18 ! grammes/s>>>Zhang19 = 0.3e-7 Msun/yr  0.0!9.8525563d16!1.9705112501213315d17!1.3136741667475542d17!!   !> wind mass flux : cabrit1997 = 1.3136741d17 à Vjet = 100 km/s et 1.9705111e+17 à Vjet = 150 km/s (Vjet = 150 km/s ne marche qu a basse resolution de maillage)
+                                            ! c'est par l'imposition de cla_jet_config%mass_flux et de cla_jet_config%velocity(2) que la densité est alors imposée à l'intérieur du jet
+                                            ! pour avoir :
+                                            ! * Vjet = 100 km/s, R_jet = 0.5e16 cm et n_jet = 100 cm-3 >>> mass_flux = 1.3136741667475542e+17 g / s
+                                            ! * Vjet = 150 km/s, R_jet = 0.5e16 cm et n_jet = 100 cm-3 >>> mass_flux = 1.9705112501213315e+17 g / s
+                                            ! * Vjet = 150 km/s, R_jet = 0.5e16 cm et n_jet = 50 cm-3 >>> mass_flux = 9.8525563e+16 g / s
+
+    cla_jet_config%open_angle            = 3.0d0 !>>HH4647 !>  cla_jet initial open angle  (degre): 0.0d0 = jet droit cylindrique
+    cla_jet_config%z_in                  =  -46.275d18 !> cla_jet inner boundary position
+    cla_jet_config%z_impos               =  8.22d14 !>>HH4647 !3.50d14  ! 1d15!6.52128d14!3.26128d15!1.495978707d13!1.495978707d14!> cla_jet initial jet-wind region height : 1.495978707e15 cm = 100 au
+    cla_jet_config%z_out_init            =  8.30d14 !>>HH4647 !3.52d14 ! 2d15!9.52128d14!3.26128d15!1.495978707d13!1.495978707d14!0.5d15!0.5d14!> cla_jet  impose z height : 1.495978707e15 cm = 100 au
+    cla_jet_config%r_out_init            =  7.47d14 !=50 UA>>HH4647 3.0d15!1.611031692203301d15!> cla_jet inner boundary wind position : zhang19 = 7.48d14 cm = 50 au
+    cla_jet_config%r_out_impos           =  7.47d14 !=50 UA>>HH4647 !1.611031692203301d15!> cla_jet  impose radius : Rjet (Cabrit1997) = 0.5d16 cm; zhang19 = 7.48d14 , necessary to impose density or mass flux on the inner boundary
+
+    cla_jet_config%r_in_init             =  0.0 !-7.48d14 !> cla_jet inner jet  region : position de la limite gauche du jet en coordonnées cylindriques : à tenir compte dans le calcul de la surface d'éjection du jet et donc du calcul du flux de masse ejectée
+
+    cla_jet_config%tracer_on             =  .true. !> cla_jet logical to set tracer
+    cla_jet_config%tracer_init_density   =  1.0d3  !> cla_jet tracer density
+    cla_jet_config%tracer_small_density  =  1.0d1    !> cla_jet tracer small density
+    cla_jet_config%shape                 =  'cartesian'  !> cla_jet shape
+    cla_jet_config%profile               =  'none'  !> cla_jet profile
+
+
+    cla_jet_config%variation_on          =  .true. ! Zhang19 .false. !.true.! to set on  or off the jet-injection in-real-time velocity variability
+    cla_jet_config%variation_start_time  =  0.0d0 !3d7 ! time (in s in cgs) at which to begin the time variability : 0.0 to begin at the start of the simulation
+    cla_jet_config%variation_end_time    =  4d15
+    cla_jet_config%variation_velocity_amplitude =  5.0d6 !>>HH4647 ! 5d6 cm/s = 50 km/s
+    cla_jet_config%variation_velocity_poloidal =  5.0d6 !>>HH4647
+    cla_jet_config%variation_velocity(1) =  0.0!1.0d7
+    cla_jet_config%variation_velocity(2) =  5.0d6 !>>HH4647 ! 5d6 cm/s = 50 km/s
+    cla_jet_config%variation_velocity(3) =  0.0d0
+    cla_jet_config%variation_time        =  3.15576d9!=100 yrs !>>HH4647 ! 1.262304d9! 40 yrs ! 1.57788d9!50 yrs ! !9.46728d9!Zheng19=300 yrs =9.46728d9 !3.15576d9!=100 yrs !3.15576d7 !=1 yr ! time length scale during which the jet velocity typically varies : 3.155760000d9 (s) = 100 yrs
+    cla_jet_config%variation_position    =  0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
+    cla_jet_config%variation_type        =  'sawtooth2' !>>HH4647 !Zheng19='sawtooth' ? (d ares Sylvie) >> vérifier avec 'sin' ! 'sin'!'sin' !'door'! type of the velocity variation induced in the velocity profile, see subroutine usr_mat_profile_scalar in mod_obj_mat.t to see which possibilities are avalaible
+    cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation
+    cla_jet_config%variation_phys_variable(1) =  3 ! 3 mean the velocity in Z direction
+
+    cla_jet_config%refine_min_level      = 4
+    cla_jet_config%chemical_gas_type     = 'fullyatomic' !>>HH4647
+
+
+
+/
+ ---------------------------------------------------------------------------
+ ---------------------------------------------------------------------------
+ |         __  __ ____ ___        _    __  __ ______     ___    ____       |
+ |        |  \/  |  _ \_ _|      / \  |  \/  |  _ \ \   / / \  / ___|      |
+ |        | |\/| | |_) | |_____ / _ \ | |\/| | |_) \ \ / / _ \| |          |
+ |        | |  | |  __/| |_____/ ___ \| |  | |  _ < \ V / ___ \ |___       |
+ |        |_|  |_|_|  |___|   /_/   \_\_|  |_|_| \_\ \_/_/   \_\____|      |
+ --------------------------------------------------------------------------
+ ---------------------------------------------------------------------------
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_physical_values_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ Reading usr_ism_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ End of Reading 
+ usr_ismlist0                                                                  
+ Reading usr_boundary_list           1 
+ boundary                                                                      
+  End of reading of the usr_list
+  End of reading of the usr_list
+  End of reading of the usr_list
+ End of Reading 
+ usr_boundarylist1                                                             
+ Reading usr_cla_jet_list
+  End of reading of the usr_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+ Use SPEX cooling curve for solar metallicity above 10^4 K. 
+ At lower temperatures,use Dalgarno & McCray (1972), 
+ with a pre-set ionization fraction of 10^-3. 
+ as described by Schure et al. (2009). 
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the rc_list
+  End of reading of the usr_list
+  End of reading of the hd_list
+  End of reading of the rc_list
+ Reading Shang06_over_1000_yrse.par
+ End par file read
+ 
+ Output type | dtsave    | ditsave | itsave(1) | tsave(1)
+         log | 0.105E+00 | ******  |      0    | *********
+      normal | 0.105E+02 | ******  |      0    | *********
+       slice | ********* | ******  | ******    | *********
+   collapsed | ********* | ******  | ******    | *********
+    analysis | ********* | ******  | ******    | *********
+ 
+                 typelimited: predictor                                                                                                                          
+         Domain size (cells): 256 200 
+                Level one dx: 0.418E+01 0.418E+01 
+           Refine estimation: Lohner's scheme
+                   slicenext: 0
+                collapsenext: 0
+           restart_from_file:  Jet_Shang06_0100.dat
+                  converting: F
+
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ the ism temperature =    100.000000000000     
+ ism density  1.600000000000000E-018
+ ism nH   683272.906387098     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ the jet temperature =    100.000000000000     
+ jet density  3.582755846334000E-018
+ jet ndensity   1530000.00000000     
+ the jet mflux =   7.579201261142657E+019
+ 3)the jet radius =    820312500000000.     
+ 3)the jet inner radius =   -39062500000000.0     
+ the jet Surface =   2.115466860209846E+030
+ phys_config%He_abundance  0.100000000000000     
+ in mod_obj_usr_unit.t usr_physical_unit_fillphysunit subroutine: 
+ ism density  2.341670487800000E-030
+ ism ndensity  1.000000000000000E-006
+ ism pressure  5.822995576026895E-019
+ ism temperature   2567.22208410676     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ 1)the jet radius =    747000000000000.     
+ 2)the jet radius =    820312500000000.     
+ -------------------------------------------------------------------------------
+ Startup phase took :             0.318 sec
+ -------------------------------------------------------------------------------
+ Start integrating, print status every  3.00E+01 seconds
+        it        time          dt  wc-time(s)
+     10017   1.052E+02   1.307E-02   6.046E-03
+In CGS      10017 T=   3.156E+10 dT=   3.921E+06
+     10240   1.081E+02   1.395E-02   3.013E+01
+In CGS      10240 T=   3.242E+10 dT=   4.185E+06
+     10459   1.109E+02   1.510E-02   6.017E+01
+In CGS      10459 T=   3.328E+10 dT=   4.529E+06
+     10675   1.141E+02   1.567E-02   9.030E+01
+In CGS      10675 T=   3.423E+10 dT=   4.702E+06
+ -------------------------------------------------------------------------------
+ Saving visual data. Coordinate directions and variable names are:
+          -1 R               
+           0 Z               
+           1 rho             rho             
+           2 v1              v1              
+           3 v2              v2              
+           4 v3              v3              
+           5 p               p               
+           6 tracer_ism      tracer_ism      
+           7 tracer_jet      tracer_jet      
+           8 mup             mup             
+           9 L1              L1              
+          10 dtcool1         dtcool1         
+          11 mach_number     mach_number     
+          12 temperature     temperature     
+          13 level           level           
+          14 number density  number density  
+ time =   115.711200000000     
+ -------------------------------------------------------------------------------
+     10802   1.159E+02   1.310E-02   1.203E+02
+In CGS      10802 T=   3.478E+10 dT=   3.930E+06
+     11011   1.187E+02   1.400E-02   1.504E+02
+In CGS      11011 T=   3.560E+10 dT=   4.199E+06
+     11218   1.214E+02   1.047E-03   1.805E+02
+In CGS      11218 T=   3.642E+10 dT=   3.140E+05
+     11422   1.244E+02   1.560E-02   2.105E+02
+In CGS      11422 T=   3.732E+10 dT=   4.680E+06
+     11546   1.262E+02   1.308E-02   2.412E+02
+In CGS      11546 T=   3.787E+10 dT=   3.925E+06
+     11747   1.288E+02   1.381E-02   2.712E+02
+In CGS      11747 T=   3.865E+10 dT=   4.144E+06
+     11946   1.314E+02   1.493E-02   3.013E+02
+In CGS      11946 T=   3.943E+10 dT=   4.479E+06
+     12144   1.343E+02   1.552E-02   3.314E+02
+In CGS      12144 T=   4.029E+10 dT=   4.655E+06
+     12308   1.368E+02   1.308E-02   3.695E+02
+In CGS      12308 T=   4.103E+10 dT=   3.925E+06
+     12500   1.392E+02   1.380E-02   3.995E+02
+In CGS      12500 T=   4.177E+10 dT=   4.139E+06
+     12688   1.417E+02   1.479E-02   4.297E+02
+In CGS      12688 T=   4.251E+10 dT=   4.438E+06
+     12879   1.444E+02   1.544E-02   4.598E+02
+In CGS      12879 T=   4.332E+10 dT=   4.633E+06
+     13069   1.472E+02   1.587E-02   4.899E+02
+In CGS      13069 T=   4.417E+10 dT=   4.760E+06
+     13175   1.486E+02   1.337E-02   5.200E+02
+In CGS      13175 T=   4.457E+10 dT=   4.011E+06
+     13363   1.511E+02   5.324E-03   5.500E+02
+In CGS      13363 T=   4.532E+10 dT=   1.597E+06
+     13550   1.535E+02   1.516E-02   5.801E+02
+In CGS      13550 T=   4.606E+10 dT=   4.547E+06
+     13737   1.563E+02   1.569E-02   6.102E+02
+In CGS      13737 T=   4.690E+10 dT=   4.706E+06
+     13838   1.578E+02   1.278E-02   6.403E+02
+In CGS      13838 T=   4.735E+10 dT=   3.834E+06
+     14024   1.602E+02   1.381E-02   6.703E+02
+In CGS      14024 T=   4.807E+10 dT=   4.142E+06
+     14208   1.627E+02   1.461E-02   7.003E+02
+In CGS      14208 T=   4.880E+10 dT=   4.382E+06
+     14390   1.652E+02   1.538E-02   7.304E+02
+In CGS      14390 T=   4.956E+10 dT=   4.615E+06
+     14574   1.680E+02   1.045E-02   7.605E+02
+In CGS      14574 T=   5.039E+10 dT=   3.136E+06
+     14671   1.692E+02   1.325E-02   7.905E+02
+In CGS      14671 T=   5.077E+10 dT=   3.975E+06
+     14852   1.716E+02   1.410E-02   8.206E+02
+In CGS      14852 T=   5.148E+10 dT=   4.231E+06
+     15034   1.740E+02   1.481E-02   8.507E+02
+In CGS      15034 T=   5.220E+10 dT=   4.442E+06
+     15215   1.767E+02   1.556E-02   8.808E+02
+In CGS      15215 T=   5.300E+10 dT=   4.668E+06
+     15359   1.788E+02   1.308E-02   9.193E+02
+In CGS      15359 T=   5.365E+10 dT=   3.925E+06
+     15539   1.811E+02   1.364E-02   9.493E+02
+In CGS      15539 T=   5.434E+10 dT=   4.091E+06
+     15718   1.835E+02   1.474E-02   9.794E+02
+In CGS      15718 T=   5.505E+10 dT=   4.422E+06
+     15895   1.860E+02   1.536E-02   1.009E+03
+In CGS      15895 T=   5.580E+10 dT=   4.609E+06
+     16071   1.886E+02   1.579E-02   1.040E+03
+In CGS      16071 T=   5.659E+10 dT=   4.736E+06
+     16161   1.899E+02   1.298E-02   1.070E+03
+In CGS      16161 T=   5.696E+10 dT=   3.894E+06
+     16336   1.921E+02   1.385E-02   1.100E+03
+In CGS      16336 T=   5.764E+10 dT=   4.154E+06
+     16512   1.945E+02   1.486E-02   1.130E+03
+In CGS      16512 T=   5.834E+10 dT=   4.457E+06
+     16687   1.970E+02   1.545E-02   1.160E+03
+In CGS      16687 T=   5.909E+10 dT=   4.635E+06
+     16856   1.995E+02   1.586E-02   1.190E+03
+In CGS      16856 T=   5.985E+10 dT=   4.757E+06
+     16941   2.006E+02   1.311E-02   1.220E+03
+In CGS      16941 T=   6.018E+10 dT=   3.934E+06
+     17114   2.029E+02   1.403E-02   1.250E+03
+In CGS      17114 T=   6.086E+10 dT=   4.210E+06
+     17287   2.051E+02   1.489E-02   1.280E+03
+In CGS      17287 T=   6.154E+10 dT=   4.467E+06
+     17458   2.076E+02   1.545E-02   1.310E+03
+In CGS      17458 T=   6.228E+10 dT=   4.636E+06
+     17627   2.101E+02   1.587E-02   1.340E+03
+In CGS      17627 T=   6.304E+10 dT=   4.761E+06
+     17708   2.112E+02   1.324E-02   1.370E+03
+In CGS      17708 T=   6.335E+10 dT=   3.973E+06
+     17879   2.134E+02   7.206E-03   1.400E+03
+In CGS      17879 T=   6.403E+10 dT=   2.162E+06
+     18048   2.156E+02   1.469E-02   1.430E+03
+In CGS      18048 T=   6.469E+10 dT=   4.406E+06
+     18217   2.181E+02   1.546E-02   1.460E+03
+In CGS      18217 T=   6.543E+10 dT=   4.638E+06
+     18386   2.206E+02   1.587E-02   1.491E+03
+In CGS      18386 T=   6.619E+10 dT=   4.761E+06
+     18463   2.216E+02   1.317E-02   1.521E+03
+In CGS      18463 T=   6.648E+10 dT=   3.950E+06
+     18630   2.238E+02   1.405E-02   1.551E+03
+In CGS      18630 T=   6.714E+10 dT=   4.214E+06
+     18796   2.260E+02   1.460E-02   1.581E+03
+In CGS      18796 T=   6.780E+10 dT=   4.381E+06
+     18957   2.283E+02   1.527E-02   1.611E+03
+In CGS      18957 T=   6.848E+10 dT=   4.581E+06
+     19120   2.307E+02   1.579E-02   1.641E+03
+In CGS      19120 T=   6.922E+10 dT=   4.738E+06
+     19195   2.318E+02   1.317E-02   1.671E+03
+In CGS      19195 T=   6.953E+10 dT=   3.951E+06
+     19358   2.339E+02   1.385E-02   1.701E+03
+In CGS      19358 T=   7.016E+10 dT=   4.156E+06
+     19522   2.360E+02   1.440E-02   1.731E+03
+In CGS      19522 T=   7.081E+10 dT=   4.319E+06
+     19685   2.383E+02   1.531E-02   1.761E+03
+In CGS      19685 T=   7.148E+10 dT=   4.593E+06
+     19847   2.407E+02   1.571E-02   1.792E+03
+In CGS      19847 T=   7.221E+10 dT=   4.712E+06
+     19930   2.420E+02   1.308E-02   1.824E+03
+In CGS      19930 T=   7.259E+10 dT=   3.925E+06
+     20091   2.440E+02   1.365E-02   1.854E+03
+In CGS      20091 T=   7.320E+10 dT=   4.095E+06
+     20250   2.461E+02   1.445E-02   1.884E+03
+In CGS      20250 T=   7.383E+10 dT=   4.335E+06
+     20408   2.482E+02   1.518E-02   1.914E+03
+In CGS      20408 T=   7.446E+10 dT=   4.555E+06
+     20565   2.505E+02   1.560E-02   1.944E+03
+In CGS      20565 T=   7.516E+10 dT=   4.681E+06
+     20694   2.525E+02   1.308E-02   1.985E+03
+In CGS      20694 T=   7.574E+10 dT=   3.925E+06
+     20852   2.545E+02   1.359E-02   2.015E+03
+In CGS      20852 T=   7.635E+10 dT=   4.076E+06
+     21009   2.566E+02   4.578E-03   2.045E+03
+In CGS      21009 T=   7.697E+10 dT=   1.373E+06
+     21166   2.587E+02   1.434E-02   2.075E+03
+In CGS      21166 T=   7.760E+10 dT=   4.301E+06
+     21323   2.610E+02   1.561E-02   2.106E+03
+In CGS      21323 T=   7.830E+10 dT=   4.684E+06
+     21455   2.630E+02   1.308E-02   2.148E+03
+In CGS      21455 T=   7.890E+10 dT=   3.925E+06
+     21611   2.650E+02   1.367E-02   2.178E+03
+In CGS      21611 T=   7.950E+10 dT=   4.101E+06
+     21764   2.670E+02   1.447E-02   2.208E+03
+In CGS      21764 T=   8.011E+10 dT=   4.342E+06
+     21917   2.690E+02   1.506E-02   2.238E+03
+In CGS      21917 T=   8.071E+10 dT=   4.517E+06
+     22072   2.714E+02   1.556E-02   2.269E+03
+In CGS      22072 T=   8.141E+10 dT=   4.668E+06
+     22216   2.735E+02   1.308E-02   2.314E+03
+In CGS      22216 T=   8.205E+10 dT=   3.925E+06
+     22369   2.755E+02   1.367E-02   2.344E+03
+In CGS      22369 T=   8.264E+10 dT=   4.101E+06
+     22521   2.775E+02   1.435E-02   2.374E+03
+In CGS      22521 T=   8.324E+10 dT=   4.304E+06
+     22673   2.795E+02   1.508E-02   2.404E+03
+In CGS      22673 T=   8.384E+10 dT=   4.525E+06
+     22825   2.817E+02   1.554E-02   2.434E+03
+In CGS      22825 T=   8.452E+10 dT=   4.663E+06
+     22977   2.840E+02   1.307E-02   2.464E+03
+In CGS      22977 T=   8.521E+10 dT=   3.921E+06
+     23039   2.848E+02   1.318E-02   2.495E+03
+In CGS      23039 T=   8.543E+10 dT=   3.954E+06
+     23187   2.867E+02   1.370E-02   2.525E+03
+In CGS      23187 T=   8.602E+10 dT=   4.111E+06
+     23336   2.887E+02   1.459E-02   2.555E+03
+In CGS      23336 T=   8.660E+10 dT=   4.378E+06
+     23486   2.907E+02   1.357E-02   2.585E+03
+In CGS      23486 T=   8.722E+10 dT=   4.071E+06
+     23636   2.930E+02   1.567E-02   2.615E+03
+In CGS      23636 T=   8.790E+10 dT=   4.702E+06
+     23740   2.946E+02   1.308E-02   2.654E+03
+In CGS      23740 T=   8.837E+10 dT=   3.925E+06
+     23888   2.964E+02   1.351E-02   2.684E+03
+In CGS      23888 T=   8.893E+10 dT=   4.054E+06
+     24035   2.984E+02   1.441E-02   2.714E+03
+In CGS      24035 T=   8.951E+10 dT=   4.322E+06
+     24182   3.003E+02   1.506E-02   2.744E+03
+In CGS      24182 T=   9.009E+10 dT=   4.519E+06
+     24328   3.024E+02   1.548E-02   2.774E+03
+In CGS      24328 T=   9.073E+10 dT=   4.645E+06
+     24463   3.045E+02   1.578E-02   2.804E+03
+In CGS      24463 T=   9.134E+10 dT=   4.735E+06
+     24515   3.052E+02   1.307E-02   2.834E+03
+In CGS      24515 T=   9.156E+10 dT=   3.921E+06
+     24659   3.071E+02   1.360E-02   2.864E+03
+In CGS      24659 T=   9.212E+10 dT=   4.081E+06
+     24803   3.089E+02   1.428E-02   2.895E+03
+In CGS      24803 T=   9.268E+10 dT=   4.284E+06
+     24947   3.108E+02   1.493E-02   2.925E+03
+In CGS      24947 T=   9.325E+10 dT=   4.480E+06
+     25091   3.130E+02   1.549E-02   2.955E+03
+In CGS      25091 T=   9.389E+10 dT=   4.648E+06
+     25235   3.151E+02   1.583E-02   2.985E+03
+In CGS      25235 T=   9.454E+10 dT=   4.749E+06
+     25288   3.159E+02   1.313E-02   3.015E+03
+In CGS      25288 T=   9.476E+10 dT=   3.938E+06
+     25430   3.177E+02   1.367E-02   3.045E+03
+In CGS      25430 T=   9.531E+10 dT=   4.101E+06
+     25572   3.196E+02   4.840E-03   3.075E+03
+In CGS      25572 T=   9.587E+10 dT=   1.452E+06
+     25707   3.213E+02   1.486E-02   3.106E+03
+In CGS      25707 T=   9.640E+10 dT=   4.459E+06
+     25840   3.233E+02   1.546E-02   3.136E+03
+In CGS      25840 T=   9.698E+10 dT=   4.637E+06
+     25981   3.254E+02   1.584E-02   3.166E+03
+In CGS      25981 T=   9.762E+10 dT=   4.751E+06
+     26031   3.261E+02   1.310E-02   3.196E+03
+In CGS      26031 T=   9.784E+10 dT=   3.931E+06
+     26147   3.276E+02   1.345E-02   3.226E+03
+In CGS      26147 T=   9.828E+10 dT=   4.036E+06
+     26272   3.292E+02   7.308E-03   3.256E+03
+In CGS      26272 T=   9.877E+10 dT=   2.192E+06
+     26396   3.309E+02   1.463E-02   3.286E+03
+In CGS      26396 T=   9.926E+10 dT=   4.389E+06
+     26535   3.328E+02   1.528E-02   3.316E+03
+In CGS      26535 T=   9.984E+10 dT=   4.583E+06
+     26674   3.349E+02   1.565E-02   3.346E+03
+In CGS      26674 T=   1.005E+11 dT=   4.696E+06
+     26790   3.366E+02   1.308E-02   3.391E+03
+In CGS      26790 T=   1.010E+11 dT=   3.925E+06
+     26928   3.384E+02   1.345E-02   3.421E+03
+In CGS      26928 T=   1.015E+11 dT=   4.036E+06
+     27065   3.402E+02   5.795E-03   3.451E+03
+In CGS      27065 T=   1.021E+11 dT=   1.738E+06
+     27203   3.420E+02   1.453E-02   3.481E+03
+In CGS      27203 T=   1.026E+11 dT=   4.358E+06
+     27341   3.440E+02   1.544E-02   3.511E+03
+In CGS      27341 T=   1.032E+11 dT=   4.631E+06
+     27480   3.461E+02   1.577E-02   3.542E+03
+In CGS      27480 T=   1.038E+11 dT=   4.731E+06
+     27551   3.471E+02   1.308E-02   3.577E+03
+In CGS      27551 T=   1.041E+11 dT=   3.925E+06
+     27688   3.489E+02   1.347E-02   3.607E+03
+In CGS      27688 T=   1.047E+11 dT=   4.042E+06
+     27825   3.507E+02   1.430E-02   3.637E+03
+In CGS      27825 T=   1.052E+11 dT=   4.291E+06
+     27962   3.525E+02   1.065E-03   3.667E+03
+In CGS      27962 T=   1.057E+11 dT=   3.194E+05
+     28098   3.544E+02   1.539E-02   3.697E+03
+In CGS      28098 T=   1.063E+11 dT=   4.617E+06
+     28233   3.565E+02   1.574E-02   3.727E+03
+In CGS      28233 T=   1.069E+11 dT=   4.722E+06
+     28313   3.577E+02   1.308E-02   3.765E+03
+In CGS      28313 T=   1.073E+11 dT=   3.925E+06
+     28449   3.594E+02   1.348E-02   3.795E+03
+In CGS      28449 T=   1.078E+11 dT=   4.045E+06
+     28584   3.612E+02   1.406E-02   3.825E+03
+In CGS      28584 T=   1.083E+11 dT=   4.217E+06
+     28719   3.629E+02   1.483E-02   3.856E+03
+In CGS      28719 T=   1.089E+11 dT=   4.448E+06
+     28854   3.649E+02   1.530E-02   3.886E+03
+In CGS      28854 T=   1.095E+11 dT=   4.589E+06
+     28989   3.669E+02   1.571E-02   3.916E+03
+In CGS      28989 T=   1.101E+11 dT=   4.712E+06
+     29074   3.682E+02   1.308E-02   3.955E+03
+In CGS      29074 T=   1.105E+11 dT=   3.925E+06
+     29208   3.699E+02   1.353E-02   3.985E+03
+In CGS      29208 T=   1.110E+11 dT=   4.059E+06
+     29339   3.716E+02   1.408E-02   4.015E+03
+In CGS      29339 T=   1.115E+11 dT=   4.223E+06
+     29471   3.733E+02   1.461E-02   4.045E+03
+In CGS      29471 T=   1.120E+11 dT=   4.383E+06
+     29605   3.752E+02   1.534E-02   4.075E+03
+In CGS      29605 T=   1.126E+11 dT=   4.603E+06
+     29738   3.772E+02   1.568E-02   4.105E+03
+In CGS      29738 T=   1.132E+11 dT=   4.703E+06
+     29836   3.787E+02   1.308E-02   4.148E+03
+In CGS      29836 T=   1.136E+11 dT=   3.925E+06
+     29968   3.804E+02   1.346E-02   4.178E+03
+In CGS      29968 T=   1.141E+11 dT=   4.039E+06
+     30100   3.821E+02   1.428E-02   4.208E+03
+In CGS      30100 T=   1.146E+11 dT=   4.285E+06
+     30232   3.838E+02   1.453E-02   4.238E+03
+In CGS      30232 T=   1.152E+11 dT=   4.360E+06
+     30363   3.857E+02   1.533E-02   4.268E+03
+In CGS      30363 T=   1.157E+11 dT=   4.598E+06
+     30491   3.876E+02   1.564E-02   4.298E+03
+In CGS      30491 T=   1.163E+11 dT=   4.692E+06
+     30597   3.892E+02   1.308E-02   4.346E+03
+In CGS      30597 T=   1.168E+11 dT=   3.925E+06
+     30726   3.909E+02   1.346E-02   4.376E+03
+In CGS      30726 T=   1.173E+11 dT=   4.038E+06
+     30857   3.922E+02   7.079E-03   4.406E+03
+In CGS      30857 T=   1.176E+11 dT=   2.124E+06
+     30989   3.930E+02   7.022E-03   4.436E+03
+In CGS      30989 T=   1.179E+11 dT=   2.107E+06
+     31120   3.940E+02   7.293E-03   4.466E+03
+In CGS      31120 T=   1.182E+11 dT=   2.188E+06
+     31251   3.949E+02   7.336E-03   4.496E+03
+In CGS      31251 T=   1.185E+11 dT=   2.201E+06
+     31382   3.958E+02   7.197E-03   4.526E+03
+In CGS      31382 T=   1.187E+11 dT=   2.159E+06
+     31513   3.967E+02   7.169E-03   4.557E+03
+In CGS      31513 T=   1.190E+11 dT=   2.151E+06
+     31644   3.976E+02   7.084E-03   4.587E+03
+In CGS      31644 T=   1.193E+11 dT=   2.125E+06
+     31774   3.985E+02   7.355E-03   4.617E+03
+In CGS      31774 T=   1.196E+11 dT=   2.207E+06
+     31903   3.995E+02   7.703E-03   4.647E+03
+In CGS      31903 T=   1.198E+11 dT=   2.311E+06
+     31942   3.998E+02   7.827E-03   4.677E+03
+In CGS      31942 T=   1.199E+11 dT=   2.348E+06
+     32073   4.008E+02   7.838E-03   4.707E+03
+In CGS      32073 T=   1.202E+11 dT=   2.351E+06
+     32204   4.018E+02   8.064E-03   4.737E+03
+In CGS      32204 T=   1.205E+11 dT=   2.419E+06
+     32334   4.027E+02   7.708E-03   4.767E+03
+In CGS      32334 T=   1.208E+11 dT=   2.313E+06
+     32464   4.037E+02   7.768E-03   4.797E+03
+In CGS      32464 T=   1.211E+11 dT=   2.330E+06
+     32594   4.047E+02   7.567E-03   4.828E+03
+In CGS      32594 T=   1.214E+11 dT=   2.270E+06
+     32724   4.056E+02   7.114E-03   4.858E+03
+In CGS      32724 T=   1.217E+11 dT=   2.134E+06
+     32854   4.065E+02   7.212E-03   4.888E+03
+In CGS      32854 T=   1.220E+11 dT=   2.164E+06
+     32982   4.074E+02   7.335E-03   4.918E+03
+In CGS      32982 T=   1.222E+11 dT=   2.200E+06
+     33110   4.083E+02   7.477E-03   4.948E+03
+In CGS      33110 T=   1.225E+11 dT=   2.243E+06
+     33239   4.092E+02   7.488E-03   4.978E+03
+In CGS      33239 T=   1.228E+11 dT=   2.246E+06
+     33368   4.101E+02   3.928E-04   5.008E+03
+In CGS      33368 T=   1.230E+11 dT=   1.178E+05
+     33407   4.104E+02   7.441E-03   5.039E+03
+In CGS      33407 T=   1.231E+11 dT=   2.232E+06
+     33536   4.113E+02   7.297E-03   5.069E+03
+In CGS      33536 T=   1.234E+11 dT=   2.189E+06
+     33665   4.122E+02   7.177E-03   5.099E+03
+In CGS      33665 T=   1.237E+11 dT=   2.153E+06
+     33794   4.131E+02   6.955E-03   5.129E+03
+In CGS      33794 T=   1.239E+11 dT=   2.086E+06
+     33923   4.140E+02   7.005E-03   5.159E+03
+In CGS      33923 T=   1.242E+11 dT=   2.101E+06
+     34052   4.148E+02   6.796E-03   5.189E+03
+In CGS      34052 T=   1.244E+11 dT=   2.039E+06
+     34177   4.155E+02   4.504E-03   5.219E+03
+In CGS      34177 T=   1.247E+11 dT=   1.351E+06
+     34303   4.160E+02   2.710E-03   5.249E+03
+In CGS      34303 T=   1.248E+11 dT=   8.130E+05
+     34431   4.163E+02   2.232E-03   5.279E+03
+In CGS      34431 T=   1.249E+11 dT=   6.695E+05
+     34559   4.165E+02   2.127E-03   5.310E+03
+In CGS      34559 T=   1.250E+11 dT=   6.380E+05
+     34687   4.168E+02   2.108E-03   5.340E+03
+In CGS      34687 T=   1.250E+11 dT=   6.323E+05
+     34815   4.171E+02   2.204E-03   5.370E+03
+In CGS      34815 T=   1.251E+11 dT=   6.611E+05
+     34943   4.174E+02   2.187E-03   5.400E+03
+In CGS      34943 T=   1.252E+11 dT=   6.561E+05
+     35071   4.176E+02   2.198E-03   5.430E+03
+In CGS      35071 T=   1.253E+11 dT=   6.594E+05
+     35199   4.179E+02   2.319E-03   5.460E+03
+In CGS      35199 T=   1.254E+11 dT=   6.957E+05
+     35326   4.182E+02   2.421E-03   5.490E+03
+In CGS      35326 T=   1.255E+11 dT=   7.263E+05
+     35452   4.185E+02   2.355E-03   5.520E+03
+In CGS      35452 T=   1.256E+11 dT=   7.064E+05
+     35578   4.188E+02   2.406E-03   5.550E+03
+In CGS      35578 T=   1.256E+11 dT=   7.217E+05
+     35706   4.191E+02   2.335E-03   5.581E+03
+In CGS      35706 T=   1.257E+11 dT=   7.005E+05
+     35833   4.194E+02   2.248E-03   5.611E+03
+In CGS      35833 T=   1.258E+11 dT=   6.743E+05
+     35960   4.197E+02   1.871E-03   5.641E+03
+In CGS      35960 T=   1.259E+11 dT=   5.612E+05
+     36087   4.199E+02   1.572E-03   5.671E+03
+In CGS      36087 T=   1.260E+11 dT=   4.717E+05
+mpiexec: Forwarding signal 18 to job
+slurmstepd-tycho64: error: *** JOB 1761954 ON tycho64 CANCELLED AT 2021-01-25T21:13:41 ***

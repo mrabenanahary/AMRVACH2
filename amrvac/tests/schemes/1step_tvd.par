@@ -1,0 +1,12 @@
+ &filelist
+        base_filename = '_1step_tvd'
+ /
+
+ &methodlist
+        time_integrator = 'onestep'
+        flux_scheme   = 20*'tvd'
+ /
+
+ &paramlist
+        courantpar = 0.9
+ /

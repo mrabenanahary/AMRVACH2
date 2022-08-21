@@ -1,0 +1,90 @@
+ &filelist
+        base_filename='R_1d'
+        autoconvert=.true.
+        saveprim=.true.
+ /
+        restart_from_file='R_1d0004.dat'
+
+ &savelist
+        itsave(1,1)=0
+        itsave(1,2)=0
+        ditsave_log=10
+        dtsave_dat=0.1
+ /
+
+ &stoplist
+        time_max=1
+ /
+
+ &methodlist
+        time_integrator=  'threestep'
+        flux_scheme=    20*'hllc'
+        limiter= 20*'cada3'
+    
+        check_small_values=.true.
+        small_pressure= 1.0d-9
+        small_density = 1.0d-8
+        small_values_method = 'stop'
+        nxdiffusehllc =4
+        typeboundspeed ='cmaxmean'
+ /
+
+ &boundlist
+        typeboundary_min1=8*'cont'
+        typeboundary_max1=8*'cont'
+ /
+
+ &meshlist
+        refine_max_level=2
+        refine_criterion=3
+        w_refine_weight(1)=0.5
+        w_refine_weight(5)=0.5
+        refine_threshold=20*0.05d0
+        domain_nx1=256
+        xprobmin1=-1.d0
+        xprobmax1= 1.d0
+        iprob=21
+ /
+
+ &paramlist
+        courantpar=0.8d0
+        slowsteps=10
+ /
+
+ &srmhd_list
+        typedivbfix = 'none'
+        srmhd_gamma = 1.33333
+        srmhd_eos   = .true.
+        srmhd_energy= .true.
+        srmhd_glm   = .false.
+        srmhd_maxiterationNR=200
+        srmhd_absaccNR=1.0d-11
+        srmhd_tolerNr=1.0d-10
+        srmhd_checkNR=.true.
+        srmhd_maxdspeed=1.0d-4
+        small_vec2=1.0d-9
+        srmhd_glm=.false.
+        typedivbfix='none'
+ /
+
+&usr_list
+ rhoRight= 1.0
+ pRight  = 1.0
+ v1Right = 0.0
+ v2Right = 0.8
+ v3Right = 0.0
+ b1Right = 0.0
+ b2Right = 0.0
+ b3Right = 0.0
+ rhoLeft = 0.125d0
+ pLeft   = 0.1d0
+ v1Left  = 0.0
+ v2Left  = 0.0
+ v3Left  = 0.0
+ b1Left  = 0.0d0
+ b2Left  = 0.0d0
+ b3Left  = 0.0 ! 0.0d0
+ xsplit1 = 0.0d0
+ coordinate_system='Cartesian_1.75D'
+/
+

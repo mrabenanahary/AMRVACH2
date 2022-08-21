@@ -1,0 +1,23 @@
+mkdir: cannot create directory ‘Lee2001_s_300yrs’: File exists
+srun: error: tycho63: task 0: Exited with exit code 1
+/bin/cp: -r not specified; omitting directory '/obs/mrabenanahary/MPI-AMRVAC/amrvac'
+/var/lib/slurm-llnl/slurmd/job3216016/slurm_script: line 24: cd: amrvac/mysimus/HD/HH_YSO_Jet: No such file or directory
+3216016
+tycho63
+/scratch/mrabenanahary/run.3216016.Lee2001_s_300yrs
+more: stat of Parfiles/Article/Lee2001_s_300yrs.par failed: No such file or directory
+--------------------------------------------------------------------------
+mpiexec was unable to find the specified executable file, and therefore
+did not launch the job.  This error was first reported for process
+rank 0; it may have occurred for other processes as well.
+
+NOTE: A common cause for this error is misspelling a mpiexec command
+      line parameter option (remember that mpiexec interprets the first
+      unrecognized command line token as the executable).
+
+Node:       tycho63
+Executable: amrvac
+--------------------------------------------------------------------------
+srun: error: tycho63: task 0: Exited with exit code 134
+/bin/mv: cannot stat 'Output/Lee2001_s_300yrs/*': No such file or directory
+srun: error: tycho63: task 0: Exited with exit code 1
