@@ -1,7 +1,7 @@
 F90=mpifort
 FFLAGS = -c
 F90FLAGS = -free -implicitnone -O2  -axMIC-AVX512 -DCONFIG_BFLOAT_8 -DH5_USE_16_API -fPIC
-LINK= $(F90)  $(F90FLAGS) 
+LINK= $(F90)  $(F90FLAGS)
 
 F77=mpifort
 FFLAGS77 = -c
@@ -12,4 +12,3 @@ F90_amrvac=$(F90)
 FFLAGS_amrvac = $(FFLAGS)
 F90FLAGS_amrvac = $(F90FLAGS) -fopenmp
 LINK_amrvac= $(LINK)
-

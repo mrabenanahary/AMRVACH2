@@ -9,11 +9,6 @@ module mod_grackle_chemistry
   use grackle_header
   use mod_grackle_parameters
 
-  !> Index of cooling erg/s
-  integer, private, protected              :: Lcool1_
-
-  !> Index of cooling time
-  integer, private, protected              :: dtcool1_
 
   type gr_config
     character(len=78)    :: obj_name(max_num_parameters)       !> Obj name that call it
@@ -1540,10 +1535,8 @@ patch,self)
     ! but from adding of counterbalancing force activation : check mod_obj_ism!
     ! It seems that NaN also appears as soon as one species has its density reaching
     ! zero !!!
-    !call MPI_BARRIER(icomm, ierrmpi)
     iresult = local_solve_grid(my_grackle_data,my_fields,my_units,&
       my_config)
-    !call MPI_BARRIER(icomm, ierrmpi)
 
 
 
@@ -1567,7 +1560,7 @@ do imesh2 = ixOmin2, ixOmax2
     igr1 = imesh1-ixOmin1}
     {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
     ! Densities
-    if(patch(imesh^D))then
+
     w(imesh^D,phys_ind%rho_) = density(i) / w_convert_factor(phys_ind%rho_)
     w(imesh^D,phys_ind%HI_density_) = HI_density(i) / w_convert_factor(phys_ind%HI_density_)
     w(imesh^D,phys_ind%HII_density_) = HII_density(i) / w_convert_factor(phys_ind%HII_density_)
@@ -1583,12 +1576,10 @@ do imesh2 = ixOmin2, ixOmax2
     w(imesh^D,phys_ind%e_density_) = e_density(i) / w_convert_factor(phys_ind%e_density_)
     w(imesh^D,phys_ind%metal_density_) = metal_density(i) / w_convert_factor(phys_ind%metal_density_)
     w(imesh^D,phys_ind%dust_density_) = dust_density(i) / w_convert_factor(phys_ind%dust_density_)
-    end if
+
 {end do^D&|\}
 
 !call phys_gr_consistency(w, x, ixI^L, ixO^L)
-
-
 
 {^IFTWOD
 ! flattening 2D array :
@@ -1597,7 +1588,6 @@ do imesh2 = ixOmin2, ixOmax2
   do imesh1 = ixOmin1, ixOmax1
     igr1 = imesh1-ixOmin1}
     {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-    if(patch(imesh^D))then
 
     ! Internal energy in AMRVAC code units
     kn_energy(imesh^D) = 0.0_dp
@@ -1625,6 +1615,7 @@ do imesh2 = ixOmin2, ixOmax2
     !do idim=1,ndim+1
     ! compute L1 :
     w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)-total_energy(imesh^D)
+    w(imesh^D,phys_ind%dtcool1_) = final_cooltime(i)
     w(imesh^D,phys_ind%e_) = total_energy(imesh^D)/w_convert_factor(phys_ind%e_)
     !end do
     ! Temperature
@@ -1639,7 +1630,6 @@ do imesh2 = ixOmin2, ixOmax2
     metal_density(i)/16.0)
     ! Mean molecular weight
     w(imesh^D,phys_ind%mup_) = meanmw/w_convert_factor(phys_ind%mup_)
-    end if
   {end do^D&|\}
 
   ! Compute field of H2-gamma corrected temperature
@@ -1875,24 +1865,5 @@ subroutine grackle_make_consistent(ixI^L,ixO^L,w,iobj,self)
   w(ixO^S,phys_ind%HM_density_) + w(ixO^S,phys_ind%H2II_density_)/2.0d0)
 
 end subroutine grackle_make_consistent
-
-
-
-!> set the cooling variables indices
-subroutine gr_cooling_fill_phys_indices(phys_indices_inuse)
-  use mod_global_parameters
-  implicit none
-  type(phys_variables_indices)    :: phys_indices_inuse
-
-
-
-    Lcool1_   = var_set_extravar('L', 'L', 1)
-    phys_indices_inuse%Lcool1_   = Lcool1_
-    w_convert_factor(Lcool1_) = 1.0d0
-    dtcool1_ = var_set_extravar('dtcool', 'dtcool', 1)
-    phys_indices_inuse%dtcool1_ = dtcool1_
-    w_convert_factor(dtcool1_) = 1.0d0
-
-end   subroutine gr_cooling_fill_phys_indices
 
 end module mod_grackle_chemistry

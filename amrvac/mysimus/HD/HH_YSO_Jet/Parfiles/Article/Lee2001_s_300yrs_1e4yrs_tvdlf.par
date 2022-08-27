@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        !restart_from_file='Output/Lee2001_s_300yrs_1e4yrs/Lee2001_s_0001.dat'                
+        !restart_from_file='Output/Lee2001_s_300yrs_1e4yrs/Lee2001_s_0001.dat'
         nwauxio = 10
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -163,81 +163,90 @@
         small_dt_coef       = 1.0d-5
  /
 
-  &hd_list
-         hd_energy            = .true. !non-adiabatic: enables energy solving
-         hd_gamma             = 1.666666667
-         SI_unit              = .false.  ! use cgs
-         He_abundance         = 0.1d0                     !
+ &hd_list
+        hd_energy            = .true. !non-adiabatic: enables energy solving
+        hd_gamma             = 1.666666667d0
+        !hd_adiab             = 1.0d10
+        hd_isotherm_on = .false.
+        !hd_gamma             = 1.0d0
+        SI_unit              = .false.  ! use cgs
+        He_abundance         = 0.1d0
+   hd_use_grackle = .true.
+   hd_gr_primordial_chemistry = 1
+   hd_gr_metal_cooling = .true.
+   hd_gr_dust_chemistry = .true.
+   hd_gr_with_radiative_cooling = .true.
+        hd_dust              = .false.   ! dust off
+        hd_radiative_cooling = .false. !>>HH4647 .false.!.true.    ! cooling on
+        hd_gravity	       = .false. !>>HH4647 .false.!.true.    ! gravity on
+        hd_gravity_hse       = .false. !>>HH4647 .false.!.true.    ! gravity on
+        hd_gravity_hse_scheme= 'twoorderpert'!options:'zerothorder','firstorder','twoordernohse','twoordernopert','twoorderpert','twoorderpert2'
+        hd_use_gravity_g = .false.
+        hd_chemical          = .false.   ! use chemical
+        hd_n_tracer          = 2
+        hd_mean_mup_on       = .true. !>>HH4647 .true.
+        hd_chemical_gas_type = 'fullyatomic'
+        !hd_temperature_isotherm = 250.0d0
+  /
 
-         hd_dust              = .false.   ! dust off
-         hd_radiative_cooling = .true. !>>HH4647 .false.!.true.    ! cooling on
-         hd_gravity	       = .true. !>>HH4647 .false.!.true.    ! gravity on
-         hd_gravity_hse       = .false. !>>HH4647 .false.!.true.    ! gravity on         
-         hd_gravity_hse_scheme= 'twoorderpert'!options:'zerothorder','firstorder','twoordernohse','twoordernopert','twoorderpert','twoorderpert2'
-         hd_use_gravity_g = .false.
-         hd_chemical          = .false.   ! use chemical
-         hd_n_tracer          = 2
-         hd_mean_mup_on       = .true. !>>HH4647 .true.
-         hd_chemical_gas_type = 'fullyatomic'
-   /
+ &grav_list
+   grav_split=.false.
+  /
 
-  &grav_list 
-  	grav_split=.false.
-   /
-
- !'MLcosmol' : 'Use Mellema & Lundqvist (2002) cooling curve for zero metallicity '
- !'SPEX_DM'  : 'Use SPEX cooling curve for solar metallicity above 10^4 K. At lower temperatures,use Dalgarno & McCray (1972), with a pre-set ionization fraction of 10^-3 as described by Schure et al. (2009). '
-   &rc_list
-         ncool            = 4000
-         coolcurve        = 'SPEX_DM'!'MLcosmol' !
-         coolmethod       = 'exact'
-         cfrac            = 1.d0
-         Tfix             = .false.
-         tlow             = 110 !<--- T_low = 110 K comme limite inférieure de la table de cooling afin d'éviter que le jet à 100 K ne se mette à refroidir par radiative cooling, ce qui serait non-physique
-         coolsaveL        = .true.
-         coolsavedT       = .true.
-         He_abundance = 0.1d0
-         rc_chemical_gas_type = 'fullyatomic'
-   /
-
-
- &dust_list
-     dust_n_species           = 2
-     dust_min_rho             = 1.0d-10
-     gas_mu                   = 1.0d0
-     dust_method              = 'Kwok'
-     dust_small_to_zero       = .true.
-     dust_temperature         = 1.0d0
-     dust_temperature_type    = 'silicate'
-     dust_source_split        = .false.
-     dust_it_diff             = 50000
-   /
+!'MLcosmol' : 'Use Mellema & Lundqvist (2002) cooling curve for zero metallicity '
+!'SPEX_DM'  : 'Use SPEX cooling curve for solar metallicity above 10^4 K. At lower temperatures,use Dalgarno & McCray (1972), with a pre-set ionization fraction of 10^-3 as described by Schure et al. (2009). '
+  &rc_list
+        ncool            = 4000
+        coolcurve        = 'SPEX_DM'!'MLcosmol' !
+        coolmethod       = 'exact'
+        cfrac            = 1.d0
+        Tfix             = .false.
+        tlow             = 110 !<--- T_low = 110 K comme limite inférieure de la table de cooling afin d'éviter que le jet à 100 K ne se mette à refroidir par radiative cooling, ce qui serait non-physique
+        coolsaveL        = .true.
+        coolsavedT       = .true.
+        He_abundance = 0.1d0
+        rc_chemical_gas_type = 'fullyatomic'
+  /
 
 
+&dust_list
+    dust_n_species           = 2
+    dust_min_rho             = 1.0d-10
+    gas_mu                   = 1.0d0
+    dust_method              = 'Kwok'
+    dust_small_to_zero       = .true.
+    dust_temperature         = 1.0d0
+    dust_temperature_type    = 'silicate'
+    dust_source_split        = .false.
+    dust_it_diff             = 50000
+  /
 
 
 
- &usr_list
-        usrconfig%ism_on              = .true.                      !> set ism
-        usrconfig%profile_use_hse     = .false.
-        usrconfig%cloud_on            = .false.                      !> set cloud
-        usrconfig%cloud_structure     = 2                           !> cloud structure type
-        usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
-        usrconfig%physunit_on         = .true.                      !> set the normalisation in use
-        usrconfig%reset_medium        = .true.                      !> set on the reset
-        usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
-        usrconfig%phys_inuse          = 'hd' !'mhd' ! set physique want to be used
-
-        usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
-        !usrconfig%phys_temperature_isotherm     = 100 ! Le 2001
-        !usrconfig%temperature_max  = 5d4
-        usrconfig%reset_flux_scheme_on          = .true.
-        usrconfig%reset_flux_scheme_diffuse     = 'tvdlf'
-        usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
-        usrconfig%reset_flux_scheme_thresholdL1_max = 1.0d20
 
 
- /
+&usr_list
+       usrconfig%ism_on              = .true.                      !> set ism
+       usrconfig%profile_use_hse     = .false.
+       usrconfig%cloud_on            = .false.                      !> set cloud
+       usrconfig%cloud_structure     = 2                           !> cloud structure type
+       usrconfig%jet_yso_on          = .true. !>>HH4647.false.!.false.!.false.!                      !> set a jet
+       usrconfig%physunit_on         = .true.                      !> set the normalisation in use
+       usrconfig%reset_medium        = .true.                      !> set on the reset
+       usrconfig%coordinate_system   = 'cylindrical_2.5D'            !> geometry in use in 2D
+       usrconfig%phys_inuse          = 'hd_grackle' !'mhd' ! set physique want to be used
+
+ usrconfig%grackle_chemistry_on = .true. ! Use Grackle extra module
+       usrconfig%phys_isotherm_on              = .false.!>>HH4647.true. ! use isotherme
+       usrconfig%phys_temperature_isotherm     = 100.0d0 ! Le 2001
+       !usrconfig%temperature_max  = 1d5
+       usrconfig%reset_flux_scheme_on          = .true.
+       usrconfig%reset_flux_scheme_diffuse     = 'tvdlf'
+       usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
+       usrconfig%reset_flux_scheme_thresholdL1_max = 1.0d20
+
+
+/
 
 
 
@@ -277,15 +286,15 @@
   ism_config%reset_scale(2)     =  5d16     ! ism reset scalling distance
 
   ism_config%profile_force_with_grav = .true.
-  ism_config%boundary_cond(1,1) = 'axis'  
-  ism_config%boundary_cond(1,2) = 'fix'  
+  ism_config%boundary_cond(1,1) = 'axis'
+  ism_config%boundary_cond(1,2) = 'fix'
   ism_config%boundary_cond(2,1) = 'fix'!'limitinflow'!'limitinflowdisc'!'disc'!'fix'!'fix'!'limitoutflow' ! <<<<<!>>>>> : to enable this feature : you need to check that typeboundary_min{idims} (or typeboundary_max{idims}) is set to 7*'special'
-  ism_config%boundary_cond(2,2) = 'fix'  
-   
+  ism_config%boundary_cond(2,2) = 'fix'
 
-	
-	
-  ! 3 cases : 
+
+
+
+  ! 3 cases :
   ! 1) boundary_cond = 'fix' : 03-03-22 > successfully implemented !
   ! 2) boundary_cond /= 'fix' but mixed_fixed_bound == .false. everywhere
   ! 3) boundary_cond /= 'fix' and at least one of the mixed_fixed_bound is .true.
@@ -293,7 +302,7 @@
   ism_config%nghostcells(2)        = 4
 
   ism_config%flux_frac          = 9.0d-1
-  ism_config%useprimitive       = .false. 
+  ism_config%useprimitive       = .false.
   ism_config%escapencells(1)       = 11
   ism_config%escapencells(2)       = 11
   ism_config%escapencellsglobal(1)       = 2
@@ -306,12 +315,12 @@
   ! 	* 1 : rho
   ! 	* 2 : v1 =  v_R in cylindrical coordinates
   ! 	* 3 : v2 =  v_Z in cylindrical coordinates
-  ! 	* 4 : v3 =  v_phi in cylindrical coordinates  
+  ! 	* 4 : v3 =  v_phi in cylindrical coordinates
   ! 	* 5 : p (or e for conservative variables) only when hd_energy==.true.
   ! 	* 6,7 (or resp. 5,6) : tracers when hd_energy==.true. (resp. hd_energy==.false.)
   !
   ! - By default, all ism_config%mixed_fixed_bound(2,1,index) are .false., so that only the above boundary conditions are considered !
-  
+
   !ism_config%mixed_fixed_bound(2,1,1) = .true.
   !ism_config%mixed_fixed_bound(2,1,2) = .true.
   !ism_config%mixed_fixed_bound(2,1,3) = .true.

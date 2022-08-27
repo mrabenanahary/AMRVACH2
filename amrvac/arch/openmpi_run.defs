@@ -1,10 +1,10 @@
-F90=mpif90.openmpi
+F90=mpif90
 FFLAGS = -c
 F90FLAGS = -ffree-form -O2 -g -fimplicit-none -Wall -Wno-unused-dummy-argument	\
 -Wno-unused-function -Wno-unused -Wno-uninitialized -DCONFIG_BFLOAT_8 -DH5_USE_16_API -fPIC
 LINK= $(F90)  $(F90FLAGS)
 
-F77=mpif77.openmpi
+F77=mpif77
 FFLAGS77 = -c
 F77FLAGS = -cpp -ffixed-line-length-300 -e -O2 -g -fimplicit-none -fopenmp -Wall -Wno-unused-dummy-argument	\
 -Wno-unused-function -Wno-unused -Wno-uninitialized -DCONFIG_BFLOAT_8 -DH5_USE_16_API -fPIC
@@ -14,4 +14,3 @@ F90_amrvac=$(F90)
 FFLAGS_amrvac = $(FFLAGS)
 F90FLAGS_amrvac = $(F90FLAGS) -fopenmp -cpp
 LINK_amrvac= $(LINK)
-

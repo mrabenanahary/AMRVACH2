@@ -204,7 +204,7 @@ contains
     end select
 
     ! set the cooling variables indices
-    if(usrconfig%grackle_chemistry_on)call gr_cooling_fill_phys_indices(phys_ind)
+    !if(usrconfig%grackle_chemistry_on)call gr_cooling_fill_phys_indices(phys_ind)
 
 
     call usr_check_conflict
@@ -1933,8 +1933,8 @@ end subroutine initglobaldata_usr
                !write(*,*) 'Do we get here 1 ?'
                not_escape_patch(ixI^S) = .true.
                !call MPI_BARRIER(icomm, ierrmpi)
-               !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
-               !not_escape_patch)
+               call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
+               not_escape_patch)
 
                call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
             end if cond_grackle_on
@@ -2302,7 +2302,7 @@ return
         if(trim(myboundary_cond)/='fix'.or.any(mynotmixed_fixed_bound))then
           call ism_surround(i_ism)%myboundaries%set_w(ixI^L,ixO^L,iB,idims,iside,&
                                     ism_surround(i_ism)%patch,x,w)
-          !call grackle_solver%make_consistent(ixI^L,ixO^L,w,1)
+          call grackle_solver%make_consistent(ixI^L,ixO^L,w,1)
 
         end if
         !w(ixO^S,1:nw)=wp(ixO^S,1:nw)

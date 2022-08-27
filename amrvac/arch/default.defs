@@ -14,4 +14,3 @@ F90_amrvac=$(F90)
 FFLAGS_amrvac = $(FFLAGS)
 F90FLAGS_amrvac = $(F90FLAGS) -fopenmp
 LINK_amrvac= $(LINK)
-

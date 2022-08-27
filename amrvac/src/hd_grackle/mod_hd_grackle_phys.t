@@ -88,6 +88,11 @@ module mod_hd_grackle_phys
   integer, public, protected              :: rhometal_
   integer, public, protected              :: rhodust_
 
+  !> Index of cooling erg/s
+  integer, private, protected              :: Lcool1_
+
+  !> Index of cooling time
+  integer, private, protected              :: dtcool1_
 
   !> The adiabatic index
   real(dp), public                :: hd_gamma = 5.d0/3.0d0
@@ -865,6 +870,12 @@ contains
       iw_rhoX = var_set_extravar('rhoX', 'rhoX')
       iw_rhoY = var_set_extravar('rhoY', 'rhoY')
 
+      Lcool1_ = var_set_extravar('L', 'L', 1)
+      dtcool1_ = var_set_extravar('dtcool', 'dtcool', 1)
+      hd_ind%Lcool1_   = Lcool1_
+      hd_ind%dtcool1_ = dtcool1_
+
+
       iw_gamma = var_set_extravar('gamma', 'gamma')
       iw_temperature = var_set_extravar('temperature', 'temperature')
 
@@ -1051,7 +1062,8 @@ end subroutine hd_get_aux
      w_convert_factor(hd_ind%temperature_) = unit_temperature
      time_convert_factor   = unit_time
      length_convert_factor = unit_length
-
+     w_convert_factor(hd_ind%Lcool1_) = 1.0_dp
+     w_convert_factor(hd_ind%dtcool1_) = 1.0_dp
 
   end   subroutine hd_fill_convert_factor
   !> Returns 0 in argument flag where values are ok
@@ -1421,9 +1433,6 @@ end subroutine hd_get_aux
       !' = ', gamm(ixO^S)
       !write(*,*) 'hd_get_pthermal w(ixO^S, e_) of iteration it = ', it,&
       !' = ', w(ixO^S, e_)*w_convert_factor(e_)
-      if(any(isnan(w(ixO^S, e_))))then
-        !call backtrace()
-      end if
       pth(ixO^S) = (gamm(ixO^S)-1.0_dp) * (w(ixO^S, e_) - &
            hd_kin_en(w, ixI^L, ixO^L))
       !pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
@@ -1460,10 +1469,6 @@ end subroutine hd_get_aux
       !write(*,*) 'hd_get_gamma HI',w(ixO^S,rhoHI_)
       !write(*,*) 'hd_get_gamma HII',w(ixO^S,rhoHII_)
       !write(*,*) 'hd_get_gamma e-',w(ixO^S,rhoe_)
-      if(all(w(ixO^S,rhoHI_)<=0.0_dp))then
-        call backtrace()
-        call mpistop()
-      end if
       nH2(ixO^S) = 0.5d0*(w(ixO^S,rhoH2I_) + &
       w(ixO^S,rhoH2II_))
       nother(ixO^S) = (w(ixO^S,rhoHeI_) + w(ixO^S,rhoHeII_) +&
