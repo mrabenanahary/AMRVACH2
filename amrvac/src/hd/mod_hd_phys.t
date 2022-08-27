@@ -1,5 +1,5 @@
 !> Hydrodynamics physics module
-module mod_hd_grackle_phys
+module mod_hd_phys
   use mod_global_parameters, only: std_len
   use mod_constants
   use mod_physics
@@ -154,7 +154,7 @@ contains
     hd_gr_dust_chemistry,hd_isotherm_on
 
     !---------------------------------------------------------
-    error_message = 'At '//' mod_hd_grackle_phys.t'//'  in the procedure : hd_read_params'
+    error_message = 'At '//' mod_hd_phys.t'//'  in the procedure : hd_read_params'
     Loop_iparfile : do i_file = 1, size(files)
       open(unitpar, file=trim(files(i_file)), status="old")
       read(unitpar, hd_list, iostat=i_reason)
@@ -655,7 +655,7 @@ contains
 
 
 
-    write(*,*) 'improve_gravity_hse_exact in mod_hd_grackle_phys.t:'
+    write(*,*) 'improve_gravity_hse_exact in mod_hd_phys.t:'
     write(*,*) 'use_gravity_g is true but'
     write(*,*) 'but this part is not yet implemented'
     call mpistop('Code part not yet implemented')
@@ -695,8 +695,8 @@ contains
           mean_ne_to_nH = (1.0_dp+2.0_dp*He_abundance_sub)
        case default
          write(*,*) 'The chemical gas type : ', trim(hd_chemical_gas_type)
-          write (*,*) "Undefined gas chemical type entered in mod_hd_grackle_phys.t "
-          call mpistop('The stops at hd_fill_chemical_ionisation in src/hd/mod_hd_grackle_phys.t')
+          write (*,*) "Undefined gas chemical type entered in mod_hd_phys.t "
+          call mpistop('The stops at hd_fill_chemical_ionisation in src/hd/mod_hd_phys.t')
       end select
       !hd_config%mean_mup          = (2.0_dp+3.0_dp*He_abundance_sub)
 
@@ -2081,4 +2081,4 @@ end subroutine hd_get_aux
       end select
     end if
   end subroutine hd_handle_small_values_pressure
-end module mod_hd_grackle_phys
+end module mod_hd_phys

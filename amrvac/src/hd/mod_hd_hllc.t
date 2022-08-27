@@ -1,5 +1,5 @@
 !> Hydrodynamics HLLC module
-module mod_hd_grackle_hllc
+module mod_hd_hllc
   use mod_hd_grackle_phys
   use mod_dust
   implicit none
@@ -268,4 +268,4 @@ contains
     end if
   end subroutine hd_get_wCD
 
-end module mod_hd_grackle_hllc
+end module mod_hd_hllc
