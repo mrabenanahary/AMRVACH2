@@ -203,6 +203,10 @@ contains
      call mhd_activate
     end select
 
+    ! set the cooling variables indices
+    if(usrconfig%grackle_chemistry_on)call gr_cooling_fill_phys_indices(phys_ind)
+
+
     call usr_check_conflict
 
 
@@ -1113,6 +1117,7 @@ contains
       usrconfig%cloud_number,&
       gr_patches_name,gr_patches_indices_global,gr_patches_indices_local,gr_profiles,&
       gr_epsilon_tol,gr_density_method)
+
     else
       if(usrconfig%grackle_n_objects>0)then
         usrconfig%grackle_n_objects = 0
@@ -1928,8 +1933,8 @@ end subroutine initglobaldata_usr
                !write(*,*) 'Do we get here 1 ?'
                not_escape_patch(ixI^S) = .true.
                !call MPI_BARRIER(icomm, ierrmpi)
-               call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
-               not_escape_patch)
+               !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
+               !not_escape_patch)
 
                call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
             end if cond_grackle_on

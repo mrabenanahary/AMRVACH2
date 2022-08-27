@@ -9,6 +9,11 @@ module mod_grackle_chemistry
   use grackle_header
   use mod_grackle_parameters
 
+  !> Index of cooling erg/s
+  integer, private, protected              :: Lcool1_
+
+  !> Index of cooling time
+  integer, private, protected              :: dtcool1_
 
   type gr_config
     character(len=78)    :: obj_name(max_num_parameters)       !> Obj name that call it
@@ -1442,6 +1447,8 @@ patch,self)
           (0.5_dp*w(imesh^D, phys_ind%mom(idim))**2.0_dp/w(imesh^D, phys_ind%rho_))*&
           w_convert_factor(phys_ind%e_)
         end do
+        ! save initial energy
+        if(patch(imesh^D))w(imesh^D,phys_ind%Lcool1_) = energy(i)
         energy(i) = energy(i) / (w(imesh^D, phys_ind%rho_)*w_convert_factor(phys_ind%rho_))
         !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
           !write(*,*) 'jet uinternal energy 2 = ',energy(i)
@@ -1534,9 +1541,10 @@ patch,self)
     ! It seems that NaN also appears as soon as one species has its density reaching
     ! zero !!!
     !call MPI_BARRIER(icomm, ierrmpi)
-    iresult = oldsavegrid(my_grackle_data,my_fields,my_units,&
+    iresult = local_solve_grid(my_grackle_data,my_fields,my_units,&
       my_config)
     !call MPI_BARRIER(icomm, ierrmpi)
+
 
 
     !write(*,*) 'Final values'
@@ -1606,6 +1614,7 @@ do imesh2 = ixOmin2, ixOmax2
       !write(*,*) 'jet kinetic energy a = ', kn_energy(imesh^D)
     !end if
     total_energy(imesh^D) = density(i)*energy(i)+kn_energy(imesh^D)
+
     !write(*,*) 'jet kinetic energy = ',kn_energy(imesh^D)
     !write(*,*) 'jet kinetic energy = ', total_energy(imesh^D)
     !(out_gamma-1.0_dp))
@@ -1613,9 +1622,11 @@ do imesh2 = ixOmin2, ixOmax2
     !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
       !write(*,*) 'jet total energy a = ', total_energy(imesh^D)
     !end if
-    do idim=1,ndim+1
-      w(imesh^D,phys_ind%e_) = total_energy(imesh^D)/w_convert_factor(phys_ind%e_)
-    end do
+    !do idim=1,ndim+1
+    ! compute L1 :
+    w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)-total_energy(imesh^D)
+    w(imesh^D,phys_ind%e_) = total_energy(imesh^D)/w_convert_factor(phys_ind%e_)
+    !end do
     ! Temperature
     !w(imesh^D,phys_ind%temperature_) = final_temp(i)/w_convert_factor(phys_ind%temperature_)
     ! Gammaeff
@@ -1864,5 +1875,24 @@ subroutine grackle_make_consistent(ixI^L,ixO^L,w,iobj,self)
   w(ixO^S,phys_ind%HM_density_) + w(ixO^S,phys_ind%H2II_density_)/2.0d0)
 
 end subroutine grackle_make_consistent
+
+
+
+!> set the cooling variables indices
+subroutine gr_cooling_fill_phys_indices(phys_indices_inuse)
+  use mod_global_parameters
+  implicit none
+  type(phys_variables_indices)    :: phys_indices_inuse
+
+
+
+    Lcool1_   = var_set_extravar('L', 'L', 1)
+    phys_indices_inuse%Lcool1_   = Lcool1_
+    w_convert_factor(Lcool1_) = 1.0d0
+    dtcool1_ = var_set_extravar('dtcool', 'dtcool', 1)
+    phys_indices_inuse%dtcool1_ = dtcool1_
+    w_convert_factor(dtcool1_) = 1.0d0
+
+end   subroutine gr_cooling_fill_phys_indices
 
 end module mod_grackle_chemistry

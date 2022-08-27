@@ -278,6 +278,17 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
+          INTEGER(C_INT) FUNCTION local_solve_grid(mychemistry,
+     &            myfields, myunits, myconfig) bind(C)
+            IMPORT
+            TYPE(grackle_units), INTENT(IN) :: myunits
+            TYPE(grackle_chemistry_data), INTENT(INOUT) :: mychemistry
+            TYPE(grackle_field_data), INTENT(INOUT) :: myfields
+            TYPE(grackle_inout), INTENT(INOUT) :: myconfig
+          END FUNCTION local_solve_grid
+      END INTERFACE
+
+      INTERFACE
          INTEGER(C_INT) FUNCTION free_chemistry_data() bind(C)
             IMPORT
          END FUNCTION free_chemistry_data
