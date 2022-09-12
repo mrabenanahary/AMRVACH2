@@ -274,7 +274,8 @@ module mod_grackle_chemistry
     ! redshift of the UV background data being used.
     REAL(kind=gr_rpknd)    :: gr_UVbackground_redshift_drop(max_num_parameters)
 
-
+    ! Temperature floor for cooling
+    REAL(kind=gr_rpknd)    :: gr_Tlow(max_num_parameters)
 
 
     ! Cloudy 07.02 abundances :
@@ -518,6 +519,7 @@ subroutine grackle_set_default(self)
   self%myconfig%gr_UVbackground_redshift_off(1:max_num_parameters) = -99999.0
   self%myconfig%gr_UVbackground_redshift_fullon(1:max_num_parameters) = -99999.0
   self%myconfig%gr_UVbackground_redshift_drop(1:max_num_parameters) = -99999.0
+  self%myconfig%gr_Tlow(1:max_num_parameters) = 1.0d0
   self%myconfig%cloudy_electron_fraction_factor(1:max_num_parameters) = 9.153959D-3
   self%myconfig%data_dir(1:max_num_parameters) = "../../../src/grackle/input/"
   self%myconfig%data_filename(1:max_num_parameters) = "CloudyData_UVB=HM2012_shielded.h5"
@@ -978,6 +980,7 @@ gr_epsilon_tol,gr_density_method)
     write(unit_config,*) 'gr_UVbackground_redshift_off = ',  self%myconfig%gr_UVbackground_redshift_off(1)
     write(unit_config,*) 'gr_UVbackground_redshift_fullon = ',  self%myconfig%gr_UVbackground_redshift_fullon(1)
     write(unit_config,*) 'gr_UVbackground_redshift_drop = ',  self%myconfig%gr_UVbackground_redshift_drop(1)
+    write(unit_config,*) 'gr_Tlow = ',  self%myconfig%gr_Tlow(1)
     write(unit_config,*) 'cloudy_electron_fraction_factor = ',  self%myconfig%cloudy_electron_fraction_factor(1)
     write(unit_config,*) 'data_dir = ',  self%myconfig%data_dir(1)
     write(unit_config,*) 'data_filename = ',  self%myconfig%data_filename(1)
@@ -1286,40 +1289,40 @@ patch,self)
   character(len=150), TARGET :: filename
   real(kind=dp) :: temperature_units, pressure_units, dtchem, dx_local, velocity_units
   type(grackle_field_data)                :: my_gr_fields
-  real(kind=dp), target                   :: w_gr(ixI^S,1:nw)
-  real(kind=dp),dimension(ixI^S) :: temperature!,mmw_field,gmmeff_field
-  real(kind=dp),dimension(ixI^S) :: pth_field
-  real(kind=dp),dimension(ixI^S) :: total_energy, kn_energy
+  !real(kind=dp), target                   :: w_gr(ixI^S,1:nw)
+  real(kind=dp),allocatable :: temperature({:^D&}),mmw_field({:^D&}),gmmeff_field({:^D&})
+  real(kind=dp),allocatable :: pth_field({:^D&})
+  real(kind=dp),allocatable :: total_energy({:^D&}), kn_energy({:^D&})
   real(kind=dp)                           :: dt_old
-  integer         :: field_size(1:ndim)
+  integer,allocatable          :: field_size(:)
   real :: initial_redshift
   real(kind=dp),parameter :: fH = 0.76
-  real*8, TARGET :: density({(ixOmax^D-ixOmin^D+1)|*}), energy({(ixOmax^D-ixOmin^D+1)|*}), &
-  x_velocity({(ixOmax^D-ixOmin^D+1)|*}), y_velocity({(ixOmax^D-ixOmin^D+1)|*}), &
-  z_velocity({(ixOmax^D-ixOmin^D+1)|*}), &
-  HI_density({(ixOmax^D-ixOmin^D+1)|*}), HII_density({(ixOmax^D-ixOmin^D+1)|*}), &
-  HM_density({(ixOmax^D-ixOmin^D+1)|*}), &
-  HeI_density({(ixOmax^D-ixOmin^D+1)|*}), HeII_density({(ixOmax^D-ixOmin^D+1)|*}), &
-  HeIII_density({(ixOmax^D-ixOmin^D+1)|*}), &
-  H2I_density({(ixOmax^D-ixOmin^D+1)|*}), H2II_density({(ixOmax^D-ixOmin^D+1)|*}), &
-  DI_density({(ixOmax^D-ixOmin^D+1)|*}), DII_density({(ixOmax^D-ixOmin^D+1)|*}), &
-  HDI_density({(ixOmax^D-ixOmin^D+1)|*}), &
-  e_density({(ixOmax^D-ixOmin^D+1)|*}), metal_density({(ixOmax^D-ixOmin^D+1)|*}), &
-  dust_density({(ixOmax^D-ixOmin^D+1)|*}), &
-  volumetric_heating_rate({(ixOmax^D-ixOmin^D+1)|*}), &
-  specific_heating_rate({(ixOmax^D-ixOmin^D+1)|*}), &
-  RT_HI_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}), &
-  RT_HeI_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}), &
-  RT_HeII_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}), &
-  RT_H2_dissociation_rate({(ixOmax^D-ixOmin^D+1)|*}), &
-  RT_heating_rate({(ixOmax^D-ixOmin^D+1)|*}),&
-  H2_self_shielding_length({(ixOmax^D-ixOmin^D+1)|*}),&
-  H2_custom_shielding_factor({(ixOmax^D-ixOmin^D+1)|*}),&
-  isrf_habing({(ixOmax^D-ixOmin^D+1)|*}),&
-  final_temp({(ixOmax^D-ixOmin^D+1)|*}),final_cooltime({(ixOmax^D-ixOmin^D+1)|*}),&
-  final_press({(ixOmax^D-ixOmin^D+1)|*}),final_gamma({(ixOmax^D-ixOmin^D+1)|*})
-  real(kind=dp), TARGET  :: pressure({(ixOmax^D-ixOmin^D+1)|*}),&
-  gamma({(ixOmax^D-ixOmin^D+1)|*}),temperature_gr({(ixOmax^D-ixOmin^D+1)|*})
+  real*8,allocatable , TARGET :: density(:), energy(:), &
+  x_velocity(:), y_velocity(:), &
+  z_velocity(:), &
+  HI_density(:), HII_density(:), &
+  HM_density(:), &
+  HeI_density(:), HeII_density(:), &
+  HeIII_density(:), &
+  H2I_density(:), H2II_density(:), &
+  DI_density(:), DII_density(:), &
+  HDI_density(:), &
+  e_density(:), metal_density(:), &
+  dust_density(:), &
+  volumetric_heating_rate(:), &
+  specific_heating_rate(:), &
+  RT_HI_ionization_rate(:), &
+  RT_HeI_ionization_rate(:), &
+  RT_HeII_ionization_rate(:), &
+  RT_H2_dissociation_rate(:), &
+  RT_heating_rate(:),&
+  H2_self_shielding_length(:),&
+  H2_custom_shielding_factor(:),&
+  isrf_habing(:),&
+  final_temp(:),final_cooltime(:),&
+  final_press(:),final_gamma(:)
+  real(kind=dp), allocatable, TARGET  :: pressure(:),&
+  gamma(:),temperature_gr(:)
   INTEGER, TARGET :: grid_rank, grid_dimension(3), grid_start(3), grid_end(3)
   logical :: logicndir,logicenergy
   !real(kind=dp)           :: gamma_amrvac(ixI^S)
@@ -1329,19 +1332,70 @@ patch,self)
   real*8 gammaoth, gammaoth_1, temgas
   real*8 inv_gammaH2_1, inv_gamma_eff_1, inv_gammaoth_1,tvar
   real*8 meanmw,out_temp,out_tcool,out_pressure,out_gamma
-  real(kind=dp)  :: mp,kB
   TYPE (grackle_units) :: my_units
   TYPE (grackle_field_data) :: my_fields
   TYPE (grackle_chemistry_data) :: my_grackle_data
   TYPE (grackle_inout) :: my_config
-  !-----------------------------------------------------------------------------------
+  real(dp)                 :: mp,kB,me
+  !-------------------------------------------------------
+
+
   if(SI_unit) then
-      mp=mp_SI
-      kB=kB_SI
+    mp=mp_SI
+    kB=kB_SI
+    me = const_me*1.0d-3
   else
-      mp=mp_cgs
-      kB=kB_cgs
+    mp=mp_cgs
+    kB=kB_cgs
+    me = const_me
   end if
+
+
+
+  allocate(temperature(ixI^S))
+  allocate(mmw_field(ixI^S))
+  allocate(gmmeff_field(ixI^S))
+  allocate(pth_field(ixI^S))
+  allocate(total_energy(ixI^S))
+  allocate(kn_energy(ixI^S))
+  allocate(field_size(1:ndim))
+  allocate(density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(energy({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(x_velocity({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(y_velocity({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(z_velocity({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(HI_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(HII_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(HM_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(HeI_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(HeII_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(HeIII_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(H2I_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(H2II_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(DI_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(DII_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(HDI_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(e_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(metal_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(dust_density({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(volumetric_heating_rate({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(specific_heating_rate({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(RT_HI_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(RT_HeI_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(RT_HeII_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(RT_H2_dissociation_rate({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(RT_heating_rate({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(H2_self_shielding_length({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(H2_custom_shielding_factor({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(isrf_habing({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(final_temp({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(final_cooltime({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(final_press({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(final_gamma({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(pressure({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(gamma({(ixOmax^D-ixOmin^D+1)|*}))
+  allocate(temperature_gr({(ixOmax^D-ixOmin^D+1)|*}))
+
 
   !write(*,*) 'AMRVAC-side grackle_source qdt = ', qdt, ' of iteration it = ', it
 
@@ -1535,9 +1589,10 @@ patch,self)
     ! but from adding of counterbalancing force activation : check mod_obj_ism!
     ! It seems that NaN also appears as soon as one species has its density reaching
     ! zero !!!
-    iresult = local_solve_grid(my_grackle_data,my_fields,my_units,&
+    !iresult = local_solve_grid(my_grackle_data,my_fields,my_units,&
+    !  my_config)
+    iresult = oldsavegrid(my_grackle_data,my_fields,my_units,&
       my_config)
-
 
 
     !write(*,*) 'Final values'
@@ -1614,8 +1669,11 @@ do imesh2 = ixOmin2, ixOmax2
     !end if
     !do idim=1,ndim+1
     ! compute L1 :
-    w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)-total_energy(imesh^D)
-    w(imesh^D,phys_ind%dtcool1_) = final_cooltime(i)
+    w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)-total_energy(imesh^D) !de
+    w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)/my_config%dtchem
+    w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_) / &
+    w_convert_factor(phys_ind%Lcool1_)! L1 = de/dt
+    w(imesh^D,phys_ind%dtcool1_) = final_cooltime(i)/w_convert_factor(phys_ind%dtcool1_)
     w(imesh^D,phys_ind%e_) = total_energy(imesh^D)/w_convert_factor(phys_ind%e_)
     !end do
     ! Temperature
@@ -1626,8 +1684,9 @@ do imesh2 = ixOmin2, ixOmax2
     (HI_density(i)+HII_density(i)+HM_density(i)+&
     0.25*(HeI_density(i)+HeII_density(i)+&
     HeIII_density(i))+&
-    0.5*(H2I_density(i)+HII_density(i))+&
-    metal_density(i)/16.0)
+    0.5*(H2I_density(i)+H2II_density(i))+&
+    metal_density(i)/16.0+&
+    e_density(i)*(mp/me))
     ! Mean molecular weight
     w(imesh^D,phys_ind%mup_) = meanmw/w_convert_factor(phys_ind%mup_)
   {end do^D&|\}
@@ -1640,6 +1699,98 @@ do imesh2 = ixOmin2, ixOmax2
   !iresult = free_chemistry_data()
 
   dt = dt_old
+
+  !DEALLOCATE(HI_density)
+  my_fields%grid_dimension = C_NULL_PTR
+  my_fields%grid_start = C_NULL_PTR
+  my_fields%grid_end = C_NULL_PTR
+  my_fields%grid_dx  = grid_dx
+  my_fields%density = C_NULL_PTR
+  my_fields%HI_density = C_NULL_PTR
+  my_fields%HII_density = C_NULL_PTR
+  my_fields%HM_density = C_NULL_PTR
+  my_fields%HeI_density = C_NULL_PTR
+  my_fields%HeII_density = C_NULL_PTR
+  my_fields%HeIII_density = C_NULL_PTR
+  my_fields%H2I_density = C_NULL_PTR
+  my_fields%H2II_density = C_NULL_PTR
+  my_fields%DI_density = C_NULL_PTR
+  my_fields%DII_density = C_NULL_PTR
+  my_fields%HDI_density = C_NULL_PTR
+  my_fields%e_density = C_NULL_PTR
+  my_fields%metal_density = C_NULL_PTR
+  my_fields%dust_density = C_NULL_PTR
+  my_fields%internal_energy = C_NULL_PTR
+  my_fields%x_velocity = C_NULL_PTR
+  my_fields%y_velocity = C_NULL_PTR
+  my_fields%z_velocity = C_NULL_PTR
+  my_fields%volumetric_heating_rate = C_NULL_PTR
+  my_fields%specific_heating_rate = C_NULL_PTR
+  my_fields%RT_HI_ionization_rate = C_NULL_PTR
+  my_fields%RT_HeI_ionization_rate = C_NULL_PTR
+  my_fields%RT_HeII_ionization_rate = C_NULL_PTR
+  my_fields%RT_H2_dissociation_rate = C_NULL_PTR
+  my_fields%RT_heating_rate = C_NULL_PTR
+  my_fields%H2_self_shielding_length = C_NULL_PTR
+  my_fields%H2_custom_shielding_factor = C_NULL_PTR
+  my_fields%isrf_habing = C_NULL_PTR
+  my_config%uenergy_density = C_NULL_PTR
+  my_config%final_temp = C_NULL_PTR
+  my_config%final_cooltime = C_NULL_PTR
+  my_config%final_press = C_NULL_PTR
+  my_config%final_gamma = C_NULL_PTR
+  my_grackle_data%grackle_data_file = C_NULL_PTR
+
+
+
+
+  !write(*,*) ' iteration number = ', it
+  !call MPI_BARRIER(icomm, ierrmpi)
+  iresult = free_chemistry_data()
+
+  deallocate(temperature)
+  deallocate(mmw_field)
+  deallocate(gmmeff_field)
+  deallocate(pth_field)
+  deallocate(total_energy)
+  deallocate(kn_energy)
+  deallocate(field_size)
+  deallocate(density)
+  deallocate(energy)
+  deallocate(x_velocity)
+  deallocate(y_velocity)
+  deallocate(z_velocity)
+  deallocate(HI_density)
+  deallocate(HII_density)
+  deallocate(HM_density)
+  deallocate(HeI_density)
+  deallocate(HeII_density)
+  deallocate(HeIII_density)
+  deallocate(H2I_density)
+  deallocate(H2II_density)
+  deallocate(DI_density)
+  deallocate(DII_density)
+  deallocate(HDI_density)
+  deallocate(e_density)
+  deallocate(metal_density)
+  deallocate(dust_density)
+  deallocate(volumetric_heating_rate)
+  deallocate(specific_heating_rate)
+  deallocate(RT_HI_ionization_rate)
+  deallocate(RT_HeI_ionization_rate)
+  deallocate(RT_HeII_ionization_rate)
+  deallocate(RT_H2_dissociation_rate)
+  deallocate(RT_heating_rate)
+  deallocate(H2_self_shielding_length)
+  deallocate(H2_custom_shielding_factor)
+  deallocate(isrf_habing)
+  deallocate(final_temp)
+  deallocate(final_cooltime)
+  deallocate(final_press)
+  deallocate(final_gamma)
+  deallocate(pressure)
+  deallocate(gamma)
+  deallocate(temperature_gr)
 end subroutine grackle_chemistry_static_source
 
 
@@ -1663,8 +1814,8 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%dust_chemistry = self%myconfig%gr_dust_chemistry(1)
   gr_data%metal_cooling = self%myconfig%gr_metal_cooling(1)
   gr_data%UVbackground                   = self%myconfig%gr_UVbackground(1)
-  general_grackle_filename = "/home/mrabenanahary/MPI-AMRVAC/amrvac/"//&
-  "src/grackle/input/CloudyData_UVB=HM2012_shielded.h5"//C_NULL_CHAR
+  general_grackle_filename = "/obs/mrabenanahary/MPI-AMRVAC/amrvac/"//&
+  "src/grackle/input/CloudyData_UVB=HM2012.h5"//C_NULL_CHAR
   !CALL GETCWD(filename)
   !write(*,*) 'CWDDDDD = ', filename
   gr_data%grackle_data_file = C_LOC(general_grackle_filename(1:1))
@@ -1684,6 +1835,7 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%UVbackground_redshift_off     = self%myconfig%gr_UVbackground_redshift_off(1)
   gr_data%UVbackground_redshift_fullon  = self%myconfig%gr_UVbackground_redshift_fullon(1)
   gr_data%UVbackground_redshift_drop    = self%myconfig%gr_UVbackground_redshift_drop(1)
+  gr_data%Tlow                          = self%myconfig%gr_Tlow(1)
   gr_data%Compton_xray_heating   = self%myconfig%gr_Compton_xray_heating(1)
   gr_data%LWbackground_intensity = self%myconfig%gr_LWbackground_intensity(1)
   gr_data%LWbackground_sawtooth_suppression = self%myconfig%gr_LWbackground_sawtooth_suppression(1)

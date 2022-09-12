@@ -13,11 +13,11 @@
 !==============================================================
 
  &filelist
-        base_filename='Output/test_grackle/Lee2001_s_'
+        base_filename='Output/test_grackle_3/Lee2001_s_'
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        !restart_from_file='Output/test_grackle/'
+        !restart_from_file='Output/test_grackle_3/'
         nwauxio = 9
         /
         restart_from_file='Jet_Shang06_0118.dat'

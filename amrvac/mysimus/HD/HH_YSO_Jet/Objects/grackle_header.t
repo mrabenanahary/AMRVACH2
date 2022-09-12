@@ -22,14 +22,6 @@ c     AMRVAC-DEFINED environment type for grackle use
 
 c     Define storage for grackle units, fields and parameter data
 
-
-
-      TYPE grackle_type
-        TYPE (grackle_units) :: units
-        TYPE (grackle_field_data) :: fields
-        TYPE (grackle_chemistry_data) :: grackle_data
-      END TYPE grackle_type
-
       contains
 
       subroutine test_grackle_header()

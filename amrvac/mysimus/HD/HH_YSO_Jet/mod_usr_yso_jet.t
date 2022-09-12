@@ -130,7 +130,7 @@ contains
     usr_get_dt          => special_get_dt
     usr_internal_bc     => usr_special_internal_bc
     usr_reset_solver    => special_reset_solver
-    !usr_process_adv_grid => specialprocess_grid
+    !usr_process_adv_global => specialprocess_grid
 
 
     usr_gravity_potential => special_pointmass_gravity_potential
@@ -1816,10 +1816,9 @@ end subroutine initglobaldata_usr
     real(kind=dp)                   :: dx_local(1:ndim)
     integer                         :: idir,idust,ix^D,ixL^D,ixR^L,level,iresult
     integer                         :: patch_back_cloud(ixI^S)
-    !real(dp)                   :: pth_field(ixI^S)
-    !real(dp)                   :: gma_field(ixI^S)
-    !real(dp)                   :: mmw_field(ixI^S)
-    !real(dp)                   :: tmp_field(ixI^S)
+    real(kind=dp) :: temperature(ixI^S)
+    real(kind=dp) :: mmw_field(ixI^S)
+    real(kind=dp) :: gmmeff_field(ixI^S)
     !----------------------------------------------------------
 
     cond_reset : if(usrconfig%reset_medium) then
@@ -1932,11 +1931,19 @@ end subroutine initglobaldata_usr
                ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
                !write(*,*) 'Do we get here 1 ?'
                not_escape_patch(ixI^S) = .true.
+
                !call MPI_BARRIER(icomm, ierrmpi)
                call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
                not_escape_patch)
 
                call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
+
+
+
+
+
+
+
             end if cond_grackle_on
 
             cond_tracer_ism_on : if((ism_surround(i_ism)%myconfig%reset_on &
@@ -2029,14 +2036,15 @@ end subroutine initglobaldata_usr
 
 
 
-! for instance, until chemistry,
-! update temperature, gamma and meanmw fields at the end of source derivation
-!call phys_get_temperature( ixI^L, ixO^L,w, x, tmp_field)
-!w(ixO^S,phys_ind%temperature_) = tmp_field(ixO^S)
-!call phys_get_gamma(w, ixI^L, ixO^L, gma_field)
-!w(ixO^S,phys_ind%gamma_) = gma_field(ixO^S)/w_convert_factor(phys_ind%gamma_)
-!call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
-!w(ixO^S,phys_ind%mup_) = mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
+   ! Compute field of H2-gamma corrected temperature
+   call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
+   w(ixO^S,phys_ind%temperature_)=temperature(ixO^S)
+   ! Compute field of H2-corrected gamma
+   call phys_get_gamma(w,ixI^L, ixO^L, gmmeff_field)
+   w(ixO^S,phys_ind%gamma_) = gmmeff_field(ixO^S)/w_convert_factor(phys_ind%gamma_)
+   ! Compute field of mean molecular weight
+   call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
+   w(ixO^S,phys_ind%mup_) = mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
 
 
 call usr_clean_memory
@@ -2044,17 +2052,16 @@ call usr_clean_memory
 !  call usr_check_w(ixI^L,ixO^L,.true.,'specialsource_usr',qt,x,w)
   end subroutine specialsource_usr
 
-  subroutine specialprocess_grid(igrid,level,ixI^L,ixO^L,qt,w,x)
+  subroutine specialprocess_grid(iit, qt)
   use mod_global_parameters
-  use grackle_header
   use mod_grackle_chemistry
-  use mod_grackle_parameters
-  integer, intent(in)             :: igrid,level,ixI^L,ixO^L
-  double precision, intent(in)    :: qt,x(ixI^S,1:ndim)
-  double precision, intent(inout) :: w(ixI^S,1:nw)
+  integer, intent(in)             :: iit
+  double precision, intent(in)    :: qt
   integer :: iresult
   !--------------------------------------
 
+  !call MPI_BARRIER(icomm, ierrmpi)
+  !write(*,*) ' iteration number = ', it
   !iresult = free_chemistry_data()
 
 
@@ -2316,6 +2323,50 @@ return
    !if(mype==0)then
    !   write(*,*) '=================================='
    !end if
+
+
+   ! set jet
+      cond_agn_on : if(usrconfig%jet_yso_on)then
+       Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
+        jet_yso(i_jet_yso)%subname='specialbound_usr'
+        call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,qt,x,w,gr_solv=grackle_solver)
+         patch_inuse(ixO^S) = jet_yso(i_jet_yso)%patch(ixO^S)
+         cond_ism_onjet : if(usrconfig%ism_on)then
+          Loop_ism_jet : do i_ism=0,usrconfig%ism_number-1
+            if(ism_surround(i_ism)%myconfig%tracer_on)then
+             where(patch_inuse(ixO^S))
+               w(ixO^S,phys_ind%tracer(ism_surround(i_ism)%myconfig%itr))=0.0_dp
+             end where
+            end if
+
+
+            cond_ism_dust_onjet : if(ism_surround(i_ism)%myconfig%dust_on) then
+              ism_surround(i_ism)%mydust%patch(ixO^S)=.not.patch_inuse(ixO^S)
+              i_start= ism_surround(i_ism)%mydust%myconfig%idust_first
+              i_end  = ism_surround(i_ism)%mydust%myconfig%idust_last
+              Loop_ism_idustjet :  do i_dust=i_start,i_end
+                ism_surround(i_ism)%mydust%the_ispecies(i_dust)%patch(ixO^S)=&
+                                             .not.patch_inuse(ixO^S)
+              end do Loop_ism_idustjet
+              call ism_surround(i_ism)%mydust%set_w_zero(ixI^L,ixO^L,x,w)
+            end if cond_ism_dust_onjet
+          end do Loop_ism_jet
+         end if cond_ism_onjet
+
+         patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.patch_inuse(ixO^S)
+         if(jet_yso(i_jet_yso)%myconfig%dust_on)then
+           the_dust_inuse(i_object_w_dust)=jet_yso(i_jet_yso)%mydust
+           i_object_w_dust = i_object_w_dust +1
+         end if
+       end do Loop_jet_yso
+      end if cond_agn_on
+
+
+      if(any(patch_all(ixO^S)))then
+       call usr_fill_empty_region(ixI^L,ixO^L,qt,patch_all,x,w)
+      end if
+
+
 
   ! get conserved variables to be used in the code
   patch_all(ixO^S) = .true.
@@ -2650,26 +2701,16 @@ return
                                 !/(w(ixO^S,phys_ind%rho_))
       !/
       case(itemperature_)
-        !call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
-        win(ixO^S,nw+itemperature_) = 0.0_dp
-        do idim=1,ndim+1
-          win(ixO^S,nw+itemperature_) = win(ixO^S,nw+itemperature_) + &
-          0.5_dp*(w(ixO^S, phys_ind%mom(idim))**2.0_dp/&
-          w(ixO^S, phys_ind%rho_))*w_convert_factor(phys_ind%e_)
-        end do
+        call phys_get_temperature( ixI^L, ixO^L,w, x, temperature)
+        win(ixO^S,nw+itemperature_) = temperature(ixO^S)*w_convert_factor(phys_ind%temperature_)
         normconv(nw+itemperature_)  = 1.0_dp
       case(ipressure_usr_)
-        !call phys_get_pthermal(w, x, ixI^L, ixO^L, pressure_th)
-        win(ixO^S,nw+ipressure_usr_) = w(ixO^S,phys_ind%e_)*w_convert_factor(phys_ind%e_)
-        do idim=1,ndim+1
-          win(ixO^S,nw+ipressure_usr_) = win(ixO^S,nw+ipressure_usr_) - &
-          0.5_dp*(w(ixO^S, phys_ind%mom(idim))**2.0_dp/&
-          w(ixO^S, phys_ind%rho_))*w_convert_factor(phys_ind%e_)
-        end do
+        call phys_get_pthermal(w, x, ixI^L, ixO^L, pressure_th)
+        win(ixO^S,nw+ipressure_usr_) = pressure_th(ixO^S)*w_convert_factor(phys_ind%pressure_)
         normconv(nw+ipressure_usr_)  = 1.0_dp
       case(igammaeff_)
-        !call phys_get_gamma(w, ixI^L, ixO^L, gammaeff_usr)
-        win(ixO^S,nw+igammaeff_) = w(ixO^S,phys_ind%e_)*w_convert_factor(phys_ind%e_)
+        call phys_get_gamma(w, ixI^L, ixO^L, gammaeff_usr)
+        win(ixO^S,nw+igammaeff_) = gammaeff_usr(ixO^S)
         normconv(nw+igammaeff_)  = 1.0_dp
       case(imeanmupeff_)
         call phys_get_mup(w, x, ixI^L, ixO^L, mup_eff)
@@ -2839,13 +2880,13 @@ return
       case(icsound_)
         varnames(icsound_)               = 'csound2'
       case(itemperature_)
-        varnames(itemperature_)        ='energykinketic'
+        varnames(itemperature_)        ='temperature_usr'
       case(ilevel_)
         varnames(ilevel_)              = 'level'
       case(indensity_)
         varnames(indensity_)           = 'number_density'
       case(ipressure_usr_)
-        varnames(ipressure_usr_)           = 'energyinternal'
+        varnames(ipressure_usr_)           = 'pressure_usr'
       case(ierror_lohner_rho_)
         varnames(ierror_lohner_rho_)   = 'erroramrrho'
       case(ierror_lohner_p_)
@@ -2871,7 +2912,7 @@ return
       case(irelerr_v3_)
         varnames(irelerr_v3_)   = 'relerrorv3'
       case(igammaeff_)
-        varnames(igammaeff_)   = 'energytotal'
+        varnames(igammaeff_)   = 'gamma_eff_usr'
       case(imeanmupeff_)
         varnames(imeanmupeff_)   = 'mean_mup_usr'
       end select

@@ -114,6 +114,8 @@ module mod_hd_grackle_phys
   !> Helium abundance over Hydrogen
   real(dp), public, protected  :: He_abundance=0.1d0
 
+  real(kind=dp)   , private :: unit_luminosity
+
   !> Type of gas
   character(len=30), public, protected :: hd_chemical_gas_type='fullyionised'
   !> The number of waves
@@ -1062,8 +1064,10 @@ end subroutine hd_get_aux
      w_convert_factor(hd_ind%temperature_) = unit_temperature
      time_convert_factor   = unit_time
      length_convert_factor = unit_length
-     w_convert_factor(hd_ind%Lcool1_) = 1.0_dp
-     w_convert_factor(hd_ind%dtcool1_) = 1.0_dp
+     unit_luminosity = unit_pressure/( unit_numberdensity**2.0_dp * unit_time &
+                                 *  hd_config%mean_mass**2.0_dp)
+     w_convert_factor(hd_ind%Lcool1_) = unit_luminosity
+     w_convert_factor(hd_ind%dtcool1_) = unit_time
 
   end   subroutine hd_fill_convert_factor
   !> Returns 0 in argument flag where values are ok
@@ -1522,7 +1526,21 @@ end subroutine hd_get_aux
     real(dp), intent(in)         :: w(ixI^S, nw)
     real(dp), intent(in)         :: x(ixI^S, 1:ndim)
     real(dp), intent(out)        :: mmw(ixI^S)
-    !----------------------------------------------------
+    real(dp)                 :: mp,kB,me
+    !-------------------------------------------------------
+
+
+    if(SI_unit) then
+      mp=mp_SI
+      kB=kB_SI
+      me = const_me*1.0d-3
+    else
+      mp=mp_cgs
+      kB=kB_cgs
+      me = const_me
+    end if
+
+
     if (hd_config%use_grackle) then
       mmw(ixO^S) = w(ixO^S,rho_)/&
         (w(ixO^S,rhoHI_)+w(ixO^S,rhoHII_)+&
@@ -1530,7 +1548,8 @@ end subroutine hd_get_aux
         0.25d0*(w(ixO^S,rhoHeI_)+w(ixO^S,rhoHeII_)+&
         w(ixO^S,rhoHeIII_))+&
         0.5d0*(w(ixO^S,rhoH2I_)+w(ixO^S,rhoH2II_))+&
-        w(ixO^S,rhometal_)/16.0)
+        w(ixO^S,rhometal_)/16.0+&
+        w(ixO^S,rhoe_)*(mp/me))
 
        !mmw(ixO^S) = w(ixO^S,hd_ind%H2I_density_)
     else

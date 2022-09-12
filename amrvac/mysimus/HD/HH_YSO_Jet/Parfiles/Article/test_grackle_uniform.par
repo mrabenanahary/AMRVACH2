@@ -13,11 +13,13 @@
 !==============================================================
 
  &filelist
-        base_filename='Output/test_grackle/Lee2001_s_'
-        saveprim=.true.
-        autoconvert=.true.
-        convert_type='vtuBCCmpi'
-        !restart_from_file='Output/test_grackle/'
+        base_filename='Output/test_grackle_uniform/Lee2001_s_u_'
+	saveprim=.false.
+	autoconvert=.true.
+	convert_type='vtuBCCmpi'
+        restart_from_file='Output/test_grackle/Lee2001_s_0233.dat'
+	convert = .true.
+	level_io=5
         nwauxio = 9
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -510,7 +512,7 @@ ism_config%He_abundance      = 0.1
 	grackle_config%use_grackle(1) = 1            ! chemistry on
 	grackle_config%gr_use_isrf_field(1) = 0          ! interstellar radiation field on
 	grackle_config%gr_with_radiative_cooling(1) = 1 ! cooling on
-	grackle_config%gr_primordial_chemistry(1) = 0  ! network with H, He, D
+	grackle_config%gr_primordial_chemistry(1) = 2  ! network with H, He, D
 	grackle_config%gr_dust_chemistry(1) = 1        ! dust processes
 	grackle_config%gr_metal_cooling(1) = 1          ! metal cooling on
 	grackle_config%gr_h2_on_dust(1) = 1                ! H2 formation on dust

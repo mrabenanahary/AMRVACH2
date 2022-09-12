@@ -13,11 +13,11 @@
 !==============================================================
 
  &filelist
-        base_filename='Output/test_grackle/Lee2001_s_'
+        base_filename='Output/test_grackle_moljet/Lee2001_s_'
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        !restart_from_file='Output/test_grackle/'
+        !restart_from_file='Output/test_grackle_moljet/'
         nwauxio = 9
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -478,10 +478,10 @@ ism_config%He_abundance      = 0.1
 	grackle_config%x_HDI(1)  = 0.0d0
 	! Jet:
 	! x_HI + x_HII + x_HM + x_H2I + x_H2II = 1
-	grackle_config%x_HI(2)  = 1.0d0
+	grackle_config%x_HI(2)  = 0.0d0
 	grackle_config%x_HII(2)  = 0.0d0
 	grackle_config%x_HM(2)  = 0.0d0
-	grackle_config%x_H2I(2)  = 0.0d0
+	grackle_config%x_H2I(2)  = 1.0d0
 	grackle_config%x_H2II(2)  = 0.0d0
 	! x_HeI + x_HeII + x_HeIII = 1
 	grackle_config%x_HeI(2)  = 1.0d0
@@ -510,7 +510,7 @@ ism_config%He_abundance      = 0.1
 	grackle_config%use_grackle(1) = 1            ! chemistry on
 	grackle_config%gr_use_isrf_field(1) = 0          ! interstellar radiation field on
 	grackle_config%gr_with_radiative_cooling(1) = 1 ! cooling on
-	grackle_config%gr_primordial_chemistry(1) = 0  ! network with H, He, D
+	grackle_config%gr_primordial_chemistry(1) = 2  ! network with H, He, D
 	grackle_config%gr_dust_chemistry(1) = 1        ! dust processes
 	grackle_config%gr_metal_cooling(1) = 1          ! metal cooling on
 	grackle_config%gr_h2_on_dust(1) = 1                ! H2 formation on dust
@@ -525,6 +525,7 @@ ism_config%He_abundance      = 0.1
 	grackle_config%gr_Gamma(1) = 1.66666666667d0
 	grackle_config%gr_Tlow(1) = 100.0d0
   	grackle_config%deviation_to_density(1) = 1.0d-13
+  	grackle_config%deviation_to_density(2) = 1.0d-13  	
 
 /
 

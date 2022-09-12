@@ -1,6 +1,6 @@
 !> Hydrodynamics HLLC module
 module mod_hd_hllc
-  use mod_hd_grackle_phys
+  use mod_hd_phys
   use mod_dust
   implicit none
   private

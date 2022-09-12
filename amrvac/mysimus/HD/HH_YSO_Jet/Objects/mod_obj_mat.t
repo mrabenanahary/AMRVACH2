@@ -705,7 +705,7 @@ subroutine usr_mat_profile_scalar(pos_t,standart_deviation,variation_type,Vprofi
         ! celle qui va de Vmax=150 à Vmin=100=Vmax-DeltaV sur [n*standart_deviation;(n+1)*standart_deviation]
         ! Vprofile = 1.0_dp -2.0_dp*local_pos_t/standart_deviation ! version de Zakaria
        case('sawtooth2')
-        local_pos_t = pos_t-0.5_dp*standart_deviation
+        local_pos_t = pos_t
         Vprofile = 1.0_dp-2.0_dp*modulo(local_pos_t/standart_deviation,1.0_dp)
        case('sawtooth3')
          local_pos_t = pos_t-0.5_dp*standart_deviation

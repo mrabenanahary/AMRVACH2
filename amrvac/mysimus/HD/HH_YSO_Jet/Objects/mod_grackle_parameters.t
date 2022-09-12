@@ -37,48 +37,4 @@ real(kind=dp),parameter :: w_e = 5.443205831355435e-4
 ! Grackle parameters for this solver time step
 
 
-! Grackle fields
-type gr_fields
-  character(len=257):: filename
-  integer          :: field_size(ndim)
-  real(kind=dp), allocatable :: gr_density(:^D&)
-  real(kind=dp), allocatable :: gr_energy(:^D&)
-  real(kind=dp), allocatable :: gr_x_velocity(:^D&)
-  real(kind=dp), allocatable :: gr_y_velocity(:^D&)
-  real(kind=dp), allocatable :: gr_z_velocity(:^D&)
-  real(kind=dp), allocatable :: gr_HI_density(:^D&)
-  real(kind=dp), allocatable :: gr_HII_density(:^D&)
-  real(kind=dp), allocatable :: gr_HM_density(:^D&)
-  real(kind=dp), allocatable :: gr_HeI_density(:^D&)
-  real(kind=dp), allocatable :: gr_HeII_density(:^D&)
-  real(kind=dp), allocatable :: gr_HeIII_density(:^D&)
-  real(kind=dp), allocatable :: gr_H2I_density(:^D&)
-  real(kind=dp), allocatable :: gr_H2II_density(:^D&)
-  real(kind=dp), allocatable :: gr_DI_density(:^D&)
-  real(kind=dp), allocatable :: gr_DII_density(:^D&)
-  real(kind=dp), allocatable :: gr_HDI_density(:^D&)
-  real(kind=dp), allocatable :: gr_e_density(:^D&)
-  real(kind=dp), allocatable :: gr_metal_density(:^D&)
-  real(kind=dp), allocatable :: gr_dust_density(:^D&)
-  real(kind=dp), allocatable :: gr_volumetric_heating_rate(:^D&)
-  real(kind=dp), allocatable :: gr_specific_heating_rate(:^D&)
-  real(kind=dp), allocatable :: gr_RT_HI_ionization_rate(:^D&)
-  real(kind=dp), allocatable :: gr_RT_HeI_ionization_rate(:^D&)
-  real(kind=dp), allocatable :: gr_RT_HeII_ionization_rate(:^D&)
-  real(kind=dp), allocatable :: gr_RT_H2_dissociation_rate(:^D&)
-  real(kind=dp), allocatable :: gr_RT_heating_rate(:^D&)
-  real(kind=dp), allocatable :: gr_cooling_time(:^D&)
-  real(kind=dp), allocatable :: gr_gamma(:^D&)
-  real(kind=dp), allocatable :: gr_pressure(:^D&)
-  real(kind=dp), allocatable :: gr_temperature(:^D&)
-  real(kind=dp), allocatable :: gr_dust_temperature(:^D&)
-  !     Grid size and dimension
-  !     grid_start and grid_end are used to ignore ghost zones.
-  !     grid_dx is used in H2 self-shielding approximation only
-  INTEGER                          :: grid_rank
-  INTEGER                          :: grid_dimension(3)
-  INTEGER                          :: grid_start(3)
-  INTEGER                          :: grid_end(3)
-end type gr_fields
-
 end module mod_grackle_parameters

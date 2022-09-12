@@ -7,7 +7,7 @@
 /
 / Distributed under the terms of the Enzo Public Licence.
 /
-/ The full license is in the file LICENSE, distributed with this 
+/ The full license is in the file LICENSE, distributed with this
 / software.
 ************************************************************************/
 
@@ -141,28 +141,30 @@ typedef struct
      Please refer to the grackle documentation for specifics. */
   int H2_self_shielding;
 
-  /* flag for custom H2-shielding factor. The factor is provided as an additional field 
+  /* flag for custom H2-shielding factor. The factor is provided as an additional field
      by the user and is multiplied to the rate for radiative H2 dissocitation */
   int H2_custom_shielding;
 
-  /* flag to select which formula for calculating k11 you want to use. 
+  /* flag to select which formula for calculating k11 you want to use.
      Setting to 1 will use Savin 2004, 2 will use Abel et al. 1996  */
   int h2_charge_exchange_rate;
 
-  /* flag to select which formula for calculating h2dust you want to use. 
-     Setting to 1 will use Omukai 2000, 2 will use Hollenbach & McKee (1979) */ 
+  /* flag to select which formula for calculating h2dust you want to use.
+     Setting to 1 will use Omukai 2000, 2 will use Hollenbach & McKee (1979) */
   int h2_dust_rate;
 
-  /* flag to select which formula for calculating low density H2 cooling rate 
+  /* flag to select which formula for calculating low density H2 cooling rate
      due to H collisions. Setting to 1 will use Lique 2015, 2 will use Glover and Abel 2008 */
   int h2_h_cooling_rate;
-  
-  /* flags specific to calc_rates_g (1 is on, 0 is off) -- will be set to default values 
+
+  /* flags specific to calc_rates_g (1 is on, 0 is off) -- will be set to default values
      if unspecified  */
   int collisional_excitation_rates; //Collisional excitation
   int collisional_ionisation_rates; //Collisional ionisation
   int recombination_cooling_rates; //Recombination cooling
   int bremsstrahlung_cooling_rates; //Bremsstrahlung cooling
+
+  double Tlow;
 
   /* number of OpenMP threads, if supported */
 # ifdef _OPENMP
@@ -209,7 +211,7 @@ typedef struct
 
     long long Nz;
 
-    double zmin, zmax;    
+    double zmin, zmax;
     double *z;
 
     /* Radiative rates for 6-species. */
@@ -338,9 +340,9 @@ typedef struct
   double crsHeI;
   double crsHeII;
 
-  /* 9 species rates (including H2) 
+  /* 9 species rates (including H2)
        The first five are for the Lepp & Shull rates.
-       The next two are for the (better) Galli & Palla 1999 rates. 
+       The next two are for the (better) Galli & Palla 1999 rates.
        The selection is controlled by a flag in cool1d_multi_g.F. */
   double *hyd01k;
   double *h2k01;

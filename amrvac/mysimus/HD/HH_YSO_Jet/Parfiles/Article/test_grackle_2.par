@@ -13,11 +13,11 @@
 !==============================================================
 
  &filelist
-        base_filename='Output/test_grackle/Lee2001_s_'
+        base_filename='Output/test_grackle_2/Lee2001_s_'
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        !restart_from_file='Output/test_grackle/'
+        !restart_from_file='Output/test_grackle_2/'
         nwauxio = 9
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -44,7 +44,7 @@
  &savelist
          itsave(1,1)=0 !save initial state
         itsave(1,2)=0 !save initial state
-        dtsave_dat=  3.156d8!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  7.89d6!3.156d8!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !dtsave_dat=  4.73364d9
         !ditsave_dat =1
  /
@@ -112,13 +112,13 @@
  &meshlist
         ! grid at level 1
         xprobmin1 =  0.0d0    ! cm
-        xprobmax1 =  1.5d17! <--- r_max=3.0d17
+        xprobmax1 =  3.0d17! <--- r_max=3.0d17
         xprobmin2 =  0.0d0    ! cm
-        xprobmax2 =  1.5d17! <--- z_max=3.0d17
+        xprobmax2 =  3.0d17! <--- z_max=3.0d17
 
         ! total cell at level 1
-        domain_nx1= 120! <---dr=1.25e15 cm at lvl 1
-        domain_nx2= 120! <---dr=1.25e15 cm at lvl 1
+        domain_nx1= 240! <---dr=1.25e15 cm at lvl 1
+        domain_nx2= 240! <---dr=1.25e15 cm at lvl 1
         ! number of cell by block
         block_nx1 = 8!8!
         block_nx2 = 8!8!
@@ -510,7 +510,7 @@ ism_config%He_abundance      = 0.1
 	grackle_config%use_grackle(1) = 1            ! chemistry on
 	grackle_config%gr_use_isrf_field(1) = 0          ! interstellar radiation field on
 	grackle_config%gr_with_radiative_cooling(1) = 1 ! cooling on
-	grackle_config%gr_primordial_chemistry(1) = 0  ! network with H, He, D
+	grackle_config%gr_primordial_chemistry(1) = 2  ! network with H, He, D
 	grackle_config%gr_dust_chemistry(1) = 1        ! dust processes
 	grackle_config%gr_metal_cooling(1) = 1          ! metal cooling on
 	grackle_config%gr_h2_on_dust(1) = 1                ! H2 formation on dust

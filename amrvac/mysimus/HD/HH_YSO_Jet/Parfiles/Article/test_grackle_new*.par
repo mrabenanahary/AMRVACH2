@@ -17,7 +17,7 @@
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        !restart_from_file='Output/test_grackle/'
+        restart_from_file='Output/test_grackle/Lee2001_s_0100.dat'
         nwauxio = 9
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -57,7 +57,7 @@
 
         dtmin=1.0d-13
         !time_max= 99d15 ! years
-        time_max=  3.156d10!6.3072d10!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max=  6.3072d10!3.156d10!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !it_max=10
 
 
@@ -473,7 +473,7 @@ ism_config%He_abundance      = 0.1
 	grackle_config%x_HeII(1)  = 0.0d0
 	grackle_config%x_HeIII(1)  = 0.0d0
 	!x_DI + x_DII +x_HDI = 1
-	grackle_config%x_DI(1)  = 0.0d0
+	grackle_config%x_DI(1)  = 1.0d0
 	grackle_config%x_DII(1)  = 0.0d0
 	grackle_config%x_HDI(1)  = 0.0d0
 	! Jet:
@@ -488,21 +488,17 @@ ism_config%He_abundance      = 0.1
 	grackle_config%x_HeII(2)  = 0.0d0
 	grackle_config%x_HeIII(2)  = 0.0d0
 	!x_DI + x_DII +x_HDI = 1
-	grackle_config%x_DI(2)  = 0.0d0
+	grackle_config%x_DI(2)  = 1.0d0
 	grackle_config%x_DII(2)  = 0.0d0
 	grackle_config%x_HDI(2)  = 0.0d0
 
 	grackle_config%deviation_to_density_limit(1)  = 5.0d0
-	grackle_config%HydrogenFractionByMass(1) = 0.7143d0 !0.76d0
-	grackle_config%HydrogenFractionByMass(2) = 0.7143d0 !0.76d0
-	grackle_config%HeliumFractionByMass(1) = 0.2857d0 !0.76d0
-	grackle_config%HeliumFractionByMass(2) = 0.2857d0 !0.76d0 ! as in Chapter 6
-	grackle_config%MetalFractionByMass(1) = 0.0194d0 
-	grackle_config%MetalFractionByMass(2) = 0.0194d0 	
+	grackle_config%HydrogenFractionByMass(1) = 0.76d0
+	grackle_config%HydrogenFractionByMass(2) = 0.76d0
 	grackle_config%IonizationFraction(1) = 0.0d0!1.0d-3
 	grackle_config%IonizationFraction(2) = 0.0d0!1.0d-3
-  grackle_config%DeuteriumToHydrogenRatio(1) = 0.0d0
-  grackle_config%DeuteriumToHydrogenRatio(2) = 0.0d0
+  grackle_config%DeuteriumToHydrogenRatio(1) = 6.8d-5
+  grackle_config%DeuteriumToHydrogenRatio(2) = 6.8d-5
  	!grackle_config%TemperatureStart(1) = 1000.0d0
 	!grackle_config%TemperatureStart(2) = 100.0d0
 
@@ -510,13 +506,13 @@ ism_config%He_abundance      = 0.1
 	grackle_config%use_grackle(1) = 1            ! chemistry on
 	grackle_config%gr_use_isrf_field(1) = 0          ! interstellar radiation field on
 	grackle_config%gr_with_radiative_cooling(1) = 1 ! cooling on
-	grackle_config%gr_primordial_chemistry(1) = 0  ! network with H, He, D
+	grackle_config%gr_primordial_chemistry(1) = 2  ! network with H, He, D
 	grackle_config%gr_dust_chemistry(1) = 1        ! dust processes
 	grackle_config%gr_metal_cooling(1) = 1          ! metal cooling on
 	grackle_config%gr_h2_on_dust(1) = 1                ! H2 formation on dust
 	grackle_config%gr_UVbackground(1) = 0
 	grackle_config%gr_comoving_coordinates(1) = 0
-	grackle_config%gr_cmb_temperature_floor(1) = 0
+	grackle_config%gr_cmb_temperature_floor(1) = 1
 	grackle_config%gr_density_units(1) = 1.67d-18
 	grackle_config%gr_length_units(1) = 1.0d14
 	grackle_config%gr_time_units(1) = 3.0d8
