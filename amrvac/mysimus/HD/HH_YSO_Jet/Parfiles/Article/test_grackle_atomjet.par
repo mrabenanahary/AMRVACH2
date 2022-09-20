@@ -13,11 +13,11 @@
 !==============================================================
 
  &filelist
-        base_filename='Output/test_grackle_moljet/Lee2001_s_'
+        base_filename='Output/test_grackle_atomjet/Lee2001_s_'
         saveprim=.true.
         autoconvert=.true.
         convert_type='vtuBCCmpi'
-        !restart_from_file='Output/test_grackle_moljet/'
+        !restart_from_file='Output/test_grackle_atomjet/'
         nwauxio = 9
         /
         restart_from_file='Jet_Shang06_0118.dat'
@@ -161,8 +161,8 @@
  &paramlist
         typecourant         = 'maxsum'
         courantpar          = 0.8d0
-        slowsteps           = 100
-        small_getdt_average = .false.
+        slowsteps           = 1500
+        small_getdt_average = .true.
         small_dt_coef       = 1.0d-5
  /
 
@@ -478,10 +478,10 @@ ism_config%He_abundance      = 0.1
 	grackle_config%x_HDI(1)  = 0.0d0
 	! Jet:
 	! x_HI + x_HII + x_HM + x_H2I + x_H2II = 1
-	grackle_config%x_HI(2)  = 0.0d0
+	grackle_config%x_HI(2)  = 1.0d0
 	grackle_config%x_HII(2)  = 0.0d0
 	grackle_config%x_HM(2)  = 0.0d0
-	grackle_config%x_H2I(2)  = 1.0d0
+	grackle_config%x_H2I(2)  = 0.0d0
 	grackle_config%x_H2II(2)  = 0.0d0
 	! x_HeI + x_HeII + x_HeIII = 1
 	grackle_config%x_HeI(2)  = 1.0d0
@@ -524,8 +524,8 @@ ism_config%He_abundance      = 0.1
 	grackle_config%a_value(1) = 1.0d0
 	grackle_config%gr_Gamma(1) = 1.66666666667d0
 	grackle_config%gr_Tlow(1) = 100.0d0
-  	grackle_config%deviation_to_density(1) = 1.0d-13
-  	grackle_config%deviation_to_density(2) = 1.0d-13  	
+  	grackle_config%deviation_to_density(1) = 1.0d-20
+  	grackle_config%deviation_to_density(2) = 1.0d-20  	
 
 /
 

@@ -15,6 +15,7 @@ $ cat .git/info/exclude
 *.mod
 **/Output2/
 **/Output/
+**/Jobs/
 $ cat Documentation/.gitignore
 # ignore generated html files,
 *.html

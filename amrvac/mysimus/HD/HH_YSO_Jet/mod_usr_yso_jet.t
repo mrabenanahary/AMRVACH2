@@ -2682,7 +2682,7 @@ return
     real(dp),dimension(ixI^S,ndir,phys_config%dust_n_species)  :: vdust
     double precision :: gravity_field(ixI^S,ndim)
     double precision :: gravity_potential(ixI^S)
-
+    real(dp) :: unit_luminosity
 
     !----------------------------------------------------
 
@@ -2741,10 +2741,11 @@ return
         normconv(nw+ipos_zCC_)     = 1.0_dp
         win(ixO^S,nw+ipos_zCC_)    = x(ixO^S,z_)*unit_length
       case(ierror_lohner_rho_)
+        unit_luminosity =  unit_pressure/( unit_numberdensity**2.0_dp * unit_time &
+                          *  phys_config%mean_mass**2.0_dp)
+
         normconv(nw+iw)     = 1.0_dp
-        win(ixG^T,nw+ierror_lohner_rho_) = 0.0
-        call usr_mat_get_Lohner_error(ixI^L, ixM^LL,level,phys_ind%rho_,w,error_var)
-        win(ixM^T,nw+ierror_lohner_rho_) = error_var(ixM^T)
+        win(ixO^S,nw+ierror_lohner_rho_) = w(ixO^S,phys_ind%Lcool1_) * unit_luminosity
       case(ierror_lohner_p_)
         normconv(nw+iw)     = 1.0_dp
         win(ixG^T,nw+ierror_lohner_p_) = 0.0_dp
@@ -2888,7 +2889,7 @@ return
       case(ipressure_usr_)
         varnames(ipressure_usr_)           = 'pressure_usr'
       case(ierror_lohner_rho_)
-        varnames(ierror_lohner_rho_)   = 'erroramrrho'
+        varnames(ierror_lohner_rho_)   = 'L1_denorm'
       case(ierror_lohner_p_)
         varnames(ierror_lohner_p_)     = 'erroamrp'
       case(ideltav_dust11_)

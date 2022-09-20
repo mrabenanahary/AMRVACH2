@@ -105,11 +105,11 @@
 #define MAX_LINE_LENGTH                   512
 
 #ifndef tiny
-#define tiny 1.0e-13
+#define tiny 1.0e-20
 #endif
 
 #ifndef huge
-#define huge 1.0e30
+#define huge 1.0e20
 #endif
 
 /* Macro definitions (things C should have) */

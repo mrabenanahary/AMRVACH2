@@ -71,10 +71,10 @@ c     This is the fortran definition of grackle_field_data
          TYPE(C_PTR) :: RT_HeI_ionization_rate
          TYPE(C_PTR) :: RT_HeII_ionization_rate
          TYPE(C_PTR) :: RT_H2_dissociation_rate
+
          TYPE(C_PTR) :: H2_self_shielding_length
          TYPE(C_PTR) :: H2_custom_shielding_factor
          TYPE(C_PTR) :: isrf_habing
-
       END TYPE
 
       TYPE, BIND(C) :: grackle_inout
@@ -151,7 +151,6 @@ c     This is the fortran definition of grackle_chemistry_data
          INTEGER(C_INT) :: collisional_ionisation_rates
          INTEGER(C_INT) :: recombination_cooling_rates
          INTEGER(C_INT) :: bremsstrahlung_cooling_rates
-         REAL(C_DOUBLE) :: Tlow
 cc       INTEGER(C_INT) :: omp_nthreads // not supported in fortran
       END TYPE
 
@@ -201,7 +200,7 @@ c     The following define the fortran interfaces to the C routines
      &        (my_units, my_fields, dt) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: my_units
-            TYPE(grackle_field_data), INTENT(INOUT) :: my_fields
+            TYPE(grackle_field_data), INTENT(IN) :: my_fields
             REAL(C_DOUBLE), INTENT(IN) :: dt
          END FUNCTION solve_chemistry
       END INTERFACE
@@ -257,17 +256,6 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-          INTEGER(C_INT) FUNCTION solvegrid(mychemistry,
-     &            myfields, myunits, myconfig) bind(C)
-            IMPORT
-            TYPE(grackle_units), INTENT(IN) :: myunits
-            TYPE(grackle_chemistry_data), INTENT(INOUT) :: mychemistry
-            TYPE(grackle_field_data), INTENT(INOUT) :: myfields
-            TYPE(grackle_inout), INTENT(INOUT) :: myconfig
-          END FUNCTION solvegrid
-      END INTERFACE
-
-      INTERFACE
           INTEGER(C_INT) FUNCTION oldsavegrid(mychemistry,
      &            myfields, myunits, myconfig) bind(C)
             IMPORT
@@ -278,16 +266,6 @@ c     The following define the fortran interfaces to the C routines
           END FUNCTION oldsavegrid
       END INTERFACE
 
-      INTERFACE
-          INTEGER(C_INT) FUNCTION local_solve_grid(mychemistry,
-     &            myfields, myunits, myconfig) bind(C)
-            IMPORT
-            TYPE(grackle_units), INTENT(IN) :: myunits
-            TYPE(grackle_chemistry_data), INTENT(INOUT) :: mychemistry
-            TYPE(grackle_field_data), INTENT(INOUT) :: myfields
-            TYPE(grackle_inout), INTENT(INOUT) :: myconfig
-          END FUNCTION local_solve_grid
-      END INTERFACE
 
       INTERFACE
          INTEGER(C_INT) FUNCTION free_chemistry_data() bind(C)

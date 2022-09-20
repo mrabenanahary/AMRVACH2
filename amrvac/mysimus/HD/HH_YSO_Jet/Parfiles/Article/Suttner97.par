@@ -44,7 +44,7 @@
  &savelist
          itsave(1,1)=0 !save initial state
         itsave(1,2)=0 !save initial state
-        dtsave_dat=  1.577d7!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
+        dtsave_dat=  1.577d6!3.1557600d8! 100 yr!6.31152d8!20 yrs !1.57788000d9!50 yrs !3.1557600d9! 1 yrdensitys  1.57788000d8!5 yrs !3.1557600d7   ! 100 year; 3.1557600d7 = 1 yr
         !dtsave_dat=  4.73364d9
         !ditsave_dat =1
  /
@@ -55,7 +55,7 @@
 
  &stoplist
 
-        dtmin=1.0d-13
+        dtmin=1.0d-10
         !time_max= 99d15 ! years
         time_max= 1.369d10!3.156d10!6.3072d10!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !it_max=10
@@ -73,8 +73,8 @@
 
  &methodlist
         time_integrator          =  'twostep'
-        typepred1                =  20*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
-        flux_scheme              =  20*'tvdlf'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        typepred1                =  20*'hllcd'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        flux_scheme              =  20*'hllcd'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
         limiter                  =  20*'minmod'!>>HH4647 !'koren'!'cada3'
         small_pressure           = 1.0d-9
         small_density            = 1.0d-10
@@ -100,7 +100,7 @@
         internalboundary  = .true.
         nghostcells       = 2
         !                     RHO,   Vr,     Vz,   Vphi,   P,     traceur1,traceur2
-        typeboundary_min1 =  21*'special'!'symm','asymm','symm','asymm','symm',16*'symm'!'symm','asymm','symm','asymm',16*'symm'!21*'cont', ! C.L. gauche <=> rmin
+        typeboundary_min1 =  'symm','asymm','symm','asymm','symm',16*'symm'!'symm','asymm','symm','asymm',16*'symm'!21*'cont', ! C.L. gauche <=> rmin
         typeboundary_max1 =  21*'special'!21*'cont'!6*'cont'!                                    ! C.L. droite <=> rmax
         typeboundary_min2 =  21*'special'!6*'special'!'symm','symm','asymm','symm','symm',2*'symm'                                     ! C.L. inférieure <=> zmin
         typeboundary_max2 =  21*'special'!21*'cont'!6*'cont'!
@@ -162,7 +162,7 @@
         typecourant         = 'maxsum'
         courantpar          = 0.8d0
         slowsteps           = 100
-        small_getdt_average = .false.
+        small_getdt_average = .true.
         small_dt_coef       = 1.0d-5
  /
 
@@ -268,8 +268,8 @@
 !et fixées aux valeurs recommandées et correspondant le mieux à la simulation de l'article
  &usr_ism_list
   ism_config%unit               ='cgs'
-  ism_config%density            = 0.0d0 !1.6d-18         !Li & Shu et 1996b ism density if it set to 0 it will use number_density
-  ism_config%number_density     = 1.0d4  !>>HH4647  !2.95d9    !1.0d2     !4.44d6     ! Zheng19 = 2.95d9 cm-3 ! ism number density (1/cm^3) ) of protons n_H = facteur rho_j (e.g. = 100 cm-3) physique dans l'expression du profil de densité rho_c du milieu ambiant
+  ism_config%density            = 2.3416244d-20 !nH=1e4cm-3!1.6d-18         !Li & Shu et 1996b ism density if it set to 0 it will use number_density
+  ism_config%number_density     = 0.0d0  !>>HH4647  !2.95d9    !1.0d2     !4.44d6     ! Zheng19 = 2.95d9 cm-3 ! ism number density (1/cm^3) ) of protons n_H = facteur rho_j (e.g. = 100 cm-3) physique dans l'expression du profil de densité rho_c du milieu ambiant
                                             ! and w(ixO^S,phys_ind%rho_)        =  self%myconfig%density = = self%myconfig%number_density*mp = rho_h the mass density of protons
                                             ! si tu l'augmentes e.g. a number_density=1.0d3,
                                             !la valeur rho_c=rho_j de densité au niveau de la frontière inférieure ISM augmente d'un facteur 10
@@ -391,9 +391,9 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%time_cla_jet_on       =  0.0d0 !> initial time the cla_jet is set in the simulation box
 
     cla_jet_config%myindice              =  0       !> cla_jet associated indice
-    cla_jet_config%density               =  0.0d0!1.795963442083303d-19!<-------Fm=0.6e-7 Msun/yr
+    cla_jet_config%density               =  2.3416244d-13!nH=1e5cm-3!1.795963442083303d-19!<-------Fm=0.6e-7 Msun/yr
 
-    cla_jet_config%number_density        =  1.0d5
+    cla_jet_config%number_density        =  0.0d0
     cla_jet_config%temperature           =  102.865613027d0  !>>HH4647 !> cla_jet temperature  (K)
     cla_jet_config%pressure              =  0.0d0   !> cla_jet pressure
     cla_jet_config%pressure_toism        =  0.0d0   !> cla_jet pressure relative to ism pressure
@@ -522,9 +522,13 @@ ism_config%He_abundance      = 0.1
 	grackle_config%gr_time_units(1) = 3.0d8
 	grackle_config%gr_a_units(1) = 1.0d0
 	grackle_config%a_value(1) = 1.0d0
-	grackle_config%gr_Gamma(1) = 1.4d0
-	grackle_config%gr_Tlow(1) = 1.0d0
-  	grackle_config%deviation_to_density(1) = 1.0d-13
+	grackle_config%gr_Gamma(1) = 1.66666666667d0
+	grackle_config%gr_use_dust_density_field(1) = 1
+	grackle_config%gr_CaseBRecombination(1) = 0
+	grackle_config%gr_three_body_rate(1)=4
+	grackle_config%gr_cie_cooling(1) = 1
+	!grackle_config%gr_Tlow(1) = 1.0d0
+  	grackle_config%deviation_to_density(1) = 1.0d-20
 
 /
 

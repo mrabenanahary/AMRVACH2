@@ -169,21 +169,13 @@ int _calculate_temperature(chemistry_data *my_chemistry,
                            gr_float *e_density, gr_float *metal_density,
                            gr_float *temperature) __attribute__ ((deprecated));
 
-int _free_chemistry_data(chemistry_data *my_chemistry, chemistry_data_storage *my_rates);
-
-int free_chemistry_data(void);
-
-int solve_one_cell(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
-grackle_inout *myconfig);
-
-int solvegrid(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
-grackle_inout *myconfig);
-
 int oldsavegrid(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
 grackle_inout *myconfig);
 
-int local_solve_grid(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
-grackle_inout *myconfig);
+
+int _free_chemistry_data(chemistry_data *my_chemistry, chemistry_data_storage *my_rates);
+
+int free_chemistry_data();
 
 grackle_version get_grackle_version(void);
 

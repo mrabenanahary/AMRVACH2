@@ -275,7 +275,7 @@ module mod_grackle_chemistry
     REAL(kind=gr_rpknd)    :: gr_UVbackground_redshift_drop(max_num_parameters)
 
     ! Temperature floor for cooling
-    REAL(kind=gr_rpknd)    :: gr_Tlow(max_num_parameters)
+    !REAL(kind=gr_rpknd)    :: gr_Tlow(max_num_parameters)
 
 
     ! Cloudy 07.02 abundances :
@@ -519,13 +519,13 @@ subroutine grackle_set_default(self)
   self%myconfig%gr_UVbackground_redshift_off(1:max_num_parameters) = -99999.0
   self%myconfig%gr_UVbackground_redshift_fullon(1:max_num_parameters) = -99999.0
   self%myconfig%gr_UVbackground_redshift_drop(1:max_num_parameters) = -99999.0
-  self%myconfig%gr_Tlow(1:max_num_parameters) = 1.0d0
+  !self%myconfig%gr_Tlow(1:max_num_parameters) = 1.0d0
   self%myconfig%cloudy_electron_fraction_factor(1:max_num_parameters) = 9.153959D-3
   self%myconfig%data_dir(1:max_num_parameters) = "../../../src/grackle/input/"
-  self%myconfig%data_filename(1:max_num_parameters) = "CloudyData_UVB=HM2012_shielded.h5"
+  self%myconfig%data_filename(1:max_num_parameters) = "CloudyData_UVB=HM2012_high_density.h5"
 
   self%myconfig%data_file(1:max_num_parameters) = "../../../src/grackle/input/"//&
-  "CloudyData_UVB=HM2012_shielded.h5"//C_NULL_CHAR
+  "CloudyData_UVB=HM2012_high_density.h5"//C_NULL_CHAR
 
   self%myconfig%normalize_done(1:max_num_parameters) = .false.
   self%myconfig%gr_comoving_coordinates(1:max_num_parameters) = 0
@@ -980,7 +980,7 @@ gr_epsilon_tol,gr_density_method)
     write(unit_config,*) 'gr_UVbackground_redshift_off = ',  self%myconfig%gr_UVbackground_redshift_off(1)
     write(unit_config,*) 'gr_UVbackground_redshift_fullon = ',  self%myconfig%gr_UVbackground_redshift_fullon(1)
     write(unit_config,*) 'gr_UVbackground_redshift_drop = ',  self%myconfig%gr_UVbackground_redshift_drop(1)
-    write(unit_config,*) 'gr_Tlow = ',  self%myconfig%gr_Tlow(1)
+    !write(unit_config,*) 'gr_Tlow = ',  self%myconfig%gr_Tlow(1)
     write(unit_config,*) 'cloudy_electron_fraction_factor = ',  self%myconfig%cloudy_electron_fraction_factor(1)
     write(unit_config,*) 'data_dir = ',  self%myconfig%data_dir(1)
     write(unit_config,*) 'data_filename = ',  self%myconfig%data_filename(1)
@@ -1815,7 +1815,7 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%metal_cooling = self%myconfig%gr_metal_cooling(1)
   gr_data%UVbackground                   = self%myconfig%gr_UVbackground(1)
   general_grackle_filename = "/obs/mrabenanahary/MPI-AMRVAC/amrvac/"//&
-  "src/grackle/input/CloudyData_UVB=HM2012.h5"//C_NULL_CHAR
+  "src/grackle/input/CloudyData_UVB=HM2012_high_density.h5"//C_NULL_CHAR
   !CALL GETCWD(filename)
   !write(*,*) 'CWDDDDD = ', filename
   gr_data%grackle_data_file = C_LOC(general_grackle_filename(1:1))
@@ -1835,7 +1835,7 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%UVbackground_redshift_off     = self%myconfig%gr_UVbackground_redshift_off(1)
   gr_data%UVbackground_redshift_fullon  = self%myconfig%gr_UVbackground_redshift_fullon(1)
   gr_data%UVbackground_redshift_drop    = self%myconfig%gr_UVbackground_redshift_drop(1)
-  gr_data%Tlow                          = self%myconfig%gr_Tlow(1)
+  !gr_data%Tlow                          = self%myconfig%gr_Tlow(1)
   gr_data%Compton_xray_heating   = self%myconfig%gr_Compton_xray_heating(1)
   gr_data%LWbackground_intensity = self%myconfig%gr_LWbackground_intensity(1)
   gr_data%LWbackground_sawtooth_suppression = self%myconfig%gr_LWbackground_sawtooth_suppression(1)
