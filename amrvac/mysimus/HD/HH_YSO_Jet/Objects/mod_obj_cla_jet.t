@@ -341,7 +341,7 @@ contains
    integer                   :: i_obj
    ! .. local ..
    logical                    :: dust_is_frac
-   real(dp)                   :: mp,kb, jet_surface_init,&
+   real(dp)                   :: mp,kb,me, jet_surface_init,&
                                  Magnetic_poloidal
    real(kind=dp)              :: jet_radius_out_init, jet_radius_in_init
    real(kind=dp)              :: open_angle_in,z0
@@ -355,13 +355,16 @@ contains
    zjet_     = min(zjet_,ndim)
    thetajet_ = zjet_
 
-   if(SI_unit) then
-     mp=mp_SI
-     kB=kB_SI
-   else
-     mp=mp_cgs
-     kB=kB_cgs
-   end if
+  if(SI_unit) then
+    mp=mp_SI
+    kB=kB_SI
+    me = const_me*1.0d-3
+  else
+    mp=mp_cgs
+    kB=kB_cgs
+    me = const_me
+  end if
+
 
     call phys_fill_chemical_ionisation(self%myconfig%He_abundance,self%myconfig%chemical_gas_type, &
        self%myconfig%mean_nall_to_nH,self%myconfig%mean_mass,&
@@ -553,16 +556,18 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
      if(self%myconfig%temperature<smalldouble)then
        call mpistop('Need temperature par for Grackle !')
      else
-       self%myconfig%mean_mup = gr_solv%myconfig%density(i_obj)/&
-       (gr_solv%myconfig%densityHI(i_obj)+&
-       gr_solv%myconfig%densityHII(i_obj)+&
-       gr_solv%myconfig%densityHM(i_obj)+&
-       0.25*(gr_solv%myconfig%densityHeI(i_obj)+&
-       gr_solv%myconfig%densityHeII(i_obj)+&
-       gr_solv%myconfig%densityHeIII(i_obj))+&
-       0.5*(gr_solv%myconfig%densityH2I(i_obj)+&
-       gr_solv%myconfig%densityH2II(i_obj))+&
-       gr_solv%myconfig%density_Z(i_obj)/16.0)
+self%myconfig%mean_mup = gr_solv%myconfig%density(i_obj)/&
+(gr_solv%myconfig%densityHI(i_obj)+&
+gr_solv%myconfig%densityHII(i_obj)+&
+gr_solv%myconfig%densityHM(i_obj)+&
+0.25*(gr_solv%myconfig%densityHeI(i_obj)+&
+gr_solv%myconfig%densityHeII(i_obj)+&
+gr_solv%myconfig%densityHeIII(i_obj))+&
+0.5*(gr_solv%myconfig%densityH2I(i_obj)+&
+gr_solv%myconfig%densityH2II(i_obj))+&
+gr_solv%myconfig%density_Z(i_obj)/16.0+&
+gr_solv%myconfig%densityElectrons(i_obj)*(mp/me))
+
 
        nH2 = 0.5d0*(gr_solv%myconfig%densityH2I(i_obj) + &
        gr_solv%myconfig%densityH2II(i_obj))

@@ -495,7 +495,7 @@ contains
     integer                   :: i_obj
     ! .. local ..
     logical                  :: dust_is_frac
-    real(dp)                 :: mp,kb,Ggrav,r_normalized,costhetazero
+    real(dp)                 :: mp,kb,Ggrav,r_normalized,costhetazero,me
     integer                  :: idim,iside,idims,iB2,iw2
     real(dp)                 :: temperature_intermediate, temperature_ratio
     real(dp)                 :: ism_temper, ism_pressu
@@ -551,13 +551,18 @@ contains
     end if
 
 
-    if(SI_unit) then
-      mp=mp_SI
-      kB=kB_SI
-    else
-      mp=mp_cgs
-      kB=kB_cgs
-    end if
+
+
+  if(SI_unit) then
+    mp=mp_SI
+    kB=kB_SI
+    me = const_me*1.0d-3
+  else
+    mp=mp_cgs
+    kB=kB_cgs
+    me = const_me
+  end if
+
     Ggrav = constusr%G
 
 
@@ -704,7 +709,8 @@ contains
         gr_solv%myconfig%densityHeIII(i_obj))+&
         0.5*(gr_solv%myconfig%densityH2I(i_obj)+&
         gr_solv%myconfig%densityH2II(i_obj))+&
-        gr_solv%myconfig%density_Z(i_obj)/16.0)
+        gr_solv%myconfig%density_Z(i_obj)/16.0+&
+        gr_solv%myconfig%densityElectrons(i_obj)*(mp/me))
 
         nH2 = 0.5d0*(gr_solv%myconfig%densityH2I(i_obj) + &
         gr_solv%myconfig%densityH2II(i_obj))
@@ -1074,6 +1080,7 @@ contains
     integer                    :: idir,iB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
     integer                    :: iobject
     real(kind=dp)              :: fprofile(ixI^S)
+    real(kind=dp),dimension(ixI^S)              :: pth, temperature, gmmeff_field, mmw_field
 
     logical                    :: isboundary,to_fix,bc_to_fix,some_unfixed
     character(len=30)          :: myboundary_cond
@@ -1367,6 +1374,7 @@ contains
     class(ism)                      :: self
     ! ..local ..
     real(kind=dp), dimension(ixI^S) :: p_profile,d_profile,theta_profile
+    integer, dimension(ixI^S)       :: ip_profile
     real(kind=dp), dimension(ixI^S) :: vr_profile,vt_profile,vp_profile
     real(kind=dp), dimension(ixI^S) :: cos_theta_zero,sin_theta_zero,r_normalized
     real(kind=dp), dimension(ixI^S) :: theta_zero
@@ -1416,6 +1424,15 @@ contains
                                ((d_profile(ixO^S)/self%myconfig%profile_rw)**2.0_dp)
             end where
           end if
+        case('FluidContainer')
+        
+ip_profile(ixO^S) = (FLOOR((x(ixO^S,z_)-box_limit(1,z_))/dx(z_,1)) * &
+(NINT((box_limit(2,r_)-box_limit(1,r_))/dx(r_,1))+0) +&
+FLOOR((x(ixO^S,r_)-box_limit(1,r_))/dx(r_,1)) + 0)
+
+
+
+p_profile(ixO^S) = 10.0_dp**REAL(0.0_dp+(9.0_dp-1.0_dp)/(domain_nx1*domain_nx2-1)*ip_profile(ixO^S),dp)
 
         case('Ulrich1976')
 
@@ -1426,29 +1443,12 @@ contains
         end select
     end if   cond_density_profile
 
-    if(self%myconfig%profile_pressure_on) then
-      if(phys_config%energy)then
-          where(self%patch(ixO^S))
-            where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-              w(ixO^S,phys_ind%pressure_) = w(ixO^S,phys_ind%pressure_) * p_profile(ixO^S)
-            elsewhere
-                w(ixO^S,phys_ind%pressure_) = &
-                   self%myconfig%profile_shift_pressure(1,1)
-            end where
-          endwhere
-      end if
+
+
+    if(self%myconfig%profile_pressure_on.or.self%myconfig%profile_density_on)then
       where(self%patch(ixO^S))
         where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-          w(ixO^S,phys_ind%rho_)      = w(ixO^S,phys_ind%rho_) * p_profile(ixO^S)
-        elsewhere
-            w(ixO^S,phys_ind%rho_)      = &
-               self%myconfig%profile_shift_density(1,1)
-        end where
-      endwhere
-    elseif(self%myconfig%profile_density_on)then
-      where(self%patch(ixO^S))
-        where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
-          w(ixO^S,phys_ind%rho_)      = w(ixO^S,phys_ind%rho_)* p_profile(ixO^S)
+          w(ixO^S,phys_ind%rho_)      = w(ixO^S,phys_ind%rho_)*1.0_dp
         elsewhere
           w(ixO^S,phys_ind%rho_)      = &
              self%myconfig%profile_shift_density(1,1)
@@ -1459,6 +1459,7 @@ contains
         where(self%patch(ixO^S))
           where(d_profile(ixO^S)>self%myconfig%profile_shiftstart)
             w(ixO^S,phys_ind%pressure_) =w(ixO^S,phys_ind%pressure_)*p_profile(ixO^S)
+            w(ixO^S,phys_ind%temperature_) =w(ixO^S,phys_ind%temperature_)*p_profile(ixO^S)
           elsewhere
             w(ixO^S,phys_ind%pressure_) = &
                self%myconfig%profile_shift_pressure(1,1)
@@ -1469,20 +1470,20 @@ contains
 
 
      where(self%patch(ixO^S))
-       w(ixO^S,phys_ind%HI_density_)=w(ixO^S,phys_ind%HI_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%HII_density_)=w(ixO^S,phys_ind%HII_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%HeI_density_)=w(ixO^S,phys_ind%HeI_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%HeII_density_)=w(ixO^S,phys_ind%HeII_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%HeIII_density_)=w(ixO^S,phys_ind%HeIII_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%e_density_)=w(ixO^S,phys_ind%e_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%HM_density_)=w(ixO^S,phys_ind%HM_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%H2I_density_)=w(ixO^S,phys_ind%H2I_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%H2II_density_)=w(ixO^S,phys_ind%H2II_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%DI_density_)=w(ixO^S,phys_ind%DI_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%DII_density_)=w(ixO^S,phys_ind%DII_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%HDI_density_)=w(ixO^S,phys_ind%HDI_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%metal_density_)=w(ixO^S,phys_ind%metal_density_)*p_profile(ixO^S)
-       w(ixO^S,phys_ind%dust_density_)=w(ixO^S,phys_ind%dust_density_)*p_profile(ixO^S)
+       w(ixO^S,phys_ind%HI_density_)=w(ixO^S,phys_ind%HI_density_)*1.0_dp
+       w(ixO^S,phys_ind%HII_density_)=w(ixO^S,phys_ind%HII_density_)*1.0_dp
+       w(ixO^S,phys_ind%HeI_density_)=w(ixO^S,phys_ind%HeI_density_)*1.0_dp
+       w(ixO^S,phys_ind%HeII_density_)=w(ixO^S,phys_ind%HeII_density_)*1.0_dp
+       w(ixO^S,phys_ind%HeIII_density_)=w(ixO^S,phys_ind%HeIII_density_)*1.0_dp
+       w(ixO^S,phys_ind%e_density_)=w(ixO^S,phys_ind%e_density_)*1.0_dp
+       w(ixO^S,phys_ind%HM_density_)=w(ixO^S,phys_ind%HM_density_)*1.0_dp
+       w(ixO^S,phys_ind%H2I_density_)=w(ixO^S,phys_ind%H2I_density_)*1.0_dp
+       w(ixO^S,phys_ind%H2II_density_)=w(ixO^S,phys_ind%H2II_density_)*1.0_dp
+       w(ixO^S,phys_ind%DI_density_)=w(ixO^S,phys_ind%DI_density_)*1.0_dp
+       w(ixO^S,phys_ind%DII_density_)=w(ixO^S,phys_ind%DII_density_)*1.0_dp
+       w(ixO^S,phys_ind%HDI_density_)=w(ixO^S,phys_ind%HDI_density_)*1.0_dp
+       w(ixO^S,phys_ind%metal_density_)=w(ixO^S,phys_ind%metal_density_)*1.0_dp
+       w(ixO^S,phys_ind%dust_density_)=w(ixO^S,phys_ind%dust_density_)*1.0_dp
      end where
 
 

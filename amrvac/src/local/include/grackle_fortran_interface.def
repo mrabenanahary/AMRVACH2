@@ -8,13 +8,13 @@
 !
 ! Distributed under the terms of the Enzo Public Licence.
 !
-! The full license is in the file LICENSE, distributed with this
+! The full license is in the file LICENSE, distributed with this 
 ! software.
 !=======================================================================
 
 c This file provides a FORTRAN interface to the grackle 3.0 API based
 c   on C structs.  The following defines the three C structs that grackle
-c   uses to pass data.  These must *exactly* match the corresponding C
+c   uses to pass data.  These must *exactly* match the corresponding C 
 c   definitions in grackle_types.h and grackle_chemistry_data.h.
 c
 c In addition, here we define the Fortran 90 interfaces to the C routines
@@ -41,7 +41,7 @@ c     This is the fortran definition of grackle_field_data
          TYPE(C_PTR) :: grid_start
          TYPE(C_PTR) :: grid_end
          REAL(C_DOUBLE) :: grid_dx
-
+         
          TYPE(C_PTR) :: density
          TYPE(C_PTR) :: HI_density
          TYPE(C_PTR) :: HII_density
@@ -71,25 +71,10 @@ c     This is the fortran definition of grackle_field_data
          TYPE(C_PTR) :: RT_HeI_ionization_rate
          TYPE(C_PTR) :: RT_HeII_ionization_rate
          TYPE(C_PTR) :: RT_H2_dissociation_rate
-
-         TYPE(C_PTR) :: H2_self_shielding_length
          TYPE(C_PTR) :: H2_custom_shielding_factor
+         TYPE(C_PTR) :: H2_self_shielding_length
+
          TYPE(C_PTR) :: isrf_habing
-      END TYPE
-
-      TYPE, BIND(C) :: grackle_inout
-         TYPE(C_PTR) :: uenergy_density
-         REAL(C_DOUBLE) :: dx_local
-         REAL(C_DOUBLE) :: dtchem
-         INTEGER(C_INT) :: ixOmin1
-         INTEGER(C_INT) :: ixOmax1
-         INTEGER(C_INT) :: ixOmin2
-         INTEGER(C_INT) :: ixOmax2
-
-         TYPE(C_PTR) :: final_temp
-         TYPE(C_PTR) :: final_cooltime
-         TYPE(C_PTR) :: final_press
-         TYPE(C_PTR) :: final_gamma
       END TYPE
 
 c     This is the fortran definition of grackle_chemistry_data
@@ -153,6 +138,118 @@ c     This is the fortran definition of grackle_chemistry_data
          INTEGER(C_INT) :: bremsstrahlung_cooling_rates
 cc       INTEGER(C_INT) :: omp_nthreads // not supported in fortran
       END TYPE
+      
+c     This is the fortran definition of chemistry_data_storage
+
+      TYPE, BIND(C) :: chemistry_data_storage
+         TYPE(C_PTR) :: k1
+         TYPE(C_PTR) :: k2
+         TYPE(C_PTR) :: k3
+         TYPE(C_PTR) :: k4
+         TYPE(C_PTR) :: k5
+         TYPE(C_PTR) :: k6
+         
+         TYPE(C_PTR) :: k7
+         TYPE(C_PTR) :: k8
+         TYPE(C_PTR) :: k9
+         TYPE(C_PTR) :: k10
+         TYPE(C_PTR) :: k11         
+         TYPE(C_PTR) :: k12
+         TYPE(C_PTR) :: k13
+         TYPE(C_PTR) :: k14
+         TYPE(C_PTR) :: k15
+         TYPE(C_PTR) :: k16
+         TYPE(C_PTR) :: k17
+         TYPE(C_PTR) :: k18
+         TYPE(C_PTR) :: k19
+         TYPE(C_PTR) :: k20
+         TYPE(C_PTR) :: k21
+         TYPE(C_PTR) :: k22
+         TYPE(C_PTR) :: k23
+         TYPE(C_PTR) :: k13dd
+         
+         REAL(C_DOUBLE) :: k24
+         REAL(C_DOUBLE) :: k25
+         REAL(C_DOUBLE) :: k26
+         
+         REAL(C_DOUBLE) :: k27
+         REAL(C_DOUBLE) :: k28
+         REAL(C_DOUBLE) :: k29
+         REAL(C_DOUBLE) :: k30
+         REAL(C_DOUBLE) :: k31
+         
+         TYPE(C_PTR) :: k50
+         TYPE(C_PTR) :: k51
+         TYPE(C_PTR) :: k52
+         TYPE(C_PTR) :: k53
+         TYPE(C_PTR) :: k54
+         TYPE(C_PTR) :: k55
+         TYPE(C_PTR) :: k56
+         
+         TYPE(C_PTR) :: k57
+         TYPE(C_PTR) :: k58
+         
+         TYPE(C_PTR) :: h2dust
+         
+         TYPE(C_PTR) :: n_cr_n
+         TYPE(C_PTR) :: n_cr_d1
+         TYPE(C_PTR) :: n_cr_d2
+         
+         TYPE(C_PTR) :: ceHI
+         TYPE(C_PTR) :: ceHeI
+         TYPE(C_PTR) :: ceHeII
+         TYPE(C_PTR) :: ciHI
+         TYPE(C_PTR) :: ciHeI        
+         TYPE(C_PTR) :: ciHeIS
+         TYPE(C_PTR) :: ciHeII
+         TYPE(C_PTR) :: reHII
+         TYPE(C_PTR) :: reHeII1
+         TYPE(C_PTR) :: reHeII2
+         TYPE(C_PTR) :: reHeIII
+         TYPE(C_PTR) :: brem
+         REAL(C_DOUBLE) :: comp
+         REAL(C_DOUBLE) :: comp_xray
+         REAL(C_DOUBLE) :: temp_xray
+         
+         REAL(C_DOUBLE) :: piHI
+         REAL(C_DOUBLE) :: piHeI
+         REAL(C_DOUBLE) :: piHeII
+
+         REAL(C_DOUBLE) :: crsHI
+         REAL(C_DOUBLE) :: crsHeI
+         REAL(C_DOUBLE) :: crsHeII
+
+         TYPE(C_PTR) :: hyd01k
+         TYPE(C_PTR) :: h2k01
+         TYPE(C_PTR) :: vibh
+         TYPE(C_PTR) :: roth
+         TYPE(C_PTR) :: rotl
+         TYPE(C_PTR) :: GP99LowDensityLimit
+         TYPE(C_PTR) :: GP99HighDensityLimit
+         
+         TYPE(C_PTR) :: GAHI
+         TYPE(C_PTR) :: GAH2
+         TYPE(C_PTR) :: GAHe
+         TYPE(C_PTR) :: GAHp
+         TYPE(C_PTR) :: GAel
+         
+         TYPE(C_PTR) :: H2LTE
+         
+         TYPE(C_PTR) :: HDlte
+         TYPE(C_PTR) :: HDlow
+         
+         TYPE(C_PTR) :: cieco
+         
+         REAL(C_DOUBLE) :: gammah
+         
+         TYPE(C_PTR) :: regr
+         
+         REAL(C_DOUBLE) :: gamma_isrf
+         
+         TYPE(C_PTR) :: gas_grain
+         
+         INTEGER(C_INT) :: cloudy_data_new
+      END TYPE      
 
 c     The following define the fortran interfaces to the C routines
 
@@ -188,7 +285,7 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION initialize_chemistry_data(my_units)
+         INTEGER(C_INT) FUNCTION initialize_chemistry_data(my_units) 
      &        bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(INOUT) :: my_units
@@ -206,7 +303,7 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION calculate_cooling_time(my_units,
+         INTEGER(C_INT) FUNCTION calculate_cooling_time(my_units, 
      &        my_fields, cooling_time) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: my_units
@@ -216,7 +313,7 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION calculate_temperature(my_units,
+         INTEGER(C_INT) FUNCTION calculate_temperature(my_units, 
      &        my_fields, temperature) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: my_units
@@ -226,7 +323,7 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION calculate_pressure(my_units, my_fields,
+         INTEGER(C_INT) FUNCTION calculate_pressure(my_units, my_fields, 
      &        pressure) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: my_units
@@ -236,7 +333,7 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION calculate_gamma(my_units, my_fields,
+         INTEGER(C_INT) FUNCTION calculate_gamma(my_units, my_fields, 
      &        gamma) bind(C)
             IMPORT
             TYPE(grackle_units), INTENT(IN) :: my_units
@@ -256,19 +353,7 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-          INTEGER(C_INT) FUNCTION oldsavegrid(mychemistry,
-     &            myfields, myunits, myconfig) bind(C)
-            IMPORT
-            TYPE(grackle_units), INTENT(IN) :: myunits
-            TYPE(grackle_chemistry_data), INTENT(INOUT) :: mychemistry
-            TYPE(grackle_field_data), INTENT(INOUT) :: myfields
-            TYPE(grackle_inout), INTENT(INOUT) :: myconfig
-          END FUNCTION oldsavegrid
-      END INTERFACE
-
-
-      INTERFACE
          INTEGER(C_INT) FUNCTION free_chemistry_data() bind(C)
             IMPORT
          END FUNCTION free_chemistry_data
-      END INTERFACE
+      END INTERFACE         

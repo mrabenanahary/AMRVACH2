@@ -1933,10 +1933,10 @@ end subroutine initglobaldata_usr
                not_escape_patch(ixI^S) = .true.
 
                !call MPI_BARRIER(icomm, ierrmpi)
-               call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
-               not_escape_patch)
+               !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
+               !not_escape_patch)
 
-               call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
+               !call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
 
 
 

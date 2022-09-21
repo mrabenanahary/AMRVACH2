@@ -7,7 +7,7 @@
 /
 / Distributed under the terms of the Enzo Public Licence.
 /
-/ The full license is in the file LICENSE, distributed with this
+/ The full license is in the file LICENSE, distributed with this 
 / software.
 ************************************************************************/
 
@@ -34,7 +34,7 @@ chemistry_data _set_default_chemistry_parameters(void);
 
 int initialize_chemistry_data(code_units *my_units);
 
-int _initialize_chemistry_data(chemistry_data *my_chemistry,
+int _initialize_chemistry_data(chemistry_data *my_chemistry, 
                                chemistry_data_storage *my_rates,
                                code_units *my_units);
 
@@ -169,14 +169,22 @@ int _calculate_temperature(chemistry_data *my_chemistry,
                            gr_float *e_density, gr_float *metal_density,
                            gr_float *temperature) __attribute__ ((deprecated));
 
-int oldsavegrid(chemistry_data *mychemistry,grackle_field_data *myfields, code_units *myunits,
-grackle_inout *myconfig);
-
-
 int _free_chemistry_data(chemistry_data *my_chemistry, chemistry_data_storage *my_rates);
 
 int free_chemistry_data();
 
 grackle_version get_grackle_version(void);
 
+int associate_chemistry_data(chemistry_data *my_chemistry_in,
+			 chemistry_data *my_chemistry_out,
+			 code_units *my_units_in,
+			 code_units *my_units_out);
+			 
+int c_calculate_cooling_time(chemistry_data *my_chemistry,
+                                 code_units *my_units,
+                                 grackle_field_data *my_fields,
+                                 UVBtable my_UVbackground_table,
+                                 cloudy_data my_cloudy_primordial,
+                                 cloudy_data my_cloudy_metal,
+                                 gr_float *cooling_time);		 
 #endif
