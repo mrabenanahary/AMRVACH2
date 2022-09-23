@@ -7,7 +7,7 @@ endif
 #ARCH =openmpi_run
 #ARCH =openmpi
 #ARCH =default
-ARCH=intel_openmpi
+#ARCH=intel_openmpi
 
 ifdef ARCH
 	ARCH := $(ARCH)
