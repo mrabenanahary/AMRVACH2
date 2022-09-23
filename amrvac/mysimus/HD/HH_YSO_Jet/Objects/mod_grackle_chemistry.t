@@ -1591,8 +1591,8 @@ patch,self)
     ! zero !!!
     !iresult = local_solve_grid(my_grackle_data,my_fields,my_units,&
     !  my_config)
-    iresult = oldsavegrid(my_grackle_data,my_fields,my_units,&
-      my_config)
+    !iresult = oldsavegrid(my_grackle_data,my_fields,my_units,&
+    !  my_config)
 
 
     !write(*,*) 'Final values'

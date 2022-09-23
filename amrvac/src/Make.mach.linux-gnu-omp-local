@@ -35,7 +35,7 @@ MACH_CC_NOMPI  = mpicc #gcc # C compiler
 MACH_CXX_NOMPI = mpicxx #g++ # C++ compiler
 MACH_FC_NOMPI  = mpif90 # Fortran 77
 MACH_F90_NOMPI = mpif90 # Fortran 90
-MACH_LD_NOMPI  = mpicxx # Linker
+MACH_LD_NOMPI  = mpicc # Linker
 MACH_LIBTOOL   = libtool
 
 #-----------------------------------------------------------------------

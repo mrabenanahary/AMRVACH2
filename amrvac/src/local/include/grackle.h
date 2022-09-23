@@ -7,7 +7,7 @@
 /
 / Distributed under the terms of the Enzo Public Licence.
 /
-/ The full license is in the file LICENSE, distributed with this 
+/ The full license is in the file LICENSE, distributed with this
 / software.
 ************************************************************************/
 
@@ -34,7 +34,7 @@ chemistry_data _set_default_chemistry_parameters(void);
 
 int initialize_chemistry_data(code_units *my_units);
 
-int _initialize_chemistry_data(chemistry_data *my_chemistry, 
+int _initialize_chemistry_data(chemistry_data *my_chemistry,
                                chemistry_data_storage *my_rates,
                                code_units *my_units);
 
@@ -179,12 +179,21 @@ int associate_chemistry_data(chemistry_data *my_chemistry_in,
 			 chemistry_data *my_chemistry_out,
 			 code_units *my_units_in,
 			 code_units *my_units_out);
-			 
+
+int setSizeGPS(GPStruct *my_GPS);
+
+GPStruct extractGPS(cloudy_data *my_cloudy_data);
+
+int freeGPS(GPStruct *my_GPS);
+
+void show_parameters(FILE *fp, chemistry_data *my_chemistry);
+
 int c_calculate_cooling_time(chemistry_data *my_chemistry,
                                  code_units *my_units,
                                  grackle_field_data *my_fields,
+                                 chemistry_data_storage *my_rates,
                                  UVBtable my_UVbackground_table,
-                                 cloudy_data my_cloudy_primordial,
-                                 cloudy_data my_cloudy_metal,
-                                 gr_float *cooling_time);		 
+                                 GPStruct *GPS_primordial,
+                                 GPStruct *GPS_metal,
+                                 gr_float *cooling_time);
 #endif
