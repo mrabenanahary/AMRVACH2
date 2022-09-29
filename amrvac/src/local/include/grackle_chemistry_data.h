@@ -209,7 +209,7 @@ typedef struct
   long long *size2;
 
   // Dataset parameter values.
-  double *grid_parameters;
+  double *grid_parameters_oned;
 
 } GPStruct;
 

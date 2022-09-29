@@ -125,7 +125,7 @@
 
         ! AMR configuration
         refine_criterion=3
-        refine_max_level=5 !<--- dr=dz=7.8125e13 cm au lvl 5
+        refine_max_level=1 !<--- dr=dz=7.8125e13 cm au lvl 5
         refine_threshold=20*0.01d0
         derefine_ratio=20*1d-3
 
@@ -342,11 +342,11 @@ ism_config%profile_idir       = 1.0,0.0,0.0       !z=2,r=1  !  ism profile direc
 
 ism_config%profile_center     = 0,0,0
 
-ism_config%profile_density_on = .true. ! Zheng=True ! .false. ! .true. ! ISM set density profile
-ism_config%profile_pressure_on= .true. ! Zheng=True ! .false. !.true.
+ism_config%profile_density_on = .false. ! Zheng=True ! .false. ! .true. ! ISM set density profile
+ism_config%profile_pressure_on= .false. ! Zheng=True ! .false. !.true.
 ism_config%theta_floored      = 0.0d0
-ism_config%profile_force_on   = .true.!.false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
-ism_config%profile_force_gradP_on = .true.!.false.
+ism_config%profile_force_on   = .false.!.false. ! Zheng=True  !.true.!.false.!.true. ! .false. ! ISM set force profile
+ism_config%profile_force_gradP_on = .false.!.false.
 ism_config%weight_mean = 'arithmetic'
 ism_config%weight_analy = 1.0d0
 ism_config%weight_num = 0.0d0
@@ -447,11 +447,11 @@ ism_config%He_abundance      = 0.1
     cla_jet_config%variation_velocity(3) =  0.0d0
     cla_jet_config%variation_time        =  9.46728d9!<---- 30 ans
     cla_jet_config%variation_position    =  0.0d0,8.22d14 ,0.0d0!0.0d0,8.22d14 ,0.0d0 !>>HH4647 !0.0d0, 1d15 ,0.0d0 !0.0d0, 1.495978707d14,0.0d0 ! = 0,10 au,0position (in 3d : if cylindrical : phi = 3, z=2, r=1) under which is set the time variability : default = 0,3d15,0
-    cla_jet_config%variation_type        =  'sawtooth2' !
+    cla_jet_config%variation_type        =  'sin' !
     cla_jet_config%variation_phys_nvariable   = 1  ! number of physical variable with variation
     cla_jet_config%variation_phys_variable(1) =  3 ! 3 mean the velocity in Z direction
 
-    cla_jet_config%refine_min_level      = 5
+    cla_jet_config%refine_min_level      = 1
     cla_jet_config%chemical_gas_type     = 'fullyatomic' !>>HH4647
 
 
@@ -460,7 +460,7 @@ ism_config%He_abundance      = 0.1
 
 &grackle_conf_list
 	!grackle_config%chi_dust(1) = 0.05
-	!grackle_config%xi_dust(2)  = 0.05
+	!grackle_config%xi_dust(1)  = 0.05
 	! ISM:
 	! x_HI + x_HII + x_HM + x_H2I + x_H2II = 1
 	grackle_config%x_HI(1)  = 1.0d0
@@ -492,29 +492,20 @@ ism_config%He_abundance      = 0.1
 	grackle_config%x_DII(2)  = 0.0d0
 	grackle_config%x_HDI(2)  = 0.0d0
 
-	grackle_config%deviation_to_density_limit(1)  = 5.0d0
-	grackle_config%HydrogenFractionByMass(1) = 0.7143d0 !0.76d0
-	grackle_config%HydrogenFractionByMass(2) = 0.7143d0 !0.76d0
-	grackle_config%HeliumFractionByMass(1) = 0.2857d0 !0.76d0
-	grackle_config%HeliumFractionByMass(2) = 0.2857d0 !0.76d0 ! as in Chapter 6
-	grackle_config%MetalFractionByMass(1) = 0.0194d0
-	grackle_config%MetalFractionByMass(2) = 0.0194d0
-	grackle_config%IonizationFraction(1) = 0.0d0!1.0d-3
-	grackle_config%IonizationFraction(2) = 0.0d0!1.0d-3
-  grackle_config%DeuteriumToHydrogenRatio(1) = 0.0d0
-  grackle_config%DeuteriumToHydrogenRatio(2) = 0.0d0
+
  	!grackle_config%TemperatureStart(1) = 1000.0d0
-	!grackle_config%TemperatureStart(2) = 100.0d0
+  grackle_config%IonizationFraction(1) = 0.0d0!1.0d-3
+  grackle_config%IonizationFraction(2) = 0.0d0!1.0d-3
 
 
 	grackle_config%use_grackle(1) = 1            ! chemistry on
 	grackle_config%gr_use_isrf_field(1) = 0          ! interstellar radiation field on
 	grackle_config%gr_with_radiative_cooling(1) = 1 ! cooling on
-	grackle_config%gr_primordial_chemistry(1) = 2  ! network with H, He, D
+	grackle_config%gr_primordial_chemistry(1) = 3  ! network with H, He, D
 	grackle_config%gr_dust_chemistry(1) = 1        ! dust processes
 	grackle_config%gr_metal_cooling(1) = 1          ! metal cooling on
 	grackle_config%gr_h2_on_dust(1) = 1                ! H2 formation on dust
-	grackle_config%gr_UVbackground(1) = 0
+	grackle_config%gr_UVbackground(1) = 1
 	grackle_config%gr_comoving_coordinates(1) = 0
 	grackle_config%gr_cmb_temperature_floor(1) = 0
 	grackle_config%gr_density_units(1) = 1.67d-18
@@ -523,6 +514,11 @@ ism_config%He_abundance      = 0.1
 	grackle_config%gr_a_units(1) = 1.0d0
 	grackle_config%a_value(1) = 1.0d0
 	grackle_config%gr_Gamma(1) = 1.66666666667d0
+  grackle_config%deviation_to_density_limit(1)  = 5.0d0
+	grackle_config%HydrogenFractionByMass(1) = 0.716d0
+	grackle_config%HeliumFractionByMass(1) = 0.284d0 ! as in Chapter 6
+	grackle_config%MetalFractionByMass(1) = 0.0194d0
+  grackle_config%DeuteriumToHydrogenRatio(1) = 0.0d0
 	!grackle_config%gr_Tlow(1) = 100.0d0
   	grackle_config%deviation_to_density(1) = 1.0d-20
   	grackle_config%deviation_to_density(2) = 1.0d-20

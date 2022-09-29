@@ -83,6 +83,20 @@ module mod_usr
   type(gr_solver)                   :: grackle_default
   logical, allocatable               :: strat_profile(:^D&)
 
+  ! Types used for Grackle
+  TYPE(grackle_units),TARGET :: my_grackle_units
+  TYPE(grackle_field_data),TARGET :: my_grackle_fields
+  TYPE(chemistry_data),TARGET :: my_grackle_data
+  TYPE(chemistry_data_storage),TARGET :: my_grackle_rates
+  TYPE(GPStruct),TARGET :: GPS_primordial
+  TYPE(GPStruct),TARGET :: GPS_metal
+  TYPE(UVBtable),TARGET :: UVBTble
+  TYPE(cloudy_data),TARGET :: cloudy_primordial
+  TYPE(cloudy_data),TARGET :: cloudy_metal
+  
+
+
+
   !type(star) :: star_ms
   !type(star) :: sun
 
@@ -1546,6 +1560,20 @@ subroutine initglobaldata_usr
  call usr_normalise_parameters()
  if(mype==0)call usr_write_setting
 
+ !!Variables that must be initialized here:
+ !TYPE(grackle_units), :: my_grackle_units
+ !TYPE(chemistry_data) :: my_grackle_data
+ !TYPE(chemistry_data_storage) :: my_grackle_rates
+ !TYPE(GPStruct) :: GPS_primordial
+ !TYPE(GPStruct) :: GPS_metal
+ !!
+
+ call grackle_solver%set_parameters(my_grackle_data,my_grackle_rates,my_grackle_units,&
+                                    UVBTble,cloudy_primordial,&
+                                    cloudy_metal,GPS_primordial,GPS_metal)
+
+
+
 
 
 end subroutine initglobaldata_usr
@@ -1644,6 +1672,7 @@ end subroutine initglobaldata_usr
        iobj=iobj+1
        jet_yso(i_jet_yso)%subname='initonegrid_usr'
        call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,global_time,x,w,grackle_solver)
+       call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
        patch_inuse(ixO^S) = jet_yso(i_jet_yso)%patch(ixO^S)
        cond_ism_onjet : if(usrconfig%ism_on)then
         Loop_isms2 : do i_ism=0,usrconfig%ism_number-1
@@ -2328,8 +2357,10 @@ return
    ! set jet
       cond_agn_on : if(usrconfig%jet_yso_on)then
        Loop_jet_yso : do i_jet_yso=0,usrconfig%jet_yso_number-1
+        iobj=iobj+1
         jet_yso(i_jet_yso)%subname='specialbound_usr'
         call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,qt,x,w,gr_solv=grackle_solver)
+        call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
          patch_inuse(ixO^S) = jet_yso(i_jet_yso)%patch(ixO^S)
          cond_ism_onjet : if(usrconfig%ism_on)then
           Loop_ism_jet : do i_ism=0,usrconfig%ism_number-1
@@ -2587,6 +2618,18 @@ return
           end do Loop_clouds
         end if cond_usr_cloud
 
+        if(usrconfig%grackle_chemistry_on)then
+          if(grackle_solver%myconfig%use_grackle(1)==1)then
+            
+            call grackle_solver%set_dt(w,ixI^L,ixO^L,qt,dtnew,dx^D,x,&
+                          my_grackle_data,my_grackle_rates,my_grackle_units,&
+                          UVBTble,cloudy_primordial,&
+                          cloudy_metal,GPS_primordial,GPS_metal)
+
+            !write(*,*) 'dtchem->dt = ', dtnew
+          end if
+        end if
+
 
 
      end subroutine special_get_dt
@@ -2663,7 +2706,7 @@ return
     integer, parameter         :: ipressure_usr_      = 5
     integer, parameter         :: igammaeff_       = 6
     integer, parameter         :: imeanmupeff_       = 7
-    integer, parameter         :: ierror_lohner_rho_ = 8
+    integer, parameter         :: idensitygas = 8
     integer, parameter         :: ierror_lohner_p_   = 9
     integer, parameter         :: ideltav_dust11_    = 10
     integer, parameter         :: ideltav_dust12_    = 11
@@ -2740,12 +2783,18 @@ return
       case(ipos_zCC_)
         normconv(nw+ipos_zCC_)     = 1.0_dp
         win(ixO^S,nw+ipos_zCC_)    = x(ixO^S,z_)*unit_length
-      case(ierror_lohner_rho_)
-        unit_luminosity =  unit_pressure/( unit_numberdensity**2.0_dp * unit_time &
-                          *  phys_config%mean_mass**2.0_dp)
-
-        normconv(nw+iw)     = 1.0_dp
-        win(ixO^S,nw+ierror_lohner_rho_) = w(ixO^S,phys_ind%Lcool1_) * unit_luminosity
+      case(idensitygas)
+        normconv(nw+idensitygas)     = w_convert_factor(phys_ind%rho_)
+        win(ixO^S,nw+idensitygas) = (w(ixO^S,phys_ind%HI_density_)+&
+         w(ixO^S,phys_ind%HII_density_)+&
+         w(ixO^S,phys_ind%HM_density_)+&
+         w(ixO^S,phys_ind%H2I_density_)+&
+         w(ixO^S,phys_ind%H2II_density_)+&
+         w(ixO^S,phys_ind%HeI_density_)+&
+         w(ixO^S,phys_ind%HeII_density_)+&
+         w(ixO^S,phys_ind%HeIII_density_)+&
+         w(ixO^S,phys_ind%e_density_)+&
+         w(ixO^S,phys_ind%metal_density_))
       case(ierror_lohner_p_)
         normconv(nw+iw)     = 1.0_dp
         win(ixG^T,nw+ierror_lohner_p_) = 0.0_dp
@@ -2861,7 +2910,7 @@ return
     integer, parameter         :: ipressure_usr_      = 5
     integer, parameter         :: igammaeff_       = 6
     integer, parameter         :: imeanmupeff_       = 7
-    integer, parameter         :: ierror_lohner_rho_ = 8
+    integer, parameter         :: idensitygas = 8
     integer, parameter         :: ierror_lohner_p_   = 9
     integer, parameter         :: ideltav_dust11_    = 10
     integer, parameter         :: ideltav_dust12_    = 11
@@ -2888,8 +2937,8 @@ return
         varnames(indensity_)           = 'number_density'
       case(ipressure_usr_)
         varnames(ipressure_usr_)           = 'pressure_usr'
-      case(ierror_lohner_rho_)
-        varnames(ierror_lohner_rho_)   = 'L1_denorm'
+      case(idensitygas)
+        varnames(idensitygas)   = 'rhogas'
       case(ierror_lohner_p_)
         varnames(ierror_lohner_p_)     = 'erroamrp'
       case(ideltav_dust11_)

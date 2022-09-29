@@ -175,25 +175,26 @@ int free_chemistry_data();
 
 grackle_version get_grackle_version(void);
 
-int associate_chemistry_data(chemistry_data *my_chemistry_in,
-			 chemistry_data *my_chemistry_out,
-			 code_units *my_units_in,
-			 code_units *my_units_out);
-
-int setSizeGPS(GPStruct *my_GPS);
-
-GPStruct extractGPS(cloudy_data *my_cloudy_data);
-
-int freeGPS(GPStruct *my_GPS);
-
 void show_parameters(FILE *fp, chemistry_data *my_chemistry);
 
 int c_calculate_cooling_time(chemistry_data *my_chemistry,
-                                 code_units *my_units,
-                                 grackle_field_data *my_fields,
-                                 chemistry_data_storage *my_rates,
-                                 UVBtable my_UVbackground_table,
-                                 GPStruct *GPS_primordial,
-                                 GPStruct *GPS_metal,
-                                 gr_float *cooling_time);
+                 chemistry_data_storage *my_rates,
+                 grackle_field_data *my_fields,
+                 code_units *my_units,
+                 UVBtable *UVBTble,
+                 cloudy_data *cloudy_primordial,
+                 cloudy_data *cloudy_metal,
+                 GPStruct *GPS_primordial,
+                 GPStruct *GPS_metal,
+                 double *cooling_time);
+
+int initchemdata(chemistry_data *my_chemistry,
+                 chemistry_data_storage *my_rates,
+                 code_units *my_units,
+                 UVBtable *UVBTble,
+                 cloudy_data *cloudy_primordial,
+                 cloudy_data *cloudy_metal,
+                 GPStruct *GPS_primordial,
+                 GPStruct *GPS_metal);
+
 #endif

@@ -208,6 +208,8 @@ contains
     write(unit_config,*) 'Pressure    = ', self%myconfig%pressure
     write(unit_config,*) 'Temperature = ', self%myconfig%temperature
     write(unit_config,*) 'Gamma = '      , self%myconfig%gamma
+    write(unit_config,*) 'Mean molecular weight = ', self%myconfig%mean_mup*&
+    w_convert_factor(phys_ind%mup_)
     write(unit_config,*) 'Speed       = ', self%myconfig%velocity
     write(unit_config,*) 'magnetic    = ', self%myconfig%magnetic
     write(unit_config,*) 'sound speed = ', self%myconfig%c_sound
@@ -375,39 +377,39 @@ contains
    !--------------------------------
 
    if(ndim>1) then
-   self%myconfig%r_in_init   = nint((self%myconfig%r_in_init/unit_length-box_limit(1,r_)) &
-                                  /dx(1,refine_max_level))  &
+   self%myconfig%r_in_init   = nint((self%myconfig%r_in_init/unit_length-box_limit(1,r_))/ &
+                                  dx(1,refine_max_level))  &
                                *dx(1,refine_max_level)*unit_length&
                                -0.5_dp*dx(1,refine_max_level)*unit_length
    print*,'1)the jet radius = ',self%myconfig%r_out_init
-   self%myconfig%r_out_init  = nint((self%myconfig%r_out_init/unit_length-box_limit(1,r_)) &
-                                    /dx(1,refine_max_level))  &
+   self%myconfig%r_out_init  = nint((self%myconfig%r_out_init/unit_length-box_limit(1,r_))/ &
+                                    dx(1,refine_max_level))  &
                                *dx(1,refine_max_level)*unit_length&
                                +0.5_dp*dx(1,refine_max_level)*unit_length
    print*,'2)the jet radius = ',self%myconfig%r_out_init
 
-   self%myconfig%r_out_impos = nint((self%myconfig%r_out_impos/unit_length-box_limit(1,r_)) &
-                                      /dx(1,refine_max_level))  &
+   self%myconfig%r_out_impos = nint((self%myconfig%r_out_impos/unit_length-box_limit(1,r_))/ &
+                                      dx(1,refine_max_level))  &
                                  *dx(1,refine_max_level)*unit_length &
                                  +0.5_dp*dx(1,refine_max_level)*unit_length
   end if
-  self%myconfig%z_in        = nint((self%myconfig%z_in/unit_length-box_limit(1,zjet_)) &
-                                    /dx(zjet_,refine_max_level))  &
+  self%myconfig%z_in        = nint((self%myconfig%z_in/unit_length-box_limit(1,zjet_))/ &
+                                    dx(zjet_,refine_max_level))  &
                                *dx(zjet_,refine_max_level)*unit_length&
                               +0.5_dp*dx(zjet_,refine_max_level)*unit_length
-  self%myconfig%z_out_init  = nint((self%myconfig%z_out_init/unit_length-box_limit(1,zjet_)) &
-                                    /dx(zjet_,refine_max_level))  &
+  self%myconfig%z_out_init  = nint((self%myconfig%z_out_init/unit_length-box_limit(1,zjet_))/ &
+                                    dx(zjet_,refine_max_level))  &
                                *dx(zjet_,refine_max_level)*unit_length+0.5_dp*dx(zjet_,refine_max_level)*unit_length
-  self%myconfig%z_impos     = nint((self%myconfig%z_impos/unit_length-box_limit(1,zjet_)) &
-                                    /dx(zjet_,refine_max_level))   &
+  self%myconfig%z_impos     = nint((self%myconfig%z_impos/unit_length-box_limit(1,zjet_))/ &
+                                    dx(zjet_,refine_max_level))   &
                                *dx(zjet_,refine_max_level)*unit_length&
                               +0.5_dp*dx(zjet_,refine_max_level)*unit_length
 
 
 
   Loop_dim : do idims = 1,ndim
-   self%myconfig%variation_position(idims) = nint((self%myconfig%variation_position(idims)/unit_length-box_limit(1,idims)) &
-                                      /dx(idims,refine_max_level))   &
+   self%myconfig%variation_position(idims) = nint((self%myconfig%variation_position(idims)/unit_length-box_limit(1,idims))/ &
+                                      dx(idims,refine_max_level))   &
                                  *dx(idims,refine_max_level)*unit_length&
                                 +0.5_dp*dx(idims,refine_max_level)*unit_length
   end do  Loop_dim
@@ -493,8 +495,8 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
 
 
    if(dabs(self%myconfig%power)>smalldouble) then
-     self%myconfig%mass_flux           = self%myconfig%power&
-                                      /self%myconfig%velocity_poloidal**2.0_dp
+     self%myconfig%mass_flux           = self%myconfig%power/&
+                                      self%myconfig%velocity_poloidal**2.0_dp
    end if
 
 
@@ -534,7 +536,17 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
 
    write(*,*) 'before jet set_complet temperature',self%myconfig%temperature
    if(phys_config%use_grackle)then
-     gr_solv%myconfig%density(i_obj) = self%myconfig%density
+     ! if  gr_solv%myconfig%density(i_obj) = rhoH + rhoHe = rhoXY, then :
+     ! self%myconfig%density \simeq rhotot (gaz so no Dust)
+     ! = rhoH + rhoHe + rhoZ (ignores deuterium and electron mass densities)
+     ! = rhoXY
+     ! + self%myconfig%MetalFractionByMass*rhoXY
+     ! = rhoXY*(1 + self%myconfig%MetalFractionByMass)
+     ! So gr_solv%myconfig%density(i_obj = rhoXY
+     ! = self%myconfig%density/(1+ self%myconfig%MetalFractionByMass)
+     gr_solv%myconfig%density(i_obj) = self%myconfig%density/&
+     (1.0_dp+&
+     gr_solv%myconfig%MetalFractionByMass(i_obj))
      call gr_solv%set_complet(gr_solv%myconfig%density(i_obj),&
      i_obj,.false.)
 
@@ -556,7 +568,7 @@ print*,'the jet self%myconfig%r_out_init = ',self%myconfig%r_out_init
      if(self%myconfig%temperature<smalldouble)then
        call mpistop('Need temperature par for Grackle !')
      else
-self%myconfig%mean_mup = gr_solv%myconfig%density(i_obj)/&
+self%myconfig%mean_mup = gr_solv%myconfig%density_gas(i_obj)/&
 (gr_solv%myconfig%densityHI(i_obj)+&
 gr_solv%myconfig%densityHII(i_obj)+&
 gr_solv%myconfig%densityHM(i_obj)+&
@@ -576,7 +588,7 @@ gr_solv%myconfig%densityElectrons(i_obj)*(mp/me))
        gr_solv%myconfig%densityHeIII(i_obj))/4.0d0 +&
        gr_solv%myconfig%densityHI(i_obj) + &
        gr_solv%myconfig%densityHII(i_obj) +&
-       gr_solv%myconfig%densityElectrons(i_obj)
+       gr_solv%myconfig%densityElectrons(i_obj)*(mp/me)
 
        if(nH2/nother > 1.0d-3)then
          tvar = 6100.0d0/self%myconfig%temperature
@@ -602,15 +614,20 @@ gr_solv%myconfig%densityElectrons(i_obj)*(mp/me))
        self%myconfig%gamma = gammaeff
 
 
-
-       jet_pressu = gr_solv%myconfig%density(i_obj)*kB*&
+       ! Eqs. (14) & (27) of Smith et al. 2017, MNRAS 466, 2217–2234
+       jet_pressu = gr_solv%myconfig%density_gas(i_obj)*kB*&
        self%myconfig%temperature/(self%myconfig%mean_mup*mp)
 
        self%myconfig%pressure = jet_pressu
      end if
+     write(*,*) 'jet set_complet rhoXY',gr_solv%myconfig%density(i_obj)
+     write(*,*) 'jet set_complet rhogas',gr_solv%myconfig%density_gas(i_obj)
      write(*,*) 'jet set_complet density',self%myconfig%density
+     write(*,*) 'jet set_complet rhotot',gr_solv%myconfig%density_tot(i_obj)
      write(*,*) 'jet set_complet HIdensity',self%myconfig%HI_density
      write(*,*) 'jet set_complet H2Idensity',self%myconfig%H2I_density
+     write(*,*) 'jet set_complet HeIdensity',gr_solv%myconfig%densityHeI(i_obj)
+     write(*,*) 'jet set_complet e_density',gr_solv%myconfig%densityElectrons(i_obj)
      write(*,*) 'jet set_complet temperature',self%myconfig%temperature
      write(*,*) 'jet set_complet pressure',self%myconfig%pressure
      write(*,*) 'jet set_complet gamma',self%myconfig%gamma
@@ -645,8 +662,8 @@ gr_solv%myconfig%densityElectrons(i_obj)*(mp/me))
   if(self%myconfig%xisigma>0.0_dp)then
     if(dabs(dabs(dsin(self%myconfig%magn_anglePHItoPol*dpi/180.0_dp))-1.0_dp)>smalldouble)then
      self%myconfig%Magnetic_poloidal =  dsqrt( self%myconfig%density*&
-                          self%myconfig%xisigma&
-                         /(1.0_dp+(dtan(self%myconfig%magn_anglePHItoPol*dpi/180.0_dp))**2.0_dp))
+                          self%myconfig%xisigma/&
+                         (1.0_dp+(dtan(self%myconfig%magn_anglePHItoPol*dpi/180.0_dp))**2.0_dp))
 
      self%myconfig%Magnetic_toroidal = Magnetic_poloidal * dtan(self%myconfig%magn_anglePHItoPol*dpi/180.0d0)
      self%myconfig%magnetic(r_)   = Magnetic_poloidal * dsin(self%myconfig%open_angle*dpi/180.0d0)
@@ -1050,8 +1067,8 @@ end subroutine usr_cla_jet_set_patch
   integer                         :: idir,iobject
   logical                         :: dust_is_frac
   real(kind=dp), dimension(ixI^S) :: fprofile,angle_theta,&
-                                    jet_surface,&
-                                    jet_radius_in,jet_radius
+                                    jet_surface,g_profile,&
+                                    jet_radius_in,jet_radius,mmw_field
   real(kind=dp)                   :: z0,open_angle_in,intermediate_jet_mflux
   real(kind=dp), dimension(ixI^S,1:ndim)::project_speed
 
@@ -1061,6 +1078,8 @@ end subroutine usr_cla_jet_set_patch
     call self%set_patch(ixI^L,ixO^L,qt,x)
   end if
 
+
+  g_profile = 1.0_dp
 
   cond_inside_cla_jet: if(any(self%patch(ixO^S))) then
 
@@ -1131,39 +1150,28 @@ end subroutine usr_cla_jet_set_patch
    where(self%patch(ixO^S))
     w(ixO^S,phys_ind%rho_)        = self%myconfig%mass_flux/(jet_surface(ixO^S)*  &
          dabs(self%myconfig%velocity_poloidal))
+    g_profile(ixO^S) = w(ixO^S,phys_ind%rho_)/self%myconfig%density    
   end where
 
 
   iobject = self%myconfig%myindice+1
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%DI_density_,&
-  gr_solv%myconfig%densityDI(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%DII_density_,&
-  gr_solv%myconfig%densityDII(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HDI_density_,&
-  gr_solv%myconfig%densityHDI(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HI_density_,&
-  gr_solv%myconfig%densityHI(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HII_density_,&
-  gr_solv%myconfig%densityHII(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HM_density_,&
-  gr_solv%myconfig%densityHM(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%H2I_density_,&
-  gr_solv%myconfig%densityH2I(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%H2II_density_,&
-  gr_solv%myconfig%densityH2II(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HeI_density_,&
-  gr_solv%myconfig%densityHeI(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HeII_density_,&
-  gr_solv%myconfig%densityHeII(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%HeIII_density_,&
-  gr_solv%myconfig%densityHeIII(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%e_density_,&
-  gr_solv%myconfig%densityElectrons(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%metal_density_,&
-  gr_solv%myconfig%density_Z(iobject),jet_surface)
-  call self%compute_density(ixI^L,ixO^L,qt,x,w,phys_ind%dust_density_,&
-  gr_solv%myconfig%density_dust(iobject),jet_surface)
-
+  where(self%patch(ixO^S))
+  w(ixO^S,phys_ind%HI_density_)=self%myconfig%HI_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%HII_density_)=self%myconfig%HII_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%HeI_density_)=self%myconfig%HeI_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%HeII_density_)=self%myconfig%HeII_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%HeIII_density_)=self%myconfig%HeIII_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%e_density_)=self%myconfig%e_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%HM_density_)=self%myconfig%HM_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%H2I_density_)=self%myconfig%H2I_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%H2II_density_)=self%myconfig%H2II_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%DI_density_)=self%myconfig%DI_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%DII_density_)=self%myconfig%DII_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%HDI_density_)=self%myconfig%HDI_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%metal_density_)=self%myconfig%metal_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%dust_density_)=self%myconfig%dust_density*g_profile(ixO^S)
+  w(ixO^S,phys_ind%pressure_) =  self%myconfig%pressure*g_profile(ixO^S)
+  end where
 
 
   where(self%patch(ixO^S))
@@ -1252,7 +1260,7 @@ end subroutine usr_cla_jet_set_patch
   end if cond_mhd
 
 
-   cond_var_0 : if(self%myconfig%variation_on)then
+   !cond_var_0 : if(self%myconfig%variation_on)then
     !.and.&
     !               self%myconfig%variation_position(zjet_)<=self%myconfig%z_impos)then
     !  self%myconfig%variation_position(zjet_)=&
@@ -1261,14 +1269,9 @@ end subroutine usr_cla_jet_set_patch
 
      call self%add_ejecta(ixI^L,ixO^L,qt,.false.,x,w)
 
-   end if cond_var_0
+   !end if cond_var_0
 
 
-   if(phys_config%mean_mup_on) then
-     where(self%patch(ixO^S))
-        w(ixO^S,phys_ind%mup_) = self%myconfig%mean_mup
-     end where
-   end if
 
    !if(phys_config%energy)then
     !if(phys_config%mean_mup_on)then
@@ -1345,6 +1348,18 @@ end subroutine usr_cla_jet_set_patch
       tiny_number*w(ixO^S,phys_ind%rho_))
     end where
 
+   !call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
+
+   if(phys_config%mean_mup_on) then
+     where(self%patch(ixO^S))
+        w(ixO^S,phys_ind%mup_) = self%myconfig%mean_mup
+        !mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
+        
+     end where
+   end if
+
+
+
    end if cond_inside_cla_jet
 
 
@@ -1412,11 +1427,11 @@ end subroutine usr_cla_add_source
 
    !----------------------------------------------------------
 
-   cond_var_0 : if(self%myconfig%variation_on)then
+   !cond_var_0 : if(self%myconfig%variation_on)then
     !.and.&
     !               self%myconfig%variation_position(zjet_)>self%myconfig%z_impos)then
      call self%add_ejecta(ixI^L,ixO^L,qt,.true.,x,w)
-   end if cond_var_0
+   !end if cond_var_0
 
 
    cond_dust_on : if(self%myconfig%dust_on)then
@@ -1497,9 +1512,14 @@ end subroutine usr_cla_add_source
    real(kind=dp), dimension(ixI^S)       :: angle_theta,jet_radius
    real(kind=dp), dimension(ixI^S,1:ndim)::project_speed
    !------------------------------------------------------
+
+
     !n_cells= self%myconfig%variation_n_cells
     cond_time_var : if(qt>=self%myconfig%variation_start_time&
                        .and.qt<=self%myconfig%variation_end_time) then
+
+      if(is_conserved)call phys_to_primitive(ixI^L,ixO^L,w,x)
+
 
       cond_conical : if(trim(self%myconfig%shape)=='conical')then
         select case(typeaxial)
@@ -1535,11 +1555,12 @@ end subroutine usr_cla_add_source
 
      cond_inside : if(any(self%ejecta_patch(ixO^S)))then
 
+        cond_var_0 : if(self%myconfig%variation_on)then
 
         call usr_mat_profile_scalar(qt,self%myconfig%variation_time,&
                                     self%myconfig%variation_type,Vprofile)
 
-        if(is_conserved)call phys_to_primitive(ixI^L,ixO^L,w,x)
+
 
 
 
@@ -1571,21 +1592,21 @@ end subroutine usr_cla_add_source
               h_time            =  1.0_dp
              end select
             where(self%ejecta_patch(ixO^S))
-             w(ixO^S,phys_ind%rho_)=self%myconfig%density*h_time
-             w(ixO^S,phys_ind%HI_density_)=self%myconfig%HI_density*h_time
-             w(ixO^S,phys_ind%HII_density_)=self%myconfig%HII_density*h_time
-             w(ixO^S,phys_ind%HeI_density_)=self%myconfig%HeI_density*h_time
-             w(ixO^S,phys_ind%HeII_density_)=self%myconfig%HeII_density*h_time
-             w(ixO^S,phys_ind%HeIII_density_)=self%myconfig%HeIII_density*h_time
-             w(ixO^S,phys_ind%e_density_)=self%myconfig%e_density*h_time
-             w(ixO^S,phys_ind%HM_density_)=self%myconfig%HM_density*h_time
-             w(ixO^S,phys_ind%H2I_density_)=self%myconfig%H2I_density*h_time
-             w(ixO^S,phys_ind%H2II_density_)=self%myconfig%H2II_density*h_time
-             w(ixO^S,phys_ind%DI_density_)=self%myconfig%DI_density*h_time
-             w(ixO^S,phys_ind%DII_density_)=self%myconfig%DII_density*h_time
-             w(ixO^S,phys_ind%HDI_density_)=self%myconfig%HDI_density*h_time
-             w(ixO^S,phys_ind%metal_density_)=self%myconfig%metal_density*h_time
-             w(ixO^S,phys_ind%dust_density_)=self%myconfig%dust_density*h_time
+             w(ixO^S,phys_ind%rho_)=w(ixO^S,phys_ind%rho_)*h_time
+             w(ixO^S,phys_ind%HI_density_)=w(ixO^S,phys_ind%HI_density_)*h_time
+             w(ixO^S,phys_ind%HII_density_)=w(ixO^S,phys_ind%HII_density_)*h_time
+             w(ixO^S,phys_ind%HeI_density_)=w(ixO^S,phys_ind%HeI_density_)*h_time
+             w(ixO^S,phys_ind%HeII_density_)=w(ixO^S,phys_ind%HeII_density_)*h_time
+             w(ixO^S,phys_ind%HeIII_density_)=w(ixO^S,phys_ind%HeIII_density_)*h_time
+             w(ixO^S,phys_ind%e_density_)=w(ixO^S,phys_ind%e_density_)*h_time
+             w(ixO^S,phys_ind%HM_density_)=w(ixO^S,phys_ind%HM_density_)*h_time
+             w(ixO^S,phys_ind%H2I_density_)=w(ixO^S,phys_ind%H2I_density_)*h_time
+             w(ixO^S,phys_ind%H2II_density_)=w(ixO^S,phys_ind%H2II_density_)*h_time
+             w(ixO^S,phys_ind%DI_density_)=w(ixO^S,phys_ind%DI_density_)*h_time
+             w(ixO^S,phys_ind%DII_density_)=w(ixO^S,phys_ind%DII_density_)*h_time
+             w(ixO^S,phys_ind%HDI_density_)=w(ixO^S,phys_ind%HDI_density_)*h_time
+             w(ixO^S,phys_ind%metal_density_)=w(ixO^S,phys_ind%metal_density_)*h_time
+             w(ixO^S,phys_ind%dust_density_)=w(ixO^S,phys_ind%dust_density_)*h_time
             end where
 
 
@@ -1599,11 +1620,41 @@ end subroutine usr_cla_add_source
               where(self%ejecta_patch(ixO^S))
                w(ixO^S,phys_ind%pressure_) =  self%myconfig%pressure*h_time
               end where
+            else cond_pressure_variation_on
+              where(self%ejecta_patch(ixO^S))
+               w(ixO^S,phys_ind%pressure_) =  self%myconfig%pressure
+              end where
             end if cond_pressure_variation_on
            end if cond_density_variation_on
-        if(is_conserved)call phys_to_conserved(ixI^L,ixO^L,w,x)
+
+
+
+
+      else cond_var_0
+        where(self%ejecta_patch(ixO^S))
+             w(ixO^S,phys_ind%rho_)=w(ixO^S,phys_ind%rho_)
+             w(ixO^S,phys_ind%HI_density_)=w(ixO^S,phys_ind%HI_density_)
+             w(ixO^S,phys_ind%HII_density_)=w(ixO^S,phys_ind%HII_density_)
+             w(ixO^S,phys_ind%HeI_density_)=w(ixO^S,phys_ind%HeI_density_)
+             w(ixO^S,phys_ind%HeII_density_)=w(ixO^S,phys_ind%HeII_density_)
+             w(ixO^S,phys_ind%HeIII_density_)=w(ixO^S,phys_ind%HeIII_density_)
+             w(ixO^S,phys_ind%e_density_)=w(ixO^S,phys_ind%e_density_)
+             w(ixO^S,phys_ind%HM_density_)=w(ixO^S,phys_ind%HM_density_)
+             w(ixO^S,phys_ind%H2I_density_)=w(ixO^S,phys_ind%H2I_density_)
+             w(ixO^S,phys_ind%H2II_density_)=w(ixO^S,phys_ind%H2II_density_)
+             w(ixO^S,phys_ind%DI_density_)=w(ixO^S,phys_ind%DI_density_)
+             w(ixO^S,phys_ind%DII_density_)=w(ixO^S,phys_ind%DII_density_)
+             w(ixO^S,phys_ind%HDI_density_)=w(ixO^S,phys_ind%HDI_density_)
+             w(ixO^S,phys_ind%metal_density_)=w(ixO^S,phys_ind%metal_density_)
+             w(ixO^S,phys_ind%dust_density_)=w(ixO^S,phys_ind%dust_density_)
+        end where
+      end if cond_var_0
       end if cond_inside
+
+      if(is_conserved) call phys_to_conserved(ixI^L,ixO^L,w,x)
+
     end if  cond_time_var
+
 
 
  end subroutine usr_cla_add_ejecta

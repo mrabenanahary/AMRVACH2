@@ -71,8 +71,9 @@ c     This is the fortran definition of grackle_field_data
          TYPE(C_PTR) :: RT_HeI_ionization_rate
          TYPE(C_PTR) :: RT_HeII_ionization_rate
          TYPE(C_PTR) :: RT_H2_dissociation_rate
-         TYPE(C_PTR) :: H2_custom_shielding_factor
+
          TYPE(C_PTR) :: H2_self_shielding_length
+         TYPE(C_PTR) :: H2_custom_shielding_factor
 
          TYPE(C_PTR) :: isrf_habing
       END TYPE
@@ -92,9 +93,9 @@ c     This is the fortran definition of grackle_field_data
          TYPE(C_PTR) :: final_gamma
       END TYPE
 
-c     This is the fortran definition of grackle_chemistry_data
+c     This is the fortran definition of chemistry_data
 
-      TYPE, BIND(C) :: grackle_chemistry_data
+      TYPE, BIND(C) :: chemistry_data
          INTEGER(C_INT) :: use_grackle
          INTEGER(C_INT) :: with_radiative_cooling
          INTEGER(C_INT) :: primordial_chemistry
@@ -153,6 +154,46 @@ c     This is the fortran definition of grackle_chemistry_data
          INTEGER(C_INT) :: bremsstrahlung_cooling_rates
 cc       INTEGER(C_INT) :: omp_nthreads // not supported in fortran
       END TYPE
+      
+c     This is the fortran definition of UVBtable
+
+      TYPE, BIND(C) :: UVBtable
+         INTEGER(C_LONG_LONG) :: Nz
+
+         REAL(C_DOUBLE) :: zmin
+         REAL(C_DOUBLE) :: zmax
+         TYPE(C_PTR) :: z
+
+         TYPE(C_PTR) :: k24
+         TYPE(C_PTR) :: k25
+         TYPE(C_PTR) :: k26
+
+         TYPE(C_PTR) :: k27
+         TYPE(C_PTR) :: k28
+         TYPE(C_PTR) :: k29
+         TYPE(C_PTR) :: k30
+         TYPE(C_PTR) :: k31
+
+         TYPE(C_PTR) :: piHI
+         TYPE(C_PTR) :: piHeI
+         TYPE(C_PTR) :: piHeII
+
+         TYPE(C_PTR) :: crsHI
+         TYPE(C_PTR) :: crsHeI
+         TYPE(C_PTR) :: crsHeII
+      END TYPE
+
+c     This is the fortran definition of cloudy_data
+
+      TYPE, BIND(C) :: cloudy_data
+         INTEGER(C_LONG_LONG) :: grid_rank
+         TYPE(C_PTR) :: grid_dimension
+         TYPE(C_PTR) :: grid_parameters
+         TYPE(C_PTR) :: heating_data
+         TYPE(C_PTR) :: cooling_data
+         TYPE(C_PTR) :: mmw_data
+         INTEGER(C_LONG_LONG) :: data_size
+      END TYPE      
 
 c     This is the fortran definition of chemistry_data_storage
 
@@ -263,74 +304,20 @@ c     This is the fortran definition of chemistry_data_storage
 
          TYPE(C_PTR) :: gas_grain
 
+         TYPE(UVBtable) :: UVbackground_table
+
+         TYPE(cloudy_data) :: cloudy_primordial
+
+         TYPE(cloudy_data) :: cloudy_metal
+
          INTEGER(C_INT) :: cloudy_data_new
-      END TYPE
-
-c     This is the fortran definition of UVBtable
-
-      TYPE, BIND(C) :: UVBtable
-         INTEGER(C_LONG_LONG) :: Nz
-
-         REAL(C_DOUBLE) :: zmin
-         REAL(C_DOUBLE) :: zmax
-         TYPE(C_PTR) :: z
-
-         TYPE(C_PTR) :: k24
-         TYPE(C_PTR) :: k25
-         TYPE(C_PTR) :: k26
-
-         TYPE(C_PTR) :: k27
-         TYPE(C_PTR) :: k28
-         TYPE(C_PTR) :: k29
-         TYPE(C_PTR) :: k30
-         TYPE(C_PTR) :: k31
-
-         TYPE(C_PTR) :: piHI
-         TYPE(C_PTR) :: piHeI
-         TYPE(C_PTR) :: piHeII
-
-         TYPE(C_PTR) :: crsHI
-         TYPE(C_PTR) :: crsHeI
-         TYPE(C_PTR) :: crsHeII
-      END TYPE
-
-c     This is the fortran definition of cloudy_data
-
-      TYPE, BIND(C) :: cloudy_data
-         INTEGER(C_LONG_LONG) :: grid_rank
-
-         TYPE(C_PTR) :: grid_dimension
-
-c        TYPE(C_PTR) :: grid_parameters
-         TYPE(C_PTR) :: k25
-         TYPE(C_PTR) :: k26
-
-         TYPE(C_PTR) :: k27
-         TYPE(C_PTR) :: k28
-         TYPE(C_PTR) :: k29
-         TYPE(C_PTR) :: k30
-         TYPE(C_PTR) :: k31
-
-         TYPE(C_PTR) :: piHI
-         TYPE(C_PTR) :: piHeI
-         TYPE(C_PTR) :: piHeII
-
-         TYPE(C_PTR) :: crsHI
-         TYPE(C_PTR) :: crsHeI
-         TYPE(C_PTR) :: crsHeII
       END TYPE
 
       TYPE, BIND(C) :: GPStruct
 
          INTEGER(C_LONG_LONG) :: size1
          TYPE(C_PTR) :: size2
-
-         TYPE(C_PTR) :: grid_parameters
-      END TYPE
-
-
-      TYPE, BIND(C) :: f_integer
-         TYPE(C_PTR) :: n
+         TYPE(C_PTR) :: grid_parameters_oned
       END TYPE
 
 c     The following define the fortran interfaces to the C routines
@@ -362,7 +349,7 @@ c     The following define the fortran interfaces to the C routines
          INTEGER(C_INT) FUNCTION set_default_chemistry_parameters
      &        (my_grackle) bind(C)
             IMPORT
-            TYPE(grackle_chemistry_data), INTENT(INOUT) :: my_grackle
+            TYPE(chemistry_data), INTENT(INOUT) :: my_grackle
          END FUNCTION set_default_chemistry_parameters
       END INTERFACE
 
@@ -438,4 +425,47 @@ c     The following define the fortran interfaces to the C routines
          INTEGER(C_INT) FUNCTION free_chemistry_data() bind(C)
             IMPORT
          END FUNCTION free_chemistry_data
+      END INTERFACE
+
+      INTERFACE
+         TYPE(chemistry_data) FUNCTION chemdefaultparams()
+     &        bind(C, name="_set_default_chemistry_parameters")
+            IMPORT
+         END FUNCTION chemdefaultparams
+      END INTERFACE
+
+      INTERFACE
+         INTEGER(C_INT) FUNCTION initchemdata(my_chemistry,
+     &        my_rates,my_units,UVBTble,cloudy_primordial,
+     &        cloudy_metal, GPS_primordial, GPS_metal)
+     &        bind(C, name="initchemdata")
+            IMPORT
+            TYPE(grackle_units), INTENT(INOUT) :: my_units
+            TYPE(chemistry_data), INTENT(INOUT) :: my_chemistry
+            TYPE(chemistry_data_storage), INTENT(INOUT) :: my_rates
+            TYPE(UVBtable), INTENT(INOUT) :: UVBTble
+            TYPE(cloudy_data), INTENT(INOUT) :: cloudy_primordial
+            TYPE(cloudy_data), INTENT(INOUT) :: cloudy_metal
+            TYPE(GPStruct), INTENT(INOUT) :: GPS_primordial
+            TYPE(GPStruct), INTENT(INOUT) :: GPS_metal
+         END FUNCTION initchemdata
+      END INTERFACE
+
+      INTERFACE
+         INTEGER(C_INT) FUNCTION c_calculate_cooling_time(my_chemistry,
+     &        my_rates,my_fields,my_units,UVBTble,cloudy_primordial,
+     &        cloudy_metal, GPS_primordial, GPS_metal,cooling_time)
+     &        bind(C, name="c_calculate_cooling_time")
+            IMPORT
+            TYPE(grackle_units), INTENT(INOUT) :: my_units
+            TYPE(chemistry_data), INTENT(INOUT) :: my_chemistry
+            TYPE(chemistry_data_storage), INTENT(INOUT) :: my_rates
+            TYPE(grackle_field_data), INTENT(INOUT) :: my_fields
+            TYPE(UVBtable), INTENT(INOUT) :: UVBTble
+            TYPE(cloudy_data), INTENT(INOUT) :: cloudy_primordial
+            TYPE(cloudy_data), INTENT(INOUT) :: cloudy_metal
+            TYPE(GPStruct), INTENT(INOUT) :: GPS_primordial
+            TYPE(GPStruct), INTENT(INOUT) :: GPS_metal
+            REAL(C_DOUBLE), INTENT(OUT) :: cooling_time(*)
+         END FUNCTION c_calculate_cooling_time
       END INTERFACE

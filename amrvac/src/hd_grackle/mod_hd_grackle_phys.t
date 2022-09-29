@@ -1462,7 +1462,20 @@ end subroutine hd_get_aux
     real(kind=dp)                :: tvar
     !real(kind=dp), dimension(ixI^S ):: tvar
     integer :: imesh^D
-    !----------------------------------------------------
+    real(dp)                 :: mp,kB,me
+    !-------------------------------------------------------
+
+
+    if(SI_unit) then
+      mp=mp_SI
+      kB=kB_SI
+      me = const_me*1.0d-3
+    else
+      mp=mp_cgs
+      kB=kB_cgs
+      me = const_me
+    end if
+
     !write(*,*) 'temperature field = ', w(ixO^S,temperature_)*w_convert_factor(temperature_)
     if (hd_config%use_grackle) then
       !write(*,*) 'hd_get_gamma H2I',w(ixO^S,rhoH2I_)
@@ -1478,7 +1491,7 @@ end subroutine hd_get_aux
       nother(ixO^S) = (w(ixO^S,rhoHeI_) + w(ixO^S,rhoHeII_) +&
                    w(ixO^S,rhoHeIII_))/4.0d0 +&
                    w(ixO^S,rhoHI_) + w(ixO^S,rhoHII_) +&
-                   w(ixO^S,rhoe_)
+                   w(ixO^S,rhoe_)*(mp/me)
       {do imesh^D=ixOmin^D,ixOmax^D|\}
       if(nH2(imesh^D)/nother(imesh^D) > 1.0d-3)then
         tvar = 6100.0d0/(w(imesh^D, temperature_)*&
@@ -1542,6 +1555,9 @@ end subroutine hd_get_aux
 
 
     if (hd_config%use_grackle) then
+      ! rho = rhogas = rhotot - rhoDust
+      ! (ignores deuterium and gas so no dust)
+      ! Eqs. (14) & (27) of Smith et al. 2017, MNRAS 466, 2217–2234
       mmw(ixO^S) = w(ixO^S,rho_)/&
         (w(ixO^S,rhoHI_)+w(ixO^S,rhoHII_)+&
         w(ixO^S,rhoHM_)+&

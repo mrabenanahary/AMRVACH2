@@ -495,15 +495,26 @@ contains
     integer                   :: i_obj
     ! .. local ..
     logical                  :: dust_is_frac
-    real(dp)                 :: mp,kb,Ggrav,r_normalized,costhetazero
+    real(dp)                 :: Ggrav,r_normalized,costhetazero
     integer                  :: idim,iside,idims,iB2,iw2
     real(dp)                 :: temperature_intermediate, temperature_ratio
     real(dp)                 :: ism_temper, ism_pressu
     real(kind=dp):: nH2, nother
     real(kind=dp):: gammaoth,gammaeff,tvar
     real(kind=dp):: inv_gammaH2_1, inv_gammaoth_1
+    real(dp)                 :: mp,kB,me
+    !-------------------------------------------------------
 
-    !-----------------------------------
+
+    if(SI_unit) then
+      mp=mp_SI
+      kB=kB_SI
+      me = const_me*1.0d-3
+    else
+      mp=mp_cgs
+      kB=kB_cgs
+      me = const_me
+    end if
 
     write(*,*) '======================Beginning of ism_set_w settings======================='
     print*, '* at (R,z) = (r_j,0) : '
@@ -551,13 +562,7 @@ contains
     end if
 
 
-    if(SI_unit) then
-      mp=mp_SI
-      kB=kB_SI
-    else
-      mp=mp_cgs
-      kB=kB_cgs
-    end if
+
     Ggrav = constusr%G
 
 
@@ -684,18 +689,31 @@ contains
     end if cond_Mach_set
 
     if(phys_config%use_grackle)then
+      ! if  gr_solv%myconfig%density(i_obj) = rhoH + rhoHe = rhoXY, then :
+      ! self%myconfig%density \simeq rhotot (gaz so no Dust)
+      ! = rhoH + rhoHe + rhoZ (ignores deuterium and electron mass densities)
+      ! = rhoXY
+      ! + self%myconfig%MetalFractionByMass*rhoXY
+      ! = rhoXY*(1 + self%myconfig%MetalFractionByMass)
+      ! So gr_solv%myconfig%density(i_obj = rhoXY
+      ! = self%myconfig%density/(1+ self%myconfig%MetalFractionByMass)
       if(trim(self%myconfig%profile_density)=='Ulrich1976')then
         gr_solv%myconfig%density(i_obj) = self%myconfig%profile_rho_0
       else
         gr_solv%myconfig%density(i_obj) = self%myconfig%density
       end if
+      gr_solv%myconfig%density(i_obj) = gr_solv%myconfig%density(i_obj)/&
+      (1.0_dp+&
+      gr_solv%myconfig%MetalFractionByMass(i_obj))
+
       call gr_solv%set_complet(gr_solv%myconfig%density(i_obj),&
       i_obj,.false.)
+
       if(self%myconfig%temperature<smalldouble)then
         call mpistop('Need temperature par for Grackle !')
       else
-
-        self%myconfig%mean_mup = gr_solv%myconfig%density(i_obj)/&
+        ! rhoGrackle = (rhotot - rhoDust -rhoD) (ignore deuterium, gaz so no dust)
+        self%myconfig%mean_mup = gr_solv%myconfig%density_gas(i_obj)/&
         (gr_solv%myconfig%densityHI(i_obj)+&
         gr_solv%myconfig%densityHII(i_obj)+&
         gr_solv%myconfig%densityHM(i_obj)+&
@@ -704,16 +722,18 @@ contains
         gr_solv%myconfig%densityHeIII(i_obj))+&
         0.5*(gr_solv%myconfig%densityH2I(i_obj)+&
         gr_solv%myconfig%densityH2II(i_obj))+&
-        gr_solv%myconfig%density_Z(i_obj)/16.0)
+        gr_solv%myconfig%density_Z(i_obj)/16.0+&
+        gr_solv%myconfig%densityElectrons(i_obj)*(mp/me))
 
         nH2 = 0.5d0*(gr_solv%myconfig%densityH2I(i_obj) + &
         gr_solv%myconfig%densityH2II(i_obj))
+
         nother = (gr_solv%myconfig%densityHeI(i_obj) +&
         gr_solv%myconfig%densityHeII(i_obj) +&
         gr_solv%myconfig%densityHeIII(i_obj))/4.0d0 +&
         gr_solv%myconfig%densityHI(i_obj) + &
         gr_solv%myconfig%densityHII(i_obj) +&
-        gr_solv%myconfig%densityElectrons(i_obj)
+        gr_solv%myconfig%densityElectrons(i_obj)*(mp/me)
 
         if(nH2/nother > 1.0d-3)then
           tvar = 6100.0d0/self%myconfig%temperature
@@ -739,8 +759,8 @@ contains
         self%myconfig%gamma = gammaeff
 
 
-
-        ism_pressu = gr_solv%myconfig%density(i_obj)*kB*&
+        ! Eqs. (14) & (27) of Smith et al. 2017, MNRAS 466, 2217–2234
+        ism_pressu = gr_solv%myconfig%density_gas(i_obj)*kB*&
         self%myconfig%temperature/(self%myconfig%mean_mup*mp)
 
         if(trim(self%myconfig%profile_density)=='Ulrich1976')then
@@ -748,7 +768,10 @@ contains
         else
           self%myconfig%pressure = ism_pressu
         end if
-        write(*,*) 'ISM set_complet density',gr_solv%myconfig%density(i_obj)
+        write(*,*) 'ISM set_complet rhoXY',gr_solv%myconfig%density(i_obj)
+        write(*,*) 'ISM set_complet rhogas',gr_solv%myconfig%density_gas(i_obj)
+        write(*,*) 'ISM set_complet density',self%myconfig%density
+        write(*,*) 'ISM set_complet rhotot',gr_solv%myconfig%density_tot(i_obj)
         write(*,*) 'ISM set_complet HIdensity',gr_solv%myconfig%densityHI(i_obj)
         write(*,*) 'ISM set_complet H2Idensity',gr_solv%myconfig%densityH2I(i_obj)
         write(*,*) 'ISM set_complet HeIdensity',gr_solv%myconfig%densityHeI(i_obj)
@@ -1073,7 +1096,7 @@ contains
     ! .. local..
     integer                    :: idir,iB,idims,idims_bound,iw,iwfluxbc,idims2,iside2
     integer                    :: iobject
-    real(kind=dp)              :: fprofile(ixI^S)
+    real(kind=dp)              :: fprofile(ixI^S), mmw_field(ixI^S)
 
     logical                    :: isboundary,to_fix,bc_to_fix,some_unfixed
     character(len=30)          :: myboundary_cond
@@ -1268,11 +1291,14 @@ contains
               !self%myphysunit%myconfig%mean_mup
 
 
-             if(phys_config%mean_mup_on) then
-               where(self%patch(ixO^S))
-                w(ixO^S,phys_ind%mup_) = self%myconfig%mean_mup
-               end where
-             end if
+              call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
+
+              if(phys_config%mean_mup_on) then
+                where(self%patch(ixO^S))
+                    w(ixO^S,phys_ind%mup_) = mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
+                    !self%myconfig%mean_mup
+                end where
+              end if
 
              !if(phys_config%energy)then
               !if(phys_config%mean_mup_on)then
@@ -1326,6 +1352,38 @@ contains
 
          !write(*,*) 'pressure field in ISM = ', w(ixO^S,phys_ind%pressure_)
 
+
+
+    where(self%patch(ixO^S))
+      w(ixO^S,phys_ind%HI_density_)=MAX(w(ixO^S,phys_ind%HI_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HII_density_)=MAX(w(ixO^S,phys_ind%HII_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HeI_density_)=MAX(w(ixO^S,phys_ind%HeI_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HeII_density_)=MAX(w(ixO^S,phys_ind%HeII_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HeIII_density_)=MAX(w(ixO^S,phys_ind%HeIII_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%e_density_)=MAX(w(ixO^S,phys_ind%e_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HM_density_)=MAX(w(ixO^S,phys_ind%HM_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%H2I_density_)=MAX(w(ixO^S,phys_ind%H2I_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%H2II_density_)=MAX(w(ixO^S,phys_ind%H2II_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%DI_density_)=MAX(w(ixO^S,phys_ind%DI_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%DII_density_)=MAX(w(ixO^S,phys_ind%DII_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%HDI_density_)=MAX(w(ixO^S,phys_ind%HDI_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%metal_density_)=MAX(w(ixO^S,phys_ind%metal_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+      w(ixO^S,phys_ind%dust_density_)=MAX(w(ixO^S,phys_ind%dust_density_),&
+      tiny_number*w(ixO^S,phys_ind%rho_))
+    end where
 
 
    end subroutine usr_ism_set_w
