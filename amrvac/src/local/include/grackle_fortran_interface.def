@@ -304,12 +304,6 @@ c     This is the fortran definition of chemistry_data_storage
 
          TYPE(C_PTR) :: gas_grain
 
-         TYPE(UVBtable) :: UVbackground_table
-
-         TYPE(cloudy_data) :: cloudy_primordial
-
-         TYPE(cloudy_data) :: cloudy_metal
-
          INTEGER(C_INT) :: cloudy_data_new
       END TYPE
 

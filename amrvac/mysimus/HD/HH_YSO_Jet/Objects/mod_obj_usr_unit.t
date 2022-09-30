@@ -471,6 +471,8 @@ end subroutine usr_physical_unit_set_unit
    !phys_config%mean_ne_to_nH,&
    !phys_config%mean_mup
 
+   w_convert_factor(phys_ind%Lcool1_) = w_convert_factor(phys_ind%e_)/time_convert_factor
+
    if (phys_config%radiative_cooling) then
 
      if(phys_config%cool_savedT)w_convert_factor(phys_ind%dtcool1_) = self%myconfig%time

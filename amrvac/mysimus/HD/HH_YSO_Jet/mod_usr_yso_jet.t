@@ -87,12 +87,12 @@ module mod_usr
   TYPE(grackle_units),TARGET :: my_grackle_units
   TYPE(grackle_field_data),TARGET :: my_grackle_fields
   TYPE(chemistry_data),TARGET :: my_grackle_data
-  TYPE(chemistry_data_storage),TARGET :: my_grackle_rates
-  TYPE(GPStruct),TARGET :: GPS_primordial
-  TYPE(GPStruct),TARGET :: GPS_metal
-  TYPE(UVBtable),TARGET :: UVBTble
-  TYPE(cloudy_data),TARGET :: cloudy_primordial
-  TYPE(cloudy_data),TARGET :: cloudy_metal
+  !TYPE(chemistry_data_storage),TARGET :: my_grackle_rates
+  !TYPE(GPStruct),TARGET :: GPS_primordial
+  !TYPE(GPStruct),TARGET :: GPS_metal
+  !TYPE(UVBtable),TARGET :: UVBTble
+  !TYPE(cloudy_data),TARGET :: cloudy_primordial
+  !TYPE(cloudy_data),TARGET :: cloudy_metal
   
 
 
@@ -115,6 +115,13 @@ module mod_usr
 
 
 contains
+  subroutine set_grackle_parameters()
+   !call grackle_solver%set_parameters(my_grackle_data,my_grackle_rates,my_grackle_units,&
+   !                                 UVBTble,cloudy_primordial,&
+   !                                 cloudy_metal,GPS_primordial,GPS_metal)
+   call grackle_solver%set_global_parameters(my_grackle_data,my_grackle_units)
+  end subroutine set_grackle_parameters
+
   subroutine usr_init
     ! order of call : 1,
     ! amrvac.t:read_arguments() ->  amrvac.t:usr_init() (THIS PROCEDURE)
@@ -144,6 +151,7 @@ contains
     usr_get_dt          => special_get_dt
     usr_internal_bc     => usr_special_internal_bc
     usr_reset_solver    => special_reset_solver
+    usr_before_main_loop => set_grackle_parameters
     !usr_process_adv_global => specialprocess_grid
 
 
@@ -1568,9 +1576,9 @@ subroutine initglobaldata_usr
  !TYPE(GPStruct) :: GPS_metal
  !!
 
- call grackle_solver%set_parameters(my_grackle_data,my_grackle_rates,my_grackle_units,&
-                                    UVBTble,cloudy_primordial,&
-                                    cloudy_metal,GPS_primordial,GPS_metal)
+ !call grackle_solver%set_parameters(my_grackle_data,my_grackle_rates,my_grackle_units,&
+ !                                   UVBTble,cloudy_primordial,&
+ !                                   cloudy_metal,GPS_primordial,GPS_metal)
 
 
 
@@ -1672,7 +1680,7 @@ end subroutine initglobaldata_usr
        iobj=iobj+1
        jet_yso(i_jet_yso)%subname='initonegrid_usr'
        call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,global_time,x,w,grackle_solver)
-       call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
+       !call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
        patch_inuse(ixO^S) = jet_yso(i_jet_yso)%patch(ixO^S)
        cond_ism_onjet : if(usrconfig%ism_on)then
         Loop_isms2 : do i_ism=0,usrconfig%ism_number-1
@@ -1828,6 +1836,7 @@ end subroutine initglobaldata_usr
 
   end subroutine initonegrid_usr
   !============================================================================
+  
   subroutine specialsource_usr(qdt,ixI^L,ixO^L,iw^LIM,qtC,wCT,qt,w,x)
     use mod_dust
     implicit none
@@ -1962,10 +1971,10 @@ end subroutine initglobaldata_usr
                not_escape_patch(ixI^S) = .true.
 
                !call MPI_BARRIER(icomm, ierrmpi)
-               !call grackle_solver%grackle_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,dx_local,&
-               !not_escape_patch)
+               call grackle_solver%grackle_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,&
+                                  wCT,qt,w,dx_local,my_grackle_data,my_grackle_units)
 
-               !call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
+               call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
 
 
 
@@ -2360,7 +2369,7 @@ return
         iobj=iobj+1
         jet_yso(i_jet_yso)%subname='specialbound_usr'
         call jet_yso(i_jet_yso)%set_w(ixI^L,ixO^L,qt,x,w,gr_solv=grackle_solver)
-        call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
+        !call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
          patch_inuse(ixO^S) = jet_yso(i_jet_yso)%patch(ixO^S)
          cond_ism_onjet : if(usrconfig%ism_on)then
           Loop_ism_jet : do i_ism=0,usrconfig%ism_number-1
@@ -2621,11 +2630,12 @@ return
         if(usrconfig%grackle_chemistry_on)then
           if(grackle_solver%myconfig%use_grackle(1)==1)then
             
-            call grackle_solver%set_dt(w,ixI^L,ixO^L,qt,dtnew,dx^D,x,&
-                          my_grackle_data,my_grackle_rates,my_grackle_units,&
-                          UVBTble,cloudy_primordial,&
-                          cloudy_metal,GPS_primordial,GPS_metal)
-
+            !call grackle_solver%set_dt(w,ixI^L,ixO^L,qt,dtnew,dx^D,x,&
+            !              my_grackle_data,my_grackle_rates,my_grackle_units,&
+            !              UVBTble,cloudy_primordial,&
+            !              cloudy_metal,GPS_primordial,GPS_metal)
+            call grackle_solver%set_global_dt(w,ixI^L,ixO^L,qt,dtnew,dx^D,x,&
+                          my_grackle_data,my_grackle_units)
             !write(*,*) 'dtchem->dt = ', dtnew
           end if
         end if
