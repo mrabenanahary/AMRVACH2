@@ -224,6 +224,8 @@ module mod_grackle_chemistry
     INTEGER :: gr_H2_self_shielding(max_num_parameters)
     INTEGER :: gr_self_shielding_method(max_num_parameters)
     INTEGER :: gr_use_isrf_field(max_num_parameters)
+    REAL(kind=gr_rpknd)    :: gr_Tlow(max_num_parameters)
+
 
 
     ! The ratio of specific heats for an ideal gas.
@@ -276,7 +278,6 @@ module mod_grackle_chemistry
     REAL(kind=gr_rpknd)    :: gr_UVbackground_redshift_drop(max_num_parameters)
 
     ! Temperature floor for cooling
-    !REAL(kind=gr_rpknd)    :: gr_Tlow(max_num_parameters)
 
 
     ! Cloudy 07.02 abundances :
@@ -517,6 +518,8 @@ subroutine grackle_set_default(self)
   self%myconfig%gr_H2_self_shielding(max_num_parameters) = 0
   self%myconfig%gr_use_isrf_field(1:max_num_parameters)=0
   self%myconfig%gr_Gamma(1:max_num_parameters) = 5.d0/3.d0
+  self%myconfig%gr_Tlow(1:max_num_parameters) = 1.0d0
+  
 
   self%myconfig%TemperatureStart(1:max_num_parameters) = 1.0d0
   self%myconfig%TemperatureEnd(1:max_num_parameters) = 1.0D9
@@ -527,7 +530,6 @@ subroutine grackle_set_default(self)
   self%myconfig%gr_UVbackground_redshift_off(1:max_num_parameters) = -99999.0
   self%myconfig%gr_UVbackground_redshift_fullon(1:max_num_parameters) = -99999.0
   self%myconfig%gr_UVbackground_redshift_drop(1:max_num_parameters) = -99999.0
-  !self%myconfig%gr_Tlow(1:max_num_parameters) = 1.0d0
   self%myconfig%cloudy_electron_fraction_factor(1:max_num_parameters) = 9.153959D-3
   self%myconfig%data_dir(1:max_num_parameters) = "../../../src/grackle/input/"
   self%myconfig%data_filename(1:max_num_parameters) = "CloudyData_UVB=HM2012_high_density.h5"
@@ -983,6 +985,7 @@ gr_epsilon_tol,gr_density_method)
     write(unit_config,*) 'gr_H2_self_shielding = ',  self%myconfig%gr_H2_self_shielding(1)
     write(unit_config,*) 'gr_use_isrf_field = ',  self%myconfig%gr_use_isrf_field(1)
     write(unit_config,*) 'gr_Gamma = ',  self%myconfig%gr_Gamma(1)
+    write(unit_config,*) 'gr_Tlow = ',  self%myconfig%gr_Tlow(1)
     write(unit_config,*) 'gr_photoelectric_heating_rate = ',  self%myconfig%gr_photoelectric_heating_rate(1)
 
     write(unit_config,*) 'TemperatureStart = ',  self%myconfig%TemperatureStart(1)
@@ -994,7 +997,6 @@ gr_epsilon_tol,gr_density_method)
     write(unit_config,*) 'gr_UVbackground_redshift_off = ',  self%myconfig%gr_UVbackground_redshift_off(1)
     write(unit_config,*) 'gr_UVbackground_redshift_fullon = ',  self%myconfig%gr_UVbackground_redshift_fullon(1)
     write(unit_config,*) 'gr_UVbackground_redshift_drop = ',  self%myconfig%gr_UVbackground_redshift_drop(1)
-    !write(unit_config,*) 'gr_Tlow = ',  self%myconfig%gr_Tlow(1)
     write(unit_config,*) 'cloudy_electron_fraction_factor = ',  self%myconfig%cloudy_electron_fraction_factor(1)
     write(unit_config,*) 'data_dir = ',  self%myconfig%data_dir(1)
     write(unit_config,*) 'data_filename = ',  self%myconfig%data_filename(1)
@@ -1889,6 +1891,7 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%h2_on_dust = self%myconfig%gr_h2_on_dust(1)
   gr_data%cmb_temperature_floor = self%myconfig%gr_cmb_temperature_floor(1)
   gr_data%Gamma = self%myconfig%gr_Gamma(1)
+  gr_data%Tlow = self%myconfig%gr_Tlow(1)
   gr_data%use_dust_density_field = self%myconfig%gr_use_dust_density_field(1)
   gr_data%three_body_rate = self%myconfig%gr_three_body_rate(1)
   gr_data%cie_cooling                    = self%myconfig%gr_cie_cooling(1)
@@ -1902,7 +1905,6 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%UVbackground_redshift_off     = self%myconfig%gr_UVbackground_redshift_off(1)
   gr_data%UVbackground_redshift_fullon  = self%myconfig%gr_UVbackground_redshift_fullon(1)
   gr_data%UVbackground_redshift_drop    = self%myconfig%gr_UVbackground_redshift_drop(1)
-  !gr_data%Tlow                          = self%myconfig%gr_Tlow(1)
   gr_data%Compton_xray_heating   = self%myconfig%gr_Compton_xray_heating(1)
   gr_data%LWbackground_intensity = self%myconfig%gr_LWbackground_intensity(1)
   gr_data%LWbackground_sawtooth_suppression = self%myconfig%gr_LWbackground_sawtooth_suppression(1)
@@ -3069,12 +3071,6 @@ end if
         w(imesh^D,phys_ind%mup_) = meanmw/w_convert_factor(phys_ind%mup_)
       {end do^D&|\}
 
-  ! Compute field of H2-gamma corrected temperature
-  call phys_get_gamma(w,ixI^L, ixO^L, gmmeff_field)
-  w(ixO^S,phys_ind%gamma_)=gmmeff_field(ixO^S)/w_convert_factor(phys_ind%gamma_)
-  call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
-  w(ixO^S,phys_ind%temperature_)=temperature(ixO^S)
-
   iresult = calculate_cooling_time(my_units,my_fields, cooling_time)
 
   tbase1 = my_units%time_units
@@ -3119,6 +3115,14 @@ end if
   ! from cooling_rate.py of PyGrackle package:
   !density_proper(ixO^S) = w(ixO^S,phys_ind%rho_)/&
   !(my_units%a_units*my_units%a_value)**(3*my_chemistry%comoving_coordinates)
+
+
+  ! Compute field of H2-gamma corrected temperature
+  call phys_get_gamma(w,ixI^L, ixO^L, gmmeff_field)
+  w(ixO^S,phys_ind%gamma_)=gmmeff_field(ixO^S)/w_convert_factor(phys_ind%gamma_)
+  call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
+  w(ixO^S,phys_ind%temperature_)=temperature(ixO^S)
+
 
     my_fields%grid_dimension = C_NULL_PTR
     my_fields%grid_start = C_NULL_PTR

@@ -152,6 +152,7 @@ c     This is the fortran definition of chemistry_data
          INTEGER(C_INT) :: collisional_ionisation_rates
          INTEGER(C_INT) :: recombination_cooling_rates
          INTEGER(C_INT) :: bremsstrahlung_cooling_rates
+         REAL(C_DOUBLE) :: Tlow
 cc       INTEGER(C_INT) :: omp_nthreads // not supported in fortran
       END TYPE
       

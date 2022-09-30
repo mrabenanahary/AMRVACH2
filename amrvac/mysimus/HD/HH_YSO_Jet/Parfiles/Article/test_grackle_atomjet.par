@@ -125,7 +125,7 @@
 
         ! AMR configuration
         refine_criterion=3
-        refine_max_level=1 !<--- dr=dz=7.8125e13 cm au lvl 5
+        refine_max_level=5 !<--- dr=dz=7.8125e13 cm au lvl 5
         refine_threshold=20*0.01d0
         derefine_ratio=20*1d-3
 
@@ -137,7 +137,7 @@
 
       ! user-proof and user-friendly style:
       !  w_refine_weight(12)=1.0d0
-        w_refine_weight_wnames = 'rho'
+        w_refine_weight_wnames = 'L1'
         w_refine_weight_wvalues = 1.0d0
 
         max_blocks = 200000
@@ -501,7 +501,7 @@ ism_config%He_abundance      = 0.1
 	grackle_config%use_grackle(1) = 1            ! chemistry on
 	grackle_config%gr_use_isrf_field(1) = 0          ! interstellar radiation field on
 	grackle_config%gr_with_radiative_cooling(1) = 1 ! cooling on
-	grackle_config%gr_primordial_chemistry(1) = 0  ! network with H, He, D
+	grackle_config%gr_primordial_chemistry(1) = 2  ! network with H, He, D
 	grackle_config%gr_dust_chemistry(1) = 1        ! dust processes
 	grackle_config%gr_metal_cooling(1) = 1          ! metal cooling on
 	grackle_config%gr_h2_on_dust(1) = 1                ! H2 formation on dust
@@ -520,7 +520,7 @@ ism_config%He_abundance      = 0.1
 	grackle_config%MetalFractionByMass(1) = 0.0194d0
   grackle_config%DeuteriumToHydrogenRatio(1) = 0.0d0
        grackle_config%dtchem_frac(1) = 1.0d0
-	!grackle_config%gr_Tlow(1) = 100.0d0
+	grackle_config%gr_Tlow(1) = 100.0d0
   	grackle_config%deviation_to_density(1) = 1.0d-13
   	grackle_config%deviation_to_density(2) = 1.0d-13
 

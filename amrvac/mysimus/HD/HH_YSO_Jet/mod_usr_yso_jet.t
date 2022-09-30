@@ -2083,6 +2083,8 @@ end subroutine initglobaldata_usr
    ! Compute field of mean molecular weight
    call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
    w(ixO^S,phys_ind%mup_) = mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
+  !write(*,*) 'temperature', w(ixO^S,phys_ind%temperature_)
+  !write(*,*) 'temperature*units', w(ixO^S,phys_ind%temperature_)*w_convert_factor(phys_ind%temperature_)
 
 
 call usr_clean_memory

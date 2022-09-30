@@ -164,6 +164,8 @@ typedef struct
   int recombination_cooling_rates; //Recombination cooling
   int bremsstrahlung_cooling_rates; //Bremsstrahlung cooling
 
+  double Tlow;
+
   /* number of OpenMP threads, if supported */
 # ifdef _OPENMP
   int omp_nthreads;
