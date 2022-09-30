@@ -1492,8 +1492,13 @@ end subroutine hd_get_aux
                    w(ixO^S,rhoHeIII_))/4.0d0 +&
                    w(ixO^S,rhoHI_) + w(ixO^S,rhoHII_) +&
                    w(ixO^S,rhoe_)*(mp/me)
+
+      !write(*,*) 'nH2 = ',nH2(ixO^S)
+      !write(*,*) 'nother = ',nother(ixO^S)
       {do imesh^D=ixOmin^D,ixOmax^D|\}
       if(nH2(imesh^D)/nother(imesh^D) > 1.0d-3)then
+        !write(*,*) 'temperature =', (w(imesh^D, temperature_)*&
+        !w_convert_factor(temperature_))
         tvar = 6100.0d0/(w(imesh^D, temperature_)*&
         w_convert_factor(temperature_))
         if (tvar > 10.0)then
@@ -1506,6 +1511,7 @@ end subroutine hd_get_aux
       else
         inv_gammaH2_1(imesh^D) = 2.5d0
       end if
+      !write(*,*) 'inv_gammaH2_1 = ', inv_gammaH2_1(imesh^D)
       {end do^D&|\}
       !tvar(ixO^S)=6100.0d0/(w(ixO^S, temperature_)*&
       !w_convert_factor(temperature_))
@@ -1523,6 +1529,7 @@ end subroutine hd_get_aux
       gammaeff(ixO^S) = 1.0d0 + (nH2(ixO^S) + nother(ixO^S))/&
                    (nH2(ixO^S)*inv_gammaH2_1(ixO^S) +&
                 nother(ixO^S)*inv_gammaoth_1(ixO^S))
+      !write(*,*) 'gammeff = ',gammaeff(ixO^S)
     else
        gammaeff(ixO^S) = hd_config%gamma
     end if

@@ -73,8 +73,8 @@
 
  &methodlist
         time_integrator          =  'twostep'
-        typepred1                =  20*'hllcd'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
-        flux_scheme              =  20*'hllcd'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        typepred1                =  20*'hllc'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
+        flux_scheme              =  20*'hllc'!,18*'tvdlf'!>>HH4647 !'hllcd'!si vraiment ça ne marche pas, essayer :! 'hll'! si au bord persiste des problemes, essayer : ! 'tvdlf'
         limiter                  =  20*'minmod'!>>HH4647 !'koren'!'cada3'
         small_pressure           = 1.0d-9
         small_density            = 1.0d-10
@@ -244,7 +244,7 @@
         !usrconfig%phys_temperature_isotherm     = 100.0d0 ! Le 2001
         !usrconfig%temperature_max  = 1d5
         usrconfig%reset_flux_scheme_on          = .true.
-        usrconfig%reset_flux_scheme_diffuse     = 'tvdlf'
+        usrconfig%reset_flux_scheme_diffuse     = 'hllc'
         usrconfig%reset_flux_scheme_thresholdL1_min = 1.0d-6
         usrconfig%reset_flux_scheme_thresholdL1_max = 1.0d20
 
@@ -493,12 +493,12 @@ ism_config%He_abundance      = 0.1
 	grackle_config%x_HDI(2)  = 0.0d0
 
 	grackle_config%deviation_to_density_limit(1)  = 5.0d0
-	grackle_config%HydrogenFractionByMass(1) = 0.7143d0 !0.76d0
-	grackle_config%HydrogenFractionByMass(2) = 0.7143d0 !0.76d0
-	grackle_config%HeliumFractionByMass(1) = 0.2857d0 !0.76d0
-	grackle_config%HeliumFractionByMass(2) = 0.2857d0 !0.76d0 ! as in Chapter 6
-	grackle_config%MetalFractionByMass(1) = 0.0194d0
-	grackle_config%MetalFractionByMass(2) = 0.0194d0
+	grackle_config%HydrogenFractionByMass(1) = 0.76d0
+	grackle_config%HydrogenFractionByMass(2) = 0.76d0
+	grackle_config%HeliumFractionByMass(1) = 0.24d0 !0.76d0
+	grackle_config%HeliumFractionByMass(2) = 0.24d0 !0.76d0 ! as in Chapter 6
+	grackle_config%MetalFractionByMass(1) = 0.02041d0
+	grackle_config%MetalFractionByMass(2) = 0.02041d0
 	grackle_config%IonizationFraction(1) = 0.0d0!1.0d-3
 	grackle_config%IonizationFraction(2) = 0.0d0!1.0d-3
   grackle_config%DeuteriumToHydrogenRatio(1) = 0.0d0
@@ -523,12 +523,15 @@ ism_config%He_abundance      = 0.1
 	grackle_config%gr_a_units(1) = 1.0d0
 	grackle_config%a_value(1) = 1.0d0
 	grackle_config%gr_Gamma(1) = 1.66666666667d0
-	grackle_config%gr_use_dust_density_field(1) = 1
-	grackle_config%gr_CaseBRecombination(1) = 0
-	grackle_config%gr_three_body_rate(1)=4
-	grackle_config%gr_cie_cooling(1) = 1
-	!grackle_config%gr_Tlow(1) = 1.0d0
+	grackle_config%gr_self_shielding_method(1) = 0
+	grackle_config%gr_H2_self_shielding(1) = 0
+	grackle_config%gr_use_specific_heating_rate(1) = 1
+	grackle_config%gr_use_volumetric_heating_rate(1) = 1
+  grackle_config%deviation_to_density_limit(1)  = 5.0d0
+  grackle_config%dtchem_frac(1) = 10.0d0
+	  grackle_config%gr_Tlow(1) = 1.0d0
   	grackle_config%deviation_to_density(1) = 1.0d-20
+  	grackle_config%deviation_to_density(2) = 1.0d-20
 
 /
 
