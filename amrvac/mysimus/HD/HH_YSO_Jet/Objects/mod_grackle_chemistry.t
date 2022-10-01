@@ -998,9 +998,13 @@ gr_epsilon_tol,gr_density_method)
     write(unit_config,*) 'gr_UVbackground_redshift_fullon = ',  self%myconfig%gr_UVbackground_redshift_fullon(1)
     write(unit_config,*) 'gr_UVbackground_redshift_drop = ',  self%myconfig%gr_UVbackground_redshift_drop(1)
     write(unit_config,*) 'cloudy_electron_fraction_factor = ',  self%myconfig%cloudy_electron_fraction_factor(1)
+
     write(unit_config,*) 'data_dir = ',  self%myconfig%data_dir(1)
     write(unit_config,*) 'data_filename = ',  self%myconfig%data_filename(1)
-    write(unit_config,*) 'data_file = ',  trim(self%myconfig%data_dir(1)//self%myconfig%data_filename(1))
+    self%myconfig%data_file(1) = "../../../src/grackle/input/"//&
+  trim(self%myconfig%data_filename(1))//C_NULL_CHAR
+
+    write(unit_config,*) 'data_file = ',  trim(self%myconfig%data_dir(1))//trim(self%myconfig%data_filename(1))
     !write(unit_config,*) 'normalize_done = ',  self%myconfig%normalize_done(1)
     write(unit_config,*) 'gr_comoving_coordinates = ',  self%myconfig%gr_comoving_coordinates(1)
     write(unit_config,*) 'gr_a_units = ',  self%myconfig%gr_a_units(1)
@@ -1098,14 +1102,6 @@ gr_epsilon_tol,gr_density_method)
         write(unit_config,*) 'densityHtwo = ',  self%myconfig%densityHtwo(i_all)
         write(unit_config,*) 'densityHe = ',  self%myconfig%densityHe(i_all)
         write(unit_config,*) 'densityElectrons = ',  self%myconfig%densityElectrons(i_all)
-    ! fields config
-    write(unit_config,*)'> Objects parameters'
-    write(unit_config,*) 'gr_patches_indices_global = ',gr_patches_indices_global
-    write(unit_config,*) 'gr_patches_indices_local = ',gr_patches_indices_local
-    write(unit_config,*) 'gr_patches_name = ',gr_patches_name
-    write(unit_config,*) 'gr_epsilon_tol = ',gr_epsilon_tol
-    write(unit_config,*) 'gr_profiles = ',gr_profiles
-    write(unit_config,*) 'gr_density_method = ',gr_density_method
 
     end do
 
@@ -1883,8 +1879,8 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%dust_chemistry = self%myconfig%gr_dust_chemistry(1)
   gr_data%metal_cooling = self%myconfig%gr_metal_cooling(1)
   gr_data%UVbackground                   = self%myconfig%gr_UVbackground(1)
-  general_grackle_filename = "../../../"//&
-  "src/grackle/input/CloudyData_UVB=HM2012_high_density.h5"//C_NULL_CHAR
+  general_grackle_filename = trim(self%myconfig%data_dir(1))//&
+  trim(self%myconfig%data_filename(1))//C_NULL_CHAR
   !CALL GETCWD(filename)
   !write(*,*) 'CWDDDDD = ', filename
   gr_data%grackle_data_file = C_LOC(general_grackle_filename(1:1))

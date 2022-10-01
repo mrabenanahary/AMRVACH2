@@ -251,8 +251,8 @@ contains
     w_refine_weight_wnames  = ''
     w_refine_weight_wvalues = 0.d0
     write(*,*) '> prim_wnames avalaibles : '
-    do i_array = 1,size(prim_wnames)
-      write(*,*) i_array,' ',prim_wnames(i_array)
+    do i_array = 1,nw
+      write(*,*) i_array,' ',trim(prim_wnames(i_array))
     end do
     !write(*,*) '> prim_wnames(nw+2) avalaibles : ', prim_wnames(nw+2)
     allocate(logflag(nw+1))
