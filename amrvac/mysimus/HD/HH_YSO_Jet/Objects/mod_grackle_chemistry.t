@@ -1831,8 +1831,8 @@ isrf_habing({(ixOmax^D-ixOmin^D+1)|*})
 integer          :: field_size(1:ndim)
 INTEGER, TARGET :: grid_rank, grid_dimension(3), grid_start(3), grid_end(3)
 real(dp)                 :: mp,kB,me,grid_dx, dtchem
-!TYPE(solver_fields),TARGET :: my_solver_fields
-!TYPE(f_integer),TARGET :: my_f_integer
+TYPE(solver_fields),TARGET :: my_solver_fields
+TYPE(f_integer),TARGET :: my_f_integer
 INTEGER , TARGET :: size_of_field(1)
 !--------------------------------------------------------------
 
@@ -2034,23 +2034,28 @@ velocity_units = get_velocity_units(my_units)
     !   C_LOC(H2_custom_shielding_factor)
     !my_fields%isrf_habing = C_LOC(isrf_habing)
 
-    !my_f_integer%n = C_LOC(size_of_field)
+    my_f_integer%n = C_LOC(size_of_field)
     
 
     
 
-  !my_solver_fields%cooling_time = C_LOC(cooling_time)
+  my_solver_fields%cooling_time = C_LOC(cooling_time)
 
 
-    !iresult = f_calculate_cooling_time(my_units, my_fields, my_f_integer,my_solver_fields)
+    iresult = f_calculate_cooling_time(my_units, my_fields, my_f_integer,my_solver_fields)
 
-  iresult = calculate_cooling_time(my_units, my_fields,cooling_time)
 
-  !my_solver_fields%cooling_time = C_NULL_PTR
-  !my_solver_fields%temperature = C_NULL_PTR
-  !my_solver_fields%pressure = C_NULL_PTR
-  !my_solver_fields%gamma = C_NULL_PTR
-  !my_solver_fields%cooling_rate = C_NULL_PTR
+  dtnew = self%myconfig%dtchem_frac(1)*minval(ABS(cooling_time(:)))*&
+  my_units%time_units/time_convert_factor
+
+write(*,*) ' dtchem = ', dtnew * time_convert_factor
+
+
+  my_solver_fields%cooling_time = C_NULL_PTR
+  my_solver_fields%temperature = C_NULL_PTR
+  my_solver_fields%pressure = C_NULL_PTR
+  my_solver_fields%gamma = C_NULL_PTR
+  my_solver_fields%cooling_rate = C_NULL_PTR
 
 
     my_fields%grid_dimension = C_NULL_PTR
