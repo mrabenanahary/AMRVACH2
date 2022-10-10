@@ -1831,7 +1831,6 @@ isrf_habing({(ixOmax^D-ixOmin^D+1)|*})
 integer          :: field_size(1:ndim)
 INTEGER, TARGET :: grid_rank, grid_dimension(3), grid_start(3), grid_end(3)
 real(dp)                 :: mp,kB,me,grid_dx, dtchem
-real(dp),dimension(ixI^S)         :: rhoXY
 !TYPE(solver_fields),TARGET :: my_solver_fields
 !TYPE(f_integer),TARGET :: my_f_integer
 INTEGER , TARGET :: size_of_field(1)
@@ -1881,8 +1880,6 @@ velocity_units = get_velocity_units(my_units)
 
   size_of_field(1) = Ncells
 
-  !get rhoXY (denormalized)
-  call phys_get_rhoxy(w, x, ixI^L, ixO^L, rhoxy)
 
   {^IFTWOD
     ! flattening 2D array :
@@ -2156,7 +2153,6 @@ real(dp)                 :: mp,kB,me, grid_dx, dtchem, meanmw, cooling_units
 real(dp)                 :: tbase1,xbase1,dbase1
 real(kind=dp), dimension(ixI^S) :: temperature,gmmeff_field,density_proper
 real(kind=dp), dimension(ixI^S) :: number_density,mmw_field,uenergy
-real(dp),dimension(ixI^S)         :: rhoXY
 TYPE(solver_fields),TARGET :: my_solver_fields
 TYPE(f_integer),TARGET :: my_f_integer
 TYPE(f_real),TARGET :: my_f_real
@@ -2205,8 +2201,6 @@ call set_velocity_units(my_units)
 
   size_of_field(1) = Ncells
 
-  !get rhoXY (denormalized)
-  call phys_get_rhoxy(w, x, ixI^L, ixO^L, rhoxy)
 
   {^IFTWOD
     ! flattening 2D array :
@@ -2611,15 +2605,6 @@ call set_velocity_units(my_units)
 
 end subroutine grackle_solve_chemistry
 
-subroutine gr_get_rhoxy(w, x, ixI^L, ixO^L, rhoxy)
-    use mod_global_parameters
-    integer, intent(in)          :: ixI^L, ixO^L
-    real(dp), intent(in)         :: w(ixI^S, nw)
-    real(dp), intent(in)         :: x(ixI^S, 1:ndim)
-    real(dp), intent(out)        :: rhoxy(ixI^S)
-    !-------------------------------------------------------
-
-end subroutine gr_get_rhoxy
 
 end module mod_grackle_chemistry
 

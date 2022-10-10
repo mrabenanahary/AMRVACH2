@@ -671,13 +671,12 @@ contains
       end if
 
 
-      if(phys_config%primordial_chemistry>0)then
+
       ! here : gr_solv%myconfig%density(i_obj) = rhotot
       call gr_solv%set_complet(gr_solv%myconfig%density(i_obj),&
       i_obj,.false.)
-      end if
-      
       ! here : gr_solv%myconfig%density(i_obj) = rhoXY
+      
 
 write(*,*) 'HI dens 1 =', gr_solv%myconfig%densityHI(i_obj)
 

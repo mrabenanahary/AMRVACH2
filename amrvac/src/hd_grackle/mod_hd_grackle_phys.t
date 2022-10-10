@@ -1673,7 +1673,7 @@ end subroutine hd_get_aux
           w(ixO^S,rhoH2II_)*w_convert_factor(rhoH2II_))/(2.0_dp*mp))           
         end if
 
-        call hd_get_rhoXY(w, x, ixI^L, ixO^L, rhoxy)  
+        !call hd_get_rhoXY(w, x, ixI^L, ixO^L, rhoxy)  
                 
         !mmw(ixO^S) = (rhoxy(ixO^S)/mp)/nden(ixO^S)
         mmw(ixO^S) = (w(ixO^S,rho_)*w_convert_factor(rho_)/mp)/nden(ixO^S)
@@ -1743,9 +1743,18 @@ end subroutine hd_get_aux
         ! (ignores deuterium and gas so no dust)
         ! Eqs. (14) & (27) of Smith et al. 2017, MNRAS 466, 2217–2234
         if(hd_config%primordial_chemistry==0)then
-          temperature(ixO^S) = w(ixO^S,hd_ind%temperature_)*&
-          w_convert_factor(hd_ind%temperature_)
-
+          call hd_get_pthermal(w, x, ixI^L, ixO^L, pth,'hd_get_temperature')
+          temperature(ixO^S) =&
+          mp*w_convert_factor(p_)*pth(ixO^S)/&
+          (kB*w_convert_factor(rho_)*w(ixO^S,rho_))
+          
+         
+          if(hd_config%mean_mup_on)then
+            call hd_get_mmw(w, x, ixI^L, ixO^L, meanmw)
+            temperature(ixO^S) =temperature(ixO^S) *&
+            meanmw(ixO^S)
+          end if
+     
         else
           call hd_get_pthermal(w, x, ixI^L, ixO^L, pth,'hd_get_temperature')
           pth(ixO^S)=pth(ixO^S)*w_convert_factor(p_)
