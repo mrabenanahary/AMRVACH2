@@ -2048,7 +2048,7 @@ velocity_units = get_velocity_units(my_units)
   dtnew = self%myconfig%dtchem_frac(1)*minval(ABS(cooling_time(:)))*&
   my_units%time_units/time_convert_factor
 
-write(*,*) ' dtchem = ', dtnew * time_convert_factor
+  !write(*,*) ' dtchem = ', dtnew * time_convert_factor
 
 
   my_solver_fields%cooling_time = C_NULL_PTR
@@ -2400,37 +2400,37 @@ call set_velocity_units(my_units)
 
 
 
-    write(*,*) ''
-    write(*,*) ' After :'
-    write(*,*) ''
-    write(*,*) 'temperature : ', gr_temperature
-    write(*,*) 'energy : ', energy*velocity_units**2.0_dp
-    write(*,*) 'density : ',  density*my_units%density_units
-    write(*,*) 'pressure : ',  pressure*my_units%density_units*velocity_units**2.0_dp
-    write(*,*) 'mu : ',  w(ixO^S,phys_ind%mup_)*w_convert_factor(phys_ind%mup_)
-    write(*,*) 'gamma : ',  gamma
-    write(*,*) 'cooling_time : ',  cooling_time*my_units%time_units
-    if(self%myconfig%gr_primordial_chemistry(1)>0)then
-    write(*,*) 'HI : ', HI_density*my_units%density_units
-    write(*,*) 'HII : ', HII_density*my_units%density_units
-    write(*,*) 'HeI : ', HeI_density*my_units%density_units
-    write(*,*) 'HeII : ', HeII_density*my_units%density_units
-    write(*,*) 'HeIII : ', HeIII_density*my_units%density_units
-    write(*,*) 'de : ', e_density*my_units%density_units
-    end if
-    if(self%myconfig%gr_primordial_chemistry(1)>1)then
-    write(*,*) 'H2I : ', H2I_density*my_units%density_units
-    write(*,*) 'H2II : ', H2II_density*my_units%density_units        
-    write(*,*) 'HM : ', HM_density*my_units%density_units
-    end if
-    if(phys_config%use_metal_field==1)then
-    write(*,*) 'metal : ', metal_density*my_units%density_units
-    end if
-    if(self%myconfig%gr_use_dust_density_field(1)==1)then
-    write(*,*) 'dust : ', dust_density*my_units%density_units
-    end if
-    write(*,*) 'dt : ', dtchem*my_units%time_units
-    write(*,*) 'cooling_rate : ', cooling_rate
+    !write(*,*) ''
+    !write(*,*) ' After :'
+    !write(*,*) ''
+    !write(*,*) 'temperature : ', gr_temperature
+    !write(*,*) 'energy : ', energy*velocity_units**2.0_dp
+    !write(*,*) 'density : ',  density*my_units%density_units
+    !write(*,*) 'pressure : ',  pressure*my_units%density_units*velocity_units**2.0_dp
+    !write(*,*) 'mu : ',  w(ixO^S,phys_ind%mup_)*w_convert_factor(phys_ind%mup_)
+    !write(*,*) 'gamma : ',  gamma
+    !write(*,*) 'cooling_time : ',  cooling_time*my_units%time_units
+    !if(self%myconfig%gr_primordial_chemistry(1)>0)then
+    !write(*,*) 'HI : ', HI_density*my_units%density_units
+    !write(*,*) 'HII : ', HII_density*my_units%density_units
+    !write(*,*) 'HeI : ', HeI_density*my_units%density_units
+    !write(*,*) 'HeII : ', HeII_density*my_units%density_units
+    !write(*,*) 'HeIII : ', HeIII_density*my_units%density_units
+    !write(*,*) 'de : ', e_density*my_units%density_units
+    !end if
+    !if(self%myconfig%gr_primordial_chemistry(1)>1)then
+    !write(*,*) 'H2I : ', H2I_density*my_units%density_units
+    !write(*,*) 'H2II : ', H2II_density*my_units%density_units        
+    !write(*,*) 'HM : ', HM_density*my_units%density_units
+    !end if
+    !if(phys_config%use_metal_field==1)then
+    !write(*,*) 'metal : ', metal_density*my_units%density_units
+    !end if
+    !if(self%myconfig%gr_use_dust_density_field(1)==1)then
+    !write(*,*) 'dust : ', dust_density*my_units%density_units
+    !end if
+    !write(*,*) 'dt : ', dtchem*my_units%time_units
+    !write(*,*) 'cooling_rate : ', cooling_rate
 
 
     k_energy(1:Ncells) = 0.0_dp
