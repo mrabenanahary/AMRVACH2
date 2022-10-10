@@ -451,4 +451,18 @@ typedef struct
   long long *n;
 } f_integer;
 
+typedef struct
+{
+  gr_float *x;
+} f_real;
+
+typedef struct
+{
+  gr_float *cooling_time;
+  gr_float *temperature;
+  gr_float *pressure;
+  gr_float *gamma;
+  gr_float *cooling_rate;
+} solver_fields;
+
 #endif

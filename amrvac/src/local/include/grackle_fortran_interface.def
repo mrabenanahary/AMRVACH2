@@ -308,6 +308,22 @@ c     This is the fortran definition of chemistry_data_storage
          INTEGER(C_INT) :: cloudy_data_new
       END TYPE
 
+      TYPE, BIND(C) :: f_integer
+         TYPE(C_PTR) :: n
+      END TYPE    
+
+      TYPE, BIND(C) :: f_real
+         TYPE(C_PTR) :: x
+      END TYPE              
+
+      TYPE, BIND(C) :: solver_fields
+         TYPE(C_PTR) :: cooling_time
+         TYPE(C_PTR) :: temperature
+         TYPE(C_PTR) :: pressure
+         TYPE(C_PTR) :: gamma
+         TYPE(C_PTR) :: cooling_rate
+      END TYPE
+
       TYPE, BIND(C) :: GPStruct
 
          INTEGER(C_LONG_LONG) :: size1
@@ -365,6 +381,20 @@ c     The following define the fortran interfaces to the C routines
             REAL(C_DOUBLE), INTENT(IN) :: dt
          END FUNCTION solve_chemistry
       END INTERFACE
+
+      INTERFACE
+         INTEGER(C_INT) FUNCTION f_solve_chemistry
+     &        (my_units, my_fields, dt, field_size,
+     &        output_fields) bind(C)
+            IMPORT
+            TYPE(grackle_units), INTENT(IN) :: my_units
+            TYPE(grackle_field_data), INTENT(IN) :: my_fields
+            TYPE(f_real), INTENT(IN) :: dt
+            TYPE(f_integer), INTENT(INOUT) :: field_size
+            TYPE(solver_fields), INTENT(INOUT) ::output_fields
+            
+         END FUNCTION f_solve_chemistry
+      END INTERFACE      
 
       INTERFACE
          INTEGER(C_INT) FUNCTION calculate_cooling_time(my_units,
@@ -447,20 +477,13 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
-         INTEGER(C_INT) FUNCTION c_calculate_cooling_time(my_chemistry,
-     &        my_rates,my_fields,my_units,UVBTble,cloudy_primordial,
-     &        cloudy_metal, GPS_primordial, GPS_metal,cooling_time)
-     &        bind(C, name="c_calculate_cooling_time")
+         INTEGER(C_INT) FUNCTION f_calculate_cooling_time
+     &        (my_units, my_fields, field_size,
+     &        output_fields) bind(C)
             IMPORT
-            TYPE(grackle_units), INTENT(INOUT) :: my_units
-            TYPE(chemistry_data), INTENT(INOUT) :: my_chemistry
-            TYPE(chemistry_data_storage), INTENT(INOUT) :: my_rates
-            TYPE(grackle_field_data), INTENT(INOUT) :: my_fields
-            TYPE(UVBtable), INTENT(INOUT) :: UVBTble
-            TYPE(cloudy_data), INTENT(INOUT) :: cloudy_primordial
-            TYPE(cloudy_data), INTENT(INOUT) :: cloudy_metal
-            TYPE(GPStruct), INTENT(INOUT) :: GPS_primordial
-            TYPE(GPStruct), INTENT(INOUT) :: GPS_metal
-            REAL(C_DOUBLE), INTENT(OUT) :: cooling_time(*)
-         END FUNCTION c_calculate_cooling_time
-      END INTERFACE
+            TYPE(grackle_units), INTENT(IN) :: my_units
+            TYPE(grackle_field_data), INTENT(IN) :: my_fields
+            TYPE(f_integer), INTENT(INOUT) :: field_size
+            TYPE(solver_fields), INTENT(INOUT) ::output_fields
+         END FUNCTION f_calculate_cooling_time
+      END INTERFACE      

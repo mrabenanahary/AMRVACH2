@@ -331,8 +331,8 @@ end subroutine usr_physical_unit_set_unit
             *kB*self%myconfig%temperature / (self%myconfig%mean_mup*mp)
    else if(self%myconfig%velocity>smalldouble)then
     self%myconfig%pressure      = self%myconfig%density*self%myconfig%velocity**2.0_dp
-    self%myconfig%temperature   = self%myconfig%mean_mup*mp*self%myconfig%pressure&
-              / ( Kb*self%myconfig%density)
+    self%myconfig%temperature   = self%myconfig%mean_mup*mp*self%myconfig%pressure/&
+              ( Kb*self%myconfig%density)
    end if
 
    self%myconfig%momentum         = self%myconfig%density*self%myconfig%velocity
@@ -348,8 +348,8 @@ end subroutine usr_physical_unit_set_unit
 
    self%myconfig%mass_flux        = self%myconfig%mass/self%myconfig%time
    self%myconfig%energy_flux      = self%myconfig%energy/self%myconfig%time
-   self%myconfig%luminosity       = self%myconfig%pressure &
-                          /(self%myconfig%number_density**2.0_dp*unit_time * self%myconfig%mean_mass**2.0_dp)
+   self%myconfig%luminosity       = self%myconfig%pressure/&
+                          (self%myconfig%number_density**2.0_dp*unit_time * self%myconfig%mean_mass**2.0_dp)
 
     ! in mod_radiative_cooling : unit_luminosity=  unit_pressure/( unit_numberdensity**2.0_dp * unit_time &
     !                            *  phys_config%mean_mass**2.0_dp)
@@ -381,6 +381,7 @@ end subroutine usr_physical_unit_set_unit
    w_convert_factor(phys_ind%rho_)                  = self%myconfig%density
    if(phys_config%energy)then
      w_convert_factor(phys_ind%e_)                  = self%myconfig%energy_density
+     w_convert_factor(phys_ind%pressure_)           = self%myconfig%energy_density
    end if
    if(saveprim)then
     w_convert_factor(phys_ind%mom(:))               = self%myconfig%velocity
@@ -406,6 +407,10 @@ end subroutine usr_physical_unit_set_unit
       end if
    end if
 
+
+
+     if(phys_config%use_grackle)then
+      if(phys_config%primordial_chemistry>0)then
    !HI
    w_convert_factor(phys_ind%HI_density_) = self%myconfig%density
    !HII
@@ -418,25 +423,44 @@ end subroutine usr_physical_unit_set_unit
    w_convert_factor(phys_ind%HeIII_density_) = self%myconfig%density
    !electrons
    w_convert_factor(phys_ind%e_density_) = self%myconfig%density
+
+      end if
+      if(phys_config%primordial_chemistry>1)then
    !HM
    w_convert_factor(phys_ind%HM_density_) = self%myconfig%density
    !H2I
    w_convert_factor(phys_ind%H2I_density_) = self%myconfig%density
    !H2II
    w_convert_factor(phys_ind%H2II_density_) = self%myconfig%density
+      end if
+      if(phys_config%primordial_chemistry>2)then
    !DI
    w_convert_factor(phys_ind%DI_density_) = self%myconfig%density
    !DII
    w_convert_factor(phys_ind%DII_density_) = self%myconfig%density
    !HDI
    w_convert_factor(phys_ind%HDI_density_) = self%myconfig%density
+      end if
+      
+      if(phys_config%use_metal_field==1)then
    !metal
    w_convert_factor(phys_ind%metal_density_) = self%myconfig%density
-   !dust
-   w_convert_factor(phys_ind%dust_density_) = self%myconfig%density
+      end if
 
+
+      if(phys_config%use_dust_density_field==1)then
+   !dust
+   w_convert_factor(phys_ind%dust_density_) = self%myconfig%density      
+      end if
+
+      if(phys_config%primordial_chemistry>0)then
    w_convert_factor(phys_ind%rhoX_) = self%myconfig%density
-   w_convert_factor(phys_ind%rhoY_) = self%myconfig%density
+   w_convert_factor(phys_ind%rhoY_) = self%myconfig%density        
+      end if
+     end if
+
+
+
 
    w_convert_factor(phys_ind%gamma_) = 1.0_dp
 

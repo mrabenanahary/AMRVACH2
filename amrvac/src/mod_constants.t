@@ -63,4 +63,6 @@ module mod_constants
   real(kind=dp), PARAMETER :: const_Peta  = 1.d15           ! -                 ; Peta
   real(kind=dp), PARAMETER :: const_years = 3.1536d7        ! s year^-1         ; seconds in a year
   real(kind=dp), PARAMETER :: const_sigmaT= 6.6524d-25      ! cm^2              ; thomson cross section
+
+  real(kind=dp), PARAMETER :: metal_mu = 16.0_dp
 end module mod_constants

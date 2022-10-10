@@ -31,6 +31,12 @@ module mod_hd_grackle_phys
   logical                   :: hd_gr_dust_chemistry
   logical                   :: hd_gr_with_radiative_cooling
 
+
+  ! Grackle fields switches
+  integer, public, protected                   :: hd_primordial_chemistry = 3
+  integer, public, protected                   :: hd_use_metal_field = 1
+  integer, public, protected                   :: hd_use_dust_density_field = 0
+
   !> Whether gravity is added
   logical, public, protected              :: hd_gravity = .false.
 
@@ -129,6 +135,8 @@ module mod_hd_grackle_phys
   type(phys_variables_indices),target,public     :: hd_ind
   ! for local use
   real(kind=dp), private         :: gamma_1
+
+  
   ! Public methods
   public :: hd_phys_init
   public :: hd_kin_en
@@ -136,6 +144,7 @@ module mod_hd_grackle_phys
   public :: hd_get_temperature
   public :: hd_get_gamma
   public :: hd_get_mmw
+  public :: hd_get_rhoXY
   public :: hd_to_conserved
   public :: hd_to_primitive
   public :: hd_small_values_floor
@@ -156,9 +165,8 @@ contains
     hd_gravity, hd_gravity_hse, hd_gravity_hse_scheme,hd_use_gravity_g, &
     He_abundance, SI_unit, hd_particles,hd_small_density,hd_small_pressure,&
     hd_chemical,hd_chemical_gas_type,hd_mean_mup_on,hd_temperature_isotherm,&
-    hd_use_grackle, hd_gr_primordial_chemistry, hd_gr_metal_cooling,&
-    hd_gr_with_radiative_cooling,&
-    hd_gr_dust_chemistry,hd_isotherm_on
+    hd_use_grackle, hd_primordial_chemistry, hd_use_metal_field,&
+    hd_use_dust_density_field,hd_isotherm_on
 
     !---------------------------------------------------------
     error_message = 'At '//' mod_hd_grackle_phys.t'//'  in the procedure : hd_read_params'
@@ -302,11 +310,17 @@ contains
     hd_config%gr_metal_cooling     = hd_gr_metal_cooling
     hd_config%gr_dust_chemistry    = hd_gr_dust_chemistry
     hd_config%gr_with_radiative_cooling = hd_gr_with_radiative_cooling
+
+    hd_config%primordial_chemistry = hd_primordial_chemistry
+    hd_config%use_metal_field      = hd_use_metal_field
+    hd_config%use_dust_density_field = hd_use_dust_density_field
+
     hd_config%thermal_conduction   = hd_thermal_conduction
     hd_config%viscosity            = hd_viscosity
     hd_config%particles            = hd_particles
 
     phys_energy                    = hd_config%energy
+
 
     if(hd_config%isotherm_on)then
       if(hd_config%energy)then
@@ -348,6 +362,7 @@ contains
     phys_get_pthermal             => hd_get_pthermal
     phys_get_gamma                => hd_get_gamma
     phys_get_mup                  => hd_get_mmw
+    phys_get_rhoxy                => hd_get_rhoXY
     phys_get_kin_en               => hd_kin_en
     phys_get_temperature          => hd_get_temperature
     phys_get_csound2              => hd_get_csound2
@@ -755,7 +770,8 @@ contains
     iw_dust_density = -1
 
     using_grackle : if(hd_config%use_grackle)then
-      prim_chem : if(hd_config%gr_primordial_chemistry>=0.and.hd_config%gr_primordial_chemistry<=3)then
+      
+      if(hd_config%primordial_chemistry>0)then
         !six species: H, H+, He, He+, He++, e- (in this order)
         iw_HI_density = var_set_fluxvar('HI', 'HI', need_bc=.true.)
         iw_HII_density = var_set_fluxvar('HII', 'HII', need_bc=.true.)
@@ -763,43 +779,50 @@ contains
         iw_HeII_density = var_set_fluxvar('HeII', 'HeII', need_bc=.true.)
         iw_HeIII_density = var_set_fluxvar('HeIII', 'HeIII', need_bc=.true.)
         iw_e_density = var_set_fluxvar('electron_density', 'electron_density', need_bc=.true.)
+        !six species: H, H+, He, He+, He++, e- (in this order)
+        hd_ind%HI_density_ = iw_HI_density
+        hd_ind%HII_density_ = iw_HII_density
+        hd_ind%HeI_density_ = iw_HeI_density
+        hd_ind%HeII_density_ = iw_HeII_density
+        hd_ind%HeIII_density_ = iw_HeIII_density
+        hd_ind%e_density_ = iw_e_density
+      end if
+      if(hd_config%primordial_chemistry>1)then
         ! + 3 species : H2, H-, H2+ (in this order)
         iw_H2I_density = var_set_fluxvar('H2I', 'H2I', need_bc=.true.)
         iw_HM_density = var_set_fluxvar('HM', 'HM', need_bc=.true.)
         iw_H2II_density = var_set_fluxvar('H2II', 'H2II', need_bc=.true.)
+        ! + 3 species : H2, H-, H2+ (in this order)
+        hd_ind%H2I_density_ = iw_H2I_density
+        hd_ind%HM_density_ = iw_HM_density
+        hd_ind%H2II_density_ = iw_H2II_density
+      end if
+      if(hd_config%primordial_chemistry>2)then
         ! + 3 species : D, D+, HD.
         iw_DI_density = var_set_fluxvar('DI', 'DI', need_bc=.true.)
         iw_DII_density = var_set_fluxvar('DII', 'DII', need_bc=.true.)
         iw_HDI_density = var_set_fluxvar('HDI', 'HDI', need_bc=.true.)
-      else
-        write(*,*) 'Unknown primordial chemistry network'
-        call mpistop('You must set hd_gr_primordial_chemistry to  0,1,2 or 3!')
-      end if prim_chem
-      !metal cooling
-      iw_metal_density = var_set_fluxvar('metal_density', 'metal_density', need_bc=.true.)
+        ! + 3 species : D, D+, HD.
+        hd_ind%DI_density_ = iw_DI_density
+        hd_ind%DII_density_ = iw_DII_density
+        hd_ind%HDI_density_ = iw_HDI_density
+      end if
+      
+      if(hd_config%use_metal_field==1)then
+        !metal fields
+        iw_metal_density = var_set_fluxvar('metal_density', 'metal_density', need_bc=.true.)
+        !metal cooling
+        hd_ind%metal_density_ = iw_metal_density        
+      end if
 
-      !dust chemistry
-      iw_dust_density = var_set_fluxvar('dust_density', 'dust_density', need_bc=.true.)
 
-      !six species: H, H+, He, He+, He++, e- (in this order)
-      hd_ind%HI_density_ = iw_HI_density
-      hd_ind%HII_density_ = iw_HII_density
-      hd_ind%HeI_density_ = iw_HeI_density
-      hd_ind%HeII_density_ = iw_HeII_density
-      hd_ind%HeIII_density_ = iw_HeIII_density
-      hd_ind%e_density_ = iw_e_density
-      ! + 3 species : H2, H-, H2+ (in this order)
-      hd_ind%H2I_density_ = iw_H2I_density
-      hd_ind%HM_density_ = iw_HM_density
-      hd_ind%H2II_density_ = iw_H2II_density
-      ! + 3 species : D, D+, HD.
-      hd_ind%DI_density_ = iw_DI_density
-      hd_ind%DII_density_ = iw_DII_density
-      hd_ind%HDI_density_ = iw_HDI_density
-      !metal cooling
-      hd_ind%metal_density_ = iw_metal_density
-      !dust chemistry
-      hd_ind%dust_density_ = iw_dust_density
+      if(hd_config%use_dust_density_field==1)then
+        !dust chemistry
+        iw_dust_density = var_set_fluxvar('dust_density', 'dust_density', need_bc=.true.)
+        !dust chemistry
+        hd_ind%dust_density_ = iw_dust_density        
+      end if
+
       rhoHI_ = iw_HI_density
       rhoHII_ = iw_HII_density
       rhoHeI_ = iw_HeI_density
@@ -869,8 +892,10 @@ contains
 
     if(hd_config%use_grackle)then
 
+      if(hd_config%primordial_chemistry>0)then
       iw_rhoX = var_set_extravar('rhoX', 'rhoX')
       iw_rhoY = var_set_extravar('rhoY', 'rhoY')
+      end if
 
       Lcool1_ = var_set_extravar('L', 'L', 1)
       dtcool1_ = var_set_extravar('dtcool', 'dtcool', 1)
@@ -955,6 +980,18 @@ end subroutine hd_get_aux
        small_e = hd_config%small_pressure/gamma_1
     end if
 
+    if(hd_config%use_grackle)then
+      if(hd_config%primordial_chemistry<0.and.hd_config%primordial_chemistry>3)then
+        call mpistop('You must set hd_gr_primordial_chemistry to  0,1,2 or 3!')
+      end if
+      if(hd_config%use_metal_field < 0 .or. hd_config%use_metal_field > 1) then
+        call mpistop('hd_config%use_metal_field >1 or <0')
+      end if
+      if(hd_config%use_dust_density_field < 0 .or. hd_config%use_dust_density_field > 1) then
+        call mpistop('hd_config%use_dust_density_field >1 or <0')
+      end if
+    end if
+
     if (hd_config%dust_on) call dust_check_params()
 
   end subroutine hd_check_params
@@ -1012,7 +1049,10 @@ end subroutine hd_get_aux
      ! set the convertion factor for the density
      w_convert_factor(rho_)     = unit_density
      ! set the convertion factor for the energy and pressure
-     if(hd_config%energy)w_convert_factor(e_)       = unit_density*unit_velocity**2.0_dp
+     if(hd_config%energy)then
+      w_convert_factor(e_)       = unit_density*unit_velocity**2.0_dp
+      w_convert_factor(p_)       = unit_density*unit_velocity**2.0_dp
+     end if
 
      ! set the convertion factor for the speed and the moment
      if(saveprim)then
@@ -1023,37 +1063,52 @@ end subroutine hd_get_aux
 
 
      if(hd_config%use_grackle)then
-      !HI
-      w_convert_factor(rhoHI_)=unit_density
-      !HII
-      w_convert_factor(rhoHII_)=unit_density
-      !HeI
-      w_convert_factor(rhoHeI_)=unit_density
-      !HeII
-      w_convert_factor(rhoHeII_)=unit_density
-      !HeIII
-      w_convert_factor(rhoHeIII_)=unit_density
-      !electrons
-      w_convert_factor(rhoe_)=unit_density
-      !HM
-      w_convert_factor(rhoe_)=unit_density
-      !H2I
-      w_convert_factor(rhoH2I_)=unit_density
-      !H2II
-      w_convert_factor(rhoH2II_)=unit_density
-      !DI
-      w_convert_factor(rhoDI_)=unit_density
-      !DII
-      w_convert_factor(rhoDII_)=unit_density
-      !HDI
-      w_convert_factor(rhoHDI_)=unit_density
-      !metal
-      w_convert_factor(rhometal_)=unit_density
-      !dust
-      w_convert_factor(rhodust_)=unit_density
+      if(hd_config%primordial_chemistry>0)then
+        !HI
+        w_convert_factor(rhoHI_)=unit_density
+        !HII
+        w_convert_factor(rhoHII_)=unit_density
+        !HeI
+        w_convert_factor(rhoHeI_)=unit_density
+        !HeII
+        w_convert_factor(rhoHeII_)=unit_density
+        !HeIII
+        w_convert_factor(rhoHeIII_)=unit_density
+        !electrons
+        w_convert_factor(rhoe_)=unit_density
+      end if
+      if(hd_config%primordial_chemistry>1)then
+        !HM
+        w_convert_factor(rhoHM_)=unit_density
+        !H2I
+        w_convert_factor(rhoH2I_)=unit_density
+        !H2II
+        w_convert_factor(rhoH2II_)=unit_density
+      end if
+      if(hd_config%primordial_chemistry>2)then
+        !DI
+        w_convert_factor(rhoDI_)=unit_density
+        !DII
+        w_convert_factor(rhoDII_)=unit_density
+        !HDI
+        w_convert_factor(rhoHDI_)=unit_density
+      end if
+      
+      if(hd_config%use_metal_field==1)then
+        !metal
+        w_convert_factor(rhometal_)=unit_density
+      end if
 
-      w_convert_factor(iw_rhoX)=unit_density
-      w_convert_factor(iw_rhoY)=unit_density
+
+      if(hd_config%use_dust_density_field==1)then
+        !dust
+        w_convert_factor(rhodust_)=unit_density
+      end if
+
+      if(hd_config%primordial_chemistry>0)then
+        w_convert_factor(iw_rhoX)=unit_density
+        w_convert_factor(iw_rhoY)=unit_density
+      end if
      end if
 
 
@@ -1090,22 +1145,39 @@ end subroutine hd_get_aux
     if(hd_config%dust_on)call dust_check_w(primitive, ixI^L, ixO^L, flag, w)
     if(hd_config%chemical_on)call chemical_check_w(primitive, ixI^L, ixO^L, flag, w)
 
+
+    where(w(ixO^S, rho_) < hd_config%small_density) flag(ixO^S) = rho_
+
     if(hd_config%use_grackle)then
-      where(w(ixO^S, rho_) < hd_config%small_density) flag(ixO^S) = rho_
-      where(w(ixO^S, rhoHI_) < hd_config%small_density) flag(ixO^S) = rhoHI_
-      where(w(ixO^S, rhoHII_) < hd_config%small_density) flag(ixO^S) = rhoHII_
-      where(w(ixO^S, rhoHM_) < hd_config%small_density) flag(ixO^S) = rhoHM_
-      where(w(ixO^S, rhoHeI_) < hd_config%small_density) flag(ixO^S) = rhoHeI_
-      where(w(ixO^S, rhoHeII_) < hd_config%small_density) flag(ixO^S) = rhoHeII_
-      where(w(ixO^S, rhoHeIII_) < hd_config%small_density) flag(ixO^S) = rhoHeIII_
-      where(w(ixO^S, rhoH2I_) < hd_config%small_density) flag(ixO^S) = rhoH2I_
-      where(w(ixO^S, rhoH2II_) < hd_config%small_density) flag(ixO^S) = rhoH2II_
-      where(w(ixO^S, rhoDI_) < hd_config%small_density) flag(ixO^S) = rhoDI_
-      where(w(ixO^S, rhoDII_) < hd_config%small_density) flag(ixO^S) = rhoDII_
-      where(w(ixO^S, rhoHDI_) < hd_config%small_density) flag(ixO^S) = rhoHDI_
-      where(w(ixO^S, rhoe_) < hd_config%small_density) flag(ixO^S) = rhoe_
-      where(w(ixO^S, rhometal_) < hd_config%small_density) flag(ixO^S) = rhometal_
-      where(w(ixO^S, rhodust_) < hd_config%small_density) flag(ixO^S) = rhodust_
+      if(hd_config%primordial_chemistry>0)then
+        where(w(ixO^S, rhoHI_) < hd_config%small_density) flag(ixO^S) = rhoHI_
+        where(w(ixO^S, rhoHII_) < hd_config%small_density) flag(ixO^S) = rhoHII_
+        where(w(ixO^S, rhoHeI_) < hd_config%small_density) flag(ixO^S) = rhoHeI_
+        where(w(ixO^S, rhoHeII_) < hd_config%small_density) flag(ixO^S) = rhoHeII_
+        where(w(ixO^S, rhoHeIII_) < hd_config%small_density) flag(ixO^S) = rhoHeIII_    
+        where(w(ixO^S, rhoe_) < hd_config%small_density) flag(ixO^S) = rhoe_
+      end if
+      if(hd_config%primordial_chemistry>1)then
+        where(w(ixO^S, rhoH2I_) < hd_config%small_density) flag(ixO^S) = rhoH2I_
+        where(w(ixO^S, rhoH2II_) < hd_config%small_density) flag(ixO^S) = rhoH2II_
+        where(w(ixO^S, rhoHM_) < hd_config%small_density) flag(ixO^S) = rhoHM_          
+      end if
+      if(hd_config%primordial_chemistry>2)then
+        where(w(ixO^S, rhoDI_) < hd_config%small_density) flag(ixO^S) = rhoDI_
+        where(w(ixO^S, rhoDII_) < hd_config%small_density) flag(ixO^S) = rhoDII_
+        where(w(ixO^S, rhoHDI_) < hd_config%small_density) flag(ixO^S) = rhoHDI_        
+      end if
+      
+      
+      if(hd_config%use_metal_field==1)then
+        !metal
+        where(w(ixO^S, rhometal_) < hd_config%small_density) flag(ixO^S) = rhometal_        
+      end if
+
+      if(hd_config%use_dust_density_field==1)then
+        !dust
+        where(w(ixO^S, rhodust_) < hd_config%small_density) flag(ixO^S) = rhodust_    
+      end if
     end if
 
     if (hd_config%energy) then
@@ -1432,15 +1504,20 @@ end subroutine hd_get_aux
     end if
 
     if (hd_config%energy) then
-      call hd_get_gamma(w,ixI^L, ixO^L, gamm)
-      !write(*,*) 'hd_get_pthermal gamma(csound2) of iteration it = ', it,&
-      !' = ', gamm(ixO^S)
-      !write(*,*) 'hd_get_pthermal w(ixO^S, e_) of iteration it = ', it,&
-      !' = ', w(ixO^S, e_)*w_convert_factor(e_)
-      pth(ixO^S) = (gamm(ixO^S)-1.0_dp) * (w(ixO^S, e_) - &
-           hd_kin_en(w, ixI^L, ixO^L))
-      !pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
-      !    hd_kin_en(w, ixI^L, ixO^L))
+    if(hd_config%use_grackle)then
+      
+      pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
+          hd_kin_en(w, ixI^L, ixO^L))
+      if(hd_config%primordial_chemistry>1)then  
+        call hd_get_gamma(w,ixI^L, ixO^L, gamm)
+        !write(*,*) 'hd_get_pthermal gamma(csound2) of iteration it = ', it,&
+        !' = ', gamm(ixO^S)
+        !write(*,*) 'hd_get_pthermal w(ixO^S, e_) of iteration it = ', it,&
+        !' = ', w(ixO^S, e_)*w_convert_factor(e_)
+        pth(ixO^S) = (gamm(ixO^S)-1.0_dp)*(w(ixO^S, e_) - &
+          hd_kin_en(w, ixI^L, ixO^L))
+      end if
+    end if
     else
        pth(ixO^S) = hd_config%adiab * w(ixO^S, rho_)**hd_config%gamma
     end if
@@ -1460,7 +1537,7 @@ end subroutine hd_get_aux
     real(kind=dp), dimension(ixI^S ):: gammaoth
     real(kind=dp), dimension(ixI^S ):: inv_gammaH2_1, inv_gammaoth_1
     real(kind=dp)                :: tvar
-    !real(kind=dp), dimension(ixI^S ):: tvar
+    real(kind=dp), dimension(ixI^S ):: pth, temp
     integer :: imesh^D
     real(dp)                 :: mp,kB,me
     !-------------------------------------------------------
@@ -1478,57 +1555,65 @@ end subroutine hd_get_aux
 
     !write(*,*) 'temperature field = ', w(ixO^S,temperature_)*w_convert_factor(temperature_)
     if (hd_config%use_grackle) then
-      !write(*,*) 'hd_get_gamma H2I',w(ixO^S,rhoH2I_)
-      !write(*,*) 'hd_get_gamma H2II',w(ixO^S,rhoH2II_)
-      !write(*,*) 'hd_get_gamma HeI',w(ixO^S,rhoHeI_)
-      !write(*,*) 'hd_get_gamma HeII',w(ixO^S,rhoHeII_)
-      !write(*,*) 'hd_get_gamma HeIII',w(ixO^S,rhoHeIII_)
-      !write(*,*) 'hd_get_gamma HI',w(ixO^S,rhoHI_)
-      !write(*,*) 'hd_get_gamma HII',w(ixO^S,rhoHII_)
-      !write(*,*) 'hd_get_gamma e-',w(ixO^S,rhoe_)
-      nH2(ixO^S) = 0.5d0*(w(ixO^S,rhoH2I_) + &
-      w(ixO^S,rhoH2II_))
-      nother(ixO^S) = (w(ixO^S,rhoHeI_) + w(ixO^S,rhoHeII_) +&
-                   w(ixO^S,rhoHeIII_))/4.0d0 +&
-                   w(ixO^S,rhoHI_) + w(ixO^S,rhoHII_) +&
-                   w(ixO^S,rhoe_)*(mp/me)
+      if(hd_config%primordial_chemistry>1)then
+        ! first estimation of pressure :
+        pth(ixO^S) = gamma_1 * (w(ixO^S, e_) - &
+            hd_kin_en(w, ixI^L, ixO^L))*w_convert_factor(e_)
+        
+        nother(ixO^S) = ((w(ixO^S,rhoHeI_)*w_convert_factor(rhoHeI_) + &
+              w(ixO^S,rhoHeII_)*w_convert_factor(rhoHeII_) +&
+              w(ixO^S,rhoHeIII_)*w_convert_factor(rhoHeIII_))/(4.0d0*mp)) +&
+              w(ixO^S,rhoHI_)*w_convert_factor(rhoHI_)/mp + &
+              w(ixO^S,rhoHII_)*w_convert_factor(rhoHII_)/mp +&
+              w(ixO^S,rhoHM_)*w_convert_factor(rhoHI_)/mp + &
+              w(ixO^S,rhoe_)*w_convert_factor(rhoe_)/me
 
-      !write(*,*) 'nH2 = ',nH2(ixO^S)
-      !write(*,*) 'nother = ',nother(ixO^S)
-      {do imesh^D=ixOmin^D,ixOmax^D|\}
-      if(nH2(imesh^D)/nother(imesh^D) > 1.0d-3)then
-        !write(*,*) 'temperature =', (w(imesh^D, temperature_)*&
-        !w_convert_factor(temperature_))
-        tvar = 6100.0d0/(w(imesh^D, temperature_)*&
-        w_convert_factor(temperature_))
-        if (tvar > 10.0)then
-          inv_gammaH2_1(imesh^D) = 0.5d0*5.0d0
+        nH2(ixO^S) = (w(ixO^S,rhoH2I_)*w_convert_factor(rhoH2I_) + &
+                      w(ixO^S,rhoH2II_)*w_convert_factor(rhoH2II_))/(2.0_dp*mp)
+
+!write(*,*) 'nH2 = ',nH2(ixO^S)
+!write(*,*) 'nother = ',nother(ixO^S)                        
+
+        if(hd_config%use_metal_field==1)then
+          !write(*,*) 'mu_metal is equal to : mu_metal = ', metal_mu
+          nother(ixO^S) = nother(ixO^S) +&
+          (w(ixO^S,rhometal_)*w_convert_factor(rhometal_)/(metal_mu*mp))
+        end if        
+
+        ! T = (gam-1)*rho*u/(kB*ntot)
+        temp(ixO^S) = max(pth(ixO^S)/(kB*(nother(ixO^S) + nH2(ixO^S))),1.0_dp)
+
+
+        ! Remove metals to compute correction for Gamma
+        if(hd_config%use_metal_field==1)then
+          nother(ixO^S) = nother(ixO^S) -&
+          (w(ixO^S,rhometal_)*w_convert_factor(rhometal_)/(metal_mu*mp))
+        end if  
+
+        {do imesh^D=ixOmin^D,ixOmax^D|\}
+        if(nH2(imesh^D)/nother(imesh^D) > 1.0d-3)then
+          tvar = 6100.0d0/temp(imesh^D)
+          if (tvar > 10.0)then
+            inv_gammaH2_1(imesh^D) = 0.5d0*5.0d0
+          else
+            inv_gammaH2_1(imesh^D) = 0.5d0*(5.0d0 +&
+                              2.0d0 * tvar**2.0d0 *&
+                            DEXP(tvar)/(DEXP(tvar)-1.0d0)**2.0d0)
+          end if
         else
-          inv_gammaH2_1(imesh^D) = 0.5d0*(5.0d0 +&
-                             2.0d0 * tvar**2.0d0 *&
-                          DEXP(tvar)/(DEXP(tvar)-1.0d0)**2.0d0)
+          inv_gammaH2_1(imesh^D) = 2.5d0
         end if
+        !write(*,*) 'inv_gammaH2_1 = ', inv_gammaH2_1(imesh^D)
+        {end do^D&|\}
+
+        gammaoth(ixO^S) = hd_config%gamma
+        inv_gammaoth_1(ixO^S) = 1.0d0/(gammaoth(ixO^S)-1.0d0)
+        gammaeff(ixO^S) = 1.0d0 + ((nH2(ixO^S) + nother(ixO^S))/&
+              (nH2(ixO^S)*inv_gammaH2_1(ixO^S) +&
+          nother(ixO^S)*inv_gammaoth_1(ixO^S)))
       else
-        inv_gammaH2_1(imesh^D) = 2.5d0
+        gammaeff(ixO^S) = hd_config%gamma
       end if
-      !write(*,*) 'inv_gammaH2_1 = ', inv_gammaH2_1(imesh^D)
-      {end do^D&|\}
-      !tvar(ixO^S)=6100.0d0/(w(ixO^S, temperature_)*&
-      !w_convert_factor(temperature_))
-      !inv_gammaH2_1(ixO^S)=merge(merge(0.5d0*5.0d0,&
-      !                0.5d0*(5.0d0 +&
-      !                2.0d0*tvar(ixO^S)**2.0d0*&
-      !                DEXP(tvar(ixO^S))/&
-      !                (DEXP(tvar(ixO^S))-1.0d0)**2.0d0),&
-      !tvar(ixO^S)>10.0d0),&
-      !2.5d0,nH2(ixO^S)/nother(ixO^S)>1.0d-3)
-
-      gammaoth(ixO^S) = hd_config%gamma
-      inv_gammaoth_1(ixO^S) = 1.0d0/(gammaoth(ixO^S)-1.0d0)
-
-      gammaeff(ixO^S) = 1.0d0 + (nH2(ixO^S) + nother(ixO^S))/&
-                   (nH2(ixO^S)*inv_gammaH2_1(ixO^S) +&
-                nother(ixO^S)*inv_gammaoth_1(ixO^S))
       !write(*,*) 'gammeff = ',gammaeff(ixO^S)
     else
        gammaeff(ixO^S) = hd_config%gamma
@@ -1537,6 +1622,8 @@ end subroutine hd_get_aux
     !if (check_small_values)call hd_handle_small_values_pressure(ixI^L,ixO^L,x,&
     !                                                            'gammaeff',gammaeff,w)
   end subroutine hd_get_gamma
+
+
 
   !> Calculate mean molecular weight
   subroutine hd_get_mmw(w, x, ixI^L, ixO^L, mmw)
@@ -1547,6 +1634,7 @@ end subroutine hd_get_aux
     real(dp), intent(in)         :: x(ixI^S, 1:ndim)
     real(dp), intent(out)        :: mmw(ixI^S)
     real(dp)                 :: mp,kB,me
+    real(dp),dimension(ixI^S):: gamma, temperature,uenergy, nden, rhoxy
     !-------------------------------------------------------
 
 
@@ -1562,19 +1650,34 @@ end subroutine hd_get_aux
 
 
     if (hd_config%use_grackle) then
-      ! rho = rhogas = rhotot - rhoDust
-      ! (ignores deuterium and gas so no dust)
-      ! Eqs. (14) & (27) of Smith et al. 2017, MNRAS 466, 2217–2234
-      mmw(ixO^S) = w(ixO^S,rho_)/&
-        (w(ixO^S,rhoHI_)+w(ixO^S,rhoHII_)+&
-        w(ixO^S,rhoHM_)+&
-        0.25d0*(w(ixO^S,rhoHeI_)+w(ixO^S,rhoHeII_)+&
-        w(ixO^S,rhoHeIII_))+&
-        0.5d0*(w(ixO^S,rhoH2I_)+w(ixO^S,rhoH2II_))+&
-        w(ixO^S,rhometal_)/16.0+&
-        w(ixO^S,rhoe_)*(mp/me))
+      if(hd_config%primordial_chemistry==0)then
+        mmw(ixO^S) = 1.0_dp !by default
+      else if(hd_config%primordial_chemistry>0)then
+        nden(ixO^S) = 0.0_dp
+        if(hd_config%use_metal_field==1)then
+          nden(ixO^S) = nden(ixO^S) +&
+          (w(ixO^S,rhometal_)*w_convert_factor(rhometal_)/&
+          (metal_mu*mp))
+        end if
+        nden(ixO^S) = nden(ixO^S) + &
+        (w(ixO^S,rhoHI_)*w_convert_factor(rhoHI_)/mp)+&
+        (w(ixO^S,rhoHII_)*w_convert_factor(rhoHII_)/mp)+&
+        (w(ixO^S,rhoe_)*w_convert_factor(rhoe_)/me)+&
+        ((w(ixO^S,rhoHeI_)*w_convert_factor(rhoHeI_)+&
+        w(ixO^S,rhoHeII_)*w_convert_factor(rhoHeII_)+&
+        w(ixO^S,rhoHeIII_)*w_convert_factor(rhoHeIII_))/(4.0_dp*mp))
+        if(hd_config%primordial_chemistry>1)then
+          nden(ixO^S) = nden(ixO^S) + &
+          (w(ixO^S,rhoHM_)*w_convert_factor(rhoHM_)/mp)+&
+          ((w(ixO^S,rhoH2I_)*w_convert_factor(rhoH2I_)+&
+          w(ixO^S,rhoH2II_)*w_convert_factor(rhoH2II_))/(2.0_dp*mp))           
+        end if
 
-       !mmw(ixO^S) = w(ixO^S,hd_ind%H2I_density_)
+        call hd_get_rhoXY(w, x, ixI^L, ixO^L, rhoxy)  
+                
+        mmw(ixO^S) = (rhoxy(ixO^S)/mp)/nden(ixO^S)
+        !rhoH+rhoHe
+      end if
     else
        mmw(ixO^S) = hd_config%mean_mup
     end if
@@ -1582,6 +1685,30 @@ end subroutine hd_get_aux
     !if (check_small_values)call hd_handle_small_values_pressure(ixI^L,ixO^L,x,&
     !                                                            'mmw',mmw,w)
   end subroutine hd_get_mmw
+
+    subroutine hd_get_rhoXY(w, x, ixI^L, ixO^L, rhoxy)
+    use mod_global_parameters
+    integer, intent(in)          :: ixI^L, ixO^L
+    real(dp), intent(in)         :: w(ixI^S, nw)
+    real(dp), intent(in)         :: x(ixI^S, 1:ndim)
+    real(dp), intent(out)        :: rhoxy(ixI^S)
+    !-------------------------------------------------------
+
+    rhoxy(ixO^S) = w(ixO^S,rhoHI_)*w_convert_factor(rhoHI_)+&
+    w(ixO^S,rhoHII_)*w_convert_factor(rhoHII_)+&
+    w(ixO^S,rhoHeI_)*w_convert_factor(rhoHeI_)+&
+    w(ixO^S,rhoHeII_)*w_convert_factor(rhoHeII_)+&
+    w(ixO^S,rhoHeIII_)*w_convert_factor(rhoHeIII_)          
+
+
+    if(hd_config%primordial_chemistry>1)then
+      rhoxy(ixO^S) =rhoxy(ixO^S) +&
+      w(ixO^S,rhoHM_)*w_convert_factor(rhoHM_)+&
+      w(ixO^S,rhoH2I_)*w_convert_factor(rhoH2I_)+&
+      w(ixO^S,rhoH2II_)*w_convert_factor(rhoH2II_)                     
+    end if
+
+    end subroutine hd_get_rhoXY
 
   !> Calculate temperature within ixO^L
   subroutine hd_get_temperature( ixI^L, ixO^L,w, x, temperature)
@@ -1591,32 +1718,71 @@ end subroutine hd_get_aux
     real(dp), intent(in)         :: w(ixI^S, nw)
     real(dp), intent(in)         :: x(ixI^S, 1:ndim)
     real(dp), intent(out)        :: temperature(ixI^S)
-    real(dp), dimension(ixI^S)   :: pth
+    real(dp), dimension(ixI^S)   :: pth,ndens
     real(dp), dimension(ixI^S)   :: meanmw
     logical , dimension(ixI^S)   :: patch_mult_mup
-    real(kind=dp)  :: mp,kB
+    real(kind=dp)  :: mp,kB,me
     !----------------------------------------------------
 
     if(SI_unit) then
-        mp=mp_SI
-        kB=kB_SI
+      mp=mp_SI
+      kB=kB_SI
+      me = const_me*1.0d-3
     else
-        mp=mp_cgs
-        kB=kB_cgs
+      mp=mp_cgs
+      kB=kB_cgs
+      me = const_me
     end if
 
 
     if (hd_config%energy) then
-      call hd_get_pthermal(w, x, ixI^L, ixO^L, pth,'hd_get_temperature')
-      temperature(ixO^S) =&
-      mp*w_convert_factor(p_)*pth(ixO^S)/&
-      (kB*w_convert_factor(rho_)*w(ixO^S,rho_))
-      if(hd_config%mean_mup_on)then
-        call hd_get_mmw(w, x, ixI^L, ixO^L, meanmw)
-        temperature(ixO^S) =temperature(ixO^S) *&
-        meanmw(ixO^S)
-      end if
-      temperature(ixO^S) =temperature(ixO^S)/unit_temperature
+      if (hd_config%use_grackle) then
+        ! rho = rhogas = rhotot - rhoDust
+        ! (ignores deuterium and gas so no dust)
+        ! Eqs. (14) & (27) of Smith et al. 2017, MNRAS 466, 2217–2234
+        if(hd_config%primordial_chemistry==0)then
+          temperature(ixO^S) = w(ixO^S,hd_ind%temperature_)*&
+          w_convert_factor(hd_ind%temperature_)
+
+        else
+          call hd_get_pthermal(w, x, ixI^L, ixO^L, pth,'hd_get_temperature')
+          pth(ixO^S)=pth(ixO^S)*w_convert_factor(p_)
+          
+          !write(*,*) 'hd_get_temp pressure = ',pth(ixO^S)
+
+          if(hd_config%primordial_chemistry>0)then
+          ndens(ixO^S) = w(ixO^S,rhoHI_)*w_convert_factor(rhoHI_)/mp+&
+          w(ixO^S,rhoHII_)*w_convert_factor(rhoHII_)/mp+&
+            w(ixO^S,rhoe_)*w_convert_factor(rhoe_)/me+&
+            ((w(ixO^S,rhoHeI_)*w_convert_factor(rhoHeI_)+&
+            w(ixO^S,rhoHeII_)*w_convert_factor(rhoHeII_)+&
+            w(ixO^S,rhoHeIII_)*w_convert_factor(rhoHeIII_))/(4.0_dp*mp))
+          end if
+
+          !     (include molecular hydrogen, but ignore deuterium)
+
+          if(hd_config%primordial_chemistry>1)then
+          ndens(ixO^S) =  ndens(ixO^S) + &
+            w(ixO^S,rhoHM_)*w_convert_factor(rhoHM_)/mp+&
+            ((w(ixO^S,rhoH2I_)*w_convert_factor(rhoH2I_)+&
+            w(ixO^S,rhoH2II_)*w_convert_factor(rhoH2II_))/(2.0_dp*mp))
+          end if                
+
+          !     Include metal species
+
+          if(hd_config%use_metal_field==1)then
+            ndens(ixO^S) = ndens(ixO^S) +&
+            (w(ixO^S,rhometal_)*w_convert_factor(rhometal_)/(metal_mu*mp))
+          end if 
+      
+          
+          
+
+          temperature(ixO^S) = pth(ixO^S)/(kB*ndens(ixO^S))
+        end if
+        temperature(ixO^S) = temperature(ixO^S) /&
+        w_convert_factor(hd_ind%temperature_)
+      end if      
     else
       Temperature(ixO^S) = hd_config%temperature_isotherm !necessarilly isotherm
       if(hd_config%mean_mup_on)then
@@ -1678,20 +1844,30 @@ end subroutine hd_get_aux
     !Mialy s addings:
 
     if(hd_config%use_grackle)then
-      f(ixO^S, rhoHI_) = v(ixO^S) * w(ixO^S, rhoHI_)
-      f(ixO^S, rhoHII_) = v(ixO^S) * w(ixO^S, rhoHII_)
-      f(ixO^S, rhoHM_) = v(ixO^S) * w(ixO^S, rhoHM_)
-      f(ixO^S, rhoHeI_) = v(ixO^S) * w(ixO^S, rhoHeI_)
-      f(ixO^S, rhoHeII_) = v(ixO^S) * w(ixO^S, rhoHeII_)
-      f(ixO^S, rhoHeIII_) = v(ixO^S) * w(ixO^S, rhoHeIII_)
-      f(ixO^S, rhoH2I_) = v(ixO^S) * w(ixO^S, rhoH2I_)
-      f(ixO^S, rhoH2II_) = v(ixO^S) * w(ixO^S, rhoH2II_)
-      f(ixO^S, rhoe_) = v(ixO^S) * w(ixO^S, rhoe_)
-      f(ixO^S, rhoDI_) = v(ixO^S) * w(ixO^S, rhoDI_)
-      f(ixO^S, rhoDII_) = v(ixO^S) * w(ixO^S, rhoDII_)
-      f(ixO^S, rhoHDI_) = v(ixO^S) * w(ixO^S, rhoHDI_)
-      f(ixO^S, rhometal_) = v(ixO^S) * w(ixO^S, rhometal_)
-      f(ixO^S, rhodust_) = v(ixO^S) * w(ixO^S, rhodust_)
+      if(hd_config%primordial_chemistry>0)then
+        f(ixO^S, rhoHI_) = v(ixO^S) * w(ixO^S, rhoHI_)
+        f(ixO^S, rhoHII_) = v(ixO^S) * w(ixO^S, rhoHII_)
+        f(ixO^S, rhoHeI_) = v(ixO^S) * w(ixO^S, rhoHeI_)
+        f(ixO^S, rhoHeII_) = v(ixO^S) * w(ixO^S, rhoHeII_)
+        f(ixO^S, rhoHeIII_) = v(ixO^S) * w(ixO^S, rhoHeIII_)
+        f(ixO^S, rhoe_) = v(ixO^S) * w(ixO^S, rhoe_)
+      end if
+      if(hd_config%primordial_chemistry>1)then
+        f(ixO^S, rhoHM_) = v(ixO^S) * w(ixO^S, rhoHM_)
+        f(ixO^S, rhoH2I_) = v(ixO^S) * w(ixO^S, rhoH2I_)
+        f(ixO^S, rhoH2II_) = v(ixO^S) * w(ixO^S, rhoH2II_)
+      end if
+      if(hd_config%primordial_chemistry>2)then
+        f(ixO^S, rhoDI_) = v(ixO^S) * w(ixO^S, rhoDI_)
+        f(ixO^S, rhoDII_) = v(ixO^S) * w(ixO^S, rhoDII_)
+        f(ixO^S, rhoHDI_) = v(ixO^S) * w(ixO^S, rhoHDI_)
+      end if
+      if(hd_config%use_metal_field==1)then
+        f(ixO^S, rhometal_) = v(ixO^S) * w(ixO^S, rhometal_)
+      end if
+      if(hd_config%use_dust_density_field==1)then
+        f(ixO^S, rhodust_) = v(ixO^S) * w(ixO^S, rhodust_)
+      end if
     end if
 
     ! Momentum flux is v_i*m_i, +p in direction idim
@@ -1748,20 +1924,30 @@ end subroutine hd_get_aux
     f(ixO^S, rho_) = w(ixO^S,mom(idim)) * w(ixO^S, rho_)
 
     if(hd_config%use_grackle)then
-      f(ixO^S, rhoHI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHI_)
-      f(ixO^S, rhoHII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHII_)
-      f(ixO^S, rhoHM_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHM_)
-      f(ixO^S, rhoHeI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHeI_)
-      f(ixO^S, rhoHeII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHeII_)
-      f(ixO^S, rhoHeIII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHeIII_)
-      f(ixO^S, rhoH2I_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoH2I_)
-      f(ixO^S, rhoH2II_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoH2II_)
-      f(ixO^S, rhoe_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoe_)
-      f(ixO^S, rhoDI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoDI_)
-      f(ixO^S, rhoDII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoDII_)
-      f(ixO^S, rhoHDI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHDI_)
-      f(ixO^S, rhometal_) = w(ixO^S,mom(idim)) * w(ixO^S, rhometal_)
-      f(ixO^S, rhodust_) = w(ixO^S,mom(idim)) * w(ixO^S, rhodust_)
+      if(hd_config%primordial_chemistry>0)then
+        f(ixO^S, rhoHI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHI_)
+        f(ixO^S, rhoHII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHII_)        
+        f(ixO^S, rhoHeI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHeI_)
+        f(ixO^S, rhoHeII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHeII_)
+        f(ixO^S, rhoHeIII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHeIII_)
+        f(ixO^S, rhoe_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoe_)      
+      end if
+      if(hd_config%primordial_chemistry>1)then
+        f(ixO^S, rhoHM_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHM_)
+        f(ixO^S, rhoH2I_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoH2I_)
+        f(ixO^S, rhoH2II_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoH2II_)        
+      end if
+      if(hd_config%primordial_chemistry>2)then
+        f(ixO^S, rhoDI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoDI_)
+        f(ixO^S, rhoDII_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoDII_)
+        f(ixO^S, rhoHDI_) = w(ixO^S,mom(idim)) * w(ixO^S, rhoHDI_)        
+      end if
+      if(hd_config%use_metal_field==1)then
+        f(ixO^S, rhometal_) = w(ixO^S,mom(idim)) * w(ixO^S, rhometal_)        
+      end if
+      if(hd_config%use_dust_density_field==1)then
+        f(ixO^S, rhodust_) = w(ixO^S,mom(idim)) * w(ixO^S, rhodust_)        
+      end if
     end if
 
     ! Momentum flux is v_i*m_i, +p in direction idim
@@ -2072,22 +2258,32 @@ end subroutine hd_get_aux
      if(all(flag(ixO^S) <= 0)) return
         where(flag(ixO^S) > 0) w(ixO^S,rho_) = hd_config%small_density
 
-        if(hd_config%use_grackle)then
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHI_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHII_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHM_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHeI_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHeII_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHeIII_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoH2I_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoH2II_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoDI_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoDII_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoHDI_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhoe_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhometal_) = hd_config%small_density/14.0_dp
-          where(flag(ixO^S) > 0) w(ixO^S, rhodust_) = hd_config%small_density/14.0_dp
-        end if
+    if(hd_config%use_grackle)then
+      if(hd_config%primordial_chemistry>0)then
+        where(flag(ixO^S) > 0) w(ixO^S, rhoHI_) = hd_config%small_density
+        where(flag(ixO^S) > 0) w(ixO^S, rhoHII_) = hd_config%small_density
+        where(flag(ixO^S) > 0) w(ixO^S, rhoHeI_) = hd_config%small_density
+        where(flag(ixO^S) > 0) w(ixO^S, rhoHeII_) = hd_config%small_density
+        where(flag(ixO^S) > 0) w(ixO^S, rhoHeIII_) = hd_config%small_density
+        where(flag(ixO^S) > 0) w(ixO^S, rhoe_) = hd_config%small_density
+      end if
+      if(hd_config%primordial_chemistry>1)then
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHM_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoH2I_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoH2II_) = hd_config%small_density        
+      end if
+      if(hd_config%primordial_chemistry>2)then
+          where(flag(ixO^S) > 0) w(ixO^S, rhoDI_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoDII_) = hd_config%small_density
+          where(flag(ixO^S) > 0) w(ixO^S, rhoHDI_) = hd_config%small_density        
+      end if
+      if(hd_config%use_metal_field==1)then
+          where(flag(ixO^S) > 0) w(ixO^S, rhometal_) = hd_config%small_density        
+      end if
+      if(hd_config%use_dust_density_field==1)then
+          where(flag(ixO^S) > 0) w(ixO^S, rhodust_) = hd_config%small_density
+      end if
+    end if
 
         do idir = 1, ndir
           where(flag(ixO^S) > 0) w(ixO^S, mom(idir)) = 0.0_dp

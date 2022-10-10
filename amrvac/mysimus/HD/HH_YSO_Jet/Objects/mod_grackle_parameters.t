@@ -9,7 +9,7 @@ module mod_grackle_parameters
 ! Define constants
 
 real*8,parameter    :: mh_gr=mp_cgs, kboltz_gr=kB_cgs, me_gr=const_me
-real(kind=dp) :: tiny_number= 1.0d-13,huge_number= 1.0d30
+real(kind=dp) :: tiny_number= 1.0d-20,huge_number= 1.0d20
 integer,parameter :: max_num_parameters = 5
 real(kind=dp),parameter :: abundance_tolerance = 1.0e-2_gr_RKIND
 real(kind=dp),parameter :: abundance_density = 1.0e-2_gr_RKIND
@@ -31,7 +31,7 @@ real(kind=dp),parameter :: w_H2I = 2.0d0 ! 2.000000000004
 real(kind=dp),parameter :: w_H2II = 2.0d0 ! 2.000000000004
 real(kind=dp),parameter :: w_DI = 2.0d0 ! 1.998463735368
 real(kind=dp),parameter :: w_DII = 2.0d0 ! 1.998463735368
-real(kind=dp),parameter :: w_HDI = 2.0d0 ! 2.998463735326
+real(kind=dp),parameter :: w_HDI = 3.0d0 ! 2.998463735326
 real(kind=dp),parameter :: w_e = 5.443205831355435e-4
 
 ! Grackle parameters for this solver time step

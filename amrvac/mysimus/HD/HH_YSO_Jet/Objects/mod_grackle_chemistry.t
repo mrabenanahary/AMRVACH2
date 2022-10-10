@@ -444,23 +444,14 @@ module mod_grackle_chemistry
     PROCEDURE, PASS(self) :: read_parameters => grackle_config_read
     PROCEDURE, PASS(self) :: write_setting        => grackle_write_setting
     PROCEDURE, PASS(self) :: set_complet        => grackle_set_complet
+    PROCEDURE, PASS(self) :: get_xy_density     => grackle_get_ref_dens
     PROCEDURE, PASS(self) :: normalize       => grackle_normalize
     PROCEDURE, PASS(self) :: denormalize       => grackle_denormalize
 
-    !PROCEDURE, PASS(self) :: check_nH_abundances   => check_nH_abundances_consistency
-    !PROCEDURE, PASS(self) :: check_xHe_abundances   => check_xhe_abundances_consistency
-    !PROCEDURE, PASS(self) :: check_Xfraction_abundances   => check_Xfraction_abundances_consistency
-    !PROCEDURE, PASS(self) :: check_densities   => check_densities_consistency
-    !PROCEDURE, PASS(self) :: check_deviation   => check_deviation_by_density
-    !PROCEDURE, PASS(self) :: set_w_init   => usr_gr_set_w_init
-    !PROCEDURE, PASS(self)        :: clean_grid               => grackle_deallocate_wgr
-    !PROCEDURE, PASS(self)        :: set_grid                 => grackle_allocate_wgr
+   
     PROCEDURE, PASS(self)        :: link_par_to_gr           => grackle_solver_associate
-    PROCEDURE, PASS(self)        :: set_parameters           => grackle_chemistry_set_parameters
     PROCEDURE, PASS(self)        :: set_global_parameters => grackle_chemistry_set_global_parameters
-    PROCEDURE, PASS(self)        :: set_dt           => grackle_set_dt
     PROCEDURE, PASS(self)        :: set_global_dt           => grackle_set_global_dt
-    !PROCEDURE, PASS(self) :: associate_units          => grackle_solver_associate_units
     PROCEDURE, PASS(self)        :: grackle_source           => grackle_solve_chemistry
     PROCEDURE, PASS(self)        :: make_consistent          => grackle_make_consistent
   end type gr_solver
@@ -1125,17 +1116,66 @@ end    subroutine grackle_write_setting
 
 !--------------------------------------------------------------------
 !> subroutine check the parfile setting for ism
-subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit)
+subroutine grackle_get_ref_dens(self,ref_density,iobject,out_density,normalized,mydensityunit)
   implicit none
   class(gr_solver)                                :: self
   real(kind=dp),intent(in) :: ref_density
   integer, intent(in)             :: iobject
+  real(kind=dp),intent(inout) :: out_density
   logical       :: normalized
   real(kind=dp),optional :: mydensityunit
   ! .. local ..
   !integer :: iobject
   real(kind=dp) :: physical_ref_density
     real(dp)                 :: mp,kB,me
+  !-------------------------------------------------------
+
+  if(SI_unit) then
+    mp=mp_SI
+    kB=kB_SI
+    me = const_me*1.0d-3
+  else
+    mp=mp_cgs
+    kB=kB_cgs
+    me = const_me
+  end if
+
+  if(normalized.and.(.not.present(mydensityunit)))then
+    call mpistop('normalized==true but no density unit given')
+  end if
+
+  physical_ref_density = ref_density !rho
+
+  if(normalized)then
+    physical_ref_density = ref_density*&
+    mydensityunit
+  end if
+
+  out_density = physical_ref_density /&
+  ( 1.0_dp + self%myconfig%MetalFractionByMass(1) +&
+  ((me/mp)*(self%myconfig%HydrogenFractionByMass(1)*&
+  (0.5_dp*self%myconfig%x_H2II(iobject)+&
+  (self%myconfig%x_HII(iobject)-&
+  self%myconfig%x_HM(iobject)))+&
+  self%myconfig%HeliumFractionByMass(1)*&
+  ((self%myconfig%x_HeII(iobject)+&
+  2.0_dp*self%myconfig%x_HeIII(iobject))/4.0_dp))))
+
+
+end subroutine grackle_get_ref_dens
+
+!> subroutine check the parfile setting for ism
+subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit)
+  implicit none
+  class(gr_solver)                                :: self
+  real(kind=dp),intent(inout) :: ref_density
+  integer, intent(inout)             :: iobject
+  logical       :: normalized
+  real(kind=dp),optional :: mydensityunit
+  ! .. local ..
+  !integer :: iobject
+  real(kind=dp) :: physical_ref_density, in_density
+  real(dp)                 :: mp,kB,me
   !-------------------------------------------------------
 
 
@@ -1160,18 +1200,27 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
     mydensityunit
   end if
 
+  in_density = physical_ref_density
+
+  call self%get_xy_density(in_density,iobject,&
+  physical_ref_density,.false.,mydensityunit)
+
+  ref_density = physical_ref_density  !rho
+
+  if(normalized)then
+    ref_density = physical_ref_density/&
+    mydensityunit
+  end if
+
   write(*,*) ' set_complet iobject begining of set_complet =', iobject
 
 
   ! == rho = rhoH + rhoHe + rhoZ
   ! Z
-  !if(self%myconfig%MetalFractionByMass(1)<smalldouble)then
-  self%myconfig%SolarMetalFractionByMass(1)=self%myconfig%MetalFractionByMass(1)
-  !end if
-
   ! rhoZ = Z*rho
-  self%myconfig%density_Z(iobject)=self%myconfig%MetalFractionByMass(1)*&
-  physical_ref_density
+  self%myconfig%density_Z(iobject)=max(self%myconfig%MetalFractionByMass(1)*&
+  physical_ref_density,&
+  self%myconfig%deviation_to_density(iobject)*physical_ref_density)
 
   ! chi_dust and xi_dust
   if((self%myconfig%chi_dust(1)<smalldouble).and.&
@@ -1188,13 +1237,14 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
   end if
 
   !rhodust = chiDust * rho
-  self%myconfig%density_dust(iobject)=physical_ref_density*&
-  self%myconfig%chi_dust(1)
-
+  self%myconfig%density_dust(iobject)=max(physical_ref_density*&
+  self%myconfig%chi_dust(1),&
+  self%myconfig%deviation_to_density(iobject)*physical_ref_density)
 
   !rhoHplusH2 = rhoH
-  self%myconfig%densityHplusH2(iobject)=self%myconfig%HydrogenFractionByMass(1)*&
-  physical_ref_density
+  self%myconfig%densityHplusH2(iobject)=max(self%myconfig%HydrogenFractionByMass(1)*&
+  physical_ref_density,&
+  self%myconfig%deviation_to_density(iobject)*physical_ref_density)
 
   !Y
   self%myconfig%HeliumFractionByMass(1) = 1.0_dp - &
@@ -1202,64 +1252,127 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
 
 
   !rhoY
-  self%myconfig%densityHe(iobject) = self%myconfig%HeliumFractionByMass(1)*&
-  physical_ref_density
+  self%myconfig%densityHe(iobject) = max(self%myconfig%HeliumFractionByMass(1)*&
+  physical_ref_density,&
+  self%myconfig%deviation_to_density(iobject)*physical_ref_density)
 
-  self%myconfig%density_Y(iobject)=self%myconfig%densityHe(iobject)
+  self%myconfig%density_Y(iobject) = self%myconfig%densityHe(iobject)
 
   !rhodeut
-  self%myconfig%density_deut(iobject) = self%myconfig%DeuteriumToHydrogenRatio(1)*&
-  self%myconfig%densityHplusH2(iobject)
+  self%myconfig%density_deut(iobject) = max(self%myconfig%DeuteriumToHydrogenRatio(1)*&
+  self%myconfig%densityHplusH2(iobject),&
+  self%myconfig%deviation_to_density(iobject)*physical_ref_density)
 
   !rhoX = rhoD + rhoHD + rhoH + rhoH2
-  self%myconfig%density_X(iobject) = self%myconfig%density_deut(iobject)+&
-  self%myconfig%densityHplusH2(iobject)
+  self%myconfig%density_X(iobject) = self%myconfig%densityHplusH2(iobject)
 
+  if(self%myconfig%gr_primordial_chemistry(1)>2)then
+    self%myconfig%density_X(iobject) = self%myconfig%density_X(iobject) +&
+    self%myconfig%density_deut(iobject)
+  end if
 
   self%myconfig%density_bar(iobject) = self%myconfig%density_X(iobject)+&
-  self%myconfig%density_Y(iobject)+ self%myconfig%density_Z(iobject)
+  self%myconfig%density_Y(iobject)
+  
+  if(phys_config%use_metal_field==1)then
+    self%myconfig%density_bar(iobject) =self%myconfig%density_bar(iobject)+&
+    self%myconfig%density_Z(iobject)
+  end if
 
     !Finalyy compute values from abundances
     !x_DI + x_DII +x_HDI = 1
-    self%myconfig%densityDI(iobject) = self%myconfig%x_DI(iobject)*&
-    self%myconfig%density_deut(iobject)
-    self%myconfig%densityDII(iobject) = self%myconfig%x_DII(iobject)*&
-    self%myconfig%density_deut(iobject)
-    self%myconfig%densityHDI(iobject) = self%myconfig%x_HDI(iobject)*&
-    self%myconfig%density_deut(iobject)
+    
+    self%myconfig%densityDI(iobject) = max(self%myconfig%x_DI(iobject)*&
+    self%myconfig%density_deut(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+    self%myconfig%densityDII(iobject) = max(self%myconfig%x_DII(iobject)*&
+    self%myconfig%density_deut(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+    self%myconfig%densityHDI(iobject) = max(self%myconfig%x_HDI(iobject)*&
+    self%myconfig%density_deut(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+    
     ! x_HI + x_HII + x_HM + x_H2I + x_H2II = 1
-    self%myconfig%densityHI(iobject) = self%myconfig%x_HI(iobject)*&
-    self%myconfig%densityHplusH2(iobject)
-    self%myconfig%densityHII(iobject) = self%myconfig%x_HII(iobject)*&
-    self%myconfig%densityHplusH2(iobject)
-    self%myconfig%densityHM(iobject) = self%myconfig%x_HM(iobject)*&
-    self%myconfig%densityHplusH2(iobject)
-    self%myconfig%densityH2I(iobject) = self%myconfig%x_H2I(iobject)*&
-    self%myconfig%densityHplusH2(iobject)
-    self%myconfig%densityH2II(iobject) = self%myconfig%x_H2II(iobject)*&
-    self%myconfig%densityHplusH2(iobject)
+
+    self%myconfig%densityHI(iobject) = max(self%myconfig%x_HI(iobject)*&
+    self%myconfig%densityHplusH2(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+    self%myconfig%densityHII(iobject) = max(self%myconfig%x_HII(iobject)*&
+    self%myconfig%densityHplusH2(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+    self%myconfig%densityHM(iobject) = max(self%myconfig%x_HM(iobject)*&
+    self%myconfig%densityHplusH2(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+    self%myconfig%densityH2I(iobject) = max(self%myconfig%x_H2I(iobject)*&
+    self%myconfig%densityHplusH2(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+    self%myconfig%densityH2II(iobject) = max(self%myconfig%x_H2II(iobject)*&
+    self%myconfig%densityHplusH2(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
     ! x_HeI + x_HeII + x_HeIII = 1
-    self%myconfig%densityHeI(iobject) = self%myconfig%x_HeI(iobject)*&
-    self%myconfig%density_Y(iobject)
-    self%myconfig%densityHeII(iobject) = self%myconfig%x_HeII(iobject)*&
-    self%myconfig%density_Y(iobject)
-    self%myconfig%densityHeIII(iobject) = self%myconfig%x_HeIII(iobject)*&
-    self%myconfig%density_Y(iobject)
+
+    self%myconfig%densityHeI(iobject) = max(self%myconfig%x_HeI(iobject)*&
+    self%myconfig%density_Y(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+    self%myconfig%densityHeII(iobject) = max(self%myconfig%x_HeII(iobject)*&
+    self%myconfig%density_Y(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+    self%myconfig%densityHeIII(iobject) = max(self%myconfig%x_HeIII(iobject)*&
+    self%myconfig%density_Y(iobject),&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+!rho_metal_free
+
+self%myconfig%density_metal_free(iobject) = &
+self%myconfig%densityHI(iobject)+&
+self%myconfig%densityHII(iobject)+&
+self%myconfig%densityHM(iobject)+&
+self%myconfig%densityH2I(iobject)+&
+self%myconfig%densityH2II(iobject)+&
+self%myconfig%densityHeI(iobject)+&
+self%myconfig%densityHeII(iobject)+&
+self%myconfig%densityHeIII(iobject)
+
     ! rhoD = rhoDI + rhoDII
     self%myconfig%densityD(iobject)=self%myconfig%densityDI(iobject)+&
     self%myconfig%densityDII(iobject)
     ! rhoHD
     self%myconfig%densityHD(iobject)=self%myconfig%densityHDI(iobject)
     !rhonotdeut
+    
     self%myconfig%density_not_deut(iobject) = self%myconfig%densityHI(iobject)+&
-    self%myconfig%densityHII(iobject) + self%myconfig%densityHM(iobject)+&
-    self%myconfig%densityH2I(iobject) + self%myconfig%densityH2II(iobject)+&
-    self%myconfig%densityHeI(iobject) + self%myconfig%densityHeII(iobject)+&
-    self%myconfig%densityHeIII(iobject) + &
+    self%myconfig%densityHII(iobject)+self%myconfig%densityHeI(iobject)+&
+    self%myconfig%densityHeII(iobject)+&
+    self%myconfig%densityHeIII(iobject)
+    if(self%myconfig%gr_primordial_chemistry(1)>1)then
+    self%myconfig%density_not_deut(iobject) =self%myconfig%density_not_deut(iobject) +&
+    self%myconfig%densityHM(iobject)+&
+    self%myconfig%densityH2I(iobject) + self%myconfig%densityH2II(iobject)
+    end if
+    if(phys_config%use_metal_field==1)then
+    self%myconfig%density_not_deut(iobject)=self%myconfig%density_not_deut(iobject)+&
     self%myconfig%density_Z(iobject)
+    end if
+    
+    
+    
     !same for rhoH and rhoH2
     self%myconfig%densityH(iobject)=self%myconfig%densityHI(iobject) +&
-    self%myconfig%densityHII(iobject) + self%myconfig%densityHM(iobject)
+    self%myconfig%densityHII(iobject)
+    if(self%myconfig%gr_primordial_chemistry(1)>1)then
+      self%myconfig%densityH(iobject)=self%myconfig%densityH(iobject)+&
+      self%myconfig%densityHM(iobject)
+    end if
     self%myconfig%densityHtwo(iobject)=  self%myconfig%densityH2I(iobject) +&
       self%myconfig%densityH2II(iobject)
 
@@ -1278,585 +1391,98 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
         self%myconfig%densityH2I(iobject)/mh_gr+ &
         self%myconfig%densityH2II(iobject)/mh_gr
       end if
-
-
-      if(self%myconfig%gr_primordial_chemistry(1)>2)then
-        self%myconfig%number_H_density(iobject) = &
-        self%myconfig%number_H_density(iobject) + &
-        self%myconfig%densityDI(iobject)/mh_gr+&
-        self%myconfig%densityDII(iobject)/mh_gr+&
-        self%myconfig%densityHDI(iobject)/(2.0_dp*mh_gr)
-      end if
     end if
 
     !rho_Electrons
     self%myconfig%densityElectrons(iobject) = &
-    (me/mp)*(self%myconfig%densityHII(iobject)-&
-    self%myconfig%densityHM(iobject)+&
+    (me/mp)*(self%myconfig%densityHII(iobject)+&
     self%myconfig%densityHeII(iobject)/4.0_dp+&
-    self%myconfig%densityHeIII(iobject)/2.0_dp+&
-    self%myconfig%densityH2II(iobject)/2.0_dp)
-    !w_e *&
-    !self%myconfig%IonizationFraction(iobject)*& !checked
-    !self%myconfig%number_H_density(iobject)*mh_gr
+    self%myconfig%densityHeIII(iobject)/2.0_dp)
+    
+
+    if(self%myconfig%gr_primordial_chemistry(1)>1)then
+      self%myconfig%densityElectrons(iobject) = &
+      self%myconfig%densityElectrons(iobject) + &
+      (me/mp)*(-self%myconfig%densityHM(iobject)+&
+      self%myconfig%densityH2II(iobject)/2.0_dp)
+    end if
+
+    self%myconfig%densityElectrons(iobject) = max(self%myconfig%IonizationFraction(iobject)*&
+    physical_ref_density,&
+    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+    self%myconfig%densityElectrons(iobject) = max(&
+      self%myconfig%densityElectrons(iobject),&
+      self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+
+
 
     !fix rhogas (ignores deuterium, gas so no dust)
     self%myconfig%density_gas(iobject) = &
     self%myconfig%densityHI(iobject)+&
     self%myconfig%densityHII(iobject)+&
-    self%myconfig%densityHM(iobject)+&
-    self%myconfig%densityH2I(iobject)+&
-    self%myconfig%densityH2II(iobject)+&
     self%myconfig%densityHeI(iobject)+&
     self%myconfig%densityHeII(iobject)+&
     self%myconfig%densityHeIII(iobject)+&
-    self%myconfig%densityElectrons(iobject)+&
+    self%myconfig%densityElectrons(iobject)
+
+
+    if(self%myconfig%gr_primordial_chemistry(1)>1)then
+    self%myconfig%density_gas(iobject) = &
+    self%myconfig%density_gas(iobject) + &
+    self%myconfig%densityHM(iobject)+&
+    self%myconfig%densityH2I(iobject)+&
+    self%myconfig%densityH2II(iobject)
+    end if
+
+    if(phys_config%use_metal_field==1)then
+    self%myconfig%density_gas(iobject) = &
+    self%myconfig%density_gas(iobject) + &
     self%myconfig%density_Z(iobject)
+    end if
 
 
     !fix rhotot
     self%myconfig%density_tot(iobject) = &
     self%myconfig%densityHI(iobject)+&
     self%myconfig%densityHII(iobject)+&
-    self%myconfig%densityHM(iobject)+&
-    self%myconfig%densityDI(iobject)+&
-    self%myconfig%densityDII(iobject)+&
-    self%myconfig%densityH2I(iobject)+&
-    self%myconfig%densityH2II(iobject)+&
-    self%myconfig%densityHDI(iobject)+&
     self%myconfig%densityHeI(iobject)+&
     self%myconfig%densityHeII(iobject)+&
     self%myconfig%densityHeIII(iobject)+&
-    self%myconfig%densityElectrons(iobject)+&
-    self%myconfig%density_Z(iobject)+&
+    self%myconfig%densityElectrons(iobject)
+
+
+    if(self%myconfig%gr_primordial_chemistry(1)>1)then 
+    self%myconfig%density_tot(iobject) = &
+    self%myconfig%density_tot(iobject) + &   
+    self%myconfig%densityHM(iobject)+&
+    self%myconfig%densityH2I(iobject)+&
+    self%myconfig%densityH2II(iobject)
+    end if
+    
+    if(self%myconfig%gr_primordial_chemistry(1)>2)then 
+    self%myconfig%density_tot(iobject) = &
+    self%myconfig%density_tot(iobject) + &       
+    self%myconfig%densityDI(iobject)+&
+    self%myconfig%densityDII(iobject)+&
+    self%myconfig%densityHDI(iobject)
+    end if
+    
+    if(phys_config%use_metal_field==1)then
+    self%myconfig%density_tot(iobject) = &
+    self%myconfig%density_tot(iobject) + &      
+    self%myconfig%density_Z(iobject)
+    end if
+
+    if(phys_config%use_dust_density_field==1)then
+    self%myconfig%density_tot(iobject) = &
+    self%myconfig%density_tot(iobject) + &  
     self%myconfig%density_dust(iobject)
+    end if
+
+write(*,*) 'HI dens 0 =', self%myconfig%densityHI(iobject)
 
 end subroutine grackle_set_complet
-
-
-subroutine grackle_chemistry_static_source(ixI^L,ixO^L,x,qdt,qtC,wCT,qt,w,grid_dx22,&
-patch,self)
-  implicit none
-  integer, intent(in)                     :: ixI^L,ixO^L
-  real(kind=dp), intent(in)               :: qdt,qtC,qt
-  real(kind=dp), intent(in)               :: x(ixI^S,1:ndim)
-  real(kind=dp), intent(in)               :: wCT(ixI^S,1:nw)
-  real(kind=dp), intent(in)               :: grid_dx22(1:ndim)
-  !type(usrphysical_unit), target     :: physunit_inuse
-  !real(kind=dp), intent(in)               :: gamma
-  real(kind=dp),intent(inout)             :: w(ixI^S,1:nw)
-  logical, intent(in)               :: patch(ixI^S)
-  class(gr_solver),TARGET                        :: self
-  !type(gr_objects), intent(inout)  :: gr_obj
-  ! .. local ..
-  integer                                 :: idim,iresult,ifield^D,imesh^D,level,iw,idir,i
-  integer                                 :: Ncells, igr^D
-  character(len=150), TARGET :: filename
-  real(kind=dp) :: temperature_units, pressure_units, dtchem, dx_local, velocity_units
-  type(grackle_field_data)                :: my_gr_fields
-  !real(kind=dp), target                   :: w_gr(ixI^S,1:nw)
-  real(kind=dp),allocatable :: temperature({:^D&}),mmw_field({:^D&}),gmmeff_field({:^D&})
-  real(kind=dp),allocatable :: pth_field({:^D&})
-  real(kind=dp),allocatable :: total_energy({:^D&}), kn_energy({:^D&})
-  real(kind=dp)                           :: dt_old
-  integer,allocatable          :: field_size(:)
-  real :: initial_redshift
-  real(kind=dp),parameter :: fH = 0.76
-  real*8,allocatable , TARGET :: density(:), energy(:), &
-  x_velocity(:), y_velocity(:), &
-  z_velocity(:), &
-  HI_density(:), HII_density(:), &
-  HM_density(:), &
-  HeI_density(:), HeII_density(:), &
-  HeIII_density(:), &
-  H2I_density(:), H2II_density(:), &
-  DI_density(:), DII_density(:), &
-  HDI_density(:), &
-  e_density(:), metal_density(:), &
-  dust_density(:), &
-  volumetric_heating_rate(:), &
-  specific_heating_rate(:), &
-  RT_HI_ionization_rate(:), &
-  RT_HeI_ionization_rate(:), &
-  RT_HeII_ionization_rate(:), &
-  RT_H2_dissociation_rate(:), &
-  RT_heating_rate(:),&
-  H2_self_shielding_length(:),&
-  H2_custom_shielding_factor(:),&
-  isrf_habing(:),&
-  final_temp(:),final_cooltime(:),&
-  final_press(:),final_gamma(:)
-  real(kind=dp), allocatable, TARGET  :: pressure(:),&
-  gamma(:),temperature_gr(:)
-  INTEGER, TARGET :: grid_rank, grid_dimension(3), grid_start(3), grid_end(3)
-  logical :: logicndir,logicenergy
-  !real(kind=dp)           :: gamma_amrvac(ixI^S)
-  real(kind=dp) :: grid_dx
-  real(kind=dp) :: current_redshift
-  real*8 nH2, nother,  gammaH2, gammaH2_1, gammaeff, gammaeff_1
-  real*8 gammaoth, gammaoth_1, temgas
-  real*8 inv_gammaH2_1, inv_gamma_eff_1, inv_gammaoth_1,tvar
-  real*8 meanmw,out_temp,out_tcool,out_pressure,out_gamma
-  TYPE (grackle_units) :: my_units
-  TYPE (grackle_field_data) :: my_fields
-  TYPE (chemistry_data) :: my_grackle_data
-  TYPE (grackle_inout) :: my_config
-  real(dp)                 :: mp,kB,me
-  !-------------------------------------------------------
-
-
-  if(SI_unit) then
-    mp=mp_SI
-    kB=kB_SI
-    me = const_me*1.0d-3
-  else
-    mp=mp_cgs
-    kB=kB_cgs
-    me = const_me
-  end if
-
-
-
-  allocate(temperature(ixI^S))
-  allocate(mmw_field(ixI^S))
-  allocate(gmmeff_field(ixI^S))
-  allocate(pth_field(ixI^S))
-  allocate(total_energy(ixI^S))
-  allocate(kn_energy(ixI^S))
-  allocate(field_size(1:ndim))
-  allocate(density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(energy({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(x_velocity({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(y_velocity({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(z_velocity({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(HI_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(HII_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(HM_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(HeI_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(HeII_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(HeIII_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(H2I_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(H2II_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(DI_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(DII_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(HDI_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(e_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(metal_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(dust_density({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(volumetric_heating_rate({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(specific_heating_rate({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(RT_HI_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(RT_HeI_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(RT_HeII_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(RT_H2_dissociation_rate({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(RT_heating_rate({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(H2_self_shielding_length({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(H2_custom_shielding_factor({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(isrf_habing({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(final_temp({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(final_cooltime({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(final_press({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(final_gamma({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(pressure({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(gamma({(ixOmax^D-ixOmin^D+1)|*}))
-  allocate(temperature_gr({(ixOmax^D-ixOmin^D+1)|*}))
-  
-
-  !write(*,*) 'AMRVAC-side grackle_source qdt = ', qdt, ' of iteration it = ', it
-
-  dt_old = dt
-
-  !     Create a grackle chemistry object for parameters and set defaults
-  iresult = set_default_chemistry_parameters(my_grackle_data)
-  !call MPI_BARRIER(icomm, ierrmpi)
-
-
-  !     Set parameters and units
-  call self%link_par_to_gr(my_grackle_data,my_units)
-  velocity_units = get_velocity_units(my_units)
-
-  iresult = initialize_chemistry_data(my_units)
-  !call MPI_BARRIER(icomm, ierrmpi)
-
-  !     Set field arrays
-
-  !     If grid rank is less than 3, set the other dimensions,
-  !     start indices, and end indices to 0.
-
-  {field_size(^D)=ixOmax^D-ixOmin^D+1|\}
-  Ncells = 1
-  do idim = 1,ndim
-    Ncells = Ncells * field_size(idim)
-  end do
-  grid_rank = ndim
-  do idim = 1, grid_rank
-    grid_dimension(idim) = 1
-    grid_start(idim) = 0
-    grid_end(idim) = 0
-  end do
-  grid_dx = grid_dx22(1)*length_convert_factor/my_units%length_units
-  do idim=1,grid_rank
-    grid_dimension(idim) = field_size(idim)
-    !0-based
-    grid_end(idim)= field_size(idim) - 1
-  end do
-  temperature_units = get_temperature_units(my_units)
-
-  ! Compute field of H2-corrected gamma
-  !call phys_get_gamma(w,ixI^L, ixO^L, gmmeff_field)
-  !write(*,*) ' gamma in grackle source = ', gmmeff_field(ixO^S)
-  ! Compute field of mean molecular weight
-  !call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
-  ! Compute field of H2-gamma corrected temperature
-  !call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
-  ! Compute field of H2-gamma corrected pressure
-  !call phys_get_pthermal(w, x, ixI^L, ixO^L, pth_field)
-
-
-  !write(*,*) 'Do we get here 2 ?'
-
-
-
-    {^IFTWOD
-    ! flattening 2D array :
-    do imesh2 = ixOmin2, ixOmax2
-      igr2 = imesh2-ixOmin2
-      do imesh1 = ixOmin1, ixOmax1
-        igr1 = imesh1-ixOmin1}
-        {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-        density(i) = w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)
-        HI_density(i) = w(imesh^D,phys_ind%HI_density_)*w_convert_factor(phys_ind%HI_density_)
-        HII_density(i) = w(imesh^D,phys_ind%HII_density_)*w_convert_factor(phys_ind%HII_density_)
-        HM_density(i) = w(imesh^D,phys_ind%HM_density_)*w_convert_factor(phys_ind%HM_density_)
-        HeI_density(i) = w(imesh^D,phys_ind%HeI_density_)*w_convert_factor(phys_ind%HeI_density_)
-        HeII_density(i) = w(imesh^D,phys_ind%HeII_density_)*w_convert_factor(phys_ind%HeII_density_)
-        HeIII_density(i) = w(imesh^D,phys_ind%HeIII_density_)*w_convert_factor(phys_ind%HeIII_density_)
-        H2I_density(i) = w(imesh^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2I_density_)
-        H2II_density(i) = w(imesh^D,phys_ind%H2II_density_)*w_convert_factor(phys_ind%H2II_density_)
-        DI_density(i) = w(imesh^D,phys_ind%DI_density_)*w_convert_factor(phys_ind%DI_density_)
-        DII_density(i) = w(imesh^D,phys_ind%DII_density_)*w_convert_factor(phys_ind%DII_density_)
-        HDI_density(i) = w(imesh^D,phys_ind%HDI_density_)*w_convert_factor(phys_ind%HDI_density_)
-        e_density(i) = w(imesh^D,phys_ind%e_density_)*w_convert_factor(phys_ind%e_density_)
-        metal_density(i) = w(imesh^D,phys_ind%metal_density_)*w_convert_factor(phys_ind%metal_density_)
-        dust_density(i) = w(imesh^D,phys_ind%dust_density_)*w_convert_factor(phys_ind%dust_density_)
-
-        x_velocity(i) = 0.0
-        y_velocity(i) = 0.0
-        z_velocity(i) = 0.0
-
-
-        ! from pressure to internal energy density
-        ! u = e/rho = p/(rho*(gamma-1)) = T*unit_v^2/(mmw*(gamma-1)*unit_T)
-        ! Physical units internal energy density
-        ! (<!> mup is already denormalized)
-        !energy(i) = temperature(imesh^D)*w_convert_factor(phys_ind%temperature_)
-        !energy(i) = energy(i) / (mmw_field(imesh^D)*(mp/kB)*&
-        !(gmmeff_field(imesh^D)-1.0_dp))
-        !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
-          !write(*,*) 'jet uinternal energy 1 = ',energy(i)
-        !end if
-        energy(i) = w(imesh^D,phys_ind%e_)*w_convert_factor(phys_ind%e_)
-        do idim=1,ndim+1
-          energy(i) = energy(i) - &
-          (0.5_dp*w(imesh^D, phys_ind%mom(idim))**2.0_dp/w(imesh^D, phys_ind%rho_))*&
-          w_convert_factor(phys_ind%e_)
-        end do
-        ! save initial energy
-        if(patch(imesh^D))w(imesh^D,phys_ind%Lcool1_) = energy(i)
-        energy(i) = energy(i) / (w(imesh^D, phys_ind%rho_)*w_convert_factor(phys_ind%rho_))
-        !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
-          !write(*,*) 'jet uinternal energy 2 = ',energy(i)
-        !end if
-        ! For instance :
-        volumetric_heating_rate(i) = 0.0
-        specific_heating_rate(i) = 0.0
-        RT_HI_ionization_rate(i) = 0.0
-        RT_HeI_ionization_rate(i) = 0.0
-        RT_HeII_ionization_rate(i) = 0.0
-        RT_H2_dissociation_rate(i) = 0.0
-        RT_heating_rate(i) = 0.0
-        H2_self_shielding_length(i) = 0.0
-        H2_custom_shielding_factor(i) = 0.0
-        isrf_habing(i) = my_grackle_data%interstellar_radiation_field
-    {end do^D&|\}
-
-    !
-    !     Fill in structure to be passed to Grackle
-    !
-    my_fields%grid_rank = grid_rank
-    my_fields%grid_dimension = C_LOC(grid_dimension)
-    my_fields%grid_start = C_LOC(grid_start)
-    my_fields%grid_end = C_LOC(grid_end)
-    my_fields%grid_dx  = grid_dx
-    my_fields%density = C_LOC(density)
-    my_fields%HI_density = C_LOC(HI_density)
-    my_fields%HII_density = C_LOC(HII_density)
-    my_fields%HM_density = C_LOC(HM_density)
-    my_fields%HeI_density = C_LOC(HeI_density)
-    my_fields%HeII_density = C_LOC(HeII_density)
-    my_fields%HeIII_density = C_LOC(HeIII_density)
-    my_fields%H2I_density = C_LOC(H2I_density)
-    my_fields%H2II_density = C_LOC(H2II_density)
-    my_fields%DI_density = C_LOC(DI_density)
-    my_fields%DII_density = C_LOC(DII_density)
-    my_fields%HDI_density = C_LOC(HDI_density)
-    my_fields%e_density = C_LOC(e_density)
-    my_fields%metal_density = C_LOC(metal_density)
-    my_fields%dust_density = C_LOC(dust_density)
-    my_fields%internal_energy = C_LOC(energy)
-    my_fields%x_velocity = C_LOC(x_velocity)
-    my_fields%y_velocity = C_LOC(y_velocity)
-    my_fields%z_velocity = C_LOC(z_velocity)
-    my_fields%volumetric_heating_rate =&
-                                   C_LOC(volumetric_heating_rate)
-    my_fields%specific_heating_rate = C_LOC(specific_heating_rate)
-    my_fields%RT_HI_ionization_rate = C_LOC(RT_HI_ionization_rate)
-    my_fields%RT_HeI_ionization_rate = C_LOC(RT_HeI_ionization_rate)
-    my_fields%RT_HeII_ionization_rate =&
-                                     C_LOC(RT_HeII_ionization_rate)
-    my_fields%RT_H2_dissociation_rate = C_LOC(RT_H2_dissociation_rate)
-    my_fields%RT_heating_rate = C_LOC(RT_heating_rate)
-    my_fields%H2_self_shielding_length = C_LOC(H2_self_shielding_length)
-    my_fields%H2_custom_shielding_factor =&
-       C_LOC(H2_custom_shielding_factor)
-    my_fields%isrf_habing = C_LOC(isrf_habing)
-
-
-    dx_local = grid_dx22(1)*length_convert_factor ! physical unit
-    dtchem = qdt*time_convert_factor ! physical unit
-
-    !physical units
-    my_config%uenergy_density = C_LOC(energy)
-    my_config%dx_local = dx_local
-    my_config%dtchem = dtchem
-    my_config%final_temp = C_LOC(final_temp)
-    my_config%final_cooltime = C_LOC(final_cooltime)
-    my_config%final_press = C_LOC(final_press)
-    my_config%final_gamma = C_LOC(final_gamma)
-
-
-    {my_config%ixOmin^D = ixOmin^D
-    my_config%ixOmax^D = ixOmax^D|\}
-
-    !write(*,*) 'In HI density = ', HI_density
-    !write(*,*) 'In uenergy_density = ', energy
-    !write(*,*) 'In dx_local = ', my_config%dx_local
-    !write(*,*) 'In dtchem = ', my_config%dtchem
-
-
-
-    !deprecated : iresult = solve_one_cell(my_grackle_data,my_fields,my_units,&
-    !my_config)
-
-    !iresult = solvegrid(my_grackle_data,my_fields,my_units,&
-    !  my_config)
-    ! the NaN does not come from normalization error on fields,
-    ! but from adding of counterbalancing force activation : check mod_obj_ism!
-    ! It seems that NaN also appears as soon as one species has its density reaching
-    ! zero !!!
-    !iresult = local_solve_grid(my_grackle_data,my_fields,my_units,&
-    !  my_config)
-    !iresult = oldsavegrid(my_grackle_data,my_fields,my_units,&
-    !  my_config)
-
-
-    !write(*,*) 'Final values'
-    !write(*,*) 'Temperature = ', final_temp
-    !write(*,*) 'tcool = ', final_cooltime
-    !write(*,*) 'out_pressure = ', final_press
-    !write(*,*) 'out_gamma = ', final_gamma
-    !write(*,*) 'Out density 2= ', density
-    !write(*,*) 'Out HI density 2 = ', HI_density
-    !write(*,*) 'Out HII density 2= ', HII_density
-
-
-    ! update-advance fields
-
-{^IFTWOD
-! flattening 2D array :
-do imesh2 = ixOmin2, ixOmax2
-  igr2 = imesh2-ixOmin2
-  do imesh1 = ixOmin1, ixOmax1
-    igr1 = imesh1-ixOmin1}
-    {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-    ! Densities
-
-    w(imesh^D,phys_ind%rho_) = density(i) / w_convert_factor(phys_ind%rho_)
-    w(imesh^D,phys_ind%HI_density_) = HI_density(i) / w_convert_factor(phys_ind%HI_density_)
-    w(imesh^D,phys_ind%HII_density_) = HII_density(i) / w_convert_factor(phys_ind%HII_density_)
-    w(imesh^D,phys_ind%HM_density_) = HM_density(i) / w_convert_factor(phys_ind%HM_density_)
-    w(imesh^D,phys_ind%HeI_density_) = HeI_density(i) / w_convert_factor(phys_ind%HeI_density_)
-    w(imesh^D,phys_ind%HeII_density_) = HeII_density(i) / w_convert_factor(phys_ind%HeII_density_)
-    w(imesh^D,phys_ind%HeIII_density_) = HeIII_density(i) / w_convert_factor(phys_ind%HeIII_density_)
-    w(imesh^D,phys_ind%H2I_density_) = H2I_density(i) / w_convert_factor(phys_ind%H2I_density_)
-    w(imesh^D,phys_ind%H2II_density_) = H2II_density(i) / w_convert_factor(phys_ind%H2II_density_)
-    w(imesh^D,phys_ind%DI_density_) = DI_density(i) / w_convert_factor(phys_ind%DI_density_)
-    w(imesh^D,phys_ind%DII_density_) = DII_density(i) / w_convert_factor(phys_ind%DII_density_)
-    w(imesh^D,phys_ind%HDI_density_) = HDI_density(i) / w_convert_factor(phys_ind%HDI_density_)
-    w(imesh^D,phys_ind%e_density_) = e_density(i) / w_convert_factor(phys_ind%e_density_)
-    w(imesh^D,phys_ind%metal_density_) = metal_density(i) / w_convert_factor(phys_ind%metal_density_)
-    w(imesh^D,phys_ind%dust_density_) = dust_density(i) / w_convert_factor(phys_ind%dust_density_)
-
-{end do^D&|\}
-
-!call phys_gr_consistency(w, x, ixI^L, ixO^L)
-
-{^IFTWOD
-! flattening 2D array :
-do imesh2 = ixOmin2, ixOmax2
-  igr2 = imesh2-ixOmin2
-  do imesh1 = ixOmin1, ixOmax1
-    igr1 = imesh1-ixOmin1}
-    {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-
-    ! Internal energy in AMRVAC code units
-    kn_energy(imesh^D) = 0.0_dp
-    !w(imesh^D,phys_ind%e_) = density(i)*energy(i) / w_convert_factor(phys_ind%e_)
-    !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
-      !write(*,*) 'jet internal energy a = ',density(i)*energy(i)
-    !end if
-    do idim=1,ndim+1
-      kn_energy(imesh^D) = kn_energy(imesh^D) +&
-      (0.5_dp*w(imesh^D, phys_ind%mom(idim))**2.0_dp/w(imesh^D, phys_ind%rho_))*&
-      w_convert_factor(phys_ind%e_)
-    end do
-    !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
-      !write(*,*) 'jet kinetic energy a = ', kn_energy(imesh^D)
-    !end if
-    total_energy(imesh^D) = density(i)*energy(i)+kn_energy(imesh^D)
-
-    !write(*,*) 'jet kinetic energy = ',kn_energy(imesh^D)
-    !write(*,*) 'jet kinetic energy = ', total_energy(imesh^D)
-    !(out_gamma-1.0_dp))
-    ! Total energy
-    !if(w(imesh^D,phys_ind%tracer(2))>1.d-3)then
-      !write(*,*) 'jet total energy a = ', total_energy(imesh^D)
-    !end if
-    !do idim=1,ndim+1
-    ! compute L1 :
-    w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)-total_energy(imesh^D) !de
-    w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)/my_config%dtchem
-    w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_) / &
-    w_convert_factor(phys_ind%Lcool1_)! L1 = de/dt
-    w(imesh^D,phys_ind%dtcool1_) = final_cooltime(i)/w_convert_factor(phys_ind%dtcool1_)
-    w(imesh^D,phys_ind%e_) = total_energy(imesh^D)/w_convert_factor(phys_ind%e_)
-    !end do
-    ! Temperature
-    !w(imesh^D,phys_ind%temperature_) = final_temp(i)/w_convert_factor(phys_ind%temperature_)
-    ! Gammaeff
-    w(imesh^D,phys_ind%gamma_) = final_gamma(i)/w_convert_factor(phys_ind%gamma_)
-    meanmw = density(i)/&
-    (HI_density(i)+HII_density(i)+HM_density(i)+&
-    0.25*(HeI_density(i)+HeII_density(i)+&
-    HeIII_density(i))+&
-    0.5*(H2I_density(i)+H2II_density(i))+&
-    metal_density(i)/16.0+&
-    e_density(i)*(mp/me))
-    ! Mean molecular weight
-    w(imesh^D,phys_ind%mup_) = meanmw/w_convert_factor(phys_ind%mup_)
-  {end do^D&|\}
-
-  ! Compute field of H2-gamma corrected temperature
-  call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
-  where(patch(ixO^S)) w(ixO^S,phys_ind%temperature_)=temperature(ixO^S)
-
-  !call MPI_BARRIER(icomm, ierrmpi)
-  !iresult = free_chemistry_data()
-
-  dt = dt_old
-
-  !DEALLOCATE(HI_density)
-  my_fields%grid_dimension = C_NULL_PTR
-  my_fields%grid_start = C_NULL_PTR
-  my_fields%grid_end = C_NULL_PTR
-  my_fields%grid_dx  = grid_dx
-  my_fields%density = C_NULL_PTR
-  my_fields%HI_density = C_NULL_PTR
-  my_fields%HII_density = C_NULL_PTR
-  my_fields%HM_density = C_NULL_PTR
-  my_fields%HeI_density = C_NULL_PTR
-  my_fields%HeII_density = C_NULL_PTR
-  my_fields%HeIII_density = C_NULL_PTR
-  my_fields%H2I_density = C_NULL_PTR
-  my_fields%H2II_density = C_NULL_PTR
-  my_fields%DI_density = C_NULL_PTR
-  my_fields%DII_density = C_NULL_PTR
-  my_fields%HDI_density = C_NULL_PTR
-  my_fields%e_density = C_NULL_PTR
-  my_fields%metal_density = C_NULL_PTR
-  my_fields%dust_density = C_NULL_PTR
-  my_fields%internal_energy = C_NULL_PTR
-  my_fields%x_velocity = C_NULL_PTR
-  my_fields%y_velocity = C_NULL_PTR
-  my_fields%z_velocity = C_NULL_PTR
-  my_fields%volumetric_heating_rate = C_NULL_PTR
-  my_fields%specific_heating_rate = C_NULL_PTR
-  my_fields%RT_HI_ionization_rate = C_NULL_PTR
-  my_fields%RT_HeI_ionization_rate = C_NULL_PTR
-  my_fields%RT_HeII_ionization_rate = C_NULL_PTR
-  my_fields%RT_H2_dissociation_rate = C_NULL_PTR
-  my_fields%RT_heating_rate = C_NULL_PTR
-  my_fields%H2_self_shielding_length = C_NULL_PTR
-  my_fields%H2_custom_shielding_factor = C_NULL_PTR
-  my_fields%isrf_habing = C_NULL_PTR
-  my_config%uenergy_density = C_NULL_PTR
-  my_config%final_temp = C_NULL_PTR
-  my_config%final_cooltime = C_NULL_PTR
-  my_config%final_press = C_NULL_PTR
-  my_config%final_gamma = C_NULL_PTR
-  my_grackle_data%grackle_data_file = C_NULL_PTR
-
-
-
-
-  !write(*,*) ' iteration number = ', it
-  !call MPI_BARRIER(icomm, ierrmpi)
-  iresult = free_chemistry_data()
-
-  deallocate(temperature)
-  deallocate(mmw_field)
-  deallocate(gmmeff_field)
-  deallocate(pth_field)
-  deallocate(total_energy)
-  deallocate(kn_energy)
-  deallocate(field_size)
-  deallocate(density)
-  deallocate(energy)
-  deallocate(x_velocity)
-  deallocate(y_velocity)
-  deallocate(z_velocity)
-  deallocate(HI_density)
-  deallocate(HII_density)
-  deallocate(HM_density)
-  deallocate(HeI_density)
-  deallocate(HeII_density)
-  deallocate(HeIII_density)
-  deallocate(H2I_density)
-  deallocate(H2II_density)
-  deallocate(DI_density)
-  deallocate(DII_density)
-  deallocate(HDI_density)
-  deallocate(e_density)
-  deallocate(metal_density)
-  deallocate(dust_density)
-  deallocate(volumetric_heating_rate)
-  deallocate(specific_heating_rate)
-  deallocate(RT_HI_ionization_rate)
-  deallocate(RT_HeI_ionization_rate)
-  deallocate(RT_HeII_ionization_rate)
-  deallocate(RT_H2_dissociation_rate)
-  deallocate(RT_heating_rate)
-  deallocate(H2_self_shielding_length)
-  deallocate(H2_custom_shielding_factor)
-  deallocate(isrf_habing)
-  deallocate(final_temp)
-  deallocate(final_cooltime)
-  deallocate(final_press)
-  deallocate(final_gamma)
-  deallocate(pressure)
-  deallocate(gamma)
-  deallocate(temperature_gr)
-end subroutine grackle_chemistry_static_source
 
 
 subroutine grackle_solver_associate(gr_data,myunits,self)
@@ -1879,6 +1505,7 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%dust_chemistry = self%myconfig%gr_dust_chemistry(1)
   gr_data%metal_cooling = self%myconfig%gr_metal_cooling(1)
   gr_data%UVbackground                   = self%myconfig%gr_UVbackground(1)
+  gr_data%SolarMetalFractionByMass = self%myconfig%SolarMetalFractionByMass(1)
   general_grackle_filename = trim(self%myconfig%data_dir(1))//&
   trim(self%myconfig%data_filename(1))//C_NULL_CHAR
   !CALL GETCWD(filename)
@@ -2087,70 +1714,7 @@ subroutine grackle_make_consistent(ixI^L,ixO^L,w,iobj,self)
 
 end subroutine grackle_make_consistent
 
-subroutine grackle_chemistry_set_parameters(self,my_chemistry,my_rates,my_units,&
-                                            UVBTble,cloudy_primordial,&
-                                            cloudy_metal,GPS_primordial,GPS_metal)
-use iso_c_binding                                    
-use mod_global_parameters
-implicit none
-CLASS(gr_solver) :: self
-TYPE(chemistry_data), INTENT(INOUT),TARGET :: my_chemistry
-TYPE(chemistry_data_storage), INTENT(INOUT),TARGET :: my_rates
-TYPE(grackle_units), INTENT(INOUT),TARGET :: my_units
-TYPE(UVBtable), INTENT(INOUT),TARGET :: UVBTble
-TYPE(cloudy_data), INTENT(INOUT),TARGET :: cloudy_primordial
-TYPE(cloudy_data), INTENT(INOUT),TARGET :: cloudy_metal
-TYPE(GPStruct), INTENT(INOUT),TARGET :: GPS_primordial
-TYPE(GPStruct), INTENT(INOUT),TARGET :: GPS_metal
-! .. local ..
-real(dp) :: dt_old
-integer :: iresult, iloop
-!INTEGER(C_LONG_LONG), POINTER :: GPS_metal_size2(:)
-!REAL(C_DOUBLE), POINTER :: GPS_metal_grid_parameters(:)
-!REAL(C_DOUBLE), POINTER :: my_rates_grid_parameters(:)
-real(kind=dp) :: temperature_units, pressure_units, dtchem, velocity_units
-! ----------------------------------------------------------------------------
-! DONE: 25/09/22
 
-dt_old = dt
-
-!     Create a grackle chemistry object for parameters and set defaults
-write(*,*) 'my_chemistry%HydrogenFractionByMass = ', my_chemistry%HydrogenFractionByMass
-my_chemistry = chemdefaultparams()
-write(*,*) 'my_chemistry%HydrogenFractionByMass = ', my_chemistry%HydrogenFractionByMass
-
-write(*,*) 'my_chemistry%HydrogenFractionByMass = ', my_chemistry%HydrogenFractionByMass
-write(*,*) 'my_units%velocity_units = ', my_units%velocity_units
-
-!     Set parameters and units
-call self%link_par_to_gr(my_chemistry,my_units)
-velocity_units = get_velocity_units(my_units)
-
-write(*,*) 'my_chemistry%HydrogenFractionByMass = ', my_chemistry%HydrogenFractionByMass
-write(*,*) 'my_units%velocity_units = ', my_units%velocity_units
-
-iresult = initchemdata(my_chemistry,my_rates,my_units,&
-                       UVBTble,cloudy_primordial,&
-                       cloudy_metal,GPS_primordial,GPS_metal)
-if(iresult==0)call mpistop('Error in initchemdata.')
-
-
-WRITE(*,*) 'Fortran Side :'
-
-
-
-
-write(*,*) 'my_chemistry%HydrogenFractionByMass = ', my_chemistry%HydrogenFractionByMass
-write(*,*) 'my_units%velocity_units = ', my_units%velocity_units
-
-
-
-
-
-
-dt = dt_old
-
-end subroutine grackle_chemistry_set_parameters
 
 
 subroutine grackle_chemistry_set_global_parameters(self,my_chemistry,my_units)
@@ -2183,6 +1747,8 @@ write(*,*) 'my_units%velocity_units = ', my_units%velocity_units
 
 !     Set parameters and units
 call self%link_par_to_gr(my_chemistry,my_units)
+
+call set_velocity_units(my_units)
 velocity_units = get_velocity_units(my_units)
 
 write(*,*) 'my_chemistry%HydrogenFractionByMass = ', my_chemistry%HydrogenFractionByMass
@@ -2210,264 +1776,6 @@ dt = dt_old
 end subroutine grackle_chemistry_set_global_parameters
 
 
-subroutine grackle_set_dt(self,w,ixI^L,ixO^L,qt,dtnew,dx^D,x,&
-                          my_chemistry,my_rates,my_units,&
-                          UVBTble,cloudy_primordial,&
-                          cloudy_metal,GPS_primordial,GPS_metal)
-use iso_c_binding                                    
-use mod_global_parameters
-implicit none
-CLASS(gr_solver) :: self
-integer, intent(in)             :: ixI^L, ixO^L
-double precision, intent(in)    :: dx^D,qt, x(ixI^S,1:ndim)
-double precision, intent(in)    :: w(ixI^S,1:nw)
-double precision, intent(inout) :: dtnew
-TYPE(chemistry_data), INTENT(INOUT),TARGET :: my_chemistry
-TYPE(chemistry_data_storage), INTENT(INOUT),TARGET :: my_rates
-TYPE(grackle_units), INTENT(INOUT),TARGET :: my_units
-TYPE(UVBtable), INTENT(INOUT),TARGET :: UVBTble
-TYPE(cloudy_data), INTENT(INOUT),TARGET :: cloudy_primordial
-TYPE(cloudy_data), INTENT(INOUT),TARGET :: cloudy_metal
-TYPE(GPStruct), INTENT(INOUT),TARGET :: GPS_primordial
-TYPE(GPStruct), INTENT(INOUT),TARGET :: GPS_metal
-! .. local ..
-integer :: iresult, iloop, idim, Ncells, i, igr^D, imesh^D
-TYPE (grackle_field_data) :: my_fields
-!REAL(dp),allocatable, target :: cooling_time(:)
-real(kind=dp) :: temperature_units, pressure_units, velocity_units
-real*8 , TARGET :: density({(ixOmax^D-ixOmin^D+1)|*}),&
-cooling_time({(ixOmax^D-ixOmin^D+1)|*}),&
-energy({(ixOmax^D-ixOmin^D+1)|*}),&
-x_velocity({(ixOmax^D-ixOmin^D+1)|*}),&
-y_velocity({(ixOmax^D-ixOmin^D+1)|*}),&
-z_velocity({(ixOmax^D-ixOmin^D+1)|*}),&
-HI_density({(ixOmax^D-ixOmin^D+1)|*}),&
-HII_density({(ixOmax^D-ixOmin^D+1)|*}),&
-HM_density({(ixOmax^D-ixOmin^D+1)|*}),&
-HeI_density({(ixOmax^D-ixOmin^D+1)|*}),&
-HeII_density({(ixOmax^D-ixOmin^D+1)|*}),&
-HeIII_density({(ixOmax^D-ixOmin^D+1)|*}),&
-H2I_density({(ixOmax^D-ixOmin^D+1)|*}),&
-H2II_density({(ixOmax^D-ixOmin^D+1)|*}),&
-DI_density({(ixOmax^D-ixOmin^D+1)|*}),&
-DII_density({(ixOmax^D-ixOmin^D+1)|*}),&
-HDI_density({(ixOmax^D-ixOmin^D+1)|*}),&
-e_density({(ixOmax^D-ixOmin^D+1)|*}),&
-metal_density({(ixOmax^D-ixOmin^D+1)|*}),&
-dust_density({(ixOmax^D-ixOmin^D+1)|*}),&
-volumetric_heating_rate({(ixOmax^D-ixOmin^D+1)|*}),&
-specific_heating_rate({(ixOmax^D-ixOmin^D+1)|*}),&
-RT_HI_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}),&
-RT_HeI_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}),&
-RT_HeII_ionization_rate({(ixOmax^D-ixOmin^D+1)|*}),&
-RT_H2_dissociation_rate({(ixOmax^D-ixOmin^D+1)|*}),&
-RT_heating_rate({(ixOmax^D-ixOmin^D+1)|*}),&
-H2_self_shielding_length({(ixOmax^D-ixOmin^D+1)|*}),&
-H2_custom_shielding_factor({(ixOmax^D-ixOmin^D+1)|*}),&
-isrf_habing({(ixOmax^D-ixOmin^D+1)|*})
-integer          :: field_size(1:ndim)
-INTEGER, TARGET :: grid_rank, grid_dimension(3), grid_start(3), grid_end(3)
-real(dp)                 :: mp,kB,me,grid_dx, dtchem
-!-------------------------------------------------------
-
-
-velocity_units = get_velocity_units(my_units)
-
-if(SI_unit) then
-mp=mp_SI
-kB=kB_SI
-me = const_me*1.0d-3
-else
-mp=mp_cgs
-kB=kB_cgs
-me = const_me
-end if
-
-
-
-
-
-{field_size(^D)=ixOmax^D-ixOmin^D+1|\}
-  Ncells = 1
-  do idim = 1,ndim
-    Ncells = Ncells * field_size(idim)
-  end do
-  grid_rank = 3
-  do idim = 1, grid_rank
-    grid_dimension(idim) = 1
-    grid_start(idim) = 0
-    grid_end(idim) = 0
-  end do
-  grid_dx = dx1*length_convert_factor/my_units%length_units
-  
-  grid_dimension(1) = Ncells
-  !0-based
-  grid_end(1)= Ncells - 1
-  
-  temperature_units = get_temperature_units(my_units)
-
-
-  {^IFTWOD
-    ! flattening 2D array :
-    do imesh2 = ixOmin2, ixOmax2
-      igr2 = imesh2-ixOmin2
-      do imesh1 = ixOmin1, ixOmax1
-        igr1 = imesh1-ixOmin1}
-        {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-        density(i) = w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)/&
-        my_units%density_units
-        HI_density(i) = w(imesh^D,phys_ind%HI_density_)*w_convert_factor(phys_ind%HI_density_)/&
-        my_units%density_units
-        HII_density(i) = w(imesh^D,phys_ind%HII_density_)*w_convert_factor(phys_ind%HII_density_)/&
-        my_units%density_units
-        HM_density(i) = w(imesh^D,phys_ind%HM_density_)*w_convert_factor(phys_ind%HM_density_)/&
-        my_units%density_units
-        HeI_density(i) = w(imesh^D,phys_ind%HeI_density_)*w_convert_factor(phys_ind%HeI_density_)/&
-        my_units%density_units
-        HeII_density(i) = w(imesh^D,phys_ind%HeII_density_)*w_convert_factor(phys_ind%HeII_density_)/&
-        my_units%density_units
-        HeIII_density(i) = w(imesh^D,phys_ind%HeIII_density_)*w_convert_factor(phys_ind%HeIII_density_)/&
-        my_units%density_units
-        H2I_density(i) = w(imesh^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2I_density_)/&
-        my_units%density_units
-        H2II_density(i) = w(imesh^D,phys_ind%H2II_density_)*w_convert_factor(phys_ind%H2II_density_)/&
-        my_units%density_units
-        DI_density(i) = w(imesh^D,phys_ind%DI_density_)*w_convert_factor(phys_ind%DI_density_)/&
-        my_units%density_units
-        DII_density(i) = w(imesh^D,phys_ind%DII_density_)*w_convert_factor(phys_ind%DII_density_)/&
-        my_units%density_units
-        HDI_density(i) = w(imesh^D,phys_ind%HDI_density_)*w_convert_factor(phys_ind%HDI_density_)/&
-        my_units%density_units
-        e_density(i) = (mp/me)*w(imesh^D,phys_ind%e_density_)*w_convert_factor(phys_ind%e_density_)/&
-        my_units%density_units
-        metal_density(i) = w(imesh^D,phys_ind%metal_density_)*w_convert_factor(phys_ind%metal_density_)/&
-        my_units%density_units
-        dust_density(i) = w(imesh^D,phys_ind%dust_density_)*w_convert_factor(phys_ind%dust_density_)/&
-        my_units%density_units
-
-        x_velocity(i) = 0.0
-        y_velocity(i) = 0.0
-        z_velocity(i) = 0.0
-
-
-        ! from pressure to internal energy density
-        ! u = e/rho = p/(rho*(gamma-1)) = T*unit_v^2/(mmw*(gamma-1)*unit_T)
-        ! Physical units internal energy density
-        ! (<!> mup is already denormalized)
-
-        energy(i) = w(imesh^D,phys_ind%e_)*w_convert_factor(phys_ind%e_)
-        do idim=1,ndim+1
-          energy(i) = energy(i) - &
-          (0.5_dp*w(imesh^D, phys_ind%mom(idim))**2.0_dp/w(imesh^D, phys_ind%rho_))*&
-          w_convert_factor(phys_ind%e_)
-        end do
-        
-        
-        energy(i) = energy(i) / (w(imesh^D, phys_ind%rho_)*w_convert_factor(phys_ind%rho_))
-        energy(i) = energy(i) / (velocity_units**2.0_dp)
-
-        ! For instance :
-        volumetric_heating_rate(i) = 0.0
-        specific_heating_rate(i) = 0.0
-        RT_HI_ionization_rate(i) = 0.0
-        RT_HeI_ionization_rate(i) = 0.0
-        RT_HeII_ionization_rate(i) = 0.0
-        RT_H2_dissociation_rate(i) = 0.0
-        RT_heating_rate(i) = 0.0
-        H2_self_shielding_length(i) = 0.0
-        H2_custom_shielding_factor(i) = 0.0
-        isrf_habing(i) = my_chemistry%interstellar_radiation_field
-    {end do^D&|\}
-
-
-    !
-    !     Fill in structure to be passed to Grackle
-    !
-    my_fields%grid_rank = grid_rank
-    my_fields%grid_dimension = C_LOC(grid_dimension)
-    my_fields%grid_start = C_LOC(grid_start)
-    my_fields%grid_end = C_LOC(grid_end)
-    my_fields%grid_dx  = grid_dx
-    my_fields%density = C_LOC(density)
-    my_fields%HI_density = C_LOC(HI_density)
-    my_fields%HII_density = C_LOC(HII_density)
-    my_fields%HM_density = C_LOC(HM_density)
-    my_fields%HeI_density = C_LOC(HeI_density)
-    my_fields%HeII_density = C_LOC(HeII_density)
-    my_fields%HeIII_density = C_LOC(HeIII_density)
-    my_fields%H2I_density = C_LOC(H2I_density)
-    my_fields%H2II_density = C_LOC(H2II_density)
-    my_fields%DI_density = C_LOC(DI_density)
-    my_fields%DII_density = C_LOC(DII_density)
-    my_fields%HDI_density = C_LOC(HDI_density)
-    my_fields%e_density = C_LOC(e_density)
-    my_fields%metal_density = C_LOC(metal_density)
-    my_fields%dust_density = C_LOC(dust_density)
-    my_fields%internal_energy = C_LOC(energy)
-    my_fields%x_velocity = C_LOC(x_velocity)
-    my_fields%y_velocity = C_LOC(y_velocity)
-    my_fields%z_velocity = C_LOC(z_velocity)
-    my_fields%volumetric_heating_rate =&
-                                   C_LOC(volumetric_heating_rate)
-    my_fields%specific_heating_rate = C_LOC(specific_heating_rate)
-    my_fields%RT_HI_ionization_rate = C_LOC(RT_HI_ionization_rate)
-    my_fields%RT_HeI_ionization_rate = C_LOC(RT_HeI_ionization_rate)
-    my_fields%RT_HeII_ionization_rate =&
-                                     C_LOC(RT_HeII_ionization_rate)
-    my_fields%RT_H2_dissociation_rate = C_LOC(RT_H2_dissociation_rate)
-    my_fields%RT_heating_rate = C_LOC(RT_heating_rate)
-    my_fields%H2_self_shielding_length = C_LOC(H2_self_shielding_length)
-    my_fields%H2_custom_shielding_factor =&
-       C_LOC(H2_custom_shielding_factor)
-    my_fields%isrf_habing = C_LOC(isrf_habing)
-
-
-    iresult = c_calculate_cooling_time(my_chemistry,&
-            my_rates,my_fields,my_units,UVBTble,cloudy_primordial,&
-            cloudy_metal, GPS_primordial, GPS_metal,cooling_time)
-
-    dtchem = self%myconfig%dtchem_frac(1)*minval(ABS(cooling_time(1:Ncells)))*&
-    my_units%time_units/time_convert_factor
-    dtnew = min(dtnew,dtchem)
-
-
-    my_fields%grid_dimension = C_NULL_PTR
-    my_fields%grid_start = C_NULL_PTR
-    my_fields%grid_end = C_NULL_PTR
-    my_fields%density = C_NULL_PTR
-    my_fields%HI_density = C_NULL_PTR
-    my_fields%HII_density = C_NULL_PTR
-    my_fields%HM_density = C_NULL_PTR
-    my_fields%HeI_density = C_NULL_PTR
-    my_fields%HeII_density = C_NULL_PTR
-    my_fields%HeIII_density = C_NULL_PTR
-    my_fields%H2I_density = C_NULL_PTR
-    my_fields%H2II_density = C_NULL_PTR
-    my_fields%DI_density = C_NULL_PTR
-    my_fields%DII_density = C_NULL_PTR
-    my_fields%HDI_density = C_NULL_PTR
-    my_fields%e_density = C_NULL_PTR
-    my_fields%metal_density = C_NULL_PTR
-    my_fields%dust_density = C_NULL_PTR
-    my_fields%internal_energy = C_NULL_PTR
-    my_fields%x_velocity = C_NULL_PTR
-    my_fields%y_velocity = C_NULL_PTR
-    my_fields%z_velocity = C_NULL_PTR
-    my_fields%volumetric_heating_rate = C_NULL_PTR
-    my_fields%specific_heating_rate = C_NULL_PTR
-    my_fields%RT_HI_ionization_rate = C_NULL_PTR
-    my_fields%RT_HeI_ionization_rate = C_NULL_PTR
-    my_fields%RT_HeII_ionization_rate = C_NULL_PTR
-    my_fields%RT_H2_dissociation_rate = C_NULL_PTR
-    my_fields%RT_heating_rate = C_NULL_PTR
-    my_fields%H2_self_shielding_length = C_NULL_PTR
-    my_fields%H2_custom_shielding_factor =C_NULL_PTR
-    my_fields%isrf_habing = C_NULL_PTR
-
-
-
-end subroutine grackle_set_dt
-
 subroutine grackle_set_global_dt(self,w,ixI^L,ixO^L,qt,dtnew,dx^D,x,&
                           my_chemistry,my_units)
 use iso_c_binding                                    
@@ -2489,7 +1797,6 @@ TYPE(grackle_units), INTENT(IN),TARGET :: my_units
 ! .. local ..
 integer :: iresult, iloop, idim, Ncells, i, igr^D, imesh^D
 TYPE (grackle_field_data) :: my_fields
-!REAL(dp),allocatable, target :: cooling_time(:)
 real(kind=dp) :: temperature_units, pressure_units, velocity_units
 real*8 , TARGET :: density({(ixOmax^D-ixOmin^D+1)|*}),&
 cooling_time({(ixOmax^D-ixOmin^D+1)|*}),&
@@ -2524,10 +1831,11 @@ isrf_habing({(ixOmax^D-ixOmin^D+1)|*})
 integer          :: field_size(1:ndim)
 INTEGER, TARGET :: grid_rank, grid_dimension(3), grid_start(3), grid_end(3)
 real(dp)                 :: mp,kB,me,grid_dx, dtchem
-!-------------------------------------------------------
-
-
-velocity_units = get_velocity_units(my_units)
+real(dp),dimension(ixI^S)         :: rhoXY
+TYPE(solver_fields),TARGET :: my_solver_fields
+TYPE(f_integer),TARGET :: my_f_integer
+INTEGER , TARGET :: size_of_field(1)
+!--------------------------------------------------------------
 
 if(SI_unit) then
 mp=mp_SI
@@ -2543,18 +1851,26 @@ end if
 
 
 
+
+velocity_units = get_velocity_units(my_units)
+
+
+
+
+
+
 {field_size(^D)=ixOmax^D-ixOmin^D+1|\}
   Ncells = 1
   do idim = 1,ndim
     Ncells = Ncells * field_size(idim)
   end do
-  grid_rank = 3
-  do idim = 1, grid_rank
+  grid_rank = 1
+  do idim = 1, 3
     grid_dimension(idim) = 1
     grid_start(idim) = 0
     grid_end(idim) = 0
   end do
-  grid_dx = dx1*length_convert_factor/my_units%length_units
+  grid_dx = 0.0d0!dx_local(1)*length_convert_factor/my_units%length_units
   
   grid_dimension(1) = Ncells
   !0-based
@@ -2563,6 +1879,11 @@ end if
   temperature_units = get_temperature_units(my_units)
 
 
+  size_of_field(1) = Ncells
+
+  !get rhoXY (denormalized)
+  call phys_get_rhoxy(w, x, ixI^L, ixO^L, rhoxy)
+
   {^IFTWOD
     ! flattening 2D array :
     do imesh2 = ixOmin2, ixOmax2
@@ -2570,36 +1891,61 @@ end if
       do imesh1 = ixOmin1, ixOmax1
         igr1 = imesh1-ixOmin1}
         {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-        density(i) = w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)/&
+        density(i) = rhoxy(imesh^D)/&
         my_units%density_units
-        HI_density(i) = w(imesh^D,phys_ind%HI_density_)*w_convert_factor(phys_ind%HI_density_)/&
-        my_units%density_units
-        HII_density(i) = w(imesh^D,phys_ind%HII_density_)*w_convert_factor(phys_ind%HII_density_)/&
-        my_units%density_units
-        HM_density(i) = w(imesh^D,phys_ind%HM_density_)*w_convert_factor(phys_ind%HM_density_)/&
-        my_units%density_units
-        HeI_density(i) = w(imesh^D,phys_ind%HeI_density_)*w_convert_factor(phys_ind%HeI_density_)/&
-        my_units%density_units
-        HeII_density(i) = w(imesh^D,phys_ind%HeII_density_)*w_convert_factor(phys_ind%HeII_density_)/&
-        my_units%density_units
-        HeIII_density(i) = w(imesh^D,phys_ind%HeIII_density_)*w_convert_factor(phys_ind%HeIII_density_)/&
-        my_units%density_units
-        H2I_density(i) = w(imesh^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2I_density_)/&
-        my_units%density_units
-        H2II_density(i) = w(imesh^D,phys_ind%H2II_density_)*w_convert_factor(phys_ind%H2II_density_)/&
-        my_units%density_units
-        DI_density(i) = w(imesh^D,phys_ind%DI_density_)*w_convert_factor(phys_ind%DI_density_)/&
-        my_units%density_units
-        DII_density(i) = w(imesh^D,phys_ind%DII_density_)*w_convert_factor(phys_ind%DII_density_)/&
-        my_units%density_units
-        HDI_density(i) = w(imesh^D,phys_ind%HDI_density_)*w_convert_factor(phys_ind%HDI_density_)/&
-        my_units%density_units
-        e_density(i) = (mp/me)*w(imesh^D,phys_ind%e_density_)*w_convert_factor(phys_ind%e_density_)/&
-        my_units%density_units
-        metal_density(i) = w(imesh^D,phys_ind%metal_density_)*w_convert_factor(phys_ind%metal_density_)/&
-        my_units%density_units
-        dust_density(i) = w(imesh^D,phys_ind%dust_density_)*w_convert_factor(phys_ind%dust_density_)/&
-        my_units%density_units
+
+     if(phys_config%use_grackle)then
+      if(self%myconfig%gr_primordial_chemistry(1)>0)then
+      HI_density(i) = w(imesh^D,phys_ind%HI_density_)*w_convert_factor(phys_ind%HI_density_)/&
+      my_units%density_units
+      
+      HII_density(i) = w(imesh^D,phys_ind%HII_density_)*w_convert_factor(phys_ind%HII_density_)/&
+      my_units%density_units
+      
+      HeI_density(i) = w(imesh^D,phys_ind%HeI_density_)*w_convert_factor(phys_ind%HeI_density_)/&
+      my_units%density_units
+      
+      HeII_density(i) = w(imesh^D,phys_ind%HeII_density_)*w_convert_factor(phys_ind%HeII_density_)/&
+      my_units%density_units
+      
+      HeIII_density(i) = w(imesh^D,phys_ind%HeIII_density_)*w_convert_factor(phys_ind%HeIII_density_)/&
+      my_units%density_units
+      
+      e_density(i) = w(imesh^D,phys_ind%e_density_)*w_convert_factor(phys_ind%e_density_)/&
+      my_units%density_units
+      e_density(i) = (mp/me)*e_density(i)
+      
+      end if
+      if(self%myconfig%gr_primordial_chemistry(1)>1)then
+      HM_density(i) = w(imesh^D,phys_ind%HM_density_)*w_convert_factor(phys_ind%HM_density_)/&
+      my_units%density_units
+      
+      H2I_density(i) = w(imesh^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2I_density_)/&
+      my_units%density_units
+      
+      H2II_density(i) = w(imesh^D,phys_ind%H2II_density_)*w_convert_factor(phys_ind%H2II_density_)/&
+      my_units%density_units
+      
+      end if
+      if(self%myconfig%gr_primordial_chemistry(1)>2)then
+      DI_density(i) = w(imesh^D,phys_ind%DI_density_)*w_convert_factor(phys_ind%DI_density_)/&
+      my_units%density_units
+      DII_density(i) = w(imesh^D,phys_ind%DII_density_)*w_convert_factor(phys_ind%DII_density_)/&
+      my_units%density_units
+      HDI_density(i) = w(imesh^D,phys_ind%HDI_density_)*w_convert_factor(phys_ind%HDI_density_)/&
+      my_units%density_units
+      end if
+      if(phys_config%use_metal_field==1)then
+      metal_density(i) = w(imesh^D,phys_ind%metal_density_)*w_convert_factor(phys_ind%metal_density_)/&
+      my_units%density_units
+      
+      end if
+      if(self%myconfig%gr_use_dust_density_field(1)==1)then
+      dust_density(i) = w(imesh^D,phys_ind%dust_density_)*w_convert_factor(phys_ind%dust_density_)/&
+      my_units%density_units
+      
+      end if
+    end if 
 
         x_velocity(i) = 0.0
         y_velocity(i) = 0.0
@@ -2611,6 +1957,7 @@ end if
         ! Physical units internal energy density
         ! (<!> mup is already denormalized)
 
+        ! save initial energy
         energy(i) = w(imesh^D,phys_ind%e_)*w_convert_factor(phys_ind%e_)
         do idim=1,ndim+1
           energy(i) = energy(i) - &
@@ -2618,21 +1965,22 @@ end if
           w_convert_factor(phys_ind%e_)
         end do
         
-        
-        energy(i) = energy(i) / (w(imesh^D, phys_ind%rho_)*w_convert_factor(phys_ind%rho_))
+        ! old direct way
+        !w(imesh^D,phys_ind%Lcool1_) = energy(i)!*1.0d10
+        energy(i) = energy(i) / rhoxy(imesh^D)
         energy(i) = energy(i) / (velocity_units**2.0_dp)
 
         ! For instance :
         volumetric_heating_rate(i) = 0.0
         specific_heating_rate(i) = 0.0
-        RT_HI_ionization_rate(i) = 0.0
-        RT_HeI_ionization_rate(i) = 0.0
-        RT_HeII_ionization_rate(i) = 0.0
-        RT_H2_dissociation_rate(i) = 0.0
-        RT_heating_rate(i) = 0.0
-        H2_self_shielding_length(i) = 0.0
-        H2_custom_shielding_factor(i) = 0.0
-        isrf_habing(i) = my_chemistry%interstellar_radiation_field
+        !RT_HI_ionization_rate(i) = 0.0
+        !RT_HeI_ionization_rate(i) = 0.0
+        !RT_HeII_ionization_rate(i) = 0.0
+        !RT_H2_dissociation_rate(i) = 0.0
+        !RT_heating_rate(i) = 0.0
+        !H2_self_shielding_length(i) = 0.0
+        !H2_custom_shielding_factor(i) = 0.0
+        !isrf_habing(i) = my_chemistry%interstellar_radiation_field
     {end do^D&|\}
 
 
@@ -2645,20 +1993,32 @@ end if
     my_fields%grid_end = C_LOC(grid_end)
     my_fields%grid_dx  = grid_dx
     my_fields%density = C_LOC(density)
+     if(phys_config%use_grackle)then
+      if(self%myconfig%gr_primordial_chemistry(1)>0)then
     my_fields%HI_density = C_LOC(HI_density)
-    my_fields%HII_density = C_LOC(HII_density)
-    my_fields%HM_density = C_LOC(HM_density)
+    my_fields%HII_density = C_LOC(HII_density) 
     my_fields%HeI_density = C_LOC(HeI_density)
     my_fields%HeII_density = C_LOC(HeII_density)
     my_fields%HeIII_density = C_LOC(HeIII_density)
+    my_fields%e_density = C_LOC(e_density)             
+      end if
+      if(self%myconfig%gr_primordial_chemistry(1)>1)then
+    my_fields%HM_density = C_LOC(HM_density)
     my_fields%H2I_density = C_LOC(H2I_density)
-    my_fields%H2II_density = C_LOC(H2II_density)
+    my_fields%H2II_density = C_LOC(H2II_density)      
+      end if
+      if(self%myconfig%gr_primordial_chemistry(1)>2)then
     my_fields%DI_density = C_LOC(DI_density)
     my_fields%DII_density = C_LOC(DII_density)
-    my_fields%HDI_density = C_LOC(HDI_density)
-    my_fields%e_density = C_LOC(e_density)
-    my_fields%metal_density = C_LOC(metal_density)
-    my_fields%dust_density = C_LOC(dust_density)
+    my_fields%HDI_density = C_LOC(HDI_density)      
+      end if
+      if(phys_config%use_metal_field==1)then
+    my_fields%metal_density = C_LOC(metal_density)      
+      end if
+      if(self%myconfig%gr_use_dust_density_field(1)==1)then
+    my_fields%dust_density = C_LOC(dust_density)      
+      end if
+    end if
     my_fields%internal_energy = C_LOC(energy)
     my_fields%x_velocity = C_LOC(x_velocity)
     my_fields%y_velocity = C_LOC(y_velocity)
@@ -2666,27 +2026,34 @@ end if
     my_fields%volumetric_heating_rate =&
                                    C_LOC(volumetric_heating_rate)
     my_fields%specific_heating_rate = C_LOC(specific_heating_rate)
-    my_fields%RT_HI_ionization_rate = C_LOC(RT_HI_ionization_rate)
-    my_fields%RT_HeI_ionization_rate = C_LOC(RT_HeI_ionization_rate)
-    my_fields%RT_HeII_ionization_rate =&
-                                     C_LOC(RT_HeII_ionization_rate)
-    my_fields%RT_H2_dissociation_rate = C_LOC(RT_H2_dissociation_rate)
-    my_fields%RT_heating_rate = C_LOC(RT_heating_rate)
-    my_fields%H2_self_shielding_length = C_LOC(H2_self_shielding_length)
-    my_fields%H2_custom_shielding_factor =&
-       C_LOC(H2_custom_shielding_factor)
-    my_fields%isrf_habing = C_LOC(isrf_habing)
+    !my_fields%RT_HI_ionization_rate = C_LOC(RT_HI_ionization_rate)
+    !my_fields%RT_HeI_ionization_rate = C_LOC(RT_HeI_ionization_rate)
+    !my_fields%RT_HeII_ionization_rate =&
+    !                                 C_LOC(RT_HeII_ionization_rate)
+    !my_fields%RT_H2_dissociation_rate = C_LOC(RT_H2_dissociation_rate)
+    !my_fields%RT_heating_rate = C_LOC(RT_heating_rate)
+    !my_fields%H2_self_shielding_length = C_LOC(H2_self_shielding_length)
+    !my_fields%H2_custom_shielding_factor =&
+    !   C_LOC(H2_custom_shielding_factor)
+    !my_fields%isrf_habing = C_LOC(isrf_habing)
+
+    my_f_integer%n = C_LOC(size_of_field)
+    
+
+    
+
+  my_solver_fields%cooling_time = C_LOC(cooling_time)
 
 
-    iresult = calculate_cooling_time(my_units,my_fields, cooling_time)
+    iresult = f_calculate_cooling_time(my_units, my_fields, my_f_integer,my_solver_fields)
 
-    cooling_time = cooling_time*my_units%time_units/time_convert_factor
 
-    dtchem = self%myconfig%dtchem_frac(1)*minval(ABS(cooling_time(1:Ncells)))
-    !write(*,*) 'dtold = ',dtnew
-    !write(*,*) 'dtchem = ',dtchem
-    dtnew = dtchem
-    !write(*,*) 'dtnew = ',dtnew
+  my_solver_fields%cooling_time = C_NULL_PTR
+  my_solver_fields%temperature = C_NULL_PTR
+  my_solver_fields%pressure = C_NULL_PTR
+  my_solver_fields%gamma = C_NULL_PTR
+  my_solver_fields%cooling_rate = C_NULL_PTR
+
 
     my_fields%grid_dimension = C_NULL_PTR
     my_fields%grid_start = C_NULL_PTR
@@ -2737,8 +2104,8 @@ real(kind=dp), intent(in)               :: qdt,qtC,qt
 real(kind=dp), intent(in)               :: x(ixI^S,1:ndim)
 real(kind=dp), intent(in)               :: wCT(ixI^S,1:nw)
 real(kind=dp), intent(in)               :: dx_local(1:ndim)
-TYPE(chemistry_data), INTENT(IN),TARGET :: my_chemistry
-TYPE(grackle_units), INTENT(IN),TARGET :: my_units
+TYPE(chemistry_data), INTENT(INOUT),TARGET :: my_chemistry
+TYPE(grackle_units), INTENT(INOUT),TARGET :: my_units
 real(kind=dp), intent(inout)            :: w(ixI^S,1:nw)
 
 ! .. local ..
@@ -2746,9 +2113,13 @@ integer :: iresult, iloop, idim, Ncells, i, igr^D, imesh^D
 TYPE (grackle_field_data) :: my_fields
 !REAL(dp),allocatable, target :: cooling_time(:)
 real(kind=dp) :: temperature_units, pressure_units, velocity_units
-real*8 , TARGET :: density({(ixOmax^D-ixOmin^D+1)|*}),&
+real(kind=dp) , TARGET :: density({(ixOmax^D-ixOmin^D+1)|*}),&
 cooling_time({(ixOmax^D-ixOmin^D+1)|*}),&
+gr_temperature({(ixOmax^D-ixOmin^D+1)|*}),&
+cooling_rate({(ixOmax^D-ixOmin^D+1)|*}),&
 energy({(ixOmax^D-ixOmin^D+1)|*}),&
+pressure({(ixOmax^D-ixOmin^D+1)|*}),&
+gamma({(ixOmax^D-ixOmin^D+1)|*}),&
 k_energy({(ixOmax^D-ixOmin^D+1)|*}),&
 total_energy({(ixOmax^D-ixOmin^D+1)|*}),&
 x_velocity({(ixOmax^D-ixOmin^D+1)|*}),&
@@ -2783,10 +2154,15 @@ INTEGER, TARGET :: grid_rank, grid_dimension(3), grid_start(3), grid_end(3)
 real(dp)                 :: mp,kB,me, grid_dx, dtchem, meanmw, cooling_units
 real(dp)                 :: tbase1,xbase1,dbase1
 real(kind=dp), dimension(ixI^S) :: temperature,gmmeff_field,density_proper
+real(kind=dp), dimension(ixI^S) :: number_density,mmw_field,uenergy
+real(dp),dimension(ixI^S)         :: rhoXY
+TYPE(solver_fields),TARGET :: my_solver_fields
+TYPE(f_integer),TARGET :: my_f_integer
+TYPE(f_real),TARGET :: my_f_real
+real(kind=dp) , TARGET :: dt_value(1)
+INTEGER , TARGET :: size_of_field(1)
+
 !-------------------------------------------------------
-
-
-velocity_units = get_velocity_units(my_units)
 
 if(SI_unit) then
 mp=mp_SI
@@ -2799,6 +2175,10 @@ me = const_me
 end if
 
 
+velocity_units = get_velocity_units(my_units)
+
+
+
 
 
 
@@ -2807,13 +2187,13 @@ end if
   do idim = 1,ndim
     Ncells = Ncells * field_size(idim)
   end do
-  grid_rank = 3
-  do idim = 1, grid_rank
+  grid_rank = 1
+  do idim = 1, 3
     grid_dimension(idim) = 1
     grid_start(idim) = 0
     grid_end(idim) = 0
   end do
-  grid_dx = dx_local(1)*length_convert_factor/my_units%length_units
+  grid_dx = 0.0d0!dx_local(1)*length_convert_factor/my_units%length_units
   
   grid_dimension(1) = Ncells
   !0-based
@@ -2822,6 +2202,11 @@ end if
   temperature_units = get_temperature_units(my_units)
 
 
+  size_of_field(1) = Ncells
+
+  !get rhoXY (denormalized)
+  call phys_get_rhoxy(w, x, ixI^L, ixO^L, rhoxy)
+
   {^IFTWOD
     ! flattening 2D array :
     do imesh2 = ixOmin2, ixOmax2
@@ -2829,36 +2214,61 @@ end if
       do imesh1 = ixOmin1, ixOmax1
         igr1 = imesh1-ixOmin1}
         {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-        density(i) = w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)/&
+        density(i) = rhoxy(imesh^D)/&
         my_units%density_units
-        HI_density(i) = w(imesh^D,phys_ind%HI_density_)*w_convert_factor(phys_ind%HI_density_)/&
-        my_units%density_units
-        HII_density(i) = w(imesh^D,phys_ind%HII_density_)*w_convert_factor(phys_ind%HII_density_)/&
-        my_units%density_units
-        HM_density(i) = w(imesh^D,phys_ind%HM_density_)*w_convert_factor(phys_ind%HM_density_)/&
-        my_units%density_units
-        HeI_density(i) = w(imesh^D,phys_ind%HeI_density_)*w_convert_factor(phys_ind%HeI_density_)/&
-        my_units%density_units
-        HeII_density(i) = w(imesh^D,phys_ind%HeII_density_)*w_convert_factor(phys_ind%HeII_density_)/&
-        my_units%density_units
-        HeIII_density(i) = w(imesh^D,phys_ind%HeIII_density_)*w_convert_factor(phys_ind%HeIII_density_)/&
-        my_units%density_units
-        H2I_density(i) = w(imesh^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2I_density_)/&
-        my_units%density_units
-        H2II_density(i) = w(imesh^D,phys_ind%H2II_density_)*w_convert_factor(phys_ind%H2II_density_)/&
-        my_units%density_units
-        DI_density(i) = w(imesh^D,phys_ind%DI_density_)*w_convert_factor(phys_ind%DI_density_)/&
-        my_units%density_units
-        DII_density(i) = w(imesh^D,phys_ind%DII_density_)*w_convert_factor(phys_ind%DII_density_)/&
-        my_units%density_units
-        HDI_density(i) = w(imesh^D,phys_ind%HDI_density_)*w_convert_factor(phys_ind%HDI_density_)/&
-        my_units%density_units
-        e_density(i) = (mp/me)*w(imesh^D,phys_ind%e_density_)*w_convert_factor(phys_ind%e_density_)/&
-        my_units%density_units
-        metal_density(i) = w(imesh^D,phys_ind%metal_density_)*w_convert_factor(phys_ind%metal_density_)/&
-        my_units%density_units
-        dust_density(i) = w(imesh^D,phys_ind%dust_density_)*w_convert_factor(phys_ind%dust_density_)/&
-        my_units%density_units
+
+     if(phys_config%use_grackle)then
+      if(self%myconfig%gr_primordial_chemistry(1)>0)then
+      HI_density(i) = w(imesh^D,phys_ind%HI_density_)*w_convert_factor(phys_ind%HI_density_)/&
+      my_units%density_units
+      
+      HII_density(i) = w(imesh^D,phys_ind%HII_density_)*w_convert_factor(phys_ind%HII_density_)/&
+      my_units%density_units
+      
+      HeI_density(i) = w(imesh^D,phys_ind%HeI_density_)*w_convert_factor(phys_ind%HeI_density_)/&
+      my_units%density_units
+      
+      HeII_density(i) = w(imesh^D,phys_ind%HeII_density_)*w_convert_factor(phys_ind%HeII_density_)/&
+      my_units%density_units
+      
+      HeIII_density(i) = w(imesh^D,phys_ind%HeIII_density_)*w_convert_factor(phys_ind%HeIII_density_)/&
+      my_units%density_units
+      
+      e_density(i) = w(imesh^D,phys_ind%e_density_)*w_convert_factor(phys_ind%e_density_)/&
+      my_units%density_units
+      e_density(i) = (mp/me)*e_density(i)
+      
+      end if
+      if(self%myconfig%gr_primordial_chemistry(1)>1)then
+      HM_density(i) = w(imesh^D,phys_ind%HM_density_)*w_convert_factor(phys_ind%HM_density_)/&
+      my_units%density_units
+      
+      H2I_density(i) = w(imesh^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2I_density_)/&
+      my_units%density_units
+      
+      H2II_density(i) = w(imesh^D,phys_ind%H2II_density_)*w_convert_factor(phys_ind%H2II_density_)/&
+      my_units%density_units
+      
+      end if
+      if(self%myconfig%gr_primordial_chemistry(1)>2)then
+      DI_density(i) = w(imesh^D,phys_ind%DI_density_)*w_convert_factor(phys_ind%DI_density_)/&
+      my_units%density_units
+      DII_density(i) = w(imesh^D,phys_ind%DII_density_)*w_convert_factor(phys_ind%DII_density_)/&
+      my_units%density_units
+      HDI_density(i) = w(imesh^D,phys_ind%HDI_density_)*w_convert_factor(phys_ind%HDI_density_)/&
+      my_units%density_units
+      end if
+      if(phys_config%use_metal_field==1)then
+      metal_density(i) = w(imesh^D,phys_ind%metal_density_)*w_convert_factor(phys_ind%metal_density_)/&
+      my_units%density_units
+      
+      end if
+      if(self%myconfig%gr_use_dust_density_field(1)==1)then
+      dust_density(i) = w(imesh^D,phys_ind%dust_density_)*w_convert_factor(phys_ind%dust_density_)/&
+      my_units%density_units
+      
+      end if
+    end if 
 
         x_velocity(i) = 0.0
         y_velocity(i) = 0.0
@@ -2880,20 +2290,20 @@ end if
         
         ! old direct way
         !w(imesh^D,phys_ind%Lcool1_) = energy(i)!*1.0d10
-        energy(i) = energy(i) / (w(imesh^D, phys_ind%rho_)*w_convert_factor(phys_ind%rho_))
+        energy(i) = energy(i) / rhoxy(imesh^D)
         energy(i) = energy(i) / (velocity_units**2.0_dp)
 
         ! For instance :
         volumetric_heating_rate(i) = 0.0
         specific_heating_rate(i) = 0.0
-        RT_HI_ionization_rate(i) = 0.0
-        RT_HeI_ionization_rate(i) = 0.0
-        RT_HeII_ionization_rate(i) = 0.0
-        RT_H2_dissociation_rate(i) = 0.0
-        RT_heating_rate(i) = 0.0
-        H2_self_shielding_length(i) = 0.0
-        H2_custom_shielding_factor(i) = 0.0
-        isrf_habing(i) = my_chemistry%interstellar_radiation_field
+        !RT_HI_ionization_rate(i) = 0.0
+        !RT_HeI_ionization_rate(i) = 0.0
+        !RT_HeII_ionization_rate(i) = 0.0
+        !RT_H2_dissociation_rate(i) = 0.0
+        !RT_heating_rate(i) = 0.0
+        !H2_self_shielding_length(i) = 0.0
+        !H2_custom_shielding_factor(i) = 0.0
+        !isrf_habing(i) = my_chemistry%interstellar_radiation_field
     {end do^D&|\}
 
 
@@ -2906,20 +2316,32 @@ end if
     my_fields%grid_end = C_LOC(grid_end)
     my_fields%grid_dx  = grid_dx
     my_fields%density = C_LOC(density)
+     if(phys_config%use_grackle)then
+      if(self%myconfig%gr_primordial_chemistry(1)>0)then
     my_fields%HI_density = C_LOC(HI_density)
-    my_fields%HII_density = C_LOC(HII_density)
-    my_fields%HM_density = C_LOC(HM_density)
+    my_fields%HII_density = C_LOC(HII_density) 
     my_fields%HeI_density = C_LOC(HeI_density)
     my_fields%HeII_density = C_LOC(HeII_density)
     my_fields%HeIII_density = C_LOC(HeIII_density)
+    my_fields%e_density = C_LOC(e_density)             
+      end if
+      if(self%myconfig%gr_primordial_chemistry(1)>1)then
+    my_fields%HM_density = C_LOC(HM_density)
     my_fields%H2I_density = C_LOC(H2I_density)
-    my_fields%H2II_density = C_LOC(H2II_density)
+    my_fields%H2II_density = C_LOC(H2II_density)      
+      end if
+      if(self%myconfig%gr_primordial_chemistry(1)>2)then
     my_fields%DI_density = C_LOC(DI_density)
     my_fields%DII_density = C_LOC(DII_density)
-    my_fields%HDI_density = C_LOC(HDI_density)
-    my_fields%e_density = C_LOC(e_density)
-    my_fields%metal_density = C_LOC(metal_density)
-    my_fields%dust_density = C_LOC(dust_density)
+    my_fields%HDI_density = C_LOC(HDI_density)      
+      end if
+      if(phys_config%use_metal_field==1)then
+    my_fields%metal_density = C_LOC(metal_density)      
+      end if
+      if(self%myconfig%gr_use_dust_density_field(1)==1)then
+    my_fields%dust_density = C_LOC(dust_density)      
+      end if
+    end if
     my_fields%internal_energy = C_LOC(energy)
     my_fields%x_velocity = C_LOC(x_velocity)
     my_fields%y_velocity = C_LOC(y_velocity)
@@ -2927,16 +2349,16 @@ end if
     my_fields%volumetric_heating_rate =&
                                    C_LOC(volumetric_heating_rate)
     my_fields%specific_heating_rate = C_LOC(specific_heating_rate)
-    my_fields%RT_HI_ionization_rate = C_LOC(RT_HI_ionization_rate)
-    my_fields%RT_HeI_ionization_rate = C_LOC(RT_HeI_ionization_rate)
-    my_fields%RT_HeII_ionization_rate =&
-                                     C_LOC(RT_HeII_ionization_rate)
-    my_fields%RT_H2_dissociation_rate = C_LOC(RT_H2_dissociation_rate)
-    my_fields%RT_heating_rate = C_LOC(RT_heating_rate)
-    my_fields%H2_self_shielding_length = C_LOC(H2_self_shielding_length)
-    my_fields%H2_custom_shielding_factor =&
-       C_LOC(H2_custom_shielding_factor)
-    my_fields%isrf_habing = C_LOC(isrf_habing)
+    !my_fields%RT_HI_ionization_rate = C_LOC(RT_HI_ionization_rate)
+    !my_fields%RT_HeI_ionization_rate = C_LOC(RT_HeI_ionization_rate)
+    !my_fields%RT_HeII_ionization_rate =&
+    !                                 C_LOC(RT_HeII_ionization_rate)
+    !my_fields%RT_H2_dissociation_rate = C_LOC(RT_H2_dissociation_rate)
+    !my_fields%RT_heating_rate = C_LOC(RT_heating_rate)
+    !my_fields%H2_self_shielding_length = C_LOC(H2_self_shielding_length)
+    !my_fields%H2_custom_shielding_factor =&
+    !   C_LOC(H2_custom_shielding_factor)
+    !my_fields%isrf_habing = C_LOC(isrf_habing)
 
 
     
@@ -2944,10 +2366,72 @@ end if
 
 
     dtchem = qdt*time_convert_factor/my_units%time_units
+    !dtchem = 2.23042430894638d9/my_units%time_units
+    !dtchem = 1.6533987860878887d12/my_units%time_units
 
-    iresult = solve_chemistry(my_units, my_fields, dtchem)
+    dt_value(1) = dtchem
 
-    
+    my_f_integer%n = C_LOC(size_of_field)
+    my_f_real%x = C_LOC(dt_value)
+
+
+  {^IFTWOD
+    ! flattening 2D array :
+    do imesh2 = ixOmin2, ixOmax2
+      igr2 = imesh2-ixOmin2
+      do imesh1 = ixOmin1, ixOmax1
+        igr1 = imesh1-ixOmin1}
+        {^IFTWOD i = 1 + igr1 + field_size(1) * igr2} 
+        cooling_rate(i)=density(i)*my_units%density_units*energy(i)*velocity_units**2.0_dp/&
+        DABS(cooling_time(i)*my_units%time_units)
+      {end do^D&|\}  
+
+  !write(*,*) 'cooling_rate : ', cooling_rate
+
+  my_solver_fields%cooling_time = C_LOC(cooling_time)
+  my_solver_fields%temperature = C_LOC(gr_temperature)
+  my_solver_fields%pressure = C_LOC(pressure)
+  my_solver_fields%gamma = C_LOC(gamma)
+  my_solver_fields%cooling_rate = C_LOC(cooling_rate)
+
+    !iresult = solve_chemistry(my_units, my_fields, dtchem)
+
+    iresult = f_solve_chemistry(my_units, my_fields, my_f_real, my_f_integer,my_solver_fields)
+
+
+
+    write(*,*) ''
+    write(*,*) ' After :'
+    write(*,*) ''
+    write(*,*) 'temperature : ', gr_temperature
+    write(*,*) 'energy : ', energy*velocity_units**2.0_dp
+    write(*,*) 'density : ',  density*my_units%density_units
+    write(*,*) 'pressure : ',  pressure*my_units%density_units*velocity_units**2.0_dp
+    write(*,*) 'mu : ',  w(ixO^S,phys_ind%mup_)*w_convert_factor(phys_ind%mup_)
+    write(*,*) 'gamma : ',  gamma
+    write(*,*) 'cooling_time : ',  cooling_time*my_units%time_units
+    if(self%myconfig%gr_primordial_chemistry(1)>0)then
+    write(*,*) 'HI : ', HI_density*my_units%density_units
+    write(*,*) 'HII : ', HII_density*my_units%density_units
+    write(*,*) 'HeI : ', HeI_density*my_units%density_units
+    write(*,*) 'HeII : ', HeII_density*my_units%density_units
+    write(*,*) 'HeIII : ', HeIII_density*my_units%density_units
+    write(*,*) 'de : ', e_density*my_units%density_units
+    end if
+    if(self%myconfig%gr_primordial_chemistry(1)>1)then
+    write(*,*) 'H2I : ', H2I_density*my_units%density_units
+    write(*,*) 'H2II : ', H2II_density*my_units%density_units        
+    write(*,*) 'HM : ', HM_density*my_units%density_units
+    end if
+    if(phys_config%use_metal_field==1)then
+    write(*,*) 'metal : ', metal_density*my_units%density_units
+    end if
+    if(self%myconfig%gr_use_dust_density_field(1)==1)then
+    write(*,*) 'dust : ', dust_density*my_units%density_units
+    end if
+    write(*,*) 'dt : ', dtchem*my_units%time_units
+    write(*,*) 'cooling_rate : ', cooling_rate
+
 
     k_energy(1:Ncells) = 0.0_dp
 
@@ -2958,68 +2442,70 @@ end if
       do imesh1 = ixOmin1, ixOmax1
         igr1 = imesh1-ixOmin1}
         {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-        w(imesh^D,phys_ind%rho_) = density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%rho_)
+      w(imesh^D,phys_ind%gamma_) = gamma(i)/&
+      w_convert_factor(phys_ind%gamma_)
 
-        w(imesh^D,phys_ind%HI_density_) = HI_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%HI_density_)
+      w(imesh^D,phys_ind%temperature_) = gr_temperature(i)/&
+      w_convert_factor(phys_ind%temperature_)
 
+      w(imesh^D,phys_ind%dtcool1_) = cooling_time(i)*my_units%time_units/&
+      w_convert_factor(phys_ind%dtcool1_)
 
-        w(imesh^D,phys_ind%HII_density_) = HII_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%HII_density_)
-        
+      w(imesh^D,phys_ind%Lcool1_) = cooling_rate(i)/&
+      (w_convert_factor(phys_ind%e_)/time_convert_factor)
 
-        w(imesh^D,phys_ind%HM_density_) = HM_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%HM_density_)    
+     if(phys_config%use_grackle)then
+      if(self%myconfig%gr_primordial_chemistry(1)>0)then
+      w(imesh^D,phys_ind%HI_density_) = HI_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%HI_density_)
 
+      w(imesh^D,phys_ind%HII_density_) = HII_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%HII_density_) 
 
+      w(imesh^D,phys_ind%HeI_density_) = HeI_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%HeI_density_)
 
-        w(imesh^D,phys_ind%HeI_density_) = HeI_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%HeI_density_)    
-
-
-        HeII_density(i) = w(imesh^D,phys_ind%HeII_density_)*w_convert_factor(phys_ind%HeII_density_)/&
-        my_units%density_units
-        w(imesh^D,phys_ind%HeII_density_) = HeII_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%HeII_density_)    
-
-
-        w(imesh^D,phys_ind%HeIII_density_) = HeIII_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%HeIII_density_)    
+      w(imesh^D,phys_ind%HeII_density_) = HeII_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%HeII_density_)    
 
 
-        w(imesh^D,phys_ind%H2I_density_) = H2I_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%H2I_density_)    
+      w(imesh^D,phys_ind%HeIII_density_) = HeIII_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%HeIII_density_)    
+
+      w(imesh^D,phys_ind%e_density_) = e_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%e_density_)   
+      w(imesh^D,phys_ind%e_density_) = (me/mp)*w(imesh^D,phys_ind%e_density_)
+          
+      end if
+      if(self%myconfig%gr_primordial_chemistry(1)>1)then
+      w(imesh^D,phys_ind%HM_density_) = HM_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%HM_density_)         
+      w(imesh^D,phys_ind%H2I_density_) = H2I_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%H2I_density_) 
+      w(imesh^D,phys_ind%H2II_density_) = H2II_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%H2II_density_)      
+      end if
+      if(self%myconfig%gr_primordial_chemistry(1)>2)then
+      w(imesh^D,phys_ind%DI_density_) = DI_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%DI_density_)    
 
 
-        w(imesh^D,phys_ind%H2II_density_) = H2II_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%H2II_density_)    
-        
-        DI_density(i) = w(imesh^D,phys_ind%DI_density_)*w_convert_factor(phys_ind%DI_density_)/&
-        my_units%density_units
-        w(imesh^D,phys_ind%DI_density_) = DI_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%DI_density_)    
+      w(imesh^D,phys_ind%DII_density_) = DII_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%DII_density_)    
 
 
-        w(imesh^D,phys_ind%DII_density_) = DII_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%DII_density_)    
-
-
-        w(imesh^D,phys_ind%HDI_density_) = HDI_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%HDI_density_)    
-
-
-        w(imesh^D,phys_ind%e_density_) = (me/mp)*e_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%e_density_)    
-
-        metal_density(i) = w(imesh^D,phys_ind%metal_density_)*w_convert_factor(phys_ind%metal_density_)/&
-        my_units%density_units
-        w(imesh^D,phys_ind%metal_density_) = metal_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%metal_density_)    
-
-
-        w(imesh^D,phys_ind%dust_density_) = dust_density(i)*my_units%density_units/&
-        w_convert_factor(phys_ind%dust_density_)    
+      w(imesh^D,phys_ind%HDI_density_) = HDI_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%HDI_density_)   
+      end if
+      if(phys_config%use_metal_field==1)then
+      w(imesh^D,phys_ind%metal_density_) = metal_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%metal_density_)  
+      end if
+      if(self%myconfig%gr_use_dust_density_field(1)==1)then
+      w(imesh^D,phys_ind%dust_density_) = dust_density(i)*my_units%density_units/&
+      w_convert_factor(phys_ind%dust_density_)       
+      end if
+    end if          
 
 
         x_velocity(i) = 0.0
@@ -3038,8 +2524,9 @@ end if
           w_convert_factor(phys_ind%e_)
         end do
 
+        uenergy(imesh^D) = energy(i) 
         total_energy(i) = energy(i)*(velocity_units**2.0_dp)
-        total_energy(i) = total_energy(i)*(w(imesh^D, phys_ind%rho_)*w_convert_factor(phys_ind%rho_))
+        total_energy(i) = total_energy(i)*rhoxy(imesh^D)
         ! old direct way
         !w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)-total_energy(i)!*1.0d10 !de
         !write(*,*) 'L1 = ', w(imesh^D,phys_ind%Lcool1_)
@@ -3048,76 +2535,18 @@ end if
         
         w(imesh^D,phys_ind%e_) = total_energy(i)/w_convert_factor(phys_ind%e_)
 
-        dtchem = qdt*my_units%time_units
 
-        ! old direct way
-        !w(imesh^D,phys_ind%Lcool1_) = (w(imesh^D,phys_ind%Lcool1_)/w_convert_factor(phys_ind%e_))/&
-        !(dtchem/time_convert_factor)
-        !w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)/ &
-        !w_convert_factor(phys_ind%Lcool1_)! L1 = de/dt
-        
-        meanmw = density(i)/&
-        (HI_density(i)+HII_density(i)+HM_density(i)+&
-        0.25*(HeI_density(i)+HeII_density(i)+&
-        HeIII_density(i))+&
-        0.5*(H2I_density(i)+H2II_density(i))+&
-        metal_density(i)/16.0+&
-        e_density(i)*(mp/me))
-        ! Mean molecular weight
-        w(imesh^D,phys_ind%mup_) = meanmw/w_convert_factor(phys_ind%mup_)
       {end do^D&|\}
 
-  iresult = calculate_cooling_time(my_units,my_fields, cooling_time)
-
-  tbase1 = my_units%time_units
-  if(my_units%comoving_coordinates==1)then
-      xbase1 = my_units%length_units / &
-          (my_units%a_value * my_units%a_units)
-      dbase1 = my_units%density_units * &
-          (my_units%a_value * my_units%a_units)**3.0_dp
-  else
-      xbase1 = my_units%length_units / &
-          my_units%a_units
-      dbase1 = my_units%density_units * &
-          my_units%a_units**3.0_dp
-  end if
-
-  cooling_units = (my_units%a_units**5.0_dp * xbase1**2.0_dp * &
-                        mp_cgs**2.0_dp) / (tbase1**3.0_dp * dbase1)
-  
-  {^IFTWOD
-    ! flattening 2D array :
-    do imesh2 = ixOmin2, ixOmax2
-      igr2 = imesh2-ixOmin2
-      do imesh1 = ixOmin1, ixOmax1
-        igr1 = imesh1-ixOmin1}
-        {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-        w(imesh^D,phys_ind%dtcool1_) = cooling_time(i)*my_units%time_units/&
-        w_convert_factor(phys_ind%dtcool1_)
-        ! New way of computing cooling rate 
-        ! from cooling_rate.py of PyGrackle package:
-        density_proper(imesh^D) = density(i)/&
-        (my_units%a_units*my_units%a_value)**(3.0_dp*my_units%comoving_coordinates)
-        !write(*,*) 'density_proper(imesh^D) = ', density_proper(imesh^D)
-        w(imesh^D,phys_ind%Lcool1_) = (cooling_units*energy(i)/&
-        DABS(cooling_time(i)))/density_proper(imesh^D)
-        !write(*,*) 'L1 = ', w(imesh^D,phys_ind%Lcool1_)
-        w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)/&
-        (w_convert_factor(phys_ind%e_)/time_convert_factor)
-        !write(*,*) 'L1/[L1]= ', w(imesh^D,phys_ind%Lcool1_)
-      {end do^D&|\}
-
-  ! New way of computing cooling rate 
-  ! from cooling_rate.py of PyGrackle package:
-  !density_proper(ixO^S) = w(ixO^S,phys_ind%rho_)/&
-  !(my_units%a_units*my_units%a_value)**(3*my_chemistry%comoving_coordinates)
+      call phys_get_mup(w, x, ixI^L, ixO^L, mmw_field)
+      w(ixO^S,phys_ind%mup_) = mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
 
 
-  ! Compute field of H2-gamma corrected temperature
-  call phys_get_gamma(w,ixI^L, ixO^L, gmmeff_field)
-  w(ixO^S,phys_ind%gamma_)=gmmeff_field(ixO^S)/w_convert_factor(phys_ind%gamma_)
-  call phys_get_temperature(ixI^L, ixO^L,w, x, temperature)
-  w(ixO^S,phys_ind%temperature_)=temperature(ixO^S)
+  my_solver_fields%cooling_time = C_NULL_PTR
+  my_solver_fields%temperature = C_NULL_PTR
+  my_solver_fields%pressure = C_NULL_PTR
+  my_solver_fields%gamma = C_NULL_PTR
+  my_solver_fields%cooling_rate = C_NULL_PTR
 
 
     my_fields%grid_dimension = C_NULL_PTR

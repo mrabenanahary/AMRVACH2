@@ -209,6 +209,13 @@ module mod_physics
     real(dp)                  :: epsinf_small_Gammamax
     real(dp)                  :: epsinf_small_density
     real(dp)                  :: epsinf_small_Bfield_turb
+    
+    ! Grackle config for fields 
+    integer                   :: primordial_chemistry
+    integer                   :: use_metal_field
+    integer                   :: use_dust_density_field
+
+
   end type physconfig
 
   type(physconfig), pointer   :: phys_config
@@ -231,6 +238,7 @@ module mod_physics
   procedure(sub_get_pthermal), pointer    :: phys_get_pthermal         => null()
   procedure(sub_get_gamma), pointer    :: phys_get_gamma         => null()
   procedure(sub_get_mup), pointer    :: phys_get_mup         => null()
+  procedure(sub_get_rhoxy), pointer    :: phys_get_rhoxy         => null()
   procedure(sub_get_kin_en),   pointer    :: phys_get_kin_en         => null()
   procedure(sub_get_csound2), pointer     :: phys_get_csound2          => null()
   procedure(sub_get_comove_B2), pointer   :: phys_get_comove_B2        => null()
@@ -386,6 +394,14 @@ module mod_physics
        real(kind=dp)      , intent(in)    :: x(ixI^S,1:ndim)
        real(kind=dp)      , intent(out)   :: mmw(ixI^S)
      end subroutine sub_get_mup
+
+    subroutine sub_get_rhoxy(w, x, ixI^L, ixO^L, rhoxy)
+      use mod_global_parameters
+      integer, intent(in)          :: ixI^L, ixO^L
+      real(dp), intent(in)         :: w(ixI^S, nw)
+      real(dp), intent(in)         :: x(ixI^S, 1:ndim)
+      real(dp), intent(out)        :: rhoxy(ixI^S)
+    end subroutine sub_get_rhoxy      
 
      function sub_get_kin_en(w, ixI^L, ixO^L, inv_rho) result(ke)
        use mod_global_parameters

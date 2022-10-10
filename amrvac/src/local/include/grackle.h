@@ -177,16 +177,10 @@ grackle_version get_grackle_version(void);
 
 void show_parameters(FILE *fp, chemistry_data *my_chemistry);
 
-int c_calculate_cooling_time(chemistry_data *my_chemistry,
-                 chemistry_data_storage *my_rates,
-                 grackle_field_data *my_fields,
-                 code_units *my_units,
-                 UVBtable *UVBTble,
-                 cloudy_data *cloudy_primordial,
-                 cloudy_data *cloudy_metal,
-                 GPStruct *GPS_primordial,
-                 GPStruct *GPS_metal,
-                 double *cooling_time);
+int f_calculate_cooling_time(code_units *my_units,
+                    grackle_field_data *my_fields,
+                    f_integer *field_size,
+                    solver_fields *output_fields);
 
 int initchemdata(chemistry_data *my_chemistry,
                  chemistry_data_storage *my_rates,
@@ -196,5 +190,10 @@ int initchemdata(chemistry_data *my_chemistry,
                  cloudy_data *cloudy_metal,
                  GPStruct *GPS_primordial,
                  GPStruct *GPS_metal);
+
+int f_solve_chemistry(code_units *my_units,
+                    grackle_field_data *my_fields,
+                    f_real *dt_value,f_integer *field_size,
+                    solver_fields *output_fields);
 
 #endif
