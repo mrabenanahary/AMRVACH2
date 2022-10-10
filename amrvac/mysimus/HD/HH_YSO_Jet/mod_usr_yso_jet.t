@@ -2398,29 +2398,7 @@ return
 
    !w(ixI^S,1:nw)=win(ixI^S,1:nw)
 
-    if(phys_config%use_grackle)then
-      
-        if(phys_config%primordial_chemistry>0)then
-                win(ixO^S,phys_ind%rhoX_)=w(ixO^S,phys_ind%HI_density_)+&
-                w(ixO^S,phys_ind%HII_density_)
 
-                win(ixO^S,phys_ind%rhoY_)=w(ixO^S,phys_ind%HeI_density_)+&
-                w(ixO^S,phys_ind%HeII_density_)+w(ixO^S,phys_ind%HeIII_density_)
-
-              if(phys_config%primordial_chemistry>1)then
-                win(ixO^S,phys_ind%rhoX_)=w(ixO^S,phys_ind%rhoX_)+w(ixO^S,phys_ind%HM_density_)+&
-                w(ixO^S,phys_ind%H2I_density_)+w(ixO^S,phys_ind%H2II_density_)
-              end if
-
-              if(phys_config%primordial_chemistry>2)then
-                win(ixO^S,phys_ind%rhoX_)=w(ixO^S,phys_ind%rhoX_)+&
-                w(ixO^S,phys_ind%DI_density_)+w(ixO^S,phys_ind%DII_density_)+&
-                w(ixO^S,phys_ind%HDI_density_)
-              end if
-                
-        end if
-      
-    end if
 
 
   end subroutine specialvar_output

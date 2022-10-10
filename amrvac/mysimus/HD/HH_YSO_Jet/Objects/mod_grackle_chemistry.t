@@ -1200,17 +1200,17 @@ subroutine grackle_set_complet(self,ref_density,iobject,normalized,mydensityunit
     mydensityunit
   end if
 
-  in_density = physical_ref_density
+  !in_density = physical_ref_density
 
-  call self%get_xy_density(in_density,iobject,&
-  physical_ref_density,.false.,mydensityunit)
+  !call self%get_xy_density(in_density,iobject,&
+  !physical_ref_density,.false.,mydensityunit)
 
-  ref_density = physical_ref_density  !rho
+  !ref_density = physical_ref_density  !rho
 
-  if(normalized)then
-    ref_density = physical_ref_density/&
-    mydensityunit
-  end if
+  !if(normalized)then
+    !ref_density = physical_ref_density/&
+    !mydensityunit
+  !end if
 
   write(*,*) ' set_complet iobject begining of set_complet =', iobject
 
@@ -1514,7 +1514,7 @@ subroutine grackle_solver_associate(gr_data,myunits,self)
   gr_data%h2_on_dust = self%myconfig%gr_h2_on_dust(1)
   gr_data%cmb_temperature_floor = self%myconfig%gr_cmb_temperature_floor(1)
   gr_data%Gamma = self%myconfig%gr_Gamma(1)
-  gr_data%Tlow = self%myconfig%gr_Tlow(1)
+  !gr_data%Tlow = self%myconfig%gr_Tlow(1)
   gr_data%use_dust_density_field = self%myconfig%gr_use_dust_density_field(1)
   gr_data%three_body_rate = self%myconfig%gr_three_body_rate(1)
   gr_data%cie_cooling                    = self%myconfig%gr_cie_cooling(1)
@@ -1832,8 +1832,8 @@ integer          :: field_size(1:ndim)
 INTEGER, TARGET :: grid_rank, grid_dimension(3), grid_start(3), grid_end(3)
 real(dp)                 :: mp,kB,me,grid_dx, dtchem
 real(dp),dimension(ixI^S)         :: rhoXY
-TYPE(solver_fields),TARGET :: my_solver_fields
-TYPE(f_integer),TARGET :: my_f_integer
+!TYPE(solver_fields),TARGET :: my_solver_fields
+!TYPE(f_integer),TARGET :: my_f_integer
 INTEGER , TARGET :: size_of_field(1)
 !--------------------------------------------------------------
 
@@ -1891,7 +1891,7 @@ velocity_units = get_velocity_units(my_units)
       do imesh1 = ixOmin1, ixOmax1
         igr1 = imesh1-ixOmin1}
         {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-        density(i) = rhoxy(imesh^D)/&
+        density(i) = w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)/&
         my_units%density_units
 
      if(phys_config%use_grackle)then
@@ -1967,7 +1967,7 @@ velocity_units = get_velocity_units(my_units)
         
         ! old direct way
         !w(imesh^D,phys_ind%Lcool1_) = energy(i)!*1.0d10
-        energy(i) = energy(i) / rhoxy(imesh^D)
+        energy(i) = energy(i) / (w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_))
         energy(i) = energy(i) / (velocity_units**2.0_dp)
 
         ! For instance :
@@ -2037,22 +2037,23 @@ velocity_units = get_velocity_units(my_units)
     !   C_LOC(H2_custom_shielding_factor)
     !my_fields%isrf_habing = C_LOC(isrf_habing)
 
-    my_f_integer%n = C_LOC(size_of_field)
+    !my_f_integer%n = C_LOC(size_of_field)
     
 
     
 
-  my_solver_fields%cooling_time = C_LOC(cooling_time)
+  !my_solver_fields%cooling_time = C_LOC(cooling_time)
 
 
-    iresult = f_calculate_cooling_time(my_units, my_fields, my_f_integer,my_solver_fields)
+    !iresult = f_calculate_cooling_time(my_units, my_fields, my_f_integer,my_solver_fields)
 
+  iresult = calculate_cooling_time(my_units, my_fields,cooling_time)
 
-  my_solver_fields%cooling_time = C_NULL_PTR
-  my_solver_fields%temperature = C_NULL_PTR
-  my_solver_fields%pressure = C_NULL_PTR
-  my_solver_fields%gamma = C_NULL_PTR
-  my_solver_fields%cooling_rate = C_NULL_PTR
+  !my_solver_fields%cooling_time = C_NULL_PTR
+  !my_solver_fields%temperature = C_NULL_PTR
+  !my_solver_fields%pressure = C_NULL_PTR
+  !my_solver_fields%gamma = C_NULL_PTR
+  !my_solver_fields%cooling_rate = C_NULL_PTR
 
 
     my_fields%grid_dimension = C_NULL_PTR
@@ -2177,7 +2178,7 @@ end if
 
 velocity_units = get_velocity_units(my_units)
 
-
+call set_velocity_units(my_units)
 
 
 
@@ -2214,7 +2215,7 @@ velocity_units = get_velocity_units(my_units)
       do imesh1 = ixOmin1, ixOmax1
         igr1 = imesh1-ixOmin1}
         {^IFTWOD i = 1 + igr1 + field_size(1) * igr2}
-        density(i) = rhoxy(imesh^D)/&
+        density(i) = w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)/&
         my_units%density_units
 
      if(phys_config%use_grackle)then
@@ -2290,7 +2291,7 @@ velocity_units = get_velocity_units(my_units)
         
         ! old direct way
         !w(imesh^D,phys_ind%Lcool1_) = energy(i)!*1.0d10
-        energy(i) = energy(i) / rhoxy(imesh^D)
+        energy(i) = energy(i) / (w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_))
         energy(i) = energy(i) / (velocity_units**2.0_dp)
 
         ! For instance :
@@ -2366,7 +2367,7 @@ velocity_units = get_velocity_units(my_units)
 
 
     dtchem = qdt*time_convert_factor/my_units%time_units
-    !dtchem = 2.23042430894638d9/my_units%time_units
+    !dtchem = 9.174d08/my_units%time_units
     !dtchem = 1.6533987860878887d12/my_units%time_units
 
     dt_value(1) = dtchem
@@ -2382,8 +2383,8 @@ velocity_units = get_velocity_units(my_units)
       do imesh1 = ixOmin1, ixOmax1
         igr1 = imesh1-ixOmin1}
         {^IFTWOD i = 1 + igr1 + field_size(1) * igr2} 
-        cooling_rate(i)=density(i)*my_units%density_units*energy(i)*velocity_units**2.0_dp/&
-        DABS(cooling_time(i)*my_units%time_units)
+        !cooling_rate(i)=density(i)*my_units%density_units*energy(i)*velocity_units**2.0_dp/&
+        !DABS(cooling_time(i)*my_units%time_units)
       {end do^D&|\}  
 
   !write(*,*) 'cooling_rate : ', cooling_rate
@@ -2526,7 +2527,7 @@ velocity_units = get_velocity_units(my_units)
 
         uenergy(imesh^D) = energy(i) 
         total_energy(i) = energy(i)*(velocity_units**2.0_dp)
-        total_energy(i) = total_energy(i)*rhoxy(imesh^D)
+        total_energy(i) = total_energy(i)*w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_)
         ! old direct way
         !w(imesh^D,phys_ind%Lcool1_) = w(imesh^D,phys_ind%Lcool1_)-total_energy(i)!*1.0d10 !de
         !write(*,*) 'L1 = ', w(imesh^D,phys_ind%Lcool1_)
@@ -2542,11 +2543,35 @@ velocity_units = get_velocity_units(my_units)
       w(ixO^S,phys_ind%mup_) = mmw_field(ixO^S)/w_convert_factor(phys_ind%mup_)
 
 
-  my_solver_fields%cooling_time = C_NULL_PTR
-  my_solver_fields%temperature = C_NULL_PTR
-  my_solver_fields%pressure = C_NULL_PTR
-  my_solver_fields%gamma = C_NULL_PTR
-  my_solver_fields%cooling_rate = C_NULL_PTR
+    if(phys_config%use_grackle)then
+      
+        if(phys_config%primordial_chemistry>0)then
+                w(ixO^S,phys_ind%rhoX_)=w(ixO^S,phys_ind%HI_density_)+&
+                w(ixO^S,phys_ind%HII_density_)
+
+                w(ixO^S,phys_ind%rhoY_)=w(ixO^S,phys_ind%HeI_density_)+&
+                w(ixO^S,phys_ind%HeII_density_)+w(ixO^S,phys_ind%HeIII_density_)
+
+              if(phys_config%primordial_chemistry>1)then
+                w(ixO^S,phys_ind%rhoX_)=w(ixO^S,phys_ind%rhoX_)+w(ixO^S,phys_ind%HM_density_)+&
+                w(ixO^S,phys_ind%H2I_density_)+w(ixO^S,phys_ind%H2II_density_)
+              end if
+
+              if(phys_config%primordial_chemistry>2)then
+                w(ixO^S,phys_ind%rhoX_)=w(ixO^S,phys_ind%rhoX_)+&
+                w(ixO^S,phys_ind%DI_density_)+w(ixO^S,phys_ind%DII_density_)+&
+                w(ixO^S,phys_ind%HDI_density_)
+              end if
+                
+        end if
+      
+    end if
+
+  !my_solver_fields%cooling_time = C_NULL_PTR
+  !my_solver_fields%temperature = C_NULL_PTR
+  !my_solver_fields%pressure = C_NULL_PTR
+  !my_solver_fields%gamma = C_NULL_PTR
+  !my_solver_fields%cooling_rate = C_NULL_PTR
 
 
     my_fields%grid_dimension = C_NULL_PTR
@@ -2585,6 +2610,16 @@ velocity_units = get_velocity_units(my_units)
 
 
 end subroutine grackle_solve_chemistry
+
+subroutine gr_get_rhoxy(w, x, ixI^L, ixO^L, rhoxy)
+    use mod_global_parameters
+    integer, intent(in)          :: ixI^L, ixO^L
+    real(dp), intent(in)         :: w(ixI^S, nw)
+    real(dp), intent(in)         :: x(ixI^S, 1:ndim)
+    real(dp), intent(out)        :: rhoxy(ixI^S)
+    !-------------------------------------------------------
+
+end subroutine gr_get_rhoxy
 
 end module mod_grackle_chemistry
 

@@ -1675,7 +1675,9 @@ end subroutine hd_get_aux
 
         call hd_get_rhoXY(w, x, ixI^L, ixO^L, rhoxy)  
                 
-        mmw(ixO^S) = (rhoxy(ixO^S)/mp)/nden(ixO^S)
+        !mmw(ixO^S) = (rhoxy(ixO^S)/mp)/nden(ixO^S)
+        mmw(ixO^S) = (w(ixO^S,rho_)*w_convert_factor(rho_)/mp)/nden(ixO^S)
+        
         !rhoH+rhoHe
       end if
     else

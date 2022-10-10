@@ -7,14 +7,14 @@
 /
 / Distributed under the terms of the Enzo Public Licence.
 /
-/ The full license is in the file LICENSE, distributed with this
+/ The full license is in the file LICENSE, distributed with this 
 / software.
 ************************************************************************/
 
 #ifndef __GRACKLE_TYPES_H_
 #define __GRACKLE_TYPES_H_
 /***********************************************************************
-/
+/  
 / VARIABLE TYPES
 /
 ************************************************************************/
@@ -95,21 +95,5 @@ typedef struct
   const char* revision;
 
 } grackle_version;
-
-typedef struct
-{
-  gr_float *uenergy_density;
-  gr_float dx_local;
-  gr_float dtchem;
-  int ixOmin1;
-  int ixOmax1;
-  int ixOmin2;
-  int ixOmax2;
-  gr_float *final_temp;
-  gr_float *final_cooltime;
-  gr_float *final_press;
-  gr_float *final_gamma;
-
-} grackle_inout;
 
 #endif
