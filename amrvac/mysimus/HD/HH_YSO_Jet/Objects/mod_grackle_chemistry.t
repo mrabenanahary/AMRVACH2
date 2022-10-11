@@ -487,7 +487,7 @@ subroutine grackle_set_default(self)
   self%myconfig%gr_h2_on_dust(1:max_num_parameters) = 0
   self%myconfig%gr_dust_chemistry(1:max_num_parameters) = 0
   self%myconfig%gr_use_dust_density_field(1:max_num_parameters) = 0
-  self%myconfig%gr_photoelectric_heating(1:max_num_parameters) = -1
+  self%myconfig%gr_photoelectric_heating(1:max_num_parameters) = 0
   self%myconfig%gr_photoelectric_heating_rate(1:max_num_parameters) = 8.5D-26
   self%myconfig%gr_use_volumetric_heating_rate(1:max_num_parameters) = 0
   self%myconfig%gr_use_specific_heating_rate(1:max_num_parameters) = 0
@@ -1407,9 +1407,9 @@ self%myconfig%densityHeIII(iobject)
       self%myconfig%densityH2II(iobject)/2.0_dp)
     end if
 
-    self%myconfig%densityElectrons(iobject) = max(self%myconfig%IonizationFraction(iobject)*&
-    physical_ref_density,&
-    self%myconfig%deviation_to_density(iobject)*physical_ref_density)
+    !self%myconfig%densityElectrons(iobject) = max(self%myconfig%IonizationFraction(iobject)*&
+    !physical_ref_density,&
+    !self%myconfig%deviation_to_density(iobject)*physical_ref_density)
 
     self%myconfig%densityElectrons(iobject) = max(&
       self%myconfig%densityElectrons(iobject),&
@@ -2221,33 +2221,44 @@ call set_velocity_units(my_units)
       if(self%myconfig%gr_primordial_chemistry(1)>0)then
       HI_density(i) = w(imesh^D,phys_ind%HI_density_)*w_convert_factor(phys_ind%HI_density_)/&
       my_units%density_units
-      
+      !HI_density(i) = 1.6737352238051867d-37/my_units%density_units
+
       HII_density(i) = w(imesh^D,phys_ind%HII_density_)*w_convert_factor(phys_ind%HII_density_)/&
       my_units%density_units
+      !HII_density(i) = 1.6737352238051867d-37/my_units%density_units
       
       HeI_density(i) = w(imesh^D,phys_ind%HeI_density_)*w_convert_factor(phys_ind%HeI_density_)/&
       my_units%density_units
-      
+      !HeI_density(i) = 4.016964537132448d-25/my_units%density_units
+
+
       HeII_density(i) = w(imesh^D,phys_ind%HeII_density_)*w_convert_factor(phys_ind%HeII_density_)/&
       my_units%density_units
-      
+      !HeII_density(i) =1.6737352238051867d-37/my_units%density_units
+
       HeIII_density(i) = w(imesh^D,phys_ind%HeIII_density_)*w_convert_factor(phys_ind%HeIII_density_)/&
       my_units%density_units
+      !HeIII_density(i) =1.6737352238051867d-37/my_units%density_units
       
       e_density(i) = w(imesh^D,phys_ind%e_density_)*w_convert_factor(phys_ind%e_density_)/&
       my_units%density_units
       e_density(i) = (mp/me)*e_density(i)
-      
+      !e_density(i) = 3.0752795298366003d-34/my_units%density_units
+
+
       end if
       if(self%myconfig%gr_primordial_chemistry(1)>1)then
       HM_density(i) = w(imesh^D,phys_ind%HM_density_)*w_convert_factor(phys_ind%HM_density_)/&
       my_units%density_units
+      !HM_density(i) = 1.6737352238051867d-37/my_units%density_units
       
       H2I_density(i) = w(imesh^D,phys_ind%H2I_density_)*w_convert_factor(phys_ind%H2I_density_)/&
       my_units%density_units
+      !H2I_density(i) = 1.272038770091942d-24/my_units%density_units
       
       H2II_density(i) = w(imesh^D,phys_ind%H2II_density_)*w_convert_factor(phys_ind%H2II_density_)/&
       my_units%density_units
+      !H2II_density(i) = 1.6737352238051867d-37/my_units%density_units
       
       end if
       if(self%myconfig%gr_primordial_chemistry(1)>2)then
@@ -2261,11 +2272,13 @@ call set_velocity_units(my_units)
       if(phys_config%use_metal_field==1)then
       metal_density(i) = w(imesh^D,phys_ind%metal_density_)*w_convert_factor(phys_ind%metal_density_)/&
       my_units%density_units
+      !metal_density(i) = 3.4160935917863863d-26/my_units%density_units
       
       end if
       if(self%myconfig%gr_use_dust_density_field(1)==1)then
       dust_density(i) = w(imesh^D,phys_ind%dust_density_)*w_convert_factor(phys_ind%dust_density_)/&
       my_units%density_units
+      !dust_density(i) = 1.5711352545859287d-26/my_units%density_units
       
       end if
     end if 
@@ -2292,7 +2305,8 @@ call set_velocity_units(my_units)
         !w(imesh^D,phys_ind%Lcool1_) = energy(i)!*1.0d10
         energy(i) = energy(i) / (w(imesh^D,phys_ind%rho_)*w_convert_factor(phys_ind%rho_))
         energy(i) = energy(i) / (velocity_units**2.0_dp)
-
+        !energy(i) = 8.609473532594933d16/ (velocity_units**2.0_dp)
+        
         ! For instance :
         volumetric_heating_rate(i) = 0.0
         specific_heating_rate(i) = 0.0
@@ -2366,7 +2380,7 @@ call set_velocity_units(my_units)
 
 
     dtchem = qdt*time_convert_factor/my_units%time_units
-    !dtchem = 9.174d08/my_units%time_units
+    !dtchem = 2.23042508d09/my_units%time_units
     !dtchem = 1.6533987860878887d12/my_units%time_units
 
     dt_value(1) = dtchem
