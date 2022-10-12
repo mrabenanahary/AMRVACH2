@@ -116,7 +116,7 @@ module mod_usr
 
 contains
   subroutine set_grackle_parameters()
-   call grackle_solver%set_global_parameters(my_grackle_data,my_grackle_units)
+   
   end subroutine set_grackle_parameters
 
   subroutine usr_init
@@ -148,7 +148,8 @@ contains
     usr_get_dt          => special_get_dt
     usr_internal_bc     => usr_special_internal_bc
     usr_reset_solver    => special_reset_solver
-    usr_before_main_loop => set_grackle_parameters
+    !usr_before_main_loop => set_grackle_parameters
+    !usr_before_initial_condition => set_grackle_parameters
     !usr_process_adv_global => specialprocess_grid
 
 
@@ -849,7 +850,7 @@ subroutine initglobaldata_usr
 
 
 
-
+ call grackle_solver%set_global_parameters(my_grackle_data,my_grackle_units)
 
  !call gr_obj%test_chemistry('mod_usr_yso_jet : initglobaldata_usr => usr_set_parameters')
 
@@ -1138,7 +1139,7 @@ end subroutine initglobaldata_usr
        ism_surround(i_ism)%subname='initonegrid_usr'
 
        call ism_surround(i_ism)%set_w(ixI^L,ixO^L,global_time,x,w,gr_solv=grackle_solver)
-       !call grackle_solver%make_consistent(ixI^L,ixO^L,w,iobj)
+       
        patch_all(ixO^S) =  patch_all(ixO^S) .and. .not.ism_surround(i_ism)%patch(ixO^S)
        if(ism_surround(i_ism)%myconfig%dust_on)then
          i_object_w_dust = i_object_w_dust +1
@@ -1287,6 +1288,9 @@ end subroutine initglobaldata_usr
     end if cond_dust_on
 
 
+    call grackle_solver%set_cool_rate(ixI^L,ixO^L,x,w,my_grackle_data,my_grackle_units)
+
+    write(*,*) 'Initial L1 = ', (w(ixO^S,phys_ind%Lcool1_)*w_convert_factor(phys_ind%Lcool1_))
 
 
 
@@ -1441,6 +1445,7 @@ end subroutine initglobaldata_usr
                not_escape_patch(ixI^S) = .true.
 
                !call MPI_BARRIER(icomm, ierrmpi)
+               
                call grackle_solver%grackle_source(ixI^L,ixO^L,iw^LIM,x,qdt,qtC,&
                                   wCT,qt,w,dx_local,my_grackle_data,my_grackle_units)
 
@@ -1610,6 +1615,9 @@ call usr_clean_memory
       end if cond_Thigh
      end if cond_check_T_high
     end if  cond_no_isotherm
+
+
+
 return
      i_object = usrconfig%ism_number
      jet_is_on_var : if(usrconfig%jet_yso_on)then

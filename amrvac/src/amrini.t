@@ -84,3 +84,33 @@ end do
 
 end subroutine modify_IC
 !=============================================================================
+
+subroutine improve_initial_condition()
+  use mod_global_parameters
+  use mod_usr_methods
+  use mod_physics
+  use mod_ghostcells_update
+
+  logical :: active
+
+  if(associated(usr_improve_initial_condition)) then
+    call usr_improve_initial_condition
+  end if
+
+end subroutine improve_initial_condition
+
+subroutine before_initial_condition()
+  use mod_global_parameters
+  use mod_usr_methods
+  use mod_physics
+  use mod_ghostcells_update
+
+  logical :: active
+
+  if(associated(usr_before_initial_condition)) then
+    call usr_before_initial_condition
+  end if
+
+end subroutine before_initial_condition
+
+

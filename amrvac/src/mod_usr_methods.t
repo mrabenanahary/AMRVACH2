@@ -31,6 +31,12 @@ module mod_usr_methods
   procedure(process_adv_grid), pointer   :: usr_process_adv_grid   => null()
   procedure(process_adv_global), pointer :: usr_process_adv_global => null()
 
+! Called before initial condition before the start of the simulation
+  procedure(p_no_args), pointer       :: usr_before_initial_condition => null()
+
+  ! Called after initial condition before the start of the simulation
+  procedure(p_no_args), pointer       :: usr_improve_initial_condition => null()
+
   ! Called before the start of the simulation
   procedure(p_no_args), pointer       :: usr_before_main_loop => null()
 

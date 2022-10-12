@@ -68,9 +68,9 @@ output_dir
 filename_suffix_to_restart = filename_suffix+"_nH_{:04d}".format(nH_log_factor[outnum_density])
 filename_suffix_to_restart += "_T_{:04d}".format(outnum_temperature)+"_"
 
-filename = 'split_nH_'+str(outnum_density)+'_T_'+str(outnum_temperature)+'.txt'
+filename = namedir+'.txt'
 
-data[iline_of_output] = 'base_filename = '+output_dir+namedir+'/'+filename_suffix+'\n'
+data[iline_of_output] = 'base_filename = \''+output_dir+"nH_{:g}".format(nH_log_factor[outnum_density])+'/'+filename_suffix+"T_{:04d}".format(outnum_temperature)+"_"'\'\n'
 
 #filename_suffix_to_restart = filename_suffix+"{:04d}".format(outnum)+".dat"
 #restart_strg = data[iline_of_restart].split('!')[1]

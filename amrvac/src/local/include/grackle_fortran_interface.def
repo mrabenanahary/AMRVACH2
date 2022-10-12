@@ -270,6 +270,18 @@ c     The following define the fortran interfaces to the C routines
       END INTERFACE
 
       INTERFACE
+         INTEGER(C_INT) FUNCTION f_calculate_cooling_rate
+     &        (my_units, my_fields, field_size,
+     &        output_fields) bind(C)
+            IMPORT
+            TYPE(grackle_units), INTENT(IN) :: my_units
+            TYPE(grackle_field_data), INTENT(IN) :: my_fields
+            TYPE(f_integer), INTENT(INOUT) :: field_size
+            TYPE(solver_fields), INTENT(INOUT) ::output_fields
+         END FUNCTION f_calculate_cooling_rate
+      END INTERFACE
+
+      INTERFACE
          INTEGER(C_INT) FUNCTION f_solve_chemistry
      &        (my_units, my_fields, dt, field_size,
      &        output_fields) bind(C)

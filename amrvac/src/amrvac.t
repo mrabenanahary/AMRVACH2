@@ -78,6 +78,10 @@ program amrvac
 
   else
 
+
+     ! Calll before initial condition : e.g. Grackle initialization
+     call before_initial_condition()   
+
      ! form and initialize all grids at level one
      call initlevelone
 
@@ -89,6 +93,9 @@ program amrvac
 
      ! set up and initialize finer level grids, if needed
      call settree
+
+     ! improve initial condition
+     call improve_initial_condition()     
 
      if (use_particles) call particles_create()
 

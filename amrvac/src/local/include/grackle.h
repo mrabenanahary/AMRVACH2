@@ -178,11 +178,16 @@ int f_calculate_cooling_time(code_units *my_units,
                     f_integer *field_size,
                     solver_fields *output_fields);
 
+int f_calculate_cooling_rate(code_units *my_units,
+                    grackle_field_data *my_fields,
+                    f_integer *field_size,
+                    solver_fields *output_fields)
 
 int f_solve_chemistry(code_units *my_units,
                     grackle_field_data *my_fields,
                     f_real *dt_value,f_integer *field_size,
                     solver_fields *output_fields);
+
 
 
 #endif
