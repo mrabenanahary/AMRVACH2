@@ -28,7 +28,7 @@ iline_of_density = 303
 iline_of_temperature = 313
 
 
-temperature = np.logspace(1, 9, 16)
+temperature = np.logspace(2, 9, 200)
 
 density_zero = 2.2008179078168482e-24
 

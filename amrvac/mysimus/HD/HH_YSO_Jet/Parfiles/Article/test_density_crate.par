@@ -57,7 +57,7 @@
 
         dtmin=1.0d-13
         !time_max= 1.0d1!99d15 ! years
-        time_max= 2.43204368d09!3.156d10!6.3072d10!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
+        time_max= 1.0d1!2.43204368d09!3.156d10!6.3072d10!3.1715388d9 ! 10050 yrs 1.26e10! 400 yrs !3.786912d10! 1200 yrs ! 1.90607904d10!604 yrs ! 1.893456d10!600 yrs ! 3.15576d10! 1000yrs!6.31152d10! 2000 yrs ! 3.15576d11! 10000yrs ! 1.262304d10!400yrs!3.15576d9!3.15576d10! 1000yrs  !1.893456e11!600yrs!!9.46728d9!300yrs!6.311520000d9!7.8894d9!9.46728d9!7.8894d9 ! in s from years : 7.8894d9 = 250 yrs
         !it_max=1
 
 
@@ -515,17 +515,17 @@ ism_config%He_abundance      = 0.1
 	grackle_config%x_HDI(1)  = 0.0d0
 	! Jet:
 	! x_HI + x_HII + x_HM + x_H2I + x_H2II = 1
-	grackle_config%x_HI(2)  = 0.0d0
-	grackle_config%x_HII(2)  = 1.0d0
+	grackle_config%x_HI(2)  = 0.5d0
+	grackle_config%x_HII(2)  = 0.0d0
 	grackle_config%x_HM(2)  = 0.0d0
-	grackle_config%x_H2I(2)  = 0.0d0
+	grackle_config%x_H2I(2)  = 0.5d0
 	grackle_config%x_H2II(2)  = 0.0d0
 	! x_HeI + x_HeII + x_HeIII = 1
 	grackle_config%x_HeI(2)  = 1.0d0
 	grackle_config%x_HeII(2)  = 0.0d0
 	grackle_config%x_HeIII(2)  = 0.0d0
 	!x_DI + x_DII +x_HDI = 1
-	grackle_config%x_DI(2)  = 1.0d0
+	grackle_config%x_DI(2)  = 0.0d0
 	grackle_config%x_DII(2)  = 0.0d0
 	grackle_config%x_HDI(2)  = 0.0d0
 
