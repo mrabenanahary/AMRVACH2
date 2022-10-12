@@ -1288,10 +1288,6 @@ end subroutine initglobaldata_usr
     end if cond_dust_on
 
 
-    call grackle_solver%set_cool_rate(ixI^L,ixO^L,x,w,my_grackle_data,my_grackle_units)
-
-    write(*,*) 'Initial L1 = ', (w(ixO^S,phys_ind%Lcool1_)*w_convert_factor(phys_ind%Lcool1_))
-
 
 
     ! check is if initial setting is correct
@@ -1303,7 +1299,18 @@ end subroutine initglobaldata_usr
     ! get conserved variables to be used in the code
     patch_all=.true.
     call usr_check_w(ixI^L,ixO^L,patch_all,.true.,'initonegrid_usr',0.0_dp,x,w)
+
+
+
+
     call phys_to_conserved(ixI^L,ixO^L,w,x)
+
+  if(phys_config%use_grackle)then
+    call grackle_solver%set_cool_rate(ixI^L,ixO^L,x,w,my_grackle_data,my_grackle_units)
+
+    write(*,*) 'Initial L1 = ', (w(ixO^S,phys_ind%Lcool1_)*w_convert_factor(phys_ind%Lcool1_))
+  end if
+
 
     call usr_clean_memory
 
