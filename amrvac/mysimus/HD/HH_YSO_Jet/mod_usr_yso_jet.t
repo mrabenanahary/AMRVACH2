@@ -1308,7 +1308,7 @@ end subroutine initglobaldata_usr
   if(phys_config%use_grackle)then
     call grackle_solver%set_cool_rate(ixI^L,ixO^L,x,w,my_grackle_data,my_grackle_units)
 
-    write(*,*) 'Initial L1 = ', (w(ixO^S,phys_ind%Lcool1_)*w_convert_factor(phys_ind%Lcool1_))
+    !write(*,*) 'Initial L1 = ', (w(ixO^S,phys_ind%Lcool1_)*w_convert_factor(phys_ind%Lcool1_))
   end if
 
 
@@ -1444,7 +1444,7 @@ end subroutine initglobaldata_usr
 
             !write(*,*) 'II> Grackle source adding <II'
             ^D&dx_local(^D)=0.0d0;
-            cond_grackle_on : if(usrconfig%grackle_chemistry_on)then
+            cond_grackle_on : if(phys_config%use_grackle)then
             !Add Grackle chemistry+heating+cooling module treatment here :
                 level = node(plevel_,saveigrid)
                ^D&dx_local(^D)=((xprobmax^D-xprobmin^D)/(domain_nx^D))/(2.0_dp**(level-1));
@@ -2254,8 +2254,8 @@ return
         normconv(nw+itemperature_)  = 1.0_dp
       case(ipressure_usr_)
         call phys_get_pthermal(w, x, ixI^L, ixO^L, pressure_th)
-        win(ixO^S,nw+ipressure_usr_) = pressure_th(ixO^S)*w_convert_factor(phys_ind%pressure_)
-        normconv(nw+ipressure_usr_)  = 1.0_dp
+        win(ixO^S,nw+ipressure_usr_) = pressure_th(ixO^S)
+        normconv(nw+ipressure_usr_)  = w_convert_factor(phys_ind%pressure_)
       case(igammaeff_)
         call phys_get_gamma(w, ixI^L, ixO^L, gammaeff_usr)
         win(ixO^S,nw+igammaeff_) = gammaeff_usr(ixO^S)

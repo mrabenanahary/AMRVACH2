@@ -1100,7 +1100,7 @@ write(*,*) 'HI dens 2 =', gr_solv%myconfig%densityHI(i_obj)
     character(len=64)          :: aString
     !----------------------------------
 
-write(*,*) 'HI dens 3 =', gr_solv%myconfig%densityHI(1)
+    !write(*,*) 'HI dens 3 =', gr_solv%myconfig%densityHI(1)
     if(.not.self%myconfig%w_already_initialized)self%myconfig%w_already_initialized=.true.
 
 
@@ -1152,8 +1152,8 @@ write(*,*) 'HI dens 3 =', gr_solv%myconfig%densityHI(1)
            end if
 
 
-iobject = self%myconfig%myindice + 1
-write(*,*) 'HI dens = ', gr_solv%myconfig%densityHI(iobject)
+          iobject = self%myconfig%myindice + 1
+          !write(*,*) 'HI dens = ', gr_solv%myconfig%densityHI(iobject)
           !Grackle uniform fields initialization : 
           if(phys_config%energy)then
             if(phys_config%use_grackle)then
@@ -1195,7 +1195,7 @@ write(*,*) 'HI dens = ', gr_solv%myconfig%densityHI(iobject)
           end if
 
 
-write(*,*) 'HI dens 4= ', w(ixO^S,phys_ind%HI_density_)
+          !write(*,*) 'HI dens 4= ', w(ixO^S,phys_ind%HI_density_)
 
            if(phys_config%energy)then
              if(trim(self%myconfig%profile_density)=='Ulrich1976')then
@@ -1302,7 +1302,7 @@ end where
 
 
 
-write(*,*) 'HI dens 4= ', w(ixO^S,phys_ind%HI_density_)
+         !write(*,*) 'HI dens 4= ', w(ixO^S,phys_ind%HI_density_)
 
 
    end subroutine usr_ism_set_w
